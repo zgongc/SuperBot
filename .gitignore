@@ -1,0 +1,73 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Config & Secrets
+config/secrets.yaml
+config/local.yaml
+*.key
+*.pem
+.env
+
+
+# Data & Cache
+data/ai/
+data/db/
+data/json/*
+data/checkpoints/
+data/state/
+data/database/
+data/parquets/
+data/historical/
+data/cache/
+data/models/
+data/trades/
+data/downloads/
+data/backtest_results/
+data/optimization_results/
+data/positions.json
+data/*
+*.parquet
+*.db
+*.sqlite
+
+docs/older_sessions/
+.superbot/
+
+# Logs
+logs/
+*.log
+
+# Test outputs
+test_results/
+coverage/
+.coverage
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*~
+nul
+tmpclaude-*
+
+# Memory database (personal data)
+memory/*.db
