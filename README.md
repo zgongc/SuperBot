@@ -23,22 +23,47 @@ AI-powered, multi-exchange cryptocurrency trading platform with modular architec
 
 ## 📦 Installation
 
+### 🪟 Windows Prerequisites (Auto-Install)
+Run these commands in PowerShell (Admin) to install essential tools.
+**Note:** Windows Terminal is highly recommended for proper emoji/color support.
+
+```powershell
+# 1. Windows Terminal (For emojis & colored logs)
+winget install -e --id Microsoft.WindowsTerminal
+
+# 2. Git
+winget install -e --id Git.Git
+
+# 3. Miniconda (Recommended Python manager)
+winget install -e --id Anaconda.Miniconda3 --override "/AddToPath=1"
+```
+*⚠️ Please restart your terminal after installation.*
+
 ### Requirements
 - Python >= 3.12
+- Git
 - conda (recommended)
 
 ### Setup
 ```bash
-# Create conda environment
+# 1. Clone the repository
+git clone https://github.com/zgongc/SuperBot.git
+cd SuperBot
+
+# 2. Create Environment
+# Option A: Conda (Recommended)
 #conda create -n superbot python=3.12
 #conda activate superbot
 
-.\venv\Scripts\activate  # windows
-source venv/bin/activate # linux
-# Install dependencies
+# Option B: Python Venv
+python -m venv venv
+.\venv\Scripts\activate      # Windows
+# source venv/bin/activate   # Linux/Mac
+
+# 3. Install dependencies
 pip install -r requirements.txt
 
-# Configure
+# 4. Configure
 cp config/.env.example config/.env
 # Edit config/.env with your API keys
 ```
