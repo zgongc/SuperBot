@@ -6,25 +6,25 @@ Yazar: SuperBot Team
 Tarih: 2025-01-06
 Versiyon: 2.0.0
 
-Yıl bazlı dosyaları temizler ve yıl sınırlarını zorlar.
+Year-based files are cleaned and year boundaries are forced.
 
 Sorun:
-- 2024 dosyası 2025 verilerini içeriyor (UTC+3 timezone hatası)
-- 2025 dosyası 2024 verilerini içeriyor
-- Duplicate veriler var
-- Year boundaries karışık
+The file from 2024 contains data from 2025 (UTC+3 timezone error)
+The file from 2025 contains data from 2024.
+Duplicate data exists
+Mixed year boundaries
 
-Çözüm:
-- Her dosyayı oku
-- Epoch time bazında yıl sınırlarını kontrol et (timezone safe)
-- Sadece ilgili yıla ait verileri tut
+Solution:
+Read each file.
+Check year boundaries based on epoch time (time zone safe)
+Only store data for the relevant year.
 - Duplicate'leri temizle
-- Düzgün kaydet
+align
 
-Kullanım:
+Usage:
     python fix_year_split.py
 
-Bağımlılıklar:
+Dependencies:
     - python>=3.10
     - pandas>=2.0
     - pyarrow>=10.0
@@ -57,7 +57,7 @@ def fix_year_split(
     data_path = Path(data_dir) / symbol
 
     if not data_path.exists():
-        print(f"❌ Sembol dizini bulunamadı: {data_path}")
+        print(f"❌ Symbol dictionary not found: {data_path}")
         return
 
     # Find all year files
@@ -100,13 +100,13 @@ def fix_year_split(
         # Show date range
         date_min = df[time_col].min()
         date_max = df[time_col].max()
-        print(f"   📅 Tarih aralığı: {date_min} -> {date_max}")
+        print(f"   📅 Date range: {date_min} -> {date_max}")
 
-        # 2. Epoch time bazında yıl filtresi (timezone-safe)
-        # Binance epoch time kullanıyor, timezone sorunu yok
+        # 2. Year filter based on epoch time (timezone-safe)
+        Binance epoch time is used, no timezone issue.
         df[time_col] = pd.to_datetime(df[time_col], utc=True)
 
-        # Epoch time bazında yıl sınırları (UTC)
+        Year boundaries based on epoch time (UTC)
         # 2024-01-01 00:00:00 UTC = 1704067200000 ms epoch
         # 2024-12-31 23:59:59 UTC = 1735689599000 ms epoch
         year_start_utc = datetime(year, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
@@ -116,7 +116,7 @@ def fix_year_split(
         year_start_ts = pd.Timestamp(year_start_utc)
         year_end_ts = pd.Timestamp(year_end_utc)
 
-        # Filter: only keep data within this year (UTC epoch time bazında)
+        # Filter: only keep data within this year (UTC epoch time based)
         df_year = df[
             (df[time_col] >= year_start_ts) &
             (df[time_col] <= year_end_ts)
@@ -126,9 +126,9 @@ def fix_year_split(
 
         rows_removed = initial_rows - year_rows
         if rows_removed > 0:
-            print(f"   🧹 Filtrelendi: {rows_removed:,} satır diğer yıllardan silindi")
+            print(f"   🧹 Filtered: {rows_removed:,} row removed from other years")
         else:
-            print(f"   ✅ Tüm satırlar {year} yılına ait")
+            print(f"   ✔️ All lines are for the year {year}")
 
         # 3. Duplicate'leri temizle
         df_year = df_year.drop_duplicates(subset=[time_col], keep='last')
@@ -138,9 +138,9 @@ def fix_year_split(
         duplicates = year_rows - after_dedup
 
         if duplicates > 0:
-            print(f"   🧹 Temizlendi: {duplicates:,} duplicate satır")
+            print(f"   🧹 Cleaned: {duplicates:,} duplicate row")
 
-        # 4. Beklenen tarih aralığını kontrol et (UTC epoch bazında)
+        # Check expected date range (UTC epoch based)
         expected_start = year_start_ts
         expected_end = pd.Timestamp(datetime(year, 12, 31, 23, 59, 0, tzinfo=timezone.utc))
 
@@ -148,45 +148,45 @@ def fix_year_split(
         actual_end = df_year[time_col].max()
 
         print(f"\n   Beklenen (UTC): {expected_start} -> {expected_end}")
-        print(f"   Gerçek (UTC):   {actual_start} -> {actual_end}")
+        print(f"   Real (UTC):   {actual_start} -> {actual_end}")
 
-        # Eksik veri kontrolü (başlangıç çok geç veya son çok erken)
+        # Insufficient data control (start too early or end too late)
         needs_download = False
 
         if actual_start > expected_start:
             missing_days = (actual_start - expected_start).days
             if missing_days > 0:
-                print(f"   ⚠️  Eksik: Başlangıçta {missing_days} gün eksik")
+                print(f"   ⚠️  Missing: Starting with {missing_days} days missing")
                 needs_download = True
 
-        # Sadece geçmiş yıllar için son tarih kontrolü (current year için değil)
+        # Only for past years, control the last date (not current year)
         current_year_utc = datetime.now(timezone.utc).year
         if year < current_year_utc and actual_end < expected_end:
             missing_days = (expected_end - actual_end).days
             if missing_days > 0:
-                print(f"   ⚠️  Eksik: Sonda {missing_days} gün eksik")
+                print(f"   ⚠️  Missing: Last {missing_days} days")
                 needs_download = True
 
         if needs_download:
-            print(f"   💡 İpucu: Eksik aralıkları doldurmak için data_downloader çalıştır")
+            print(f"   💡 Hint: Fill gaps with data_downloader to run")
 
-        # 5. Temizlenmiş dosyayı kaydet
-        print(f"\n   💾 Temizlenmiş dosya kaydediliyor...")
+        # 5. Cleaned file to save
+        print(f"\n   Cleaned file saved...")
         df_year.to_parquet(filepath, index=False, compression='snappy')
 
         size_mb = filepath.stat().st_size / (1024 * 1024)
-        print(f"   ✅ Kaydedildi: {after_dedup:,} satır ({size_mb:.2f} MB)")
+        print(f"   ✔️ Recorded: {after_dedup:,} rows ({size_mb:.2f} MB)")
 
         # Memory cleanup
         del df
         del df_year
 
     print("\n" + "=" * 70)
-    print("✅ YIL-SPLIT DÜZELTMESİ TAMAMLANDI!")
+    YIL-SPLIT ADJUSTMENT COMPLETE! 🎉
     print("=" * 70)
 
     # Final summary
-    print("\n📊 Son Dosya Özeti:")
+    "Print:\n\n📊 Last File Summary:"
     for filepath in files:
         df_check = pd.read_parquet(filepath)
         time_col = 'open_time' if 'open_time' in df_check.columns else 'timestamp'
@@ -195,8 +195,8 @@ def fix_year_split(
         size_mb = filepath.stat().st_size / (1024 * 1024)
 
         print(f"\n   {filepath.name}:")
-        print(f"      Satır: {len(df_check):,}")
-        print(f"      Aralık: {date_min} -> {date_max}")
+        print(f"      Row: {len(df_check):,}")
+        print(f"    December: {date_min} -> {date_max}")
         print(f"      Boyut: {size_mb:.2f} MB")
 
         del df_check
@@ -205,7 +205,7 @@ def fix_year_split(
 
 
 if __name__ == "__main__":
-    # Windows UTF-8 fix (emoji display için)
+    # Windows UTF-8 fix (for emoji display)
     if sys.platform == 'win32':
         try:
             sys.stdout.reconfigure(encoding='utf-8')

@@ -106,7 +106,7 @@ async def bulk_backtest(
         logger.info(f"{'='*80}")
 
         try:
-            # Her kombinasyon için backtest çalıştır
+            # For each combination, run backtest
             result = await run_backtest_cli(
                 strategy_path=strategy_path,
                 verbose=verbose,
@@ -118,22 +118,22 @@ async def bulk_backtest(
             )
             results.append(result)
 
-            # Kısa özet
+            # Brief summary
             total_trades = len(result.trades)
             total_return = result.metrics.total_return_pct
             win_rate = result.metrics.win_rate
 
-            logger.info(f"\n✅ {symbol} @ {timeframe} - Tamamlandı!")
+            logger.info(f"\n✅ {symbol} @ {timeframe} - Completed!")
             logger.info(f"   Trades: {total_trades}, Win Rate: {win_rate:.1f}%, Return: {total_return:+.2f}%")
 
         except Exception as e:
-            logger.error(f"❌ {symbol} @ {timeframe} - HATA: {e}")
+            logger.error(f"❌ {symbol} @ {timeframe} - ERROR: {e}")
             import traceback
             if verbose:
                 logger.debug(traceback.format_exc())
             continue
 
-    # Genel özet
+    # General Overview
     elapsed = (datetime.now() - start_time).total_seconds()
 
     logger.info("\n" + "=" * 80)
@@ -145,9 +145,9 @@ async def bulk_backtest(
     logger.info(f"Total Duration: {elapsed:.1f}s")
     logger.info("")
 
-    # En iyi sonuçları göster
+    # Best results are shown
     if results:
-        # Getiriye göre sırala
+        Sort by retrieval.
         sorted_by_return = sorted(
             results,
             key=lambda r: r.metrics.total_return_pct,
@@ -192,7 +192,7 @@ async def bulk_backtest(
         logger.info(f"   Trade Count: {avg_trades:.1f}")
         logger.info(f"   Win Rate: {avg_winrate:.1f}%")
 
-        # Sharpe ratio karşılaştırması
+        Sharpe ratio comparison
         logger.info("")
         logger.info("📊 BEST SHARPE RATIO:")
         sorted_by_sharpe = sorted(
@@ -223,7 +223,7 @@ async def bulk_backtest(
 async def main():
     """Main entry point"""
     parser = argparse.ArgumentParser(
-        description="Bulk Backtest - Birden fazla sembol ve timeframe test et",
+        "Description: Bulk Backtest - Test multiple symbols and timeframes"
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -242,45 +242,45 @@ Examples:
         '--strategy',
         type=str,
         required=True,
-        help='Strateji dosya yolu (kısa isim veya tam yol)'
+        'Strategy file path (short name or full path)'
     )
 
     parser.add_argument(
         '--symbol',
         type=str,
         required=True,
-        help='Virgülle ayrılmış sembol listesi (ör. "BTCUSDT,ETHUSDT,BNBUSDT")'
+        help='Comma-separated symbol list (e.g. "BTCUSDT,ETHUSDT,BNBUSDT")'
     )
 
     parser.add_argument(
         '--timeframe',
         type=str,
         required=True,
-        help='Virgülle ayrılmış timeframe listesi (ör. "1d,1w,4h")'
+        help='Comma-separated timeframe list (e.g. "1d,1w,4h")'
     )
 
     parser.add_argument(
         '--start',
         type=str,
-        help='Başlangıç tarihi (YYYY-MM-DD) - Strategy\'den varsayılan alınır'
+        'Initial date (YYYY-MM-DD) - Defaults to from strategy'
     )
 
     parser.add_argument(
         '--end',
         type=str,
-        help='Bitiş tarihi (YYYY-MM-DD) - Strategy\'den varsayılan alınır'
+        'End date (YYYY-MM-DD) - Can be taken from strategy by default'
     )
 
     parser.add_argument(
         '--balance',
         type=float,
-        help='Başlangıç bakiyesi - Strategy\'den varsayılan alınır'
+        Starting balance - Inherited from Strategy by default
     )
 
     parser.add_argument(
         '--verbose',
         action='store_true',
-        help='Detaylı çıktı göster'
+        help='Detailed output'
     )
 
     args = parser.parse_args()

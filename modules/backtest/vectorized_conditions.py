@@ -3,8 +3,8 @@
 modules/backtest/vectorized_conditions.py
 SuperBot - Vectorized Condition Evaluation
 
-Hızlı backtest için vectorized condition evaluation helper'ları.
-Loop kullanmadan tüm candle'lar için condition check yapar.
+Fast backtesting vectorized condition evaluation helpers.
+Loop without using loop checks all candles for condition.
 
 Author: SuperBot Team
 Date: 2025-11-15

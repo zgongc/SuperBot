@@ -51,6 +51,8 @@ data/*
 docs/older_sessions/
 .superbot/
 
+components/tools/*
+
 # Logs
 logs/
 *.log

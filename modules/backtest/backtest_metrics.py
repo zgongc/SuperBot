@@ -381,8 +381,8 @@ def _calculate_detailed_metrics(
         dd_pct = (dd / peak * 100) if peak > 0 else 0.0
         drawdowns.append(dd_pct)
 
-    # Max drawdown percentage - peak'e göre hesaplanmalı (leverage-safe)
-    # NOT: initial_balance'a göre hesaplamak leverage ile yanlış sonuç verir
+    # Maximum drawdown percentage - must be calculated relative to the peak (leverage-safe)
+    # NOT: calculating initial_balance results in incorrect results with leverage.
     max_dd_pct = -(max_dd_usd / peak * 100) if peak > 0 else 0.0  # Negative!
     avg_dd_pct = -np.mean(drawdowns) if drawdowns else 0.0  # Negative!
 

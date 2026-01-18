@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 SuperBot Proje Analiz Scripti
-Tüm klasör ve dosyaları analiz eder
+Analyzes all files and directories.
 """
 
 import os
@@ -14,10 +14,10 @@ def analyze_directory(root_path, output_file="superbot_analysis.md"):
     SuperBot projesini analiz et
     """
     
-    # Ana klasörler
+    Parent directories
     main_folders = ['components', 'core', 'config', 'modules']
     
-    # Analiz sonuçları
+    # Analysis Results
     analysis = {
         'total_files': 0,
         'total_lines': 0,
@@ -32,25 +32,25 @@ def analyze_directory(root_path, output_file="superbot_analysis.md"):
     output.append(f"\nAnaliz Tarihi: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     output.append("\n" + "="*80)
     
-    # Her ana klasör için
+    # For all main directories
     for folder in main_folders:
         folder_path = Path(root_path) / folder
         if not folder_path.exists():
             continue
             
-        output.append(f"\n## 📁 {folder.upper()} KLASÖRİ")
+        ## {folder} FOLDER
         output.append("-" * 40)
         
-        # Alt klasörleri tara
+        # Look at subfolders
         subfolders = {}
         for root, dirs, files in os.walk(folder_path):
-            # __pycache__ ve .git gibi klasörleri atla
+            # Skip __pycache__ and .git directories
             dirs[:] = [d for d in dirs if not d.startswith('.') and d != '__pycache__']
             
             rel_path = Path(root).relative_to(folder_path)
             level = len(rel_path.parts)
             
-            # Dosyaları listele
+            # List files
             py_files = [f for f in files if f.endswith('.py')]
             yaml_files = [f for f in files if f.endswith(('.yaml', '.yml'))]
             json_files = [f for f in files if f.endswith('.json')]
@@ -62,19 +62,19 @@ def analyze_directory(root_path, output_file="superbot_analysis.md"):
                 if subfolder_name:
                     output.append(f"\n{indent}### {subfolder_name}/")
                 
-                # Python dosyaları
+                # Python files
                 if py_files:
-                    output.append(f"{indent}**Python dosyaları ({len(py_files)}):**")
-                    for f in sorted(py_files)[:10]:  # İlk 10 dosya
+                    **Python files ({len(py_files)})**:
+                    for f in sorted(py_files)[:10]:  # First 10 files
                         file_path = Path(root) / f
                         try:
-                            # Dosya boyutu ve satır sayısı
+                            # File size and row count
                             size = file_path.stat().st_size / 1024  # KB
                             with open(file_path, 'r', encoding='utf-8', errors='ignore') as fp:
                                 lines = len(fp.readlines())
-                            output.append(f"{indent}- `{f}` ({lines} satır, {size:.1f}KB)")
+                            output.append(f"{indent}- `f` ({lines} lines, {size:.1f} KB)")
                             
-                            # İlk docstring'i oku
+                            # First docstring
                             with open(file_path, 'r', encoding='utf-8', errors='ignore') as fp:
                                 content = fp.read()
                                 if '"""' in content:
@@ -86,24 +86,24 @@ def analyze_directory(root_path, output_file="superbot_analysis.md"):
                             output.append(f"{indent}- `{f}`")
                     
                     if len(py_files) > 10:
-                        output.append(f"{indent}... ve {len(py_files)-10} dosya daha")
+                        "... and {len(py_files)-10} more files"
                 
-                # Config dosyaları
+                # Configuration files
                 if yaml_files:
-                    output.append(f"{indent}**Config dosyaları ({len(yaml_files)}):**")
+                    **Config files ({}):**
                     for f in sorted(yaml_files):
                         output.append(f"{indent}- `{f}`")
                 
-                # JSON dosyaları
+                # JSON Files
                 if json_files:
-                    output.append(f"{indent}**Data dosyaları ({len(json_files)}):**")
+                    **Data files ({}):**
                     for f in sorted(json_files)[:5]:
                         output.append(f"{indent}- `{f}`")
                     if len(json_files) > 5:
-                        output.append(f"{indent}... ve {len(json_files)-5} dosya daha")
+                        "... and {len(json_files)-5} more files"
     
-    # Özel klasörleri kontrol et
-    output.append("\n## 🔧 DİĞER ÖNEMLİ KLASÖRLER")
+    # Private directories check
+    Other Important Classes
     output.append("-" * 40)
     
     other_folders = ['data', 'indicators', 'strategies', 'scripts', 'tests', 'docs']
@@ -113,16 +113,16 @@ def analyze_directory(root_path, output_file="superbot_analysis.md"):
             file_count = sum(1 for _ in folder_path.rglob('*.py'))
             if file_count > 0:
                 output.append(f"\n### {folder}/")
-                output.append(f"- Python dosyaları: {file_count}")
+                output.append(f"- Python files: {file_count}")
                 
-                # İlk birkaç dosyayı listele
+                # List the first few files
                 files = list(folder_path.rglob('*.py'))[:5]
                 for f in files:
                     rel_path = f.relative_to(folder_path)
                     output.append(f"  - `{rel_path}`")
     
-    # Sprint durumlarını kontrol et
-    output.append("\n## 📊 SPRINT DURUM ANALİZİ")
+    # Check sprint status
+    ## Sprint Status Analysis
     output.append("-" * 40)
     
     status_files = list(Path(root_path).glob('STATUS_Sprint_*.md'))
@@ -130,15 +130,15 @@ def analyze_directory(root_path, output_file="superbot_analysis.md"):
         output.append(f"\n### {status_file.name}")
         try:
             with open(status_file, 'r', encoding='utf-8') as f:
-                lines = f.readlines()[:20]  # İlk 20 satır
+                lines = f.readlines()[:20]  # First 20 lines
                 for line in lines:
-                    if 'Tamamlandı' in line or 'COMPLETED' in line or '%' in line:
+                    if 'Completed' in line or 'COMPLETED' in line or '%' in line:
                         output.append(f"  {line.strip()}")
         except:
             pass
     
-    # Son değiştirilen dosyaları bul
-    output.append("\n## 🕐 SON DEĞİŞTİRİLEN DOSYALAR")
+    # Last modified files found
+    ## Last Modified Files
     output.append("-" * 40)
     
     recent_files = []
@@ -153,25 +153,25 @@ def analyze_directory(root_path, output_file="superbot_analysis.md"):
                     pass
     
     recent_files.sort(reverse=True)
-    output.append("\nEn son değiştirilen 10 dosya:")
+    "Last modified files:"
     for mtime, f in recent_files[:10]:
         rel_path = f.relative_to(root_path)
         date = datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M')
         output.append(f"- {date}: `{rel_path}`")
     
-    # Özet istatistikler
-    output.append("\n## 📈 ÖZET İSTATİSTİKLER")
+    # Summary statistics
+    ## Summary Statistics
     output.append("-" * 40)
     
     total_py_files = sum(1 for _ in Path(root_path).rglob('*.py'))
     total_yaml_files = sum(1 for _ in Path(root_path).rglob('*.yaml'))
     total_json_files = sum(1 for _ in Path(root_path).rglob('*.json'))
     
-    output.append(f"\n- **Toplam Python dosyası:** {total_py_files}")
-    output.append(f"- **Toplam Config dosyası:** {total_yaml_files}")
-    output.append(f"- **Toplam JSON dosyası:** {total_json_files}")
+    "- **Total Python files:** {total_py_files}"
+    "output.append(f"- **Total config file:** {total_yaml_files}")
+    "- **Total JSON files:** {total_json_files}"
     
-    # AI/ML ile ilgili dosyaları say
+    # Counting files related to AI/ML
     ai_files = []
     for f in Path(root_path).rglob('*.py'):
         name = f.name.lower()
@@ -179,7 +179,9 @@ def analyze_directory(root_path, output_file="superbot_analysis.md"):
             ai_files.append(f)
     
     if ai_files:
-        output.append(f"\n### 🤖 AI/ML İlgili Dosyalar ({len(ai_files)})")
+        ### AI/ML Related Files ({})
+
+### 🤖
         for f in ai_files[:15]:
             rel_path = f.relative_to(root_path)
             output.append(f"- `{rel_path}`")
@@ -190,22 +192,22 @@ def analyze_directory(root_path, output_file="superbot_analysis.md"):
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write(output_content)
     
-    print(f"✅ Analiz tamamlandı: {output_file}")
-    print(f"📊 Toplam {total_py_files} Python dosyası analiz edildi")
+    print(f"✅ Analysis completed: {output_file}")
+    print(f"Total {total_py_files} Python files were analyzed")
     
     return output_content
 
 if __name__ == "__main__":
-    # SuperBot ana klasör yolu
-    # Windows için örnek: "D:/Python/SuperBot"
-    # Linux için örnek: "/home/user/SuperBot"
+    # SuperBot root directory path
+    # Windows for example: "D:/Python/SuperBot"
+    # Linux example: "/home/user/SuperBot"
     
-    project_path = input("SuperBot proje klasör yolu (örn: D:/Python/SuperBot): ").strip()
+    project_path = input("SuperBot project path (e.g. D:/Python/SuperBot): ").strip()
     
     if not Path(project_path).exists():
-        print(f"❌ Klasör bulunamadı: {project_path}")
+        ❌ Folder not found: {project_path}
     else:
         result = analyze_directory(project_path)
         print("\n" + "="*50)
-        print("Analiz sonucu superbot_analysis.md dosyasına kaydedildi")
+        print("Analysis result saved to superbot_analysis.md file")
         print("="*50)

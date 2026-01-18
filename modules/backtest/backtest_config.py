@@ -307,11 +307,11 @@ if __name__ == "__main__":
             self.mtf_timeframes = ["15m", "1h", "4h"]
             self.backtest_parameters = MockBacktestParams()
 
-    # Test 1: Config oluşturma
-    print("\n📋 Test 1: Config oluşturma")
+    # Test 1: Config creation
+    print("\n📋 Test 1: Config creation")
     strategy = MockStrategy()
     config = build_config(strategy)
-    print(f"   ✅ Config oluşturuldu")
+    print(f"   ✅ Config created")
     print(f"   ✅ Sembol: {config.symbols[0]}")
     print(f"   ✅ Primary TF: {config.primary_timeframe}")
     print(f"   ✅ MTF TFs: {config.mtf_timeframes}")
@@ -333,29 +333,29 @@ if __name__ == "__main__":
     print("\n✅ Test 3: Validation")
     try:
         validate_config(config)
-        print("   ✅ Config geçerli")
+        print("   ✅ Config valid")
     except ValueError as e:
-        print(f"   ❌ Validation hatası: {e}")
+        print(f"   ❌ Validation error: {e}")
 
-    # Test 4: Geçersiz config
-    print("\n❌ Test 4: Geçersiz config")
+    # Test 4: Invalid config
+    print("\n❌ Test 4: Invalid config")
     try:
         bad_config = BacktestConfig(
-            symbols=[],  # Boş sembol listesi
+            symbols=[],  # Empty symbol list
             primary_timeframe="15m",
             mtf_timeframes=["15m"],
             initial_balance=10000,
         )
-        print("   ❌ Config oluşturulmamalıydı!")
+        print("   ❌ Config should not have been created!")
     except ValueError as e:
-        print(f"   ✅ Beklenen hata yakalandı: {e}")
+        print(f"   ✅ Expected error caught: {e}")
 
     # Test 5: Cache key
     print("\n🔑 Test 5: Cache key")
     cache_key = get_cache_key(config)
     print(f"   ✅ Cache key: {cache_key}")
 
-    # İki farklı config, farklı cache key olmalı
+    # Two different configs, should have different cache keys
     config2 = BacktestConfig(
         symbols=['ETHUSDT'],
         primary_timeframe='1h',
@@ -366,13 +366,13 @@ if __name__ == "__main__":
     )
     cache_key2 = get_cache_key(config2)
     print(f"   ✅ Cache key 2: {cache_key2}")
-    print(f"   ✅ Farklı mı? {cache_key != cache_key2}")
+    print(f"   ✅ Different? {cache_key != cache_key2}")
 
     # Test 6: Config serialization
     print("\n💾 Test 6: Config serialization")
     config_dict = config.to_dict()
-    print(f"   ✅ Config dict'e çevrildi")
+    print(f"   ✅ Converted to Config dict")
     print(f"   ✅ Keys: {list(config_dict.keys())[:5]}...")
 
-    print("\n✅ Tüm testler başarılı!")
+    print("\n✅ All tests successful!")
     print("=" * 60)

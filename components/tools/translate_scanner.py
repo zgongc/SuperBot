@@ -11,6 +11,8 @@ Usage:
     python components/tools/translate_scanner.py --report           # Generate markdown report
     python components/tools/translate_scanner.py --translate        # Auto-translate with Ollama
     python components/tools/translate_scanner.py --translate --dry-run  # Preview changes
+
+    python components/tools/translate_scanner.py modules/backtest/ --translate --ollama-url http://192.168.1.195:11434 --model llama3.2
 """
 
 import re

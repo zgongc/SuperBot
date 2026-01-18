@@ -65,7 +65,7 @@ class PositionSimulator:
     CRITICAL: Position sizing MUST work correctly!
     - FIXED_USD: 100 vs 1000 should give different results
     - FIXED_PERCENT: 5% vs 20% should give different results
-    - RISK_BASED: Risk değişince sonuç değişmeli
+    RISK_BASED: The result changes when risk changes.
     """
 
     def __init__(self, logger=None):
@@ -183,7 +183,7 @@ class PositionSimulator:
         return trades
 
     # ========================================================================
-    # POSITION SIZING - EN KRİTİK KISIM!
+    POSITION SIZING - CRITICAL SECTION!
     # ========================================================================
 
     def _calculate_position_size(
@@ -213,7 +213,7 @@ class PositionSimulator:
         # Import PositionSizeMethod enum
         from components.strategies.base_strategy import PositionSizeMethod
 
-        # FIXED_USD: Sabit dolar miktarı
+        # FIXED_USD: Fixed USD amount
         if rm.sizing_method == PositionSizeMethod.FIXED_USD:
             usd_size = rm.position_usd_size
             quantity = usd_size / price
@@ -225,7 +225,7 @@ class PositionSimulator:
 
             return quantity
 
-        # FIXED_PERCENT: Balance'ın yüzdesi
+        # FIXED_PERCENT: Percentage of balance
         elif rm.sizing_method == PositionSizeMethod.FIXED_PERCENT:
             percent = rm.position_percent_size
             usd_size = balance * (percent / 100)
@@ -239,7 +239,7 @@ class PositionSimulator:
 
             return quantity
 
-        # RISK_BASED: Stop loss mesafesine göre
+        # RISK_BASED: Stop loss distance
         elif rm.sizing_method == PositionSizeMethod.RISK_BASED:
             risk_pct = rm.max_risk_per_trade
             risk_amount = balance * (risk_pct / 100)
@@ -390,10 +390,10 @@ class PositionSimulator:
 
         tp_pct = exit_strat.take_profit_value
 
-        # LONG: TP yukarıda
+        # LONG: Above
         if signal > 0:
             tp_price = entry_price * (1 + tp_pct / 100)
-        # SHORT: TP aşağıda
+        # SHORT: Below is TP
         else:
             tp_price = entry_price * (1 - tp_pct / 100)
 
@@ -657,7 +657,7 @@ if __name__ == "__main__":
     print("=" * 60)
 
     # Mock data
-    print("\n📊 Test 1: Mock data hazırlama")
+    print("\n📊 Test 1: Mock Data Preparation")
     dates = pd.date_range('2025-01-01', periods=100, freq='15min')
     np.random.seed(42)
     prices = 100000 + np.cumsum(np.random.randn(100) * 100)
@@ -669,14 +669,14 @@ if __name__ == "__main__":
         'close': prices,
         'volume': np.random.randint(1000, 10000, 100)
     }, index=dates)
-    print(f"   ✅ {len(data)} candle oluşturuldu")
+    print(f"   ✔️ {len(data)} candles created")
     print(f"   ✅ Price range: ${data['close'].min():.0f} - ${data['close'].max():.0f}")
 
     # Mock signals (simple: buy every 10 candles)
     print("\n📍 Test 2: Mock signals")
     signals = np.zeros(len(data))
     signals[::10] = 1  # LONG every 10 candles
-    print(f"   ✅ {(signals != 0).sum()} sinyal oluşturuldu")
+    print(f"   ✔️ {len(signals) == 0} signals created")
 
     # Mock strategy
     print("\n⚙️  Test 3: Mock strategy")
@@ -713,7 +713,7 @@ if __name__ == "__main__":
     simulator = PositionSimulator()
     trades = simulator.simulate(signals, data, {}, strategy, config)
 
-    print(f"   ✅ {len(trades)} trade tamamlandı")
+    print(f"   ✔️ {len(trades)} trades completed")
     if trades:
         total_pnl = sum(t.net_pnl_usd for t in trades)
         print(f"   ✅ Total PnL: ${total_pnl:+.2f}")
@@ -725,7 +725,7 @@ if __name__ == "__main__":
     simulator2 = PositionSimulator()  # New simulator for clean trade counter
     trades2 = simulator2.simulate(signals, data, {}, strategy2, config)
 
-    print(f"   ✅ {len(trades2)} trade tamamlandı")
+    print(f"   ✔️ {len(trades2)} trades completed")
     if trades2:
         total_pnl2 = sum(t.net_pnl_usd for t in trades2)
         print(f"   ✅ Total PnL: ${total_pnl2:+.2f}")
@@ -737,10 +737,10 @@ if __name__ == "__main__":
     strategy3 = MockStrategy('RISK_BASED', max_risk_per_trade=2.0)
     trades3 = simulator.simulate(signals, data, {}, strategy3, config)
 
-    print(f"   ✅ {len(trades3)} trade tamamlandı")
+    print(f"   ✔️ {len(trades3)} trade completed")
     if trades3:
         total_pnl3 = sum(t.net_pnl_usd for t in trades3)
         print(f"   ✅ Total PnL: ${total_pnl3:+.2f}")
 
-    print("\n✅ Tüm testler başarılı!")
+    print("\n👍 All tests were successful!")
     print("=" * 60)

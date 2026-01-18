@@ -74,7 +74,7 @@ class BacktestConfig:
     primary_timeframe: str                          # '15m'
     mtf_timeframes: List[str] = field(default_factory=list)  # ['15m', '1h', '4h']
 
-    # Tarih aralığı
+    # Time range
     start_date: datetime = None
     end_date: datetime = None
 
@@ -82,7 +82,7 @@ class BacktestConfig:
     initial_balance: float = 10000.0
 
     # Data loading
-    warmup_period: int = 200                        # Warmup candle sayısı
+    warmup_period: int = 200                        # Warmup candle count
 
     # Maliyet parametreleri
     commission_pct: float = 0.04                    # %0.04 (Binance maker)
@@ -133,27 +133,27 @@ class Trade:
     # Trade ID
     trade_id: int
 
-    # Sembol ve yön
+    # Symbol and direction
     symbol: str
     side: PositionSide
 
-    # Giriş bilgileri
+    # Login Information
     entry_time: datetime
     entry_price: float
 
-    # Çıkış bilgileri
+    #Exit information
     exit_time: datetime
     exit_price: float
     exit_reason: ExitReason
 
     # Pozisyon boyutu
-    quantity: float                     # Trade edilen miktar (örn: 0.1 BTC)
+    quantity: float                     # Trade offered amount (e.g. 0.1 BTC)
 
-    # PnL (brüt - komisyon/slippage öncesi)
-    gross_pnl_usd: float               # Brüt kar/zarar ($)
-    gross_pnl_pct: float               # Brüt kar/zarar (%)
+    # Profit and Loss (gross - commission/premium before slippage)
+    gross_pnl_usd: float               # Gross profit/loss (USD)
+    gross_pnl_pct: float               # Gross profit/loss (%)
 
-    # PnL (net - komisyon/slippage sonrası)
+    # Profit and Loss (net - commission/slip loss after)
     net_pnl_usd: float                 # Net kar/zarar ($)
     net_pnl_pct: float                 # Net kar/zarar (%)
 
@@ -162,17 +162,17 @@ class Trade:
     slippage: float                    # Toplam slippage ($)
     spread: float                      # Toplam spread maliyeti ($)
 
-    # Analytics (opsiyonel - gelişmiş analiz için)
-    max_profit_usd: float = 0.0        # Trade sırasında max profit
+    # Analytics (optional - advanced analysis)
+    max_profit_usd: float = 0.0        # Trade during max profit
     max_profit_pct: float = 0.0
-    max_loss_usd: float = 0.0          # Trade sırasında max loss
+    max_loss_usd: float = 0.0          # Trade during max loss
     max_loss_pct: float = 0.0
-    duration_minutes: int = 0           # Trade süresi (dakika)
+    # Trade Duration (minutes)
 
-    # Metadata (opsiyonel - debugging için)
+    # Metadata (optional - for debugging purposes)
     stop_loss_price: Optional[float] = None
     take_profit_price: Optional[float] = None
-    entry_signal: Optional[str] = None  # Giriş sinyali açıklaması
+    entry_signal: Optional[str] = None  # Entry signal description
     break_even_activated: bool = False  # BE aktive edildi mi?
     is_partial_exit: bool = False       # Partial exit mi?
     partial_exit_level: int = 0         # PE seviyesi (1, 2, 3...)
@@ -221,7 +221,7 @@ class Trade:
 
 
 # ============================================================================
-# POSITION (Açık pozisyon tracking için)
+# POSITION (Open Position Tracking for)
 # ============================================================================
 
 @dataclass
@@ -235,7 +235,7 @@ class Position:
     symbol: str
     side: PositionSide
 
-    # Giriş
+    # Entry
     entry_time: datetime
     entry_price: float
     quantity: float
@@ -243,24 +243,24 @@ class Position:
     # Exit parametreleri
     stop_loss_price: Optional[float] = None
     take_profit_price: Optional[float] = None
-    trailing_stop_distance: Optional[float] = None  # % olarak
+    trailing_stop_distance: Optional[float] = None  # as a percentage
     break_even_activated: bool = False
 
     # Tracking
-    highest_price: float = 0.0          # LONG için max price
-    lowest_price: float = 999999.0      # SHORT için min price
+    # highest_price: float = 0.0          # For long positions, maximum price
+    lowest_price: float = 999999.0      # For SHORT, minimum price
 
     # Maliyetler
     entry_commission: float = 0.0
     entry_slippage: float = 0.0
 
     def __post_init__(self):
-        """Initial tracking değerleri"""
+        """Initial tracking values."""
         self.highest_price = self.entry_price
         self.lowest_price = self.entry_price
 
     def update_extremes(self, current_price: float):
-        """Highest/lowest price güncelle"""
+        "Update highest/lowest price"
         self.highest_price = max(self.highest_price, current_price)
         self.lowest_price = min(self.lowest_price, current_price)
 
@@ -273,7 +273,7 @@ class Position:
 
 
 # ============================================================================
-# SIGNAL (Giriş/çıkış sinyalleri)
+#SIGNAL (Entry/exit signals)
 # ============================================================================
 
 @dataclass
@@ -288,10 +288,10 @@ class Signal:
     symbol: str
     price: float
 
-    # Opsiyonel - sinyal detayları
-    confidence: Optional[float] = None      # 0-1 arası confidence score
-    reason: Optional[str] = None            # Sinyal nedeni açıklaması
-    indicators: Optional[Dict] = None       # Indicator değerleri
+    # Optional - signal details
+    confidence: Optional[float] = None      # Confidence score between 0 and 1
+    reason: Optional[str] = None            # Signal reason explanation
+    indicators: Optional[Dict] = None       # Indicators
 
 
 # ============================================================================
@@ -310,18 +310,18 @@ class BacktestMetrics:
     total_return_pct: float                 # Toplam kar/zarar (%)
 
     # Trade istatistikleri
-    total_trades: int                       # Toplam trade sayısı
-    winners: int                            # Kazanan trade sayısı
-    losers: int                             # Kaybeden trade sayısı
-    win_rate: float                         # Kazanma oranı (%)
+    total_trades: int                       # Total number of trades
+    winners: int  # Number of winning trades
+    losers: int                             # Number of trades lost
+    win_rate: float                         # Win rate (%)
 
-    # Win/Loss detayları
-    avg_win_usd: float                      # Ortalama kazanç ($)
-    avg_win_pct: float                      # Ortalama kazanç (%)
-    avg_loss_usd: float                     # Ortalama kayıp ($)
-    avg_loss_pct: float                     # Ortalama kayıp (%)
-    largest_win_usd: float                  # En büyük kazanç
-    largest_loss_usd: float                 # En büyük kayıp
+    # Win/Loss Details
+    avg_win_usd: float                      # Average gain in USD
+    avg_win_pct: float                      # Average win percentage (%)
+    avg_loss_usd: float                     # Average loss in USD
+    avg_loss_pct: float                     # Average loss percentage (%)
+    largest_win_usd: float                  # Largest win in USD
+    largest_loss_usd: float                 # Largest loss in USD
 
     # Ratio'lar
     profit_factor: float                    # Profit factor (gross profit / gross loss)
@@ -341,13 +341,13 @@ class BacktestMetrics:
     total_spread: float                     # Toplam spread maliyeti
     total_costs: float                      # Toplam maliyet (commission + slippage + spread)
 
-    # Diğer
-    avg_trade_duration_minutes: float       # Ortalama trade süresi
-    max_consecutive_wins: int               # Ard arda max kazanç
-    max_consecutive_losses: int             # Ard arda max kayıp
+    # Other
+    avg_trade_duration_minutes: float       # Average trade duration
+    max_consecutive_wins: int               # Maximum consecutive wins
+    max_consecutive_losses: int             # Maximum consecutive losses
 
-    # Custom metric (optimizer için)
-    custom_score: Optional[float] = None    # Özel scoring (örn: PF × Return)
+    # Custom metric (for optimization purposes)
+    custom_score: Optional[float] = None  # Custom scoring (e.g. PF × Return)
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert metrics to dict"""
@@ -428,7 +428,7 @@ if __name__ == "__main__":
         end_date=datetime(2025, 2, 1),
         initial_balance=10000,
     )
-    print(f"   ✅ Config oluşturuldu: {config.symbols[0]}, {config.primary_timeframe}")
+    print(f"   ✔️ Configuration created: {config.symbols[0]}, {config.primary_timeframe}")
     print(f"   ✅ MTF timeframes: {config.mtf_timeframes}")
 
     # Test 2: Trade
@@ -450,7 +450,7 @@ if __name__ == "__main__":
         commission=15,
         slippage=5,
     )
-    print(f"   ✅ Trade oluşturuldu: #{trade.trade_id}")
+    print(f"   ✔️ Trade created: #{trade.trade_id}")
     print(f"   ✅ Side: {trade.side.value}, PnL: ${trade.net_pnl_usd}")
     print(f"   ✅ Duration: {trade.duration_minutes} dakika")
 
@@ -467,7 +467,7 @@ if __name__ == "__main__":
         take_profit_price=105000,
     )
     position.update_extremes(102000)
-    print(f"   ✅ Position oluşturuldu: #{position.position_id}")
+    print(f"   ✔️ Position created: #{position.position_id}")
     print(f"   ✅ Entry: ${position.entry_price}, SL: ${position.stop_loss_price}")
     print(f"   ✅ Highest: ${position.highest_price}")
     print(f"   ✅ Current PnL: {position.current_pnl_pct(102000):.2f}%")
@@ -503,7 +503,7 @@ if __name__ == "__main__":
         max_consecutive_wins=3,
         max_consecutive_losses=2,
     )
-    print(f"   ✅ Metrics oluşturuldu")
+    print("Metrics created")
     print(f"   ✅ Total Return: {metrics.total_return_pct}%")
     print(f"   ✅ Win Rate: {metrics.win_rate}%")
     print(f"   ✅ Profit Factor: {metrics.profit_factor}")
@@ -521,15 +521,15 @@ if __name__ == "__main__":
         ],
         execution_time_seconds=1.5,
     )
-    print(f"   ✅ Result oluşturuldu")
+    print(f"   ✔️ Result created")
     print(f"   ✅ Trades: {len(result.trades)}")
     print(f"   ✅ Execution time: {result.execution_time_seconds}s")
 
     # Test 6: Serialization
     print("\n💾 Test 6: Serialization")
     result_dict = result.to_dict()
-    print(f"   ✅ Result dict'e çevrildi")
+    print(f"   ✔️ Result converted to dictionary")
     print(f"   ✅ Keys: {list(result_dict.keys())}")
 
-    print("\n✅ Tüm testler başarılı!")
+    print("\n👍 All tests were successful!")
     print("=" * 60)

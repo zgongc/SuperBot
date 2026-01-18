@@ -14,20 +14,20 @@ CRITICAL: Optimizer-friendly design!
 - Uses existing manager components
 - Fast vectorized execution
 
-Özellikler:
-- Mevcut manager'ları kullanır (ParquetsEngine, IndicatorManager, etc.)
+Features:
+- Uses existing managers (ParquetsEngine, IndicatorManager, etc.)
 - Multi-timeframe support
-- Position sizing DOĞRU çalışır
-- Metrics DOĞRU hesaplanır
-- Optimizer için optimize edilmiş
+- Position sizing works correctly
+- Metrics are calculated correctly
+- Optimized for the optimizer
 
-Kullanım:
+Usage:
     from modules.backtest.backtest_engine import BacktestEngine
 
     engine = BacktestEngine(logger)
     result = await engine.run(strategy, use_cache=True)
 
-Bağımlılıklar:
+Dependencies:
     - python>=3.10
     - pandas>=2.0.0
     - numpy>=1.24.0
@@ -86,7 +86,7 @@ if TYPE_CHECKING:
 
 def _get_atr_value_from_row(row: pd.Series) -> Optional[float]:
     """
-    ATR değerini row'dan al. 'atr' yoksa 'atr_xx' pattern'ını ara.
+    Get the ATR value from the row. If 'atr' is not present, search for the 'atr_xx' pattern.
 
     Args:
         row: DataFrame row (pd.Series)
@@ -96,8 +96,8 @@ def _get_atr_value_from_row(row: pd.Series) -> Optional[float]:
 
     Logic:
         1. 'atr' varsa direkt kullan
-        2. Yoksa 'atr_14', 'atr_20' gibi pattern ara
-        3. İlk bulduğunu dön
+        2. Otherwise, search for patterns like 'atr_14', 'atr_20'.
+        3. Return the first one you find
     """
     # First try 'atr'
     if 'atr' in row.index:
@@ -143,7 +143,7 @@ class BacktestEngine:
         self.config_engine = get_config()
 
         # Components (initialized once)
-        # ParquetsEngine logger'ı kendisi oluşturur
+        # ParquetsEngine creates its own logger
         self.parquets_engine = ParquetsEngine()
         self.risk_manager = RiskManager(logger=self.logger)
         # NOTE: PositionManager is created per-run with strategy (see _execute_backtest)
@@ -175,19 +175,19 @@ class BacktestEngine:
                 self.future_logger = FutureLogger(
                     config={
                         'output_dir': 'data/ai/features',
-                        'mode': 'backtest',  # Backtest: tek dosya, tüm semboller
-                        'batch_size': 1000,  # Backtest genelde hızlı, büyük batch
+                        'mode': 'backtest',  # Backtest: single file, all symbols
+                        'batch_size': 1000,  # Backtest is usually fast, large batch
                     },
                     logger=self.logger
                 )
                 self.feature_extractor = FeatureExtractor(logger=self.logger)
                 self.logger.info("✅ AI veri toplama aktif (FutureLogger)")
             except ImportError as e:
-                self.logger.warning(f"⚠️  AI modülleri yüklenemedi: {e}")
+                self.logger.warning(f"⚠️  AI modules could not be loaded: {e}")
                 self.enable_ai_logging = False
 
         # Log initialization
-        self.logger.info("🚀 BacktestEngine V3 başlatıldı")
+        self.logger.info("🚀 BacktestEngine V3 started")
         if self.debug:
             self.logger.info("⚠️  DEBUG MODE ENABLED")
             self.logger.info("=" * 60)
@@ -214,7 +214,7 @@ class BacktestEngine:
             self.debug = strategy.debug
 
         self.logger.info("=" * 60)
-        self.logger.info("🚀 Backtest başlatılıyor...")
+        self.logger.info("🚀 Backtest is starting...")
         self.logger.info("=" * 60)
 
         # 1. Build config from strategy
@@ -234,17 +234,17 @@ class BacktestEngine:
             self.future_logger.backtest_timeframe = config.primary_timeframe
 
         # 2. Load data (with caching)
-        # Cache invalidate check (validator ATR eklediğinde set eder)
+        # Cache invalidate check (sets when validator ATR is added)
         cache_invalidated = getattr(strategy, '_cache_invalidated', False)
 
         if use_cache and cache_key == self._cache_key and self._cached_data and not cache_invalidated:
-            self.logger.info("✅ Önbellek verisi kullanılıyor")
+            self.logger.info("✅ Using cached data")
             mtf_data = self._cached_data
         else:
             if cache_invalidated:
-                self.logger.info("🔄 Cache invalidated (indicator eklendi), veri yeniden yükleniyor...")
+                self.logger.info("🔄 Cache invalidated (indicator added), data is being reloaded...")
             else:
-                self.logger.info("📂 Veri yükleniyor...")
+                self.logger.info("📂 Data is loading...")
             mtf_data = await self._load_data(config)
             self._cached_data = mtf_data
             self._cache_key = cache_key
@@ -253,11 +253,11 @@ class BacktestEngine:
                 strategy._cache_invalidated = False
 
         # 3. Calculate indicators (MTF)
-        self.logger.info("📊 İndikatörler hesaplanıyor...")
+        self.logger.info("📊 Indicators are being calculated...")
         indicators_mtf = self._calculate_indicators(mtf_data, strategy, config)
 
         # 4. Generate signals (vectorized with MTF support)
-        self.logger.info("🎯 Sinyaller üretiliyor...")
+        self.logger.info("🎯 Signals are being generated...")
         long_mask, short_mask = self._generate_signals(
             mtf_data[config.primary_timeframe],
             indicators_mtf,
@@ -269,7 +269,7 @@ class BacktestEngine:
         strategy_executor = StrategyExecutor(strategy, logger=self.logger, ai_predictor=self._ai_predictor)
 
         # 6. Simulate positions
-        self.logger.info("💼 Pozisyonlar simüle ediliyor...")
+        self.logger.info("💼 Positions are being simulated...")
         trades = self._simulate_positions(
             long_mask,
             short_mask,
@@ -281,7 +281,7 @@ class BacktestEngine:
         )
 
         # 6. Calculate metrics
-        self.logger.info("📈 Metrikler hesaplanıyor...")
+        self.logger.info("📈 Metrics are being calculated...")
         metrics = calculate_metrics(trades, config)
 
         # 7. Build equity curve
@@ -294,7 +294,7 @@ class BacktestEngine:
                     self.future_logger._save_batch()
                     self.logger.info(f"✅ AI data kaydedildi: {self.future_logger.total_saved} trade")
             except Exception as e:
-                self.logger.debug(f"⚠️  AI data flush hatası: {e}")
+                self.logger.debug(f"⚠️  AI data flush error: {e}")
 
         # Build result
         execution_time = time.time() - start_time
@@ -308,12 +308,12 @@ class BacktestEngine:
 
         if self.debug:
             self.logger.info("=" * 60)
-            self.logger.info("✅ Backtest tamamlandı!")
-            self.logger.info(f"⏱️  Süre: {execution_time:.2f}s")
-            self.logger.info(f"💼 Trade Sayısı: {len(trades)}")
+            self.logger.info("✅ Backtest completed!")
+            self.logger.info(f"⏱️  Duration: {execution_time:.2f}s")
+            self.logger.info(f"💼 Trade Count: {len(trades)}")
             self.logger.info(f"💰 Getiri: {metrics.total_return_pct:+.2f}%")
-            self.logger.info(f"📊 Kar Faktörü: {metrics.profit_factor:.2f}")
-            self.logger.info(f"📈 Kazanma Oranı: {metrics.win_rate:.1f}%")
+            self.logger.info(f"📊 Profit Factor: {metrics.profit_factor:.2f}")
+            self.logger.info(f"📈 Win Rate: {metrics.win_rate:.1f}%")
             self.logger.info("=" * 60)
 
         return result
@@ -440,7 +440,7 @@ class BacktestEngine:
                         raw_indicator_results[indicator_name] = result_dict
                 except Exception as e:
                     if self.debug:
-                        self.logger.warning(f"   ⚠️  {timeframe}/{indicator_name} hesaplanamadı: {e}")
+                        self.logger.warning(f"   ⚠️  {timeframe}/{indicator_name} could not be calculated: {e}")
 
             # Prepare OHLCV data for MTF (align if needed)
             ohlcv_data_aligned = tf_data.copy() if timeframe == config.primary_timeframe else None
@@ -466,7 +466,7 @@ class BacktestEngine:
             indicators_mtf[timeframe] = indicators_dict
 
             if self.debug:
-                self.logger.info(f"   ✅ {timeframe}: {len(indicators_dict)} indikatör hesaplandı")
+                self.logger.info(f"   ✅ {timeframe}: {len(indicators_dict)} indicators calculated")
                 self.logger.info(f"      📋 Keys: {list(indicators_dict.keys())}")
 
         return indicators_mtf
@@ -613,7 +613,7 @@ class BacktestEngine:
         config: BacktestConfig
     ) -> List[Trade]:
         """
-        Simulate positions with proper sizing and exit logic (ESKİ ENGINE'DEN ADAPTE)
+        Simulate positions with proper sizing and exit logic (ADAPTED FROM OLD ENGINE)
 
         Args:
             long_mask: Boolean mask for LONG signals
@@ -678,7 +678,7 @@ class BacktestEngine:
         ai_config = getattr(strategy, 'ai_config', None)
         if ai_config is not None:
             ai_confidence_threshold = ai_config.confidence_threshold
-            ai_entry_decision = ai_config.entry_decision  # AI entry kararında kullanılsın mı?
+            ai_entry_decision = ai_config.entry_decision  # Should it be used in AI entry decision?
         else:
             ai_confidence_threshold = getattr(strategy, 'ai_confidence_threshold', 0.6)
             ai_entry_decision = True  # Old style: always use for entry decision
@@ -998,7 +998,7 @@ class BacktestEngine:
                 trades.append(trade)
 
         if self.debug:
-            self.logger.info(f"   ✅ {len(trades)} trade tamamlandı")
+            self.logger.info(f"   ✅ {len(trades)} trade completed")
 
         # Log AI filtering stats and accuracy analysis
         if ai_enabled and ai_filtered_count > 0:
@@ -1413,7 +1413,7 @@ class BacktestEngine:
         # Apply slippage + spread
         # LONG: buy at ask (close + spread/2 + slippage)
         # SHORT: sell at bid (close - spread/2 + slippage)
-        spread_cost = config.spread_pct / 100 / 2  # Spread'in yarısı (bid-ask ortası close)
+        spread_cost = config.spread_pct / 100 / 2  # Half of the spread (midpoint of bid-ask close)
         slippage_cost = config.slippage_pct / 100
 
         if signal > 0:  # LONG
@@ -1428,7 +1428,7 @@ class BacktestEngine:
         # Calculate ATR if needed (auto-detect atr or atr_xx)
         atr_value = None
 
-        # Helper: Get method name (enum veya string handle et)
+        # Helper: Get method name (handle enum or string)
         def get_method_name(method):
             if hasattr(method, 'name'):  # Enum
                 return method.name
@@ -1730,7 +1730,7 @@ class BacktestEngine:
                 )
                 self.future_logger.log_entry(entry_log)
             except Exception as e:
-                self.logger.debug(f"⚠️  AI entry logging hatası: {e}")
+                self.logger.debug(f"⚠️  AI entry logging error: {e}")
 
         return position
 
@@ -1857,11 +1857,11 @@ class BacktestEngine:
         commission = position_value * (config.commission_pct / 100) * 2  # Entry + exit
         slippage = position_value * (config.slippage_pct / 100) * 2
 
-        # Spread cost: entry ve exit'teki spread maliyeti
-        # Entry spread zaten entry_price'a dahil, exit spread zaten exit_price_with_spread'e dahil
+        # Spread cost: entry and exit spread cost
+        # Entry spread already included in entry_price, exit spread already included in exit_price_with_spread
         # Spread cost = |exit_price - exit_price_with_spread| * quantity + entry spread cost
         exit_spread_cost = abs(exit_price - exit_price_with_spread) * position['quantity']
-        # Entry'de de aynı spread var, position value'nun %spread/2'si kadar
+        # There is also the same spread in the Entry, equal to %spread/2 of the position value
         entry_spread_cost = position_value * (config.spread_pct / 100 / 2)
         spread = entry_spread_cost + exit_spread_cost
 
@@ -1937,7 +1937,7 @@ class BacktestEngine:
                 )
                 self.future_logger.log_exit(position['id'], outcome)
             except Exception as e:
-                self.logger.debug(f"⚠️  AI exit logging hatası: {e}")
+                self.logger.debug(f"⚠️  AI exit logging error: {e}")
 
         return Trade(
             trade_id=position['id'],
@@ -2079,9 +2079,9 @@ async def _prepare_backtest_data(strategy: 'Strategy', logger, debug: bool = Fal
     """
     Prepare data for backtest (download/update if needed)
 
-    Strategy parametrelerine göre gerekli data'yı hazırlar:
-    - download_klines=True: Eksik dosyaları indir
-    - update_klines=True: Mevcut dosyaları güncelle
+    Prepares the necessary data according to the strategy parameters:
+    - download_klines=True: Download missing files
+    - update_klines=True: Update existing files
 
     Args:
         strategy: Strategy instance
@@ -2256,11 +2256,11 @@ async def run_backtest_cli(
     # Check if file exists
     if not Path(strategy_path).exists():
         logger.error("=" * 60)
-        logger.error("❌ HATA: Strateji dosyası bulunamadı")
+        logger.error("❌ ERROR: Strategy file not found")
         logger.error("=" * 60)
-        logger.error(f"Dosya: {strategy_path}")
+        logger.error(f"File: {strategy_path}")
         logger.error(f"Mutlak yol: {Path(strategy_path).absolute()}")
-        logger.error("Mevcut stratejiler (templates/):")
+        logger.error("Current strategies (templates/):")
         templates_dir = Path("components/strategies/templates")
         if templates_dir.exists():
             for f in sorted(templates_dir.glob("*.py")):
@@ -2272,7 +2272,7 @@ async def run_backtest_cli(
     # Load strategy
     if verbose:
         logger.info("=" * 60)
-        logger.info(f"📂 Strateji yükleniyor: {strategy_path}")
+        logger.info(f"📂 Strategy loading: {strategy_path}")
         logger.info("=" * 60)
 
     try:
@@ -2280,34 +2280,34 @@ async def run_backtest_cli(
         strategy, _ = strategy_manager.load_strategy(strategy_path, validate=True)
     except FileNotFoundError as e:
         logger.error("=" * 60)
-        logger.error("❌ HATA: Strateji dosyası bulunamadı")
+        logger.error("❌ ERROR: Strategy file not found")
         logger.error("=" * 60)
         logger.error(f"{e}")
         logger.error("=" * 60)
         sys.exit(1)
     except Exception as e:
         logger.error("=" * 60)
-        logger.error("❌ HATA: Strateji yüklenemedi")
+        logger.error("❌ ERROR: Strategy could not be loaded")
         logger.error("=" * 60)
-        logger.error(f"Hata: {e}")
-        logger.error(f"Dosya: {strategy_path}")
+        logger.error(f"Error: {e}")
+        logger.error(f"File: {strategy_path}")
         if verbose:
             import traceback
-            logger.error("Detaylı hata:")
+            logger.error("Detailed error:")
             traceback.print_exc()
         logger.error("=" * 60)
         sys.exit(1)
 
     if verbose:
-        logger.info("✅ Strateji yüklendi:")
-        logger.info(f"   İsim: {strategy.strategy_name} v{strategy.strategy_version}")
+        logger.info("✅ Strategy loaded:")
+        logger.info(f"   Name: {strategy.strategy_name} v{strategy.strategy_version}")
         logger.info(f"   Timeframe: {strategy.primary_timeframe}")
-        logger.info(f"   Başlangıç Bakiye: ${strategy.initial_balance:,.0f}")
+        logger.info(f"   Starting Balance: ${strategy.initial_balance:,.0f}")
         logger.info(f"   Semboller: {getattr(strategy, 'symbols', 'N/A')}")
 
     # Apply CLI overrides if provided
     if symbol or timeframe or start_date or end_date or initial_balance:
-        logger.info("\n📝 CLI parametreleri uygulanıyor...")
+        logger.info("\n📝 CLI parameters are being applied...")
 
         if symbol:
             # Override symbols (create SymbolConfig if needed)
@@ -2345,7 +2345,7 @@ async def run_backtest_cli(
 
     if download_klines or update_klines:
         logger.info("\n" + "=" * 60)
-        logger.info("📥 Data hazırlığı kontrol ediliyor...")
+        logger.info("📥 Data preparation is being checked...")
         logger.info("=" * 60)
         logger.info(f"   download_klines: {download_klines}")
         logger.info(f"   update_klines: {update_klines}")
@@ -2354,17 +2354,17 @@ async def run_backtest_cli(
             await _prepare_backtest_data(strategy, logger, verbose)
         except Exception as e:
             logger.error("=" * 60)
-            logger.error("❌ HATA: Data hazırlığı başarısız")
+            logger.error("❌ ERROR: Data preparation failed")
             logger.error("=" * 60)
-            logger.error(f"Hata: {e}")
+            logger.error(f"Error: {e}")
             if verbose:
                 import traceback
-                logger.error("\nDetaylı hata:")
+                logger.error("\nDetailed error:")
                 traceback.print_exc()
             logger.error("=" * 60)
             sys.exit(1)
 
-        logger.info("✅ Data hazırlığı tamamlandı")
+        logger.info("✅ Data preparation completed")
         logger.info("=" * 60)
 
     # Create engine with verbose flag
@@ -2372,7 +2372,7 @@ async def run_backtest_cli(
 
     if verbose:
         logger.info("\n" + "=" * 60)
-        logger.info("🚀 Backtest çalıştırılıyor...")
+        logger.info("🚀 Backtest is running...")
         logger.info("=" * 60)
 
     # Run backtest
@@ -2380,19 +2380,19 @@ async def run_backtest_cli(
         result = await engine.run(strategy, use_cache=True)
     except Exception as e:
         logger.error("=" * 60)
-        logger.error("❌ HATA: Backtest çalıştırılamadı")
+        logger.error("❌ ERROR: Backtest could not be run")
         logger.error("=" * 60)
         logger.error(f"\nHata: {e}")
         if verbose:
             import traceback
-            logger.error("\nDetaylı hata:")
+            logger.error("\nDetailed error:")
             traceback.print_exc()
         logger.error("\n" + "=" * 60)
         sys.exit(1)
 
     # Print results
     logger.info("\n" + "=" * 60)
-    logger.info("📊 BACKTEST SONUÇLARI")
+    logger.info("📊 BACKTEST RESULTS")
     logger.info("=" * 60)
     logger.info(f"\nStrateji: {strategy.strategy_name} v{strategy.strategy_version}")
     logger.info(f"Periyod: {result.config.start_date.date()} → {result.config.end_date.date()}")
@@ -2404,29 +2404,29 @@ async def run_backtest_cli(
     logger.info(f"\n💼 PERFORMANS:")
     logger.info(f"   Toplam Trade: {result.metrics.total_trades}")
     logger.info(f"   Toplam Getiri: ${result.metrics.total_return_usd:,.2f} ({result.metrics.total_return_pct:+.2f}%)")
-    logger.info(f"   Kazanma Oranı: {result.metrics.win_rate:.2f}%")
-    logger.info(f"   Kar Faktörü: {result.metrics.profit_factor:.2f}")
-    logger.info(f"   Sharpe Oranı: {result.metrics.sharpe_ratio:.3f}")
-    logger.info(f"   Maks Düşüş: {result.metrics.max_drawdown_pct:.2f}%")
+    logger.info(f"   Win Rate: {result.metrics.win_rate:.2f}%")
+    logger.info(f"   Profit Factor: {result.metrics.profit_factor:.2f}")
+    logger.info(f"   Sharpe Ratio: {result.metrics.sharpe_ratio:.3f}")
+    logger.info(f"   Max Drawdown: {result.metrics.max_drawdown_pct:.2f}%")
 
     logger.info(f"\n📈 DETAYLAR:")
     logger.info(f"   Kazanan: {result.metrics.winners} (ort: ${result.metrics.avg_win_usd:,.2f})")
     logger.info(f"   Kaybeden: {result.metrics.losers} (ort: ${result.metrics.avg_loss_usd:,.2f})")
 
-    logger.info(f"\n💰 MALİYETLER:")
+    logger.info(f"\n💰 COSTS:")
     logger.info(f"   Komisyon: ${result.metrics.total_commission:,.2f}")
     logger.info(f"   Slippage: ${result.metrics.total_slippage:,.2f}")
     logger.info(f"   Spread: ${result.metrics.total_spread:,.2f}")
 
-    logger.info(f"\n⏱️  Çalışma Süresi: {result.execution_time_seconds:.2f}s")
+    logger.info(f"\n⏱️  Execution Time: {result.execution_time_seconds:.2f}s")
 
     if verbose:
         logger.info(f"\n📋 TRADE'LER:")
-        for i, trade in enumerate(result.trades[:5], 1):  # İlk 5 trade
+        for i, trade in enumerate(result.trades[:5], 1):  # First 5 trades
             logger.info(f"   #{i}: {trade.side.value} @ ${trade.entry_price:,.2f} → ${trade.exit_price:,.2f} "
                   f"({trade.exit_reason.value}) = ${trade.net_pnl_usd:+.2f}")
         if len(result.trades) > 5:
-            logger.info(f"   ... ve {len(result.trades) - 5} trade daha")
+            logger.info(f"   ... and {len(result.trades) - 5} trade more")
 
     logger.info("\n" + "=" * 60)
 
@@ -2447,19 +2447,19 @@ async def bulk_backtest(
     verbose: bool = False
 ):
     """
-    Bulk backtest - Birden fazla sembol ve timeframe kombinasyonunu test et
+    Bulk backtest - Test multiple symbol and timeframe combinations
 
     Args:
-        strategy_path: Strategy dosya yolu
-        symbols: Sembol listesi (ör. ['BTCUSDT', 'ETHUSDT', 'BNBUSDT'])
-        timeframes: Timeframe listesi (ör. ['1d', '1w', '4h'])
-        start_date: Başlangıç tarihi (optional)
-        end_date: Bitiş tarihi (optional)
-        initial_balance: Başlangıç bakiyesi (optional)
-        verbose: Detaylı çıktı
+        strategy_path: Strategy file path
+        symbols: Symbol list (e.g. ['BTCUSDT', 'ETHUSDT', 'BNBUSDT'])
+        timeframes: Timeframe list (e.g. ['1d', '1w', '4h'])
+        start_date: Start date (optional)
+        end_date: End date (optional)
+        initial_balance: Initial balance (optional)
+        verbose: Detailed output
 
     Returns:
-        list[BacktestResult]: Tüm kombinasyonların sonuçları
+        list[BacktestResult]: Results of all combinations
     """
     import itertools
     from datetime import datetime
@@ -2468,17 +2468,17 @@ async def bulk_backtest(
     logger = logging.getLogger(__name__)
 
     logger.info("=" * 80)
-    logger.info("🚀 BULK BACKTEST BAŞLADI")
+    logger.info("🚀 BULK BACKTEST STARTED")
     logger.info("=" * 80)
     logger.info(f"Strategy: {strategy_path}")
     logger.info(f"Semboller: {', '.join(symbols)} ({len(symbols)} adet)")
     logger.info(f"Timeframes: {', '.join(timeframes)} ({len(timeframes)} adet)")
 
-    # Tüm kombinasyonları oluştur
+    # Create all combinations
     combinations = list(itertools.product(symbols, timeframes))
     total_tests = len(combinations)
 
-    logger.info(f"Toplam Test Sayısı: {total_tests}")
+    logger.info(f"Total Test Count: {total_tests}")
     logger.info("=" * 80)
 
     results = []
@@ -2490,7 +2490,7 @@ async def bulk_backtest(
         logger.info(f"{'='*80}")
 
         try:
-            # Her kombinasyon için backtest çalıştır
+            # Run backtest for each combination
             result = await run_backtest_cli(
                 strategy_path=strategy_path,
                 verbose=verbose,
@@ -2502,34 +2502,34 @@ async def bulk_backtest(
             )
             results.append(result)
 
-            # Kısa özet
+            # Short summary
             total_trades = len(result.trades)
             total_return = result.metrics.total_return_pct
             win_rate = result.metrics.win_rate
-            logger.info(f"\n✅ {symbol} @ {timeframe} - Tamamlandı!")
+            logger.info(f"\n✅ {symbol} @ {timeframe} - Completed!")
             logger.info(f"   Trades: {total_trades}, Win Rate: {win_rate:.1f}%, Return: {total_return:+.2f}%")
 
         except Exception as e:
-            logger.error(f"❌ {symbol} @ {timeframe} - HATA: {e}")
+            logger.error(f"❌ {symbol} @ {timeframe} - ERROR: {e}")
             continue
 
-    # Genel özet
+    # General summary
     elapsed = (datetime.now() - start_time).total_seconds()
 
     logger.info("\n" + "=" * 80)
-    logger.info("📊 BULK BACKTEST SONUÇLARI")
+    logger.info("📊 BULK BACKTEST RESULTS")
     logger.info("=" * 80)
     logger.info(f"Toplam Test: {total_tests}")
-    logger.info(f"Başarılı: {len(results)}")
-    logger.info(f"Hatalı: {total_tests - len(results)}")
-    logger.info(f"Toplam Süre: {elapsed:.1f}s")
+    logger.info(f"Successful: {len(results)}")
+    logger.info(f"Failed: {total_tests - len(results)}")
+    logger.info(f"Total Duration: {elapsed:.1f}s")
     logger.info("")
 
-    # En iyi sonuçları göster
+    # Show the best results
     if results:
         sorted_by_return = sorted(results, key=lambda r: r.metrics.total_return_pct, reverse=True)
 
-        logger.info("🏆 EN İYİ 5 SONUÇ (Getiri):")
+        logger.info("🏆 BEST 5 RESULTS (Return):")
         for i, result in enumerate(sorted_by_return[:5], 1):
             symbol = result.config.symbols[0]
             timeframe = result.config.primary_timeframe
@@ -2540,7 +2540,7 @@ async def bulk_backtest(
                        f"{total_return:+.2f}% ({total_trades} trades, WR: {win_rate:.1f}%)")
 
         logger.info("")
-        logger.info("📉 EN KÖTÜ 5 SONUÇ (Getiri):")
+        logger.info("📉 WORST 5 RESULTS (Return):")
         for i, result in enumerate(sorted_by_return[-5:][::-1], 1):
             symbol = result.config.symbols[0]
             timeframe = result.config.primary_timeframe
@@ -2556,9 +2556,9 @@ async def bulk_backtest(
         avg_winrate = sum(r.metrics.win_rate for r in results) / len(results)
 
         logger.info("")
-        logger.info("📈 ORTALAMA DEĞERLER:")
+        logger.info("📈 AVERAGE VALUES:")
         logger.info(f"   Getiri: {avg_return:.2f}%")
-        logger.info(f"   Trade Sayısı: {avg_trades:.1f}")
+        logger.info(f"   Number of Trades: {avg_trades:.1f}")
         logger.info(f"   Win Rate: {avg_winrate:.1f}%")
 
     logger.info("=" * 80)
@@ -2572,11 +2572,11 @@ if __name__ == "__main__":
 
     # Parse arguments
     parser = argparse.ArgumentParser(
-        description="BacktestEngine V3 - Strateji backtest'leri çalıştır",
+        description="BacktestEngine V3 - Run strategy backtests",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         allow_abbrev=False,  # Disable prefix matching (e.g., --verbo won't work)
         epilog="""
-        Örnekler:
+        Examples:
         python -m modules.backtest.backtest_engine --strategy simple_rsi.py
         python -m modules.backtest.backtest_engine --strategy components/strategies/templates/TradingView_Dashboard.py --verbose
         """
@@ -2586,34 +2586,34 @@ if __name__ == "__main__":
         '--strategy',
         type=str,
         required=True,
-        help='Strateji dosya yolu (kısa isim veya tam yol)'
+        help='Strategy file path (short name or full path)'
     )
 
     parser.add_argument(
         '--verbose',
         action='store_true',
-        help='Detaylı çıktı göster (indicators, conditions, signals)'
+        help='Show detailed output (indicators, conditions, signals)'
     )
 
     # Bulk mode
     parser.add_argument(
         '--bulk',
         action='store_true',
-        help='Bulk backtest modu - Birden fazla sembol ve timeframe test et'
+        help='Bulk backtest mode - Test multiple symbols and timeframes'
     )
 
     # Backtest config override (optional - strategy'den okunur, CLI override eder)
-    parser.add_argument('--symbol', type=str, help='Trading symbol (ör. BTCUSDT) veya virgülle ayrılmış liste (bulk mode için)')
-    parser.add_argument('--timeframe', type=str, help='Timeframe (ör. 5m, 1h) veya virgülle ayrılmış liste (bulk mode için)')
-    parser.add_argument('--start', type=str, help='Start date (YYYY-MM-DD) - Strategy\'den varsayılan alınır')
-    parser.add_argument('--end', type=str, help='End date (YYYY-MM-DD) - Strategy\'den varsayılan alınır')
-    parser.add_argument('--balance', type=float, help='Initial balance - Strategy\'den varsayılan alınır')
+    parser.add_argument('--symbol', type=str, help='Trading symbol (e.g. BTCUSDT) or comma-separated list (for bulk mode)')
+    parser.add_argument('--timeframe', type=str, help='Timeframe (e.g. 5m, 1h) or comma-separated list (for bulk mode)')
+    parser.add_argument('--start', type=str, help='Start date (YYYY-MM-DD) - default taken from Strategy')
+    parser.add_argument('--end', type=str, help='End date (YYYY-MM-DD) - Default taken from Strategy')
+    parser.add_argument('--balance', type=float, help='Initial balance - Default taken from Strategy')
 
     args = parser.parse_args()
 
-    # Bulk mode kontrolü
+    # Bulk mode control
     if args.bulk:
-        # Bulk backtest - virgülle ayrılmış listeleri parse et
+        # Bulk backtest - parse comma-separated lists
         symbols = args.symbol.split(',') if args.symbol else ['BTCUSDT']
         timeframes = args.timeframe.split(',') if args.timeframe else ['5m']
 

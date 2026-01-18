@@ -58,7 +58,7 @@ def save_backtest_results(
     # Create output folder
     os.makedirs(output_dir, exist_ok=True)
 
-    # Timestamp ve filename
+    # Timestamp and filename
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     strategy_name = result.config.strategy_name
     base_filename = f"backtest_{strategy_name}_{timestamp}"
