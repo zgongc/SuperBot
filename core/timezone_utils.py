@@ -4,22 +4,22 @@
 core/timezone_utils.py
 
 SuperBot - Timezone Utilities
-Yazar: SuperBot Team
-Tarih: 2025-11-12
-Versiyon: 1.0.0
+Author: SuperBot Team
+Date: 2025-11-12
+Version: 1.0.0
 
-Timezone ve tarih saat dönüşümlerini yöneten yardımcı fonksiyonlar.
+Helper functions for managing timezone and datetime conversions.
 
-Özellikler:
-- UTC ve yerel saat dönüşümleri.
-- Konfigürasyona göre otomatik timezone seçimi.
-- Timestamp formatlama yardımcıları.
+Features:
+- UTC and local time conversions.
+- Auto timezone selection based on configuration.
+- Timestamp formatting helpers.
 
-Kullanım:
+Usage:
     from core.timezone_utils import TimezoneUtils
     now = TimezoneUtils.now()
 
-Bağımlılıklar:
+Dependencies:
     - python>=3.12
     - pytz>=2023.3
 """
@@ -43,25 +43,25 @@ from core.config_engine import get_config
 
 
 def get_utc_now() -> datetime:
-    """UTC timezone-aware şimdiki zamanı döndür."""
+    """Return UTC timezone-aware current time."""
     return datetime.now(timezone.utc)
 
 
 def get_utc_now_with_offset(hours: int = 0, minutes: int = 0) -> datetime:
-    """UTC offset ile şimdiki zamanı döndür."""
+    """Return current time with UTC offset."""
     offset = timedelta(hours=hours, minutes=minutes)
     return datetime.now(timezone(offset))
 
 
 def timestamp_to_utc(timestamp: int, unit: str = "ms") -> datetime:
-    """Unix timestamp'i UTC datetime'a çevir."""
+    """Convert Unix timestamp to UTC datetime."""
     if unit == "ms":
         timestamp = timestamp / 1000
     return datetime.fromtimestamp(timestamp, tz=timezone.utc)
 
 
 def utc_to_timestamp(dt: datetime, unit: str = "ms") -> int:
-    """UTC datetime'ı Unix timestamp'e çevir."""
+    """Convert UTC datetime to Unix timestamp."""
     ts = dt.astimezone(timezone.utc).timestamp()
     if unit == "ms":
         return int(ts * 1000)
@@ -70,10 +70,10 @@ def utc_to_timestamp(dt: datetime, unit: str = "ms") -> int:
 
 def get_config_timezone_now(config: Optional[dict] = None) -> datetime:
     """
-    Config'deki timezone ayarına göre zamanı döndür.
+    Return time according to timezone setting in config.
 
     Args:
-        config: Config dict (None ise global config kullanılır)
+        config: Config dict (if None, global config is used)
     """
 
     config = config or get_config().get("system", {})
@@ -87,10 +87,10 @@ def get_config_timezone_now(config: Optional[dict] = None) -> datetime:
 
 class TimezoneUtils:
     """
-    Timezone yardımcı sınıfı.
+    Timezone helper class.
 
     Attributes:
-        _tz: Aktif timezone objesi
+        _tz: Active timezone object
     """
 
     _tz: Optional[pytz.timezone] = None
@@ -111,7 +111,7 @@ class TimezoneUtils:
 
     @classmethod
     def now(cls) -> datetime:
-        """Aktif timezone'a göre şimdiki zamanı döndür."""
+        """Return current time according to active timezone."""
         cfg = get_config()
         system_cfg = cfg.get("system", {})
         use_local = system_cfg.get("use_local_time", False)
@@ -121,7 +121,7 @@ class TimezoneUtils:
 
     @classmethod
     def to_timezone(cls, dt: datetime, tz_name: Optional[str] = None) -> datetime:
-        """Datetime objesini belirtilen timezone'a çevir."""
+        """Convert datetime object to specified timezone."""
         timezone = pytz.timezone(tz_name) if tz_name else cls._get_timezone()
         if dt.tzinfo is None:
             dt = pytz.UTC.localize(dt)
@@ -129,7 +129,7 @@ class TimezoneUtils:
 
     @classmethod
     def format(cls, dt: datetime, fmt: str = "%Y-%m-%d %H:%M:%S") -> str:
-        """Datetime objesini formata göre stringe çevir."""
+        """Convert datetime object to string according to format."""
         return cls.to_timezone(dt).strftime(fmt)
 
 
@@ -144,12 +144,12 @@ if __name__ == "__main__":
     print("=" * 60)
 
     now = TimezoneUtils.now()
-    print(f"Şu an: {now}")
+    print(f"Now: {now}")
     formatted = TimezoneUtils.format(now)
-    print(f"Formatlanmış: {formatted}")
-    print("   ✅ Test başarılı")
+    print(f"Formatted: {formatted}")
+    print("   ✅ Test successful")
 
-    print("\n✅ Tüm testler tamamlandı!")
+    print("\n✅ All tests completed!")
     print("=" * 60)
 
 

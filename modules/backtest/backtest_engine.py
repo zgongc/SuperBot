@@ -2576,9 +2576,9 @@ if __name__ == "__main__":
         formatter_class=argparse.RawDescriptionHelpFormatter,
         allow_abbrev=False,  # Disable prefix matching (e.g., --verbo won't work)
         epilog="""
-Örnekler:
-  python -m modules.backtest.backtest_engine --strategy TradingView_Dashboard.py
-  python -m modules.backtest.backtest_engine --strategy components/strategies/templates/TradingView_Dashboard.py --verbose
+        Örnekler:
+        python -m modules.backtest.backtest_engine --strategy simple_rsi.py
+        python -m modules.backtest.backtest_engine --strategy components/strategies/templates/TradingView_Dashboard.py --verbose
         """
     )
 

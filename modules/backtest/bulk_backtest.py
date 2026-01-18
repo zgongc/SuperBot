@@ -2,22 +2,22 @@
 """
 modules/backtest/bulk_backtest.py
 SuperBot - Bulk Backtest Runner
-Yazar: SuperBot Team
-Tarih: 2025-11-23
-Versiyon: 1.0.0
+Author: SuperBot Team
+Date: 2025-11-23
+Version: 1.0.0
 
-Birden fazla sembol ve timeframe kombinasyonunu otomatik test eder.
+Automatically test multiple symbol and timeframe combinations.
 
-Kullanım:
+Usage:
     python -m modules.backtest.bulk_backtest --strategy base_template2.py --symbol "BTCUSDT,ETHUSDT,BNBUSDT" --timeframe "1d,1w,4h"
 
-Özellikler:
-- Tüm sembol x timeframe kombinasyonlarını test et
-- Her test için detaylı sonuçlar
-- En iyi/kötü performans karşılaştırması
-- Genel istatistikler
+Features:
+- Test all symbol x timeframe combinations
+- Detailed results for each test
+- Best/worst performance comparison
+- Overall statistics
 
-Bağımlılıklar:
+Dependencies:
     - python>=3.10
     - modules.backtest.backtest_engine
 """
@@ -65,36 +65,36 @@ async def bulk_backtest(
     verbose: bool = False
 ) -> List[BacktestResult]:
     """
-    Bulk backtest - Birden fazla sembol ve timeframe kombinasyonunu test et
+    Bulk backtest - Test multiple symbol and timeframe combinations
 
     Args:
-        strategy_path: Strategy dosya yolu
-        symbols: Sembol listesi (ör. ['BTCUSDT', 'ETHUSDT', 'BNBUSDT'])
-        timeframes: Timeframe listesi (ör. ['1d', '1w', '4h'])
-        start_date: Başlangıç tarihi (optional, YYYY-MM-DD)
-        end_date: Bitiş tarihi (optional, YYYY-MM-DD)
-        initial_balance: Başlangıç bakiyesi (optional)
-        verbose: Detaylı çıktı
+        strategy_path: Strategy file path
+        symbols: Symbol list (e.g. ['BTCUSDT', 'ETHUSDT', 'BNBUSDT'])
+        timeframes: Timeframe list (e.g. ['1d', '1w', '4h'])
+        start_date: Start date (optional, YYYY-MM-DD)
+        end_date: End date (optional, YYYY-MM-DD)
+        initial_balance: Initial balance (optional)
+        verbose: Detailed output
 
     Returns:
-        List[BacktestResult]: Tüm kombinasyonların sonuçları
+        List[BacktestResult]: Results of all combinations
     """
     logger.info("=" * 80)
-    logger.info("🚀 BULK BACKTEST BAŞLADI")
+    logger.info("🚀 STARTING BULK BACKTEST")
     logger.info("=" * 80)
     logger.info(f"Strategy: {strategy_path}")
-    logger.info(f"Semboller: {', '.join(symbols)} ({len(symbols)} adet)")
-    logger.info(f"Timeframes: {', '.join(timeframes)} ({len(timeframes)} adet)")
+    logger.info(f"Symbols: {', '.join(symbols)} ({len(symbols)} items)")
+    logger.info(f"Timeframes: {', '.join(timeframes)} ({len(timeframes)} items)")
     if start_date:
         logger.info(f"Period: {start_date} → {end_date}")
     if initial_balance:
         logger.info(f"Balance: ${initial_balance:,.0f}")
 
-    # Tüm kombinasyonları oluştur
+    # Create all combinations
     combinations = list(itertools.product(symbols, timeframes))
     total_tests = len(combinations)
 
-    logger.info(f"Toplam Test Sayısı: {total_tests}")
+    logger.info(f"Total Test Count: {total_tests}")
     logger.info("=" * 80)
 
     results = []
@@ -137,12 +137,12 @@ async def bulk_backtest(
     elapsed = (datetime.now() - start_time).total_seconds()
 
     logger.info("\n" + "=" * 80)
-    logger.info("📊 BULK BACKTEST SONUÇLARI")
+    logger.info("📊 BULK BACKTEST RESULTS")
     logger.info("=" * 80)
-    logger.info(f"Toplam Test: {total_tests}")
-    logger.info(f"Başarılı: {len(results)}")
-    logger.info(f"Hatalı: {total_tests - len(results)}")
-    logger.info(f"Toplam Süre: {elapsed:.1f}s")
+    logger.info(f"Total Tests: {total_tests}")
+    logger.info(f"Successful: {len(results)}")
+    logger.info(f"Failed: {total_tests - len(results)}")
+    logger.info(f"Total Duration: {elapsed:.1f}s")
     logger.info("")
 
     # En iyi sonuçları göster
@@ -154,7 +154,7 @@ async def bulk_backtest(
             reverse=True
         )
 
-        logger.info("🏆 EN İYİ 5 SONUÇ (Getiri):")
+        logger.info("🏆 TOP 5 RESULTS (Return):")
         for i, result in enumerate(sorted_by_return[:5], 1):
             symbol = result.config.symbols[0]
             timeframe = result.config.primary_timeframe
@@ -168,7 +168,7 @@ async def bulk_backtest(
             )
 
         logger.info("")
-        logger.info("📉 EN KÖTÜ 5 SONUÇ (Getiri):")
+        logger.info("📉 WORST 5 RESULTS (Return):")
         for i, result in enumerate(sorted_by_return[-5:][::-1], 1):
             symbol = result.config.symbols[0]
             timeframe = result.config.primary_timeframe
@@ -187,14 +187,14 @@ async def bulk_backtest(
         avg_winrate = sum(r.metrics.win_rate for r in results) / len(results)
 
         logger.info("")
-        logger.info("📈 ORTALAMA DEĞERLER:")
-        logger.info(f"   Getiri: {avg_return:+.2f}%")
-        logger.info(f"   Trade Sayısı: {avg_trades:.1f}")
+        logger.info("📈 AVERAGE VALUES:")
+        logger.info(f"   Return: {avg_return:+.2f}%")
+        logger.info(f"   Trade Count: {avg_trades:.1f}")
         logger.info(f"   Win Rate: {avg_winrate:.1f}%")
 
         # Sharpe ratio karşılaştırması
         logger.info("")
-        logger.info("📊 EN İYİ SHARPE RATIO:")
+        logger.info("📊 BEST SHARPE RATIO:")
         sorted_by_sharpe = sorted(
             results,
             key=lambda r: r.metrics.sharpe_ratio,
@@ -226,11 +226,11 @@ async def main():
         description="Bulk Backtest - Birden fazla sembol ve timeframe test et",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Örnekler:
-  # 3 sembol x 2 timeframe = 6 test
+Examples:
+  # 3 symbols x 2 timeframes = 6 tests
   python -m modules.backtest.bulk_backtest --strategy base_template2.py --symbol "BTCUSDT,ETHUSDT,BNBUSDT" --timeframe "1d,4h"
 
-  # Tarih aralığı belirt
+  # Specify date range
   python -m modules.backtest.bulk_backtest --strategy base_template2.py --symbol "BTCUSDT,ETHUSDT" --timeframe "1d,1w,4h" --start 2025-01-01 --end 2025-02-01
 
   # Custom balance

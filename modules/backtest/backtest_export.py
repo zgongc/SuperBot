@@ -2,19 +2,19 @@
 """
 modules/backtest/backtest_export.py
 SuperBot - Backtest Results Export (V3)
-Yazar: SuperBot Team
-Tarih: 2025-11-16
-Versiyon: 3.0.0
+Author: SuperBot Team
+Date: 2025-11-16
+Version: 3.0.0
 
-Backtest sonuçlarını JSON ve TXT dosyalarına kaydetme.
+Save backtest results to JSON and TXT files.
 
-Özellikler:
+Features:
 - JSON format (machine readable)
 - TXT summary (human readable)
 - Duplicate detection
 - Professional formatting
 
-Kullanım:
+Usage:
     from modules.backtest.backtest_export import save_backtest_results
     json_path, txt_path = save_backtest_results(result, output_dir="data/backtest_results")
 """
@@ -45,17 +45,17 @@ def save_backtest_results(
     logger = None
 ) -> tuple[str, str]:
     """
-    Backtest sonuçlarını JSON ve TXT dosyalarına kaydet
+    Save backtest results to JSON and TXT files
 
     Args:
         result: BacktestResult instance
-        output_dir: Output klasörü (default: data/backtest_results)
+        output_dir: Output folder (default: data/backtest_results)
         logger: Logger instance (optional)
 
     Returns:
         tuple[str, str]: (json_path, txt_path)
     """
-    # Output klasörünü oluştur
+    # Create output folder
     os.makedirs(output_dir, exist_ok=True)
 
     # Timestamp ve filename
@@ -116,10 +116,10 @@ def save_backtest_results(
             if (existing_data.get('metrics', {}).get('total_trades') == result.metrics.total_trades and
                 abs(existing_data.get('metrics', {}).get('total_return_usd', 0) - result.metrics.total_return_usd) < 0.01):
                 if logger:
-                    logger.info(f"\n📁 Sonuçlar zaten mevcut (aynı):")
+                    logger.info(f"\n📁 Results already exist (same):")
                     logger.info(f"   - {base_filename}.json")
                     logger.info(f"   - {base_filename}.txt")
-                    logger.info(f"\n💡 Duplicate dosya oluşturulmadı")
+                    logger.info(f"\n💡 Duplicate file not created")
                 return json_path, json_path.replace('.json', '.txt')
         except:
             pass
@@ -137,46 +137,46 @@ def save_backtest_results(
         f.write("=" * 80 + "\n\n")
 
         # Basic Info
-        f.write("📋 TEMEL BİLGİLER\n")
+        f.write("📋 BASIC INFO\n")
         f.write("-" * 80 + "\n")
-        f.write(f"Strateji:         {strategy_name} v{result.config.strategy_version}\n")
-        f.write(f"Sembol:           {result.config.symbols[0]}\n")
+        f.write(f"Strategy:         {strategy_name} v{result.config.strategy_version}\n")
+        f.write(f"Symbol:           {result.config.symbols[0]}\n")
         f.write(f"Primary TF:       {result.config.primary_timeframe}\n")
         if len(result.config.mtf_timeframes) > 1:
             f.write(f"MTF:              {', '.join(result.config.mtf_timeframes)}\n")
-        f.write(f"Periyod:          {result.config.start_date.date()} → {result.config.end_date.date()}\n")
+        f.write(f"Period:           {result.config.start_date.date()} → {result.config.end_date.date()}\n")
         f.write(f"Timestamp:        {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-        f.write(f"Çalışma Süresi:   {result.execution_time_seconds:.2f}s\n\n")
+        f.write(f"Execution Time:   {result.execution_time_seconds:.2f}s\n\n")
 
         # Performance
-        f.write("💰 PERFORMANS\n")
+        f.write("💰 PERFORMANCE\n")
         f.write("-" * 80 + "\n")
         final_balance = result.config.initial_balance + result.metrics.total_return_usd
-        f.write(f"Başlangıç:        ${result.config.initial_balance:,.2f}\n")
-        f.write(f"Bitiş:            ${final_balance:,.2f}\n")
+        f.write(f"Initial:          ${result.config.initial_balance:,.2f}\n")
+        f.write(f"Final:            ${final_balance:,.2f}\n")
         profit_sign = '+' if result.metrics.total_return_usd >= 0 else ''
-        f.write(f"Toplam Getiri:    {profit_sign}${result.metrics.total_return_usd:,.2f} ({result.metrics.total_return_pct:+.2f}%)\n\n")
+        f.write(f"Total Return:     {profit_sign}${result.metrics.total_return_usd:,.2f} ({result.metrics.total_return_pct:+.2f}%)\n\n")
 
         # Costs
-        f.write("💸 MALİYETLER\n")
+        f.write("💸 COSTS\n")
         f.write("-" * 80 + "\n")
-        f.write(f"Komisyon:         ${result.metrics.total_commission:,.2f}\n")
+        f.write(f"Commission:       ${result.metrics.total_commission:,.2f}\n")
         f.write(f"Slippage:         ${result.metrics.total_slippage:,.2f}\n")
         total_costs = result.metrics.total_commission + result.metrics.total_slippage
-        f.write(f"Toplam:           ${total_costs:,.2f}\n\n")
+        f.write(f"Total:            ${total_costs:,.2f}\n\n")
 
         # Trade Stats
-        f.write("📈 TRADE İSTATİSTİKLERİ\n")
+        f.write("📈 TRADE STATISTICS\n")
         f.write("-" * 80 + "\n")
-        f.write(f"Toplam Trade:     {result.metrics.total_trades}\n")
-        f.write(f"Kazanan:          {result.metrics.winners} ({result.metrics.win_rate:.1f}%)\n")
-        f.write(f"Kaybeden:         {result.metrics.losers} ({100 - result.metrics.win_rate:.1f}%)\n")
-        f.write(f"Ortalama Kazanç:  ${result.metrics.avg_win_usd:,.2f}\n")
-        f.write(f"Ortalama Kayıp:   ${result.metrics.avg_loss_usd:,.2f}\n")
-        f.write(f"Kar Faktörü:      {result.metrics.profit_factor:.2f}\n\n")
+        f.write(f"Total Trades:     {result.metrics.total_trades}\n")
+        f.write(f"Winners:          {result.metrics.winners} ({result.metrics.win_rate:.1f}%)\n")
+        f.write(f"Losers:           {result.metrics.losers} ({100 - result.metrics.win_rate:.1f}%)\n")
+        f.write(f"Average Win:      ${result.metrics.avg_win_usd:,.2f}\n")
+        f.write(f"Average Loss:     ${result.metrics.avg_loss_usd:,.2f}\n")
+        f.write(f"Profit Factor:    {result.metrics.profit_factor:.2f}\n\n")
 
         # Risk Metrics
-        f.write("📊 RİSK METRİKLERİ\n")
+        f.write("📊 RISK METRICS\n")
         f.write("-" * 80 + "\n")
         f.write(f"Max Drawdown:     {result.metrics.max_drawdown_pct:.2f}% (${result.metrics.max_drawdown_usd:,.2f})\n")
         f.write(f"Sharpe Ratio:     {result.metrics.sharpe_ratio:.3f}\n\n")
@@ -209,13 +209,13 @@ def save_backtest_results(
                 if tp_pct > 0:
                     f.write(f"Take Profit:      {tp_pct:.1f}%\n")
                 else:
-                    f.write(f"Take Profit:      ❌ Yok\n")
+                    f.write(f"Take Profit:      ❌ None\n")
                 f.write(f"Trailing Stop:    ❌ No\n")
                 f.write(f"Break Even:       ✅ Yes\n\n")
 
         # Trades
         if result.trades:
-            f.write(f"📝 TRADE LİSTESİ ({len(result.trades)} adet)\n")
+            f.write(f"📝 TRADE LIST ({len(result.trades)} trades)\n")
             f.write("-" * 80 + "\n")
             f.write(f"{'ID':<6} {'Side':<6} {'Entry Time':<18} {'Entry $':<12} {'Exit Time':<18} {'Exit $':<12} {'PnL':<14} {'Exit':<8}\n")
             f.write("-" * 80 + "\n")
@@ -263,7 +263,7 @@ def save_backtest_results(
         f.write("=" * 80 + "\n")
 
     if logger:
-        logger.info(f"\n📁 Sonuçlar kaydedildi:")
+        logger.info(f"\n📁 Results saved:")
         logger.info(f"   JSON: {json_path}")
         logger.info(f"   TXT:  {txt_path}")
 
@@ -279,7 +279,7 @@ if __name__ == "__main__":
     print("🧪 backtest_export.py Test")
     print("=" * 60)
 
-    # Mock data için BacktestResult oluştur
+    # Create mock BacktestResult
     from modules.backtest.backtest_types import BacktestConfig, BacktestMetrics, Trade, PositionSide, ExitReason
     from datetime import datetime
 
@@ -343,5 +343,5 @@ if __name__ == "__main__":
     print(f"\n✅ JSON: {json_path}")
     print(f"✅ TXT:  {txt_path}")
 
-    print("\n✅ Test tamamlandı!")
+    print("\n✅ Test completed!")
     print("=" * 60)

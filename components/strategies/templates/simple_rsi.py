@@ -36,10 +36,16 @@ from components.strategies.base_strategy import (
 
 class Strategy(BaseStrategy):
     """
-    TradingView Dashboard Strategy
+    RSI + EMA Trend Continuation Strategy
 
-    Multi-indicator consensus system
-    Hedef: High win rate with strict filtering
+    Logic: Don't catch falling knives. Wait for RSI to exit extreme zones,
+    then trade in the direction of the trend (EMA filter).
+
+    LONG:  Uptrend (close > EMA50) + RSI crosses down from overbought (75)
+           → Pullback complete, trend resumes up
+
+    SHORT: Downtrend (close < EMA50) + RSI crosses up from oversold (20)
+           → Dead cat bounce over, trend resumes down
     """
 
     def __init__(self):
@@ -50,7 +56,7 @@ class Strategy(BaseStrategy):
         # ====================================================================
         self.strategy_name = "simple_rsi"
         self.strategy_version = "1.0.0"
-        self.description = "simple_rsi_strategy"
+        self.description = "simple_rsi_strategy - trend continuation"
         self.author = "SuperBot Team"
         self.created_date = "2025-11-15"
 
@@ -179,13 +185,9 @@ class Strategy(BaseStrategy):
         # ====================================================================
         self.technical_parameters = TechnicalParameters(
             indicators={
-                # EMAs for trend (primary timeframe - 5m)
-                #"bollinger": {"period": 20, "std_dev": 2.0},
                 "ema_50": {"period": 50},
-                #"adx_14": {'period': 14, 'adx_threshold': 25},
-                # RSI for momentum
+                "adx_14": {'period': 14, 'adx_threshold': 25},
                 "rsi_14": {"period": 14, 'overbought': 75, 'oversold': 20},
-                # ATR for volatility-based TP/SL
                 #"atr_14": {"period": 14},
             }
         )
@@ -196,22 +198,12 @@ class Strategy(BaseStrategy):
         self.entry_conditions = {
             'long': [
                 ['close', '>', 'ema_50'],
-                #['close', '>', 'ema_50','5m'],
-                #['close', '>', 'ema_50','1m'],
-                #['close', '<', 'ema_5'],
-                #['ema_5', 'crossover', 'ema_13'],
                 #['adx_14_adx', '>', 20],          # Strong trend (not ranging)
-                #['close', '<', 'bollinger_lower'],
                 ['rsi_14', 'crossunder', 75],  # No '5m' for now
             ],
             'short': [
                 ['close', '<', 'ema_50'],
-                #['close', '<', 'ema_50','5m'],
-                #['close', '<', 'ema_50','1m'],
-                #['close', '>', 'ema_5'],
-                #['ema_5', 'crossunder', 'ema_13'],
                 #['adx_14_adx', '>', 20],          # Strong trend (not ranging)
-                #['close', '>', 'bollinger_upper'],
                 ['rsi_14', 'crossover', 20],  # No '5m' for now
             ]
         }

@@ -2,19 +2,19 @@
 """
 modules/backtest/backtest_types.py
 SuperBot - Backtest Type Definitions
-Yazar: SuperBot Team
-Tarih: 2025-11-16
-Versiyon: 3.0.0
+Author: SuperBot Team
+Date: 2025-11-16
+Version: 3.0.0
 
-Backtest engine için tüm data model'leri ve type definition'ları.
+All data models and type definitions for backtest engine.
 
-Özellikler:
+Features:
 - Typed dataclasses (type safety)
 - Comprehensive trade tracking
 - Multi-timeframe & multi-symbol support
 - Optimizer-friendly metrics
 
-Kullanım:
+Usage:
     from modules.backtest.backtest_types import BacktestConfig, Trade, BacktestMetrics
 
     config = BacktestConfig(
@@ -23,7 +23,7 @@ Kullanım:
         ...
     )
 
-Bağımlılıklar:
+Dependencies:
     - python>=3.10
     - dataclasses (stdlib)
 """
@@ -41,21 +41,21 @@ from enum import Enum
 # ============================================================================
 
 class PositionSide(str, Enum):
-    """Position yönü"""
+    """Position direction"""
     LONG = "LONG"
     SHORT = "SHORT"
 
 
 class ExitReason(str, Enum):
-    """Pozisyon kapanış nedeni"""
+    """Position exit reason"""
     TAKE_PROFIT = "TP"
     STOP_LOSS = "SL"
     TRAILING_STOP = "TRAILING"
     BREAK_EVEN = "BE"
-    SIGNAL = "SIGNAL"          # Karşıt sinyal
-    TIMEOUT = "TIMEOUT"        # Pozisyon timeout'u
-    MANUAL = "MANUAL"          # Manuel kapanış (test için)
-    END_OF_DATA = "END"        # Backtest sonu
+    SIGNAL = "SIGNAL"          # Opposite signal
+    TIMEOUT = "TIMEOUT"        # Position timeout
+    MANUAL = "MANUAL"          # Manual close (for testing)
+    END_OF_DATA = "END"        # End of backtest
 
 
 # ============================================================================
@@ -65,11 +65,11 @@ class ExitReason(str, Enum):
 @dataclass
 class BacktestConfig:
     """
-    Backtest konfigürasyonu
+    Backtest configuration
 
-    Multi-TF ve multi-symbol desteği ile kapsamlı backtest ayarları.
+    Comprehensive backtest settings with multi-TF and multi-symbol support.
     """
-    # Sembol ve timeframe
+    # Symbol and timeframe
     symbols: List[str]                              # ['BTCUSDT', 'ETHUSDT']
     primary_timeframe: str                          # '15m'
     mtf_timeframes: List[str] = field(default_factory=list)  # ['15m', '1h', '4h']
@@ -95,17 +95,17 @@ class BacktestConfig:
     description: Optional[str] = None
 
     def __post_init__(self):
-        """Validation ve default değerler"""
-        # Primary TF mtf_timeframes içinde olmalı
+        """Validation and default values"""
+        # Primary TF should be in mtf_timeframes
         if self.primary_timeframe not in self.mtf_timeframes:
             self.mtf_timeframes.insert(0, self.primary_timeframe)
 
-        # En az 1 sembol olmalı
+        # At least 1 symbol required
         if not self.symbols:
-            raise ValueError("En az 1 sembol belirtilmeli")
+            raise ValueError("At least 1 symbol must be specified")
 
     def to_dict(self) -> Dict[str, Any]:
-        """Config'i dict'e çevir"""
+        """Convert config to dict"""
         return {
             'symbols': self.symbols,
             'primary_timeframe': self.primary_timeframe,
@@ -126,9 +126,9 @@ class BacktestConfig:
 @dataclass
 class Trade:
     """
-    Tamamlanmış trade kaydı
+    Completed trade record
 
-    Detaylı PnL tracking ve analytics için tüm bilgiler.
+    All information for detailed PnL tracking and analytics.
     """
     # Trade ID
     trade_id: int
@@ -192,7 +192,7 @@ class Trade:
                 self.duration_minutes = 0
 
     def to_dict(self) -> Dict[str, Any]:
-        """Trade'i dict'e çevir"""
+        """Convert trade to dict"""
         # Handle both datetime and numeric timestamps
         entry_time_str = self.entry_time.isoformat() if hasattr(self.entry_time, 'isoformat') else str(self.entry_time)
         exit_time_str = self.exit_time.isoformat() if hasattr(self.exit_time, 'isoformat') else str(self.exit_time)
@@ -227,9 +227,9 @@ class Trade:
 @dataclass
 class Position:
     """
-    Açık pozisyon tracking
+    Open position tracking
 
-    Trade simülasyonu sırasında açık pozisyonları takip etmek için.
+    For tracking open positions during trade simulation.
     """
     position_id: int
     symbol: str
@@ -265,7 +265,7 @@ class Position:
         self.lowest_price = min(self.lowest_price, current_price)
 
     def current_pnl_pct(self, current_price: float) -> float:
-        """Şu anki PnL yüzdesi"""
+        """Current PnL percentage"""
         if self.side == PositionSide.LONG:
             return ((current_price - self.entry_price) / self.entry_price) * 100
         else:
@@ -279,9 +279,9 @@ class Position:
 @dataclass
 class Signal:
     """
-    Entry/Exit sinyali
+    Entry/Exit signal
 
-    Vectorized signal generation'dan dönen sinyal bilgisi.
+    Signal information returned from vectorized signal generation.
     """
     timestamp: datetime
     signal_type: int            # 1=LONG, -1=SHORT, 0=NONE/EXIT
@@ -301,9 +301,9 @@ class Signal:
 @dataclass
 class BacktestMetrics:
     """
-    Kapsamlı backtest metrikleri
+    Comprehensive backtest metrics
 
-    Optimizer ve analytics için tüm performance metrics.
+    All performance metrics for optimizer and analytics.
     """
     # Returns
     total_return_usd: float                 # Toplam kar/zarar ($)
@@ -350,7 +350,7 @@ class BacktestMetrics:
     custom_score: Optional[float] = None    # Özel scoring (örn: PF × Return)
 
     def to_dict(self) -> Dict[str, Any]:
-        """Metrics'i dict'e çevir"""
+        """Convert metrics to dict"""
         return {
             'total_return_usd': round(self.total_return_usd, 2),
             'total_return_pct': round(self.total_return_pct, 2),
@@ -375,9 +375,9 @@ class BacktestMetrics:
 @dataclass
 class BacktestResult:
     """
-    Complete backtest sonucu
+    Complete backtest result
 
-    Tüm backtest çıktıları tek objede.
+    All backtest outputs in one object.
     """
     # Config
     config: BacktestConfig
@@ -398,7 +398,7 @@ class BacktestResult:
     signals: Optional[List[Signal]] = None
 
     def to_dict(self) -> Dict[str, Any]:
-        """Result'ı dict'e çevir"""
+        """Convert result to dict"""
         return {
             'config': self.config.to_dict(),
             'metrics': self.metrics.to_dict(),

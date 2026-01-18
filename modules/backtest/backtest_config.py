@@ -2,24 +2,24 @@
 """
 modules/backtest/backtest_config.py
 SuperBot - Backtest Config Builder
-Yazar: SuperBot Team
-Tarih: 2025-11-16
-Versiyon: 3.0.0
+Author: SuperBot Team
+Date: 2025-11-16
+Version: 3.0.0
 
-Strategy object'inden BacktestConfig oluşturur.
+Builds BacktestConfig from strategy object.
 
-Özellikler:
+Features:
 - Strategy → BacktestConfig conversion
 - Multi-timeframe support
 - Multi-symbol support
 - Validation & defaults
 
-Kullanım:
+Usage:
     from modules.backtest.backtest_config import build_config
 
     config = build_config(strategy)
 
-Bağımlılıklar:
+Dependencies:
     - python>=3.10
     - modules.backtest.backtest_types
 """
@@ -49,28 +49,28 @@ if TYPE_CHECKING:
 
 def build_config(strategy: Strategy) -> BacktestConfig:
     """
-    Strategy object'inden BacktestConfig oluştur
+    Build BacktestConfig from strategy object
 
     Args:
         strategy: Strategy instance
 
     Returns:
-        BacktestConfig: Backtest konfigürasyonu
+        BacktestConfig: Backtest configuration
 
     Raises:
-        ValueError: Geçersiz strategy parametreleri
+        ValueError: Invalid strategy parameters
     """
-    # Backtest parametrelerini al (eski: dict, yeni: BacktestParameters object)
+    # Get backtest parameters (old: dict, new: BacktestParameters object)
     backtest_params = strategy.backtest_parameters
 
-    # Dict mi object mi kontrol et
+    # Check if dict or object
     is_dict = isinstance(backtest_params, dict)
 
-    # Sembol - strategy attribute'larından al
+    # Symbol - get from strategy attributes
     if hasattr(strategy, 'symbols') and strategy.symbols:
-        # Yeni format: symbols attribute var
+        # New format: symbols attribute exists
         if isinstance(strategy.symbols, list):
-            # Liste içinde SymbolConfig object'leri var
+            # List contains SymbolConfig objects
             symbols = []
             for sym_config in strategy.symbols:
                 if hasattr(sym_config, 'symbol') and hasattr(sym_config, 'quote'):
@@ -78,18 +78,18 @@ def build_config(strategy: Strategy) -> BacktestConfig:
                     for s in sym_config.symbol:
                         symbols.append(f"{s}{sym_config.quote}")
                 else:
-                    # Direkt string
+                    # Direct string
                     symbols.append(str(sym_config))
         elif hasattr(strategy.symbols, 'symbol'):
-            # Tek SymbolConfig object
+            # Single SymbolConfig object
             symbols = [f"{s}{strategy.symbols.quote}" for s in strategy.symbols.symbol]
         else:
-            # Direkt string veya başka format
+            # Direct string or other format
             symbols = [str(strategy.symbols)]
     else:
-        # Eski format: backtest_parameters'dan al
+        # Old format: get from backtest_parameters
         if is_dict:
-            # backtest_parameters bir dict ise, symbol yok - default BTCUSDT
+            # backtest_parameters is dict, no symbol - default BTCUSDT
             symbols = ["BTCUSDT"]
         else:
             # BacktestParameters object
@@ -99,17 +99,17 @@ def build_config(strategy: Strategy) -> BacktestConfig:
     primary_timeframe = strategy.primary_timeframe if hasattr(strategy, 'primary_timeframe') else "15m"
     mtf_timeframes = strategy.mtf_timeframes if hasattr(strategy, 'mtf_timeframes') else [primary_timeframe]
 
-    # Eğer mtf_timeframes boşsa, sadece primary kullan
+    # If mtf_timeframes is empty, use only primary
     if not mtf_timeframes:
         mtf_timeframes = [primary_timeframe]
 
-    # Tarih aralığı
+    # Date range
     if hasattr(strategy, 'backtest_start_date'):
-        # Yeni format
+        # New format
         start_date = _parse_date(strategy.backtest_start_date)
         end_date = _parse_date(strategy.backtest_end_date)
     elif is_dict:
-        # Eski format - dict - default tarihler
+        # Old format - dict - default dates
         start_date = datetime(2025, 1, 5)
         end_date = datetime(2025, 2, 10)
     else:
@@ -123,7 +123,7 @@ def build_config(strategy: Strategy) -> BacktestConfig:
     # Data loading
     warmup_period = strategy.warmup_period if hasattr(strategy, 'warmup_period') else 200
 
-    # Maliyetler
+    # Costs
     if is_dict:
         commission_pct = backtest_params.get('commission', 0.04)
         slippage_pct = backtest_params.get('max_slippage', 0.01)
@@ -133,7 +133,7 @@ def build_config(strategy: Strategy) -> BacktestConfig:
         slippage_pct = backtest_params.slippage_pct if hasattr(backtest_params, 'slippage_pct') else 0.01
         spread_pct = backtest_params.spread_pct if hasattr(backtest_params, 'spread_pct') else 0.01
 
-    # Config oluştur
+    # Create config
     config = BacktestConfig(
         symbols=symbols,
         primary_timeframe=primary_timeframe,
@@ -154,46 +154,46 @@ def build_config(strategy: Strategy) -> BacktestConfig:
 
 def _parse_date(date_str: str) -> datetime:
     """
-    Tarih string'ini datetime'a çevir
+    Convert date string to datetime
 
-    Desteklenen formatlar:
+    Supported formats:
     - '2025-01-05T00:00' (ISO format with T)
     - '2025-01-05 00:00' (ISO format with space)
     - '2025-01-05'       (Date only, time 00:00)
 
     Args:
-        date_str: Tarih string'i
+        date_str: Date string
 
     Returns:
-        datetime: Parse edilmiş tarih
+        datetime: Parsed date
 
     Raises:
-        ValueError: Geçersiz tarih formatı
+        ValueError: Invalid date format
     """
     if not date_str:
-        raise ValueError("Tarih string'i boş olamaz")
+        raise ValueError("Date string cannot be empty")
 
-    # Önce ISO format dene (T ile)
+    # Try ISO format first (with T)
     try:
         return datetime.fromisoformat(date_str)
     except ValueError:
         pass
 
-    # Space ile dene
+    # Try with space
     try:
         return datetime.strptime(date_str, "%Y-%m-%d %H:%M")
     except ValueError:
         pass
 
-    # Sadece tarih (time 00:00)
+    # Date only (time 00:00)
     try:
         return datetime.strptime(date_str, "%Y-%m-%d")
     except ValueError:
         pass
 
     raise ValueError(
-        f"Geçersiz tarih formatı: '{date_str}'. "
-        f"Desteklenen formatlar: '2025-01-05T00:00', '2025-01-05 00:00', '2025-01-05'"
+        f"Invalid date format: '{date_str}'. "
+        f"Supported formats: '2025-01-05T00:00', '2025-01-05 00:00', '2025-01-05'"
     )
 
 
@@ -205,71 +205,71 @@ def validate_config(config: BacktestConfig) -> None:
         config: BacktestConfig instance
 
     Raises:
-        ValueError: Validation hatası
+        ValueError: Validation error
     """
-    # Sembol kontrolü
+    # Symbol check
     if not config.symbols:
-        raise ValueError("En az 1 sembol belirtilmeli")
+        raise ValueError("At least 1 symbol must be specified")
 
-    # Timeframe kontrolü
+    # Timeframe check
     if not config.primary_timeframe:
-        raise ValueError("Primary timeframe belirtilmeli")
+        raise ValueError("Primary timeframe must be specified")
 
     if config.primary_timeframe not in config.mtf_timeframes:
         raise ValueError(
             f"Primary timeframe ({config.primary_timeframe}) "
-            f"mtf_timeframes içinde olmalı ({config.mtf_timeframes})"
+            f"must be in mtf_timeframes ({config.mtf_timeframes})"
         )
 
-    # Tarih kontrolü
+    # Date check
     if not config.start_date or not config.end_date:
-        raise ValueError("start_date ve end_date belirtilmeli")
+        raise ValueError("start_date and end_date must be specified")
 
     if config.start_date >= config.end_date:
         raise ValueError(
-            f"start_date ({config.start_date}) end_date'den ({config.end_date}) önce olmalı"
+            f"start_date ({config.start_date}) must be before end_date ({config.end_date})"
         )
 
-    # Balance kontrolü
+    # Balance check
     if config.initial_balance <= 0:
-        raise ValueError(f"initial_balance pozitif olmalı (mevcut: {config.initial_balance})")
+        raise ValueError(f"initial_balance must be positive (current: {config.initial_balance})")
 
-    # Warmup kontrolü
+    # Warmup check
     if config.warmup_period < 0:
-        raise ValueError(f"warmup_period negatif olamaz (mevcut: {config.warmup_period})")
+        raise ValueError(f"warmup_period cannot be negative (current: {config.warmup_period})")
 
-    # Maliyet kontrolü
+    # Cost check
     if config.commission_pct < 0 or config.commission_pct > 10:
         raise ValueError(
-            f"commission_pct 0-10 arasında olmalı (mevcut: {config.commission_pct})"
+            f"commission_pct must be between 0-10 (current: {config.commission_pct})"
         )
 
     if config.slippage_pct < 0 or config.slippage_pct > 10:
         raise ValueError(
-            f"slippage_pct 0-10 arasında olmalı (mevcut: {config.slippage_pct})"
+            f"slippage_pct must be between 0-10 (current: {config.slippage_pct})"
         )
 
 
 def get_cache_key(config: BacktestConfig) -> str:
     """
-    Config için cache key oluştur
+    Create cache key for config
 
-    Aynı config parametreleri → aynı cache key
-    Data caching için kullanılır.
+    Same config parameters → same cache key
+    Used for data caching.
 
     Args:
         config: BacktestConfig instance
 
     Returns:
-        str: Cache key (örn: 'BTCUSDT_15m_20250105_20250210')
+        str: Cache key (e.g., 'BTCUSDT_15m_20250105_20250210')
     """
-    # Semboller (alfabetik sıralı)
+    # Symbols (alphabetically sorted)
     symbols_str = "_".join(sorted(config.symbols))
 
-    # Timeframe'ler (alfabetik sıralı)
+    # Timeframes (alphabetically sorted)
     timeframes_str = "_".join(sorted(config.mtf_timeframes))
 
-    # Tarihler (YYYYMMDD formatında)
+    # Dates (YYYYMMDD format)
     start_str = config.start_date.strftime("%Y%m%d")
     end_str = config.end_date.strftime("%Y%m%d")
 

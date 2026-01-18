@@ -2,29 +2,29 @@
 """
 modules/backtest/backtest_positions.py
 SuperBot - Position Simulator
-Yazar: SuperBot Team
-Tarih: 2025-11-16
-Versiyon: 3.0.0
+Author: SuperBot Team
+Date: 2025-11-16
+Version: 3.0.0
 
 Position simulation with accurate sizing and exit logic.
 
-CRITICAL: Bu modül optimizer'ın doğru çalışması için kritik!
-Position sizing farklı değerlerde farklı sonuçlar vermeli.
+CRITICAL: This module is critical for optimizer to work correctly!
+Position sizing should give different results for different values.
 
-Özellikler:
+Features:
 - Accurate position sizing (FIXED_USD, FIXED_PERCENT, RISK_BASED)
 - Entry/Exit logic
 - TP/SL/Trailing/Break-even
 - Commission & Slippage
-- Multi-position support (multi-symbol için)
+- Multi-position support (for multi-symbol)
 
-Kullanım:
+Usage:
     from modules.backtest.backtest_positions import PositionSimulator
 
     simulator = PositionSimulator(logger)
     trades = simulator.simulate(signals, data, indicators, strategy, config)
 
-Bağımlılıklar:
+Dependencies:
     - python>=3.10
     - pandas>=2.0.0
     - numpy>=1.24.0
@@ -100,7 +100,7 @@ class PositionSimulator:
             List[Trade]: Completed trades
         """
         if self.logger:
-            self.logger.info("💼 Position simulation başlıyor...")
+            self.logger.info("💼 Starting position simulation...")
 
         trades = []
         position: Optional[Position] = None
@@ -160,8 +160,8 @@ class PositionSimulator:
         if position:
             if self.logger:
                 self.logger.warning(
-                    f"⚠️  Position #{position.position_id} backtest sonunda açık kaldı, "
-                    f"son fiyattan kapatılıyor"
+                    f"⚠️  Position #{position.position_id} remained open at backtest end, "
+                    f"closing at final price"
                 )
             final_row = data.iloc[-1]
             trade = self._close_position(
@@ -176,7 +176,7 @@ class PositionSimulator:
 
         if self.logger:
             self.logger.info(
-                f"💼 Simulation tamamlandı: {len(trades)} trade, "
+                f"💼 Simulation completed: {len(trades)} trades, "
                 f"final balance: ${balance + trades[-1].net_pnl_usd if trades else balance:,.2f}"
             )
 
@@ -196,8 +196,8 @@ class PositionSimulator:
         """
         Calculate position size
 
-        CRITICAL: Bu fonksiyon DOĞRU çalışmalı!
-        Farklı sizing_method ve parametreler farklı sonuçlar vermeli.
+        CRITICAL: This function MUST work correctly!
+        Different sizing_method and parameters should give different results.
 
         Args:
             signal: 1 (LONG) or -1 (SHORT)
@@ -289,16 +289,16 @@ class PositionSimulator:
         """
         exit_strat = strategy.exit_strategy
 
-        # Eğer SL disabled ise, default %2 kullan
+        # If SL is disabled, use default 2%
         if not hasattr(exit_strat, 'stop_loss_value') or exit_strat.stop_loss_value == 0:
             sl_pct = 2.0  # Default 2% SL
         else:
             sl_pct = exit_strat.stop_loss_value
 
-        # LONG: SL aşağıda
+        # LONG: SL below
         if signal > 0:
             sl_price = entry_price * (1 - sl_pct / 100)
-        # SHORT: SL yukarıda
+        # SHORT: SL above
         else:
             sl_price = entry_price * (1 + sl_pct / 100)
 

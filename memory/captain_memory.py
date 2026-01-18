@@ -1,8 +1,8 @@
 """
 Captain's Memory - SuperBot Session Memory System
 
-Star Trek'ten ilham alan seyir defteri sistemi.
-Agent ve kullanıcı için kalıcı hafıza.
+Star Trek inspired captain's log system.
+Persistent memory for agent and user.
 """
 
 import sqlite3
@@ -14,21 +14,21 @@ from typing import Optional, List, Dict, Any
 
 class CaptainMemory:
     """
-    Kaptan'ın Seyir Defteri - Session bazlı hafıza sistemi
+    Captain's Log - Session-based memory system.
 
-    Kullanım:
+    Usage:
         memory = CaptainMemory()
 
-        # Log ekle
-        memory.log("QML pattern çizimi tamamlandı", category="implementation")
+        # Add log
+        memory.log("QML pattern drawing completed", category="implementation")
 
-        # Karar kaydet
-        memory.decision("Zone Head'den başlar", context="QML zone drawing")
+        # Save decision
+        memory.decision("Start from Zone Head", context="QML zone drawing")
 
-        # Bilgi kaydet
-        memory.learn("BaselineSeries box çizmek için kullanılır", topic="charts")
+        # Save knowledge
+        memory.learn("BaselineSeries is used to draw boxes", topic="charts")
 
-        # Sorgula
+        # Query
         recent = memory.get_recent_logs(5)
         decisions = memory.get_decisions(topic="QML")
     """
@@ -40,51 +40,51 @@ class CaptainMemory:
         self._init_db()
 
     def _init_db(self):
-        """Veritabanı tablolarını oluştur"""
+        """Create database tables."""
         with sqlite3.connect(self.db_path) as conn:
             conn.executescript("""
-                -- Seyir Defteri (Session Logs)
+                -- Captain's Log (Session Logs)
                 CREATE TABLE IF NOT EXISTS captains_log (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     stardate TEXT NOT NULL,           -- YYYY-MM-DD HH:MM:SS
                     category TEXT DEFAULT 'general',  -- implementation, fix, research, decision
-                    summary TEXT NOT NULL,            -- Kısa özet
-                    details TEXT,                     -- Detaylı açıklama (opsiyonel)
-                    author TEXT DEFAULT 'claude',     -- claude veya user
-                    session_id TEXT,                  -- Session tanımlayıcı
+                    summary TEXT NOT NULL,            -- Short summary
+                    details TEXT,                     -- Detailed description (optional)
+                    author TEXT DEFAULT 'claude',     -- claude or user
+                    session_id TEXT,                  -- Session identifier
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
 
-                -- Kararlar (Decisions)
+                -- Decisions
                 CREATE TABLE IF NOT EXISTS decisions (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    topic TEXT NOT NULL,              -- Konu (QML, OB, charts, vb.)
-                    decision TEXT NOT NULL,           -- Alınan karar
-                    context TEXT,                     -- Bağlam/neden
-                    alternatives TEXT,                -- Değerlendirilen alternatifler (JSON)
+                    topic TEXT NOT NULL,              -- Topic (QML, OB, charts, etc.)
+                    decision TEXT NOT NULL,           -- Decision made
+                    context TEXT,                     -- Context/reason
+                    alternatives TEXT,                -- Evaluated alternatives (JSON)
                     author TEXT DEFAULT 'claude',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
 
-                -- Öğrenilen Bilgiler (Knowledge Base)
+                -- Learned Knowledge (Knowledge Base)
                 CREATE TABLE IF NOT EXISTS knowledge (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    topic TEXT NOT NULL,              -- Konu kategorisi
-                    fact TEXT NOT NULL,               -- Öğrenilen bilgi
-                    source TEXT,                      -- Kaynak (file, docs, experiment)
-                    confidence REAL DEFAULT 1.0,      -- Güven skoru (0-1)
+                    topic TEXT NOT NULL,              -- Topic category
+                    fact TEXT NOT NULL,               -- Learned fact
+                    source TEXT,                      -- Source (file, docs, experiment)
+                    confidence REAL DEFAULT 1.0,      -- Confidence score (0-1)
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE(topic, fact)               -- Aynı bilgi tekrar eklenmez
+                    UNIQUE(topic, fact)               -- Same fact not added twice
                 );
 
-                -- Proje Bağlamı (Project Context)
+                -- Project Context
                 CREATE TABLE IF NOT EXISTS project_context (
                     key TEXT PRIMARY KEY,
                     value TEXT NOT NULL,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
 
-                -- İndeksler
+                -- Indexes
                 CREATE INDEX IF NOT EXISTS idx_log_stardate ON captains_log(stardate);
                 CREATE INDEX IF NOT EXISTS idx_log_category ON captains_log(category);
                 CREATE INDEX IF NOT EXISTS idx_decisions_topic ON decisions(topic);
@@ -96,16 +96,16 @@ class CaptainMemory:
     def log(self, summary: str, category: str = "general",
             details: str = None, author: str = "claude") -> int:
         """
-        Seyir defterine log ekle
+        Add log to captain's log.
 
         Args:
-            summary: Kısa özet (1-2 cümle)
+            summary: Short summary (1-2 sentences)
             category: implementation, fix, research, decision, general
-            details: Detaylı açıklama
-            author: claude veya user
+            details: Detailed description
+            author: claude or user
 
         Returns:
-            Eklenen log ID'si
+            Added log ID
         """
         stardate = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         session_id = datetime.now().strftime("%Y%m%d")
@@ -118,7 +118,7 @@ class CaptainMemory:
             return cursor.lastrowid
 
     def get_recent_logs(self, limit: int = 10, category: str = None) -> List[Dict]:
-        """Son N log kaydını getir"""
+        """Get last N log records."""
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             if category:
@@ -135,7 +135,7 @@ class CaptainMemory:
             return [dict(row) for row in rows]
 
     def get_today_logs(self) -> List[Dict]:
-        """Bugünkü logları getir"""
+        """Get today's logs."""
         today = datetime.now().strftime("%Y-%m-%d")
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
@@ -152,16 +152,16 @@ class CaptainMemory:
                  context: str = None, alternatives: List[str] = None,
                  author: str = "claude") -> int:
         """
-        Karar kaydet
+        Save decision.
 
         Args:
-            decision: Alınan karar
-            topic: Konu (QML, OB, architecture, vb.)
-            context: Neden bu karar alındı
-            alternatives: Değerlendirilen alternatifler
+            decision: Decision made
+            topic: Topic (QML, OB, architecture, etc.)
+            context: Why this decision was made
+            alternatives: Evaluated alternatives
 
         Returns:
-            Karar ID'si
+            Decision ID
         """
         alt_json = json.dumps(alternatives) if alternatives else None
 
@@ -172,14 +172,14 @@ class CaptainMemory:
             """, (topic, decision, context, alt_json, author))
             decision_id = cursor.lastrowid
 
-        # Aynı zamanda log'a da ekle (connection dışında)
-        self.log(f"Karar: {decision}", category="decision",
+        # Also add to log (outside connection)
+        self.log(f"Decision: {decision}", category="decision",
                 details=f"Topic: {topic}, Context: {context}", author=author)
 
         return decision_id
 
     def get_decisions(self, topic: str = None, limit: int = 20) -> List[Dict]:
-        """Kararları getir"""
+        """Get decisions."""
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             if topic:
@@ -207,13 +207,13 @@ class CaptainMemory:
     def learn(self, fact: str, topic: str,
               source: str = None, confidence: float = 1.0) -> bool:
         """
-        Bilgi kaydet (öğren)
+        Save knowledge (learn).
 
         Args:
-            fact: Öğrenilen bilgi
-            topic: Konu (charts, smc, python, vb.)
-            source: Nereden öğrenildi
-            confidence: Güven skoru (0-1)
+            fact: Learned fact
+            topic: Topic (charts, smc, python, etc.)
+            source: Where it was learned from
+            confidence: Confidence score (0-1)
 
         Returns:
             True if new, False if already exists
@@ -226,11 +226,11 @@ class CaptainMemory:
                 """, (topic, fact, source, confidence))
                 return True
         except sqlite3.IntegrityError:
-            # Zaten var
+            # Already exists
             return False
 
     def recall(self, topic: str = None, search: str = None) -> List[Dict]:
-        """Bilgi hatırla/ara"""
+        """Recall/search knowledge."""
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
 
@@ -257,7 +257,7 @@ class CaptainMemory:
     # ==================== PROJECT CONTEXT ====================
 
     def set_context(self, key: str, value: Any):
-        """Proje bağlamı ayarla"""
+        """Set project context."""
         value_str = json.dumps(value) if not isinstance(value, str) else value
 
         with sqlite3.connect(self.db_path) as conn:
@@ -267,7 +267,7 @@ class CaptainMemory:
             """, (key, value_str))
 
     def get_context(self, key: str = None) -> Any:
-        """Proje bağlamı getir"""
+        """Get project context."""
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
 
@@ -295,38 +295,38 @@ class CaptainMemory:
 
     def get_session_summary(self, max_tokens: int = 3000) -> str:
         """
-        Session özeti oluştur - Claude'un context'e ekleyeceği format
+        Create session summary - format for Claude's context.
 
         Returns:
-            Markdown formatında özet
+            Summary in markdown format
         """
         summary_parts = []
 
-        # Son kararlar
+        # Recent decisions
         decisions = self.get_decisions(limit=10)
         if decisions:
-            summary_parts.append("## Son Kararlar")
+            summary_parts.append("## Recent Decisions")
             for d in decisions[:5]:
                 summary_parts.append(f"- **{d['topic']}**: {d['decision']}")
 
-        # Son loglar
+        # Recent logs
         logs = self.get_recent_logs(limit=10)
         if logs:
-            summary_parts.append("\n## Son Çalışmalar")
+            summary_parts.append("\n## Recent Work")
             for log in logs[:5]:
                 summary_parts.append(f"- [{log['category']}] {log['summary']}")
 
-        # Önemli bilgiler
+        # Important knowledge
         knowledge = self.recall()
         if knowledge:
-            summary_parts.append("\n## Öğrenilen Bilgiler")
+            summary_parts.append("\n## Learned Knowledge")
             for k in knowledge[:10]:
                 summary_parts.append(f"- **{k['topic']}**: {k['fact']}")
 
-        # Proje bağlamı
+        # Project context
         context = self.get_context()
         if context:
-            summary_parts.append("\n## Proje Bağlamı")
+            summary_parts.append("\n## Project Context")
             for key, value in list(context.items())[:5]:
                 if isinstance(value, str) and len(value) < 100:
                     summary_parts.append(f"- **{key}**: {value}")
@@ -336,15 +336,15 @@ class CaptainMemory:
     # ==================== CLI HELPERS ====================
 
     def quick_log(self, message: str):
-        """Hızlı log - kullanıcı için"""
+        """Quick log - for user."""
         return self.log(message, category="user_note", author="user")
 
     def quick_decision(self, topic: str, decision: str):
-        """Hızlı karar - kullanıcı için"""
+        """Quick decision - for user."""
         return self.decision(decision, topic, author="user")
 
     def quick_learn(self, topic: str, fact: str):
-        """Hızlı öğrenme - kullanıcı için"""
+        """Quick learn - for user."""
         return self.learn(fact, topic, source="user_input")
 
 
@@ -359,7 +359,7 @@ def get_memory() -> CaptainMemory:
     return _memory_instance
 
 
-# CLI arayüzü
+# CLI interface
 if __name__ == "__main__":
     import sys
 
@@ -367,15 +367,15 @@ if __name__ == "__main__":
 
     if len(sys.argv) < 2:
         print("""
-Kaptan'ın Seyir Defteri - SuperBot Memory System
+Captain's Log - SuperBot Memory System
 
-Kullanım:
-    python captain_memory.py log "mesaj"              # Log ekle
-    python captain_memory.py decision "topic" "karar" # Karar kaydet
-    python captain_memory.py learn "topic" "bilgi"    # Bilgi kaydet
-    python captain_memory.py show                     # Son logları göster
-    python captain_memory.py summary                  # Özet göster
-    python captain_memory.py search "arama"           # Ara
+Usage:
+    python captain_memory.py log "message"              # Add log
+    python captain_memory.py decision "topic" "decision" # Save decision
+    python captain_memory.py learn "topic" "fact"       # Save knowledge
+    python captain_memory.py show                       # Show recent logs
+    python captain_memory.py summary                    # Show summary
+    python captain_memory.py search "query"             # Search
         """)
         sys.exit(0)
 
@@ -384,23 +384,23 @@ Kullanım:
     if cmd == "log" and len(sys.argv) >= 3:
         msg = " ".join(sys.argv[2:])
         log_id = memory.quick_log(msg)
-        print(f"Log eklendi (ID: {log_id})")
+        print(f"Log added (ID: {log_id})")
 
     elif cmd == "decision" and len(sys.argv) >= 4:
         topic = sys.argv[2]
         decision = " ".join(sys.argv[3:])
         dec_id = memory.quick_decision(topic, decision)
-        print(f"Karar kaydedildi (ID: {dec_id})")
+        print(f"Decision saved (ID: {dec_id})")
 
     elif cmd == "learn" and len(sys.argv) >= 4:
         topic = sys.argv[2]
         fact = " ".join(sys.argv[3:])
         is_new = memory.quick_learn(topic, fact)
-        print(f"Bilgi {'kaydedildi' if is_new else 'zaten mevcut'}")
+        print(f"Knowledge {'saved' if is_new else 'already exists'}")
 
     elif cmd == "show":
         logs = memory.get_recent_logs(10)
-        print("\n=== Son Loglar ===")
+        print("\n=== Recent Logs ===")
         for log in logs:
             print(f"[{log['stardate']}] ({log['category']}) {log['summary']}")
 
@@ -410,9 +410,9 @@ Kullanım:
     elif cmd == "search" and len(sys.argv) >= 3:
         query = " ".join(sys.argv[2:])
         results = memory.recall(search=query)
-        print(f"\n=== Arama: {query} ===")
+        print(f"\n=== Search: {query} ===")
         for r in results:
             print(f"[{r['topic']}] {r['fact']}")
 
     else:
-        print("Geçersiz komut. Yardım için: python captain_memory.py")
+        print("Invalid command. Help: python captain_memory.py")

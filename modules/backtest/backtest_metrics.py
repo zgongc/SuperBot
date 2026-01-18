@@ -2,25 +2,25 @@
 """
 modules/backtest/backtest_metrics.py
 SuperBot - Backtest Performance Metrics Calculator
-Yazar: SuperBot Team
-Tarih: 2025-11-16
-Versiyon: 3.0.0
+Author: SuperBot Team
+Date: 2025-11-16
+Version: 3.0.0
 
-Backtest sonuçlarının performans metriklerini hesaplar.
+Calculates performance metrics of backtest results.
 
-Özellikler:
+Features:
 - Comprehensive metrics calculation
 - BacktestMetrics dataclass support
 - Sharpe, Sortino, Calmar ratios
 - Drawdown analysis
 - Trade statistics
 
-Kullanım:
+Usage:
     from modules.backtest.backtest_metrics import calculate_metrics
 
     metrics = calculate_metrics(trades, config)
 
-Bağımlılıklar:
+Dependencies:
     - python>=3.10
     - numpy>=1.24.0
     - pandas>=2.0.0

@@ -4,26 +4,26 @@
 core/cache_manager.py
 
 SuperBot - Cache Manager
-Yazar: SuperBot Team
-Tarih: 2025-11-12
-Versiyon: 1.0.0
+Author: SuperBot Team
+Date: 2025-11-12
+Version: 1.0.0
 
-Adaptif cache yönetimi (Memory / Redis) ile TTL, LRU ve istatistik desteği.
+Adaptive cache management (Memory / Redis) with TTL, LRU and statistics support.
 
-Özellikler:
+Features:
 - Memory cache (LRU eviction, TTL)
-- Redis cache (opsiyonel)
+- Redis cache (optional)
 - Cache warming
-- Health check ve istatistik toplama
+- Health check and statistics collection
 
-Kullanım:
+Usage:
     from core.cache_manager import CacheManager
     cache = CacheManager()
     cache.set("price:BTCUSDT", 50000, ttl=60)
     value = cache.get("price:BTCUSDT")
 
-Bağımlılıklar:
-    - redis (opsiyonel)
+Dependencies:
+    - redis (optional)
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ from dataclasses import dataclass, field
 from threading import Lock
 from typing import Any, Dict, List, Optional
 
-# Paket olarak çalışmadığı durumlar (python core/cache_manager.py)
+# Cases when not running as package (python core/cache_manager.py)
 if __name__ == "__main__" and __package__ is None:  # pragma: no cover
     from pathlib import Path
     import sys
@@ -52,7 +52,7 @@ logger = get_logger("core.cache_manager")
 
 @dataclass
 class CacheEntry:
-    """Memory cache entry yapısı."""
+    """Memory cache entry structure."""
 
     key: str
     value: Any
@@ -61,7 +61,7 @@ class CacheEntry:
     accessed_count: int = 0
 
     def is_expired(self) -> bool:
-        """Entry süresi doldu mu?"""
+        """Has entry expired?"""
         if self.ttl is None:
             return False
         return (time.time() - self.created_at) > self.ttl
@@ -69,7 +69,7 @@ class CacheEntry:
 
 class MemoryCache:
     """
-    Memory tabanlı cache implementasyonu (LRU).
+    Memory-based cache implementation (LRU).
     """
 
     def __init__(self, max_size: int = 1000) -> None:
@@ -131,7 +131,7 @@ class MemoryCache:
 
 class RedisCache:
     """
-    Redis tabanlı cache implementasyonu.
+    Redis-based cache implementation.
     """
 
     def __init__(self, host: str, port: int, db: int, password: Optional[str] = None) -> None:
@@ -146,11 +146,11 @@ class RedisCache:
                 decode_responses=True,
             )
             self.redis.ping()
-            logger.info(f"✅ Redis bağlantısı başarılı: {host}:{port}")
+            logger.info(f"✅ Redis connection successful: {host}:{port}")
         except ImportError as exc:
-            raise ImportError("Redis package eksik: pip install redis") from exc
+            raise ImportError("Redis package missing: pip install redis") from exc
         except Exception as exc:  # noqa: BLE001
-            raise ConnectionError(f"Redis bağlantı hatası: {exc}") from exc
+            raise ConnectionError(f"Redis connection error: {exc}") from exc
 
         self.stats = {"hits": 0, "misses": 0}
 
@@ -164,7 +164,7 @@ class RedisCache:
             self.stats["hits"] += 1
             return json.loads(value)
         except Exception as exc:  # noqa: BLE001
-            logger.error(f"❌ Redis get hatası: {exc}")
+            logger.error(f"❌ Redis get error: {exc}")
             return None
 
     def set(self, key: str, value: Any, ttl: Optional[float] = None) -> None:
@@ -175,20 +175,20 @@ class RedisCache:
             else:
                 self.redis.set(key, value_str)
         except Exception as exc:  # noqa: BLE001
-            logger.error(f"❌ Redis set hatası: {exc}")
+            logger.error(f"❌ Redis set error: {exc}")
 
     def delete(self, key: str) -> bool:
         try:
             return bool(self.redis.delete(key))
         except Exception as exc:  # noqa: BLE001
-            logger.error(f"❌ Redis delete hatası: {exc}")
+            logger.error(f"❌ Redis delete error: {exc}")
             return False
 
     def clear(self) -> None:
         try:
             self.redis.flushdb()
         except Exception as exc:  # noqa: BLE001
-            logger.error(f"❌ Redis clear hatası: {exc}")
+            logger.error(f"❌ Redis clear error: {exc}")
 
     def get_stats(self) -> Dict[str, Any]:
         total = self.stats["hits"] + self.stats["misses"]
@@ -208,7 +208,7 @@ class RedisCache:
 
 class CacheManager:
     """
-    Cache Manager - adaptif cache yönetimi.
+    Cache Manager - adaptive cache management.
     """
 
     def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
@@ -230,7 +230,7 @@ class CacheManager:
                     password=redis_cfg.get("password"),
                 )
             except Exception as exc:  # noqa: BLE001
-                logger.warning(f"⚠️  Redis başlatma hatası, Memory backend kullanılacak: {exc}")
+                logger.warning(f"⚠️  Redis initialization error, Memory backend will be used: {exc}")
                 self.backend_type = "memory"
                 memory_cfg = cache_cfg.get("memory", {})
                 max_size = int(memory_cfg.get("max_size", cache_cfg.get("max_size", 1000)))
@@ -239,7 +239,7 @@ class CacheManager:
             memory_cfg = cache_cfg.get("memory", {})
             max_size = int(memory_cfg.get("max_size", cache_cfg.get("max_size", 1000)))
             self.backend = MemoryCache(max_size=max_size)
-            logger.info("✅ CacheManager Memory backend ile başlatıldı")
+            logger.info("✅ CacheManager initialized with Memory backend")
 
         self.default_ttl = cache_cfg.get("default_ttl") or cache_cfg.get("ttl_default")
         self.warming_keys = cache_cfg.get("warming_keys", [])
@@ -262,7 +262,7 @@ class CacheManager:
                 return bool(self.backend.redis.exists(key))  # type: ignore[attr-defined]
             return key in self.backend.cache  # type: ignore[attr-defined]
         except Exception as exc:  # noqa: BLE001
-            logger.error(f"❌ Cache exists kontrol hatası: {exc}")
+            logger.error(f"❌ Cache exists check error: {exc}")
             return False
 
     def delete(self, key: str) -> bool:
@@ -270,7 +270,7 @@ class CacheManager:
 
     def clear(self) -> None:
         self.backend.clear()
-        logger.info("🗑️  Cache temizlendi")
+        logger.info("🗑️  Cache cleared")
 
     def get_stats(self) -> Dict[str, Any]:
         stats = self.backend.get_stats()
@@ -285,16 +285,16 @@ class CacheManager:
             self.delete(test_key)
             return result == "ok"
         except Exception as exc:  # noqa: BLE001
-            logger.error(f"❌ Cache health check başarısız: {exc}")
+            logger.error(f"❌ Cache health check failed: {exc}")
             return False
 
     def warm_cache(self, keys: Optional[List[str]] = None) -> Dict[str, bool]:
         keys = keys or self.warming_keys
         if not keys:
-            logger.info("⚠️  Cache warming için key bulunamadı")
+            logger.info("⚠️  No keys found for cache warming")
             return {}
 
-        logger.info(f"🔥 Cache warming başlatılıyor: {len(keys)} key")
+        logger.info(f"🔥 Starting cache warming: {len(keys)} keys")
         results: Dict[str, bool] = {}
 
         for key in keys:
@@ -304,13 +304,13 @@ class CacheManager:
                 if exists:
                     logger.debug(f"✅ Warmed: {key}")
                 else:
-                    logger.debug(f"⏭️  Atlandı: {key}")
+                    logger.debug(f"⏭️  Skipped: {key}")
             except Exception as exc:  # noqa: BLE001
-                logger.error(f"❌ Warming hatası ({key}): {exc}")
+                logger.error(f"❌ Warming error ({key}): {exc}")
                 results[key] = False
 
         success_count = sum(1 for val in results.values() if val)
-        logger.info(f"✅ Cache warming tamamlandı: {success_count}/{len(keys)} başarılı")
+        logger.info(f"✅ Cache warming completed: {success_count}/{len(keys)} successful")
         return results
 
     def auto_warm(self) -> None:
@@ -330,7 +330,7 @@ _cache_lock = Lock()
 
 def get_cache_manager() -> CacheManager:
     """
-    CacheManager singleton instance'ını döndür.
+    Return CacheManager singleton instance.
 
     Returns:
         CacheManager: Singleton instance
@@ -346,7 +346,7 @@ def get_cache_manager() -> CacheManager:
 
 def get_cache() -> CacheManager:
     """
-    Geriye CacheManager döndür (backward compatibility).
+    Return CacheManager (backward compatibility).
 
     Returns:
         CacheManager: Cache manager instance

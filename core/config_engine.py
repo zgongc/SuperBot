@@ -1,55 +1,56 @@
 #!/usr/bin/env python3
 """
 core/config_engine.py
-SuperBot - Config Yönetim Sistemi
-Yazar: SuperBot Team
-Tarih: 2025-10-16
-Versiyon: 1.0.0
 
-Özellikler:
-- Multi-YAML support (birden fazla config dosyası)
+SuperBot - Config Management System
+Author: SuperBot Team
+Date: 2025-10-16
+Version: 1.0.0
+
+Features:
+- Multi-YAML support (multiple config files)
 - Environment variable substitution (${REDIS_HOST})
-- Hot reload support (FileWatcher entegrasyonu)
-- Schema validation (Pydantic - opsiyonel)
+- Hot reload support (FileWatcher integration)
+- Schema validation (Pydantic - optional)
 - Nested key access (dot notation: cache.backend)
 - Thread-safe config access
 - Config versioning & rollback
-- Callback system (config değişince notify)
+- Callback system (notify on config change)
 - Config merging (base + environment + override)
 
-Kullanım:
+Usage:
     from core.config_engine import ConfigEngine
-    
+
     # Initialize
     config = ConfigEngine(base_path="config/")
-    
-    # Tüm config'leri yükle
+
+    # Load all configs
     config.load_all([
         "main.yaml",
         "infrastructure.yaml",
         "connectors.yaml"
     ])
-    
+
     # Nested key access
     backend = config.get("cache.backend", default="memory")
-    
+
     # Environment variable override
     redis_host = config.get("redis.host")  # ${REDIS_HOST} → 100.98.224.83
-    
-    # Config değişikliğinde callback
+
+    # Callback on config change
     config.on_change("cache.backend", lambda old, new: print(f"{old} → {new}"))
-    
+
     # Hot reload
     config.reload()
-    
+
     # Versioning
     config.save_snapshot("v1.0")
     config.rollback("v1.0")
 
-Bağımlılıklar:
+Dependencies:
     - pyyaml
     - python-dotenv
-    - pydantic (opsiyonel - validation için)
+    - pydantic (optional - for validation)
 """
 
 import os
@@ -73,10 +74,10 @@ if __name__ == "__main__" and __package__ is None:  # pragma: no cover
 
 from core.logger_engine import LoggerEngine
 
-# Environment variables için
+# For environment variables
 from dotenv import load_dotenv
 
-# Schema validation için
+# For schema validation
 try:
     from pydantic import BaseModel, Field, ValidationError, ConfigDict, field_validator
     PYDANTIC_AVAILABLE = True
@@ -94,7 +95,7 @@ logger = logger_engine.get_logger(__name__)
 
 @dataclass
 class ConfigSnapshot:
-    """Config snapshot (versioning için)"""
+    """Config snapshot (for versioning)."""
     version: str
     timestamp: datetime
     config_data: Dict[str, Any]
@@ -103,34 +104,34 @@ class ConfigSnapshot:
 if PYDANTIC_AVAILABLE:
     class ConfigSchema(BaseModel):
         """
-        Config şema base class
+        Config schema base class.
 
-        Kullanım:
+        Usage:
             class MyConfigSchema(ConfigSchema):
                 api_key: str = Field(..., min_length=10)
                 timeout: int = Field(30, ge=1, le=300)
                 retry_count: int = Field(3, ge=0, le=10)
         """
         model_config = ConfigDict(
-            extra="allow",  # Extra field'lara izin ver
-            validate_assignment=True  # Assignment'ta validate et
+            extra="allow",  # Allow extra fields
+            validate_assignment=True  # Validate on assignment
         )
 
 
     class RiskManagementSchema(ConfigSchema):
-        """Risk management config şeması - ÖRNEK"""
-        max_position_size: float = Field(..., gt=0, le=100, description="Maksimum pozisyon büyüklüğü (%)")
-        max_risk_per_trade: float = Field(..., gt=0, le=10, description="Trade başına max risk (%)")
-        max_portfolio_risk: float = Field(..., gt=0, le=50, description="Portföy max riski (%)")
+        """Risk management config schema - EXAMPLE"""
+        max_position_size: float = Field(..., gt=0, le=100, description="Maximum position size (%)")
+        max_risk_per_trade: float = Field(..., gt=0, le=10, description="Max risk per trade (%)")
+        max_portfolio_risk: float = Field(..., gt=0, le=50, description="Portfolio max risk (%)")
 
         @field_validator('max_position_size')
         @classmethod
         def validate_position_size(cls, v):
             if v > 20:
-                raise ValueError("Pozisyon büyüklüğü %20'den fazla olamaz (güvenlik)")
+                raise ValueError("Position size cannot exceed 20% (safety)")
             return v
 else:
-    # Pydantic yoksa dummy class'lar
+    # Dummy classes if Pydantic not available
     class ConfigSchema:
         pass
 
@@ -140,9 +141,9 @@ else:
 
 class ConfigEngine:
     """
-    Config yönetim sistemi
-    
-    Özellikler:
+    Config management system.
+
+    Features:
     - Multi-YAML config loading
     - Environment variable substitution
     - Hot reload
@@ -150,14 +151,14 @@ class ConfigEngine:
     - Versioning & rollback
     - Change callbacks
     """
-    
+
     def __init__(self, base_path: str = "config/", env_file: str = ".env"):
         """
-        ConfigEngine'i başlat
-        
+        Initialize ConfigEngine.
+
         Args:
-            base_path: Config dosyalarının bulunduğu klasör
-            env_file: .env dosyası adı
+            base_path: Directory containing config files
+            env_file: .env file name
         """
         self.base_path = Path(base_path)
         self.env_file = self.base_path / env_file
@@ -176,26 +177,26 @@ class ConfigEngine:
         # Callbacks: key -> [callbacks]
         self._callbacks: Dict[str, List[Callable]] = defaultdict(list)
         
-        # .env dosyasını yükle
+        # Load .env file
         if self.env_file.exists():
             load_dotenv(self.env_file)
         else:
-            logger.warning(f".env dosyası bulunamadı: {self.env_file}")
-    
+            logger.warning(f".env file not found: {self.env_file}")
+
     def load(self, filename: str) -> bool:
         """
-        Tek bir config dosyasını yükle
-        
+        Load a single config file.
+
         Args:
-            filename: Config dosya adı (örn: main.yaml)
-            
+            filename: Config file name (e.g., main.yaml)
+
         Returns:
-            bool: Başarılı ise True
+            bool: True if successful
         """
         file_path = self.base_path / filename
-        
+
         if not file_path.exists():
-            logger.error(f"Config dosyası bulunamadı: {file_path}")
+            logger.error(f"Config file not found: {file_path}")
             return False
         
         try:
@@ -220,49 +221,49 @@ class ConfigEngine:
                 self._file_timestamps[filename] = file_path.stat().st_mtime
 
             return True
-            
+
         except Exception as e:
-            logger.error(f"Config yükleme hatası {filename}: {e}")
+            logger.error(f"Config loading error {filename}: {e}")
             return False
-    
+
     def load_all(self, filenames: List[str]) -> bool:
         """
-        Birden fazla config dosyasını yükle
-        
+        Load multiple config files.
+
         Args:
-            filenames: Config dosya adları listesi
-            
+            filenames: List of config file names
+
         Returns:
-            bool: Tümü başarılı ise True
+            bool: True if all successful
         """
-        logger.info(f"✅ Toplam {len(filenames)} config dosyası yükleniyor...")
-        
+        logger.info(f"✅ Loading {len(filenames)} config files...")
+
         success = True
         for filename in filenames:
             if not self.load(filename):
                 success = False
-        
+
         if success:
-            logger.info(f"✅ Tüm config'ler yüklendi ({len(filenames)} dosya)")
+            logger.info(f"✅ All configs loaded ({len(filenames)} files)")
         else:
-            logger.warning("⚠️  Bazı config'ler yüklenemedi")
-        
+            logger.warning("⚠️  Some configs failed to load")
+
         return success
-    
+
     def reload(self, filename: Optional[str] = None) -> bool:
         """
-        Config'i yeniden yükle
-        
+        Reload config.
+
         Args:
-            filename: Belirli bir dosya (None ise tümü)
-            
+            filename: Specific file (None for all)
+
         Returns:
-            bool: Başarılı ise True
+            bool: True if successful
         """
         if filename:
-            logger.info(f"✅ Config yeniden yükleniyor: {filename}")
-            
-            # Old value'ları kaydet (callback için)
+            logger.info(f"✅ Reloading config: {filename}")
+
+            # Save old values (for callback)
             old_config = copy.deepcopy(self._config)
             
             # Reload
@@ -274,33 +275,33 @@ class ConfigEngine:
             
             return success
         else:
-            logger.info("✅ Tüm config'ler yeniden yükleniyor...")
-            
+            logger.info("✅ Reloading all configs...")
+
             old_config = copy.deepcopy(self._config)
-            
-            # Clear ve reload all
+
+            # Clear and reload all
             with self._config_lock:
                 self._config = {}
-            
+
             success = self.load_all(self._loaded_files.copy())
-            
+
             if success:
                 self._trigger_change_callbacks(old_config, self._config)
-            
+
             return success
-    
+
     def get(self, key: str, default: Any = None) -> Any:
         """
-        Config değerini al (nested key support)
-        
+        Get config value (nested key support).
+
         Args:
             key: Config key (dot notation: "cache.backend")
-            default: Default değer
-            
+            default: Default value
+
         Returns:
-            Config değeri veya default
-            
-        Örnek:
+            Config value or default
+
+        Example:
             backend = config.get("cache.backend", default="memory")
             max_risk = config.get("trading.risk.max_per_trade", default=2.0)
         """
@@ -315,72 +316,72 @@ class ConfigEngine:
                     return default
             
             return value
-    
+
     def set(self, key: str, value: Any) -> bool:
         """
-        Config değerini set et (runtime override)
-        
+        Set config value (runtime override).
+
         Args:
             key: Config key (dot notation)
-            value: Yeni değer
-            
+            value: New value
+
         Returns:
-            bool: Başarılı ise True
+            bool: True if successful
         """
         try:
             with self._config_lock:
                 old_value = self.get(key)
-                
+
                 # Set value
                 keys = key.split('.')
                 config = self._config
-                
+
                 for k in keys[:-1]:
                     if k not in config:
                         config[k] = {}
                     config = config[k]
-                
+
                 config[keys[-1]] = value
-                
+
                 # Trigger callbacks
                 if key in self._callbacks:
                     for callback in self._callbacks[key]:
                         try:
                             callback(old_value, value)
                         except Exception as e:
-                            logger.error(f"Callback hatası {key}: {e}")
-                
-                logger.debug(f"✅ Config güncellendi: {key} = {value}")
+                            logger.error(f"Callback error {key}: {e}")
+
+                logger.debug(f"✅ Config updated: {key} = {value}")
                 return True
-                
+
         except Exception as e:
-            logger.error(f"Config set hatası {key}: {e}")
+            logger.error(f"Config set error {key}: {e}")
             return False
-    
+
     def on_change(self, key: str, callback: Callable[[Any, Any], None]):
         """
-        Config değişikliğinde callback ekle
-        
+        Add callback on config change.
+
         Args:
-            key: İzlenecek config key
-            callback: Callback fonksiyon (old_value, new_value)
-            
-        Örnek:
-            config.on_change("cache.backend", 
+            key: Config key to watch
+            callback: Callback function (old_value, new_value)
+
+        Example:
+            config.on_change("cache.backend",
                 lambda old, new: print(f"Cache: {old} → {new}"))
         """
         self._callbacks[key].append(callback)
-        logger.debug(f"Callback eklendi: {key}")
-    
+        logger.debug(f"Callback added: {key}")
+
     def save_snapshot(self, version: str) -> bool:
         """
-        Mevcut config'i snapshot olarak kaydet
-        
+        Save current config as snapshot.
+
         Args:
-            version: Snapshot version (örn: "v1.0", "before-update")
-            
+            version: Snapshot version (e.g., "v1.0", "before-update")
+
         Returns:
-            bool: Başarılı ise True
+            bool: True if successful
         """
         try:
             with self._config_lock:
@@ -391,53 +392,53 @@ class ConfigEngine:
                 )
                 
                 self._snapshots[version] = snapshot
-            
-            logger.info(f"✅ Config snapshot kaydedildi: {version}")
+
+            logger.info(f"✅ Config snapshot saved: {version}")
             return True
-            
+
         except Exception as e:
-            logger.error(f"Snapshot kaydetme hatası: {e}")
+            logger.error(f"Snapshot save error: {e}")
             return False
-    
+
     def rollback(self, version: str) -> bool:
         """
-        Belirli bir snapshot'a geri dön
-        
+        Rollback to a specific snapshot.
+
         Args:
             version: Snapshot version
-            
+
         Returns:
-            bool: Başarılı ise True
+            bool: True if successful
         """
         if version not in self._snapshots:
-            logger.error(f"Snapshot bulunamadı: {version}")
+            logger.error(f"Snapshot not found: {version}")
             return False
-        
+
         try:
             with self._config_lock:
                 old_config = copy.deepcopy(self._config)
                 snapshot = self._snapshots[version]
                 self._config = copy.deepcopy(snapshot.config_data)
-                
+
                 # Trigger callbacks
                 self._trigger_change_callbacks(old_config, self._config)
-            
-            logger.info(f"✅ Config rollback yapıldı: {version}")
+
+            logger.info(f"✅ Config rollback completed: {version}")
             return True
-            
+
         except Exception as e:
-            logger.error(f"Rollback hatası: {e}")
+            logger.error(f"Rollback error: {e}")
             return False
-    
+
     def has_changed(self, filename: str) -> bool:
         """
-        Config dosyası değişti mi kontrol et
-        
+        Check if config file has changed.
+
         Args:
-            filename: Config dosya adı
-            
+            filename: Config file name
+
         Returns:
-            bool: Değiştiyse True
+            bool: True if changed
         """
         file_path = self.base_path / filename
         
@@ -448,37 +449,37 @@ class ConfigEngine:
         last_mtime = self._file_timestamps.get(filename, 0)
         
         return current_mtime > last_mtime
-    
+
     def get_all(self) -> Dict[str, Any]:
         """
-        Tüm config'i döndür
-        
+        Return all config.
+
         Returns:
             Dict: Config data (copy)
         """
         with self._config_lock:
             return copy.deepcopy(self._config)
-    
+
     def get_loaded_files(self) -> List[str]:
-        """Yüklü config dosyalarını döndür"""
+        """Return loaded config files."""
         return self._loaded_files.copy()
-    
+
     def get_snapshots(self) -> List[str]:
-        """Mevcut snapshot'ları döndür"""
+        """Return available snapshots."""
         return list(self._snapshots.keys())
-    
+
     def _merge_config(self, new_data: Dict[str, Any]):
-        """Config'i merge et (deep merge)"""
+        """Merge config (deep merge)."""
         self._config = self._deep_merge(self._config, new_data)
-    
+
     def _deep_merge(self, base: Dict, update: Dict) -> Dict:
         """
-        İki dict'i deep merge et
-        
+        Deep merge two dicts.
+
         Args:
             base: Base dict
             update: Update dict
-            
+
         Returns:
             Dict: Merged dict
         """
@@ -494,13 +495,13 @@ class ConfigEngine:
     
     def _substitute_env_vars(self, data: Any) -> Any:
         """
-        Environment variable substitution
-        
+        Environment variable substitution.
+
         ${REDIS_HOST} → os.getenv("REDIS_HOST")
-        
+
         Args:
             data: Config data (dict, list, str)
-            
+
         Returns:
             Substituted data
         """
@@ -509,33 +510,33 @@ class ConfigEngine:
         elif isinstance(data, list):
             return [self._substitute_env_vars(item) for item in data]
         elif isinstance(data, str):
-            # ${VAR_NAME} pattern'ini bul
+            # Find ${VAR_NAME} pattern
             pattern = r'\$\{([^}]+)\}'
-            
+
             def replacer(match):
                 var_name = match.group(1)
                 return os.getenv(var_name, match.group(0))
-            
+
             return re.sub(pattern, replacer, data)
         else:
             return data
-    
+
     def _trigger_change_callbacks(self, old_config: Dict, new_config: Dict):
-        """Config değişikliklerinde callback'leri tetikle"""
-        # Her registered key için kontrol et
+        """Trigger callbacks on config changes."""
+        # Check each registered key
         for key in self._callbacks.keys():
             old_value = self._get_nested_value(old_config, key)
             new_value = self._get_nested_value(new_config, key)
-            
+
             if old_value != new_value:
                 for callback in self._callbacks[key]:
                     try:
                         callback(old_value, new_value)
                     except Exception as e:
-                        logger.error(f"Callback hatası {key}: {e}")
-    
+                        logger.error(f"Callback error {key}: {e}")
+
     def _get_nested_value(self, data: Dict, key: str) -> Any:
-        """Nested key'den value al"""
+        """Get value from nested key."""
         keys = key.split('.')
         value = data
 
@@ -553,39 +554,39 @@ class ConfigEngine:
         config_path: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Config'i şemaya göre validate et
+        Validate config against schema.
 
         Args:
-            schema: Pydantic BaseModel şeması
-            config_path: Validate edilecek config path (None ise root)
+            schema: Pydantic BaseModel schema
+            config_path: Config path to validate (None for root)
 
         Returns:
-            dict: Validate edilmiş config
+            dict: Validated config
 
         Raises:
-            ValidationError: Validation başarısız olursa
+            ValidationError: If validation fails
         """
         if not PYDANTIC_AVAILABLE:
-            logger.warning("⚠️  Pydantic yüklü değil, validation atlandı")
+            logger.warning("⚠️  Pydantic not installed, validation skipped")
             return {}
 
         try:
-            # Config'i al
+            # Get config
             if config_path:
                 config_data = self.get(config_path, {})
             else:
                 config_data = self.config
 
-            # Validate et
-            logger.debug(f"🔍 Config validation başlıyor: {schema.__name__}")
+            # Validate
+            logger.debug(f"🔍 Config validation starting: {schema.__name__}")
             validated = schema(**config_data)
 
-            logger.info(f"✅ Config validation başarılı: {schema.__name__}")
+            logger.info(f"✅ Config validation successful: {schema.__name__}")
             return validated.model_dump()
 
         except ValidationError as e:
-            logger.error(f"❌ Config validation hatası: {e}")
-            # Hataları detaylı logla
+            logger.error(f"❌ Config validation error: {e}")
+            # Log errors in detail
             for error in e.errors():
                 field = " -> ".join(str(x) for x in error['loc'])
                 msg = error['msg']
@@ -599,43 +600,43 @@ class ConfigEngine:
         auto_validate: bool = True
     ) -> None:
         """
-        Config path için şema kaydet
+        Register schema for config path.
 
         Args:
-            config_path: Config path (örn: "risk_management")
-            schema: Pydantic şeması
-            auto_validate: Config değişince otomatik validate et
+            config_path: Config path (e.g., "risk_management")
+            schema: Pydantic schema
+            auto_validate: Auto validate on config change
         """
         if not PYDANTIC_AVAILABLE:
-            logger.warning("⚠️  Pydantic yüklü değil, schema kaydı atlandı")
+            logger.warning("⚠️  Pydantic not installed, schema registration skipped")
             return
 
         if not hasattr(self, '_schemas'):
             self._schemas = {}
 
         self._schemas[config_path] = schema
-        logger.info(f"📋 Şema kaydedildi: {config_path} -> {schema.__name__}")
+        logger.info(f"📋 Schema registered: {config_path} -> {schema.__name__}")
 
-        # Şimdi validate et
+        # Validate now
         if auto_validate:
             try:
                 self.validate(schema, config_path)
             except ValidationError:
-                logger.warning(f"⚠️  Şema validation başarısız: {config_path}")
+                logger.warning(f"⚠️  Schema validation failed: {config_path}")
 
     def validate_all(self) -> Dict[str, bool]:
         """
-        Kayıtlı tüm şemaları validate et
+        Validate all registered schemas.
 
         Returns:
             dict: {config_path: success}
         """
         if not PYDANTIC_AVAILABLE:
-            logger.warning("⚠️  Pydantic yüklü değil, validation atlandı")
+            logger.warning("⚠️  Pydantic not installed, validation skipped")
             return {}
 
         if not hasattr(self, '_schemas'):
-            logger.warning("⚠️  Kayıtlı şema yok")
+            logger.warning("⚠️  No registered schemas")
             return {}
 
         results = {}
@@ -648,18 +649,18 @@ class ConfigEngine:
 
         success_count = sum(1 for v in results.values() if v)
         total = len(results)
-        logger.info(f"📊 Schema validation: {success_count}/{total} başarılı")
+        logger.info(f"📊 Schema validation: {success_count}/{total} successful")
 
         return results
 
 
-# Test kodu
+# Test code
 if __name__ == "__main__":
     print("=" * 60)
     print("🧪 ConfigEngine Test")
     print("=" * 60)
-    
-    # Test config dosyası oluştur
+
+    # Create test config directory
     test_config_dir = Path("config_test")
     test_config_dir.mkdir(exist_ok=True)
     
@@ -691,39 +692,39 @@ redis:
     env_file = test_config_dir / ".env"
     env_file.write_text("REDIS_HOST=100.98.224.83\n")
     
-    print("\n1️⃣  ConfigEngine oluşturuluyor...")
+    print("\n1️⃣  Creating ConfigEngine...")
     config = ConfigEngine(base_path="config_test/")
-    
-    print("\n2️⃣  Config'ler yükleniyor...")
+
+    print("\n2️⃣  Loading configs...")
     config.load_all(["main.yaml", "infrastructure.yaml"])
-    
-    print("\n3️⃣  Config okuma testleri:")
+
+    print("\n3️⃣  Config read tests:")
     print(f"   system.name: {config.get('system.name')}")
     print(f"   cache.backend: {config.get('cache.backend')}")
     print(f"   redis.host: {config.get('redis.host')}")  # ${REDIS_HOST} → 100.98.224.83
     print(f"   nonexistent (default): {config.get('nonexistent', default='DEFAULT')}")
-    
-    print("\n4️⃣  Config değişikliği callback testi:")
+
+    print("\n4️⃣  Config change callback test:")
     def on_backend_change(old, new):
-        print(f"   🔔 Cache backend değişti: {old} → {new}")
-    
+        print(f"   🔔 Cache backend changed: {old} → {new}")
+
     config.on_change("cache.backend", on_backend_change)
     config.set("cache.backend", "redis")
-    
-    print("\n5️⃣  Snapshot testi:")
+
+    print("\n5️⃣  Snapshot test:")
     config.save_snapshot("v1.0")
     config.set("cache.ttl", 10)
-    print(f"   cache.ttl (değiştirildi): {config.get('cache.ttl')}")
-    
+    print(f"   cache.ttl (changed): {config.get('cache.ttl')}")
+
     config.rollback("v1.0")
     print(f"   cache.ttl (rollback): {config.get('cache.ttl')}")
-    
-    print("\n6️⃣  Yüklü dosyalar:")
+
+    print("\n6️⃣  Loaded files:")
     for f in config.get_loaded_files():
         print(f"   - {f}")
 
-    # Schema validation testi
-    print("\n7️⃣  Schema validation testi:")
+    # Schema validation test
+    print("\n7️⃣  Schema validation test:")
     if PYDANTIC_AVAILABLE:
         from pydantic import BaseModel, Field
 
@@ -731,33 +732,33 @@ redis:
             name: str = Field(..., min_length=3)
             age: int = Field(..., ge=18, le=100)
 
-        # Geçerli config
+        # Valid config
         valid_config = {"name": "John", "age": 25}
         config.config = valid_config
 
         try:
             result = config.validate(TestSchema)
-            print(f"   ✅ Geçerli config: {result}")
+            print(f"   ✅ Valid config: {result}")
         except:
-            print("   ❌ Validation başarısız")
+            print("   ❌ Validation failed")
 
-        # Geçersiz config
-        invalid_config = {"name": "Jo", "age": 15}  # name çok kısa, age çok küçük
+        # Invalid config
+        invalid_config = {"name": "Jo", "age": 15}  # name too short, age too low
         config.config = invalid_config
 
         try:
             result = config.validate(TestSchema)
-            print("   ❌ Geçersiz config geçti (HATA!)")
+            print("   ❌ Invalid config passed (ERROR!)")
         except ValidationError as e:
-            print(f"   ✅ Geçersiz config yakalandı: {len(e.errors())} hata")
+            print(f"   ✅ Invalid config caught: {len(e.errors())} errors")
     else:
-        print("   ⚠️  Pydantic yüklü değil, test atlandı")
+        print("   ⚠️  Pydantic not installed, test skipped")
 
     # Cleanup
     import shutil
     shutil.rmtree(test_config_dir)
 
-    print("\n✅ Test tamamlandı!")
+    print("\n✅ Test completed!")
     print("=" * 60)
 
 
@@ -772,8 +773,8 @@ _config_lock = threading.Lock()
 
 def get_config_engine() -> ConfigEngine:
     """
-    ConfigEngine singleton instance'ını döndür.
-    
+    Return ConfigEngine singleton instance.
+
     Returns:
         ConfigEngine: Singleton instance
     """
@@ -782,7 +783,7 @@ def get_config_engine() -> ConfigEngine:
         with _config_lock:
             if _config_engine_instance is None:
                 _config_engine_instance = ConfigEngine(base_path="config/")
-                # Tüm config dosyalarını yükle
+                # Load all config files
                 _config_engine_instance.load_all([
                     "main.yaml",
                     "infrastructure.yaml",
@@ -795,14 +796,14 @@ def get_config_engine() -> ConfigEngine:
 
 def get_config(key: Optional[str] = None, default: Any = None) -> Any:
     """
-    Config value döndür (backward compatibility).
-    
+    Return config value (backward compatibility).
+
     Args:
         key: Config key (dot notation)
         default: Default value
-        
+
     Returns:
-        Any: Config value veya ConfigEngine instance (key=None ise)
+        Any: Config value or ConfigEngine instance (if key=None)
     """
     engine = get_config_engine()
     if key is None:
