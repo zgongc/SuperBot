@@ -6,31 +6,31 @@ Yazar: SuperBot Team
 Tarih: 2025-12-07
 Versiyon: 2.0.0
 
-Position Manager - Strategy template parametrelerini işleyen position yönetimi
+Position Manager - Manages position management and processes strategy template parameters.
 
-ÖNEMLİ: Bu yeni tasarım, eski 819 satırlık kullanılmayan position_manager.py'nin yerini alır.
-Amaç: BacktestEngine ve TradingEngine'deki duplicate inline kodları merkezi bir yere taşımak.
+IMPORTANT: This new design replaces the old, unused position_manager.py file (819 lines).
+Purpose: To move duplicate inline code from BacktestEngine and TradingEngine to a central location.
 
-İşlenen Parametreler (simple_rsi.py PositionManagement'tan):
-- max_positions_per_symbol: Symbol başına max pozisyon sayısı
-- pyramiding_enabled: Aynı yönde birden fazla pozisyon açılabilir mi
-- pyramiding_max_entries: Max pyramiding entry sayısı
-- pyramiding_scale_factor: Sonraki entry'lerin size çarpanı
-- allow_hedging: Zıt yönde pozisyon açılabilir mi (hedge)
-- position_timeout_enabled: Pozisyon timeout aktif mi
-- position_timeout: Timeout süresi (dakika)
+Parameters (from simple_rsi.py PositionManagement):
+- max_positions_per_symbol: Maximum number of positions per symbol.
+- pyramiding_enabled: Is it possible to open multiple positions in the same direction?
+- pyramiding_max_entries: Maximum pyramiding entry count.
+- pyramiding_scale_factor: Size multiplier for subsequent entries.
+- allow_hedging: Is it possible to open positions in the opposite direction (hedge)?
+- position_timeout_enabled: Is position timeout active?
+- position_timeout: Timeout duration (minutes).
 
-Kullanım:
+Usage:
     pm = PositionManager(strategy, logger)
 
-    # Pozisyon açılabilir mi kontrolü
+    # Check if the position can be opened.
     can_open, reason, scale = pm.can_open_position(
         symbol='BTCUSDT',
         side='LONG',
         positions=current_positions
     )
 
-    # Timeout kontrolü
+    # Timeout control
     should_close, reason = pm.check_position_timeout(position, current_timestamp)
 """
 
@@ -42,12 +42,12 @@ import pandas as pd
 
 @dataclass
 class PositionOpenResult:
-    """Pozisyon açma kontrolü sonucu"""
+    """Position opening check result"""
     can_open: bool
     reason: str
-    pyramiding_scale: float = 1.0  # Pyramiding için size scale factor
-    should_close_opposite: bool = False  # Zıt pozisyonlar kapatılmalı mı (one-way mode)
-    opposite_positions: List[Dict] = None  # Kapatılacak zıt pozisyonlar
+    pyramiding_scale: float = 1.0  # Size scale factor for pyramiding
+    should_close_opposite: bool = False  # Should opposite positions be closed (one-way mode)
+    opposite_positions: List[Dict] = None  # List of opposite positions to be closed
 
     def __post_init__(self):
         if self.opposite_positions is None:
@@ -56,14 +56,14 @@ class PositionOpenResult:
 
 class PositionManager:
     """
-    Position Manager - Strategy template parametrelerini işler
+    Position Manager - Handles strategy template parameters.
 
     Workflow:
-    1. can_open_position() - Pozisyon açılabilir mi kontrol et
-    2. check_position_timeout() - Timeout kontrolü
-    3. get_positions_for_symbol() - Symbol için pozisyonları getir
+    1. can_open_position() - Check if a position can be opened
+    2. check_position_timeout() - Check timeout
+    3. get_positions_for_symbol() - Get positions for a symbol
 
-    NOT: Bu sınıf sadece KARAR VERİR, pozisyon açma/kapama işlemini engine yapar.
+    NOTE: This class only makes decisions; it does not perform the opening/closing of positions; the engine handles that.
     """
 
     def __init__(
@@ -73,7 +73,7 @@ class PositionManager:
     ):
         """
         Args:
-            strategy: BaseStrategy instance (position_management parametreleri için)
+            strategy: BaseStrategy instance (for position_management parameters)
             logger: Logger instance
         """
         self.strategy = strategy
@@ -96,7 +96,7 @@ class PositionManager:
             )
 
     # ========================================================================
-    # MAIN METHODS - Engine'ler bu methodları kullanır
+    # MAIN METHODS - Engines use these methods
     # ========================================================================
 
     def can_open_position(
@@ -106,26 +106,26 @@ class PositionManager:
         positions: List[Dict]
     ) -> PositionOpenResult:
         """
-        Pozisyon açılabilir mi kontrol et
+        Check if the position can be opened.
 
-        Bu method BacktestEngine (line 825-939) ve TradingEngine (line 822-864)
-        içindeki duplicate kodun yerine geçer.
+        This method uses BacktestEngine (line 825-939) and TradingEngine (line 822-864).
+        It replaces the duplicate code inside.
 
         Args:
-            symbol: Sembol (örn: 'BTCUSDT')
-            side: 'LONG' veya 'SHORT'
-            positions: Mevcut açık pozisyonlar listesi
+            symbol: Symbol (e.g., 'BTCUSDT')
+            side: 'LONG' or 'SHORT'
+            positions: List of current open positions
                       Her pozisyon dict: {'symbol': str, 'side': str, ...}
 
         Returns:
             PositionOpenResult:
-                - can_open: Pozisyon açılabilir mi
-                - reason: Açıklama
-                - pyramiding_scale: Pyramiding için size çarpanı (1.0 = normal)
-                - should_close_opposite: Zıt pozisyonlar kapatılmalı mı
-                - opposite_positions: Kapatılacak zıt pozisyon listesi
+                - can_open: Can the position be opened?
+                - reason: Explanation
+                - pyramiding_scale: Pyramiding size multiplier (1.0 = normal)
+                - should_close_opposite: Should opposite positions be closed?
+                - opposite_positions: List of opposite positions to be closed
 
-        Örnek:
+        Example:
             >>> result = pm.can_open_position('BTCUSDT', 'LONG', current_positions)
             >>> if result.can_open:
             ...     if result.should_close_opposite:
@@ -134,38 +134,38 @@ class PositionManager:
             ...     quantity = base_quantity * result.pyramiding_scale
             ...     engine.open_position(symbol, side, quantity)
         """
-        # 1. Symbol için mevcut pozisyonları filtrele
+        # 1. Filter existing positions for the symbol.
         positions_for_symbol = self._get_positions_for_symbol(symbol, positions)
         same_side_positions = [p for p in positions_for_symbol if p.get('side') == side]
         opposite_side = 'SHORT' if side == 'LONG' else 'LONG'
         opposite_positions = [p for p in positions_for_symbol if p.get('side') == opposite_side]
 
-        # 2. Max positions per symbol kontrolü
+        # 2. Check the maximum positions per symbol.
         if len(positions_for_symbol) >= self.max_positions_per_symbol:
             return PositionOpenResult(
                 can_open=False,
                 reason=f"Max positions reached for {symbol} ({len(positions_for_symbol)}/{self.max_positions_per_symbol})"
             )
 
-        # 3. Pyramiding kontrolü (aynı yönde birden fazla pozisyon)
+        # 3. Pyramiding control (multiple positions in the same direction)
         can_open_same_side = False
         pyramiding_scale = 1.0
 
         if self.pyramiding_enabled:
-            # Pyramiding aktif: max_entries'e kadar aynı yönde pozisyon açılabilir
+            # Pyramiding is active: positions can be opened in the same direction up to max_entries.
             if len(same_side_positions) < self.pyramiding_max_entries:
                 can_open_same_side = True
                 # Scale factor hesapla: 1st=1.0, 2nd=factor, 3rd=factor^2, ...
                 if len(same_side_positions) > 0:
                     pyramiding_scale = self.pyramiding_scale_factor ** len(same_side_positions)
         else:
-            # Pyramiding kapalı: sadece 1 pozisyon açılabilir
+            # Pyramiding is disabled: only 1 position can be opened.
             if not same_side_positions:
                 can_open_same_side = True
 
-        # 4. Hedging modu kontrolü
+        # 4. Hedging mode check
         if self.allow_hedging:
-            # HEDGE MODE: Zıt pozisyonlar da aynı anda açık kalabilir
+            # HEDGE MODE: Opposite positions can also remain open at the same time.
             if can_open_same_side:
                 return PositionOpenResult(
                     can_open=True,
@@ -177,9 +177,9 @@ class PositionManager:
                 reason = f"Pyramiding limit reached ({len(same_side_positions)}/{self.pyramiding_max_entries})"
                 return PositionOpenResult(can_open=False, reason=reason)
         else:
-            # ONE-WAY MODE: Zıt pozisyonları önce kapat
+            # ONE-WAY MODE: Close opposite positions first
             if opposite_positions:
-                # Zıt pozisyonlar var - önce kapat, sonra aç
+                # There are opposite positions - first close, then open
                 if can_open_same_side:
                     return PositionOpenResult(
                         can_open=True,
@@ -189,11 +189,11 @@ class PositionManager:
                         opposite_positions=opposite_positions
                     )
                 else:
-                    # Pyramiding limiti doldu
+                    # Pyramiding limit reached
                     reason = f"Pyramiding limit reached ({len(same_side_positions)}/{self.pyramiding_max_entries})"
                     return PositionOpenResult(can_open=False, reason=reason)
             else:
-                # Zıt pozisyon yok
+                # No opposite position
                 if can_open_same_side:
                     return PositionOpenResult(
                         can_open=True,
@@ -211,19 +211,19 @@ class PositionManager:
         current_timestamp: Any
     ) -> Tuple[bool, str]:
         """
-        Pozisyon timeout kontrolü
+        Position timeout check.
 
-        Bu method BacktestEngine (line 664-665) ve TradingEngine (line 997-1004)
-        içindeki duplicate kodun yerine geçer.
+        This method uses BacktestEngine (line 664-665) and TradingEngine (line 997-1004).
+        It replaces the duplicate code inside.
 
         Args:
             position: Pozisyon dict {'opened_at': datetime/timestamp, ...}
-            current_timestamp: Şu anki zaman (datetime, pd.Timestamp, veya ms int)
+            current_timestamp: The current time (datetime, pd.Timestamp, or ms int)
 
         Returns:
             (should_close: bool, reason: str)
 
-        Örnek:
+        Example:
             >>> should_close, reason = pm.check_position_timeout(pos, current_time)
             >>> if should_close:
             ...     engine.close_position(pos, reason=reason)
@@ -231,7 +231,7 @@ class PositionManager:
         if not self.position_timeout_enabled:
             return False, ""
 
-        # Pozisyonun açılış zamanını al
+        # Get the opening time of the position
         opened_at = position.get('opened_at') or position.get('entry_time') or position.get('open_time')
         if opened_at is None:
             return False, ""
@@ -243,7 +243,7 @@ class PositionManager:
         if opened_at_dt is None or current_dt is None:
             return False, ""
 
-        # Geçen süreyi hesapla (dakika)
+        # Calculate the elapsed time (in minutes)
         time_elapsed_minutes = (current_dt - opened_at_dt).total_seconds() / 60
 
         if time_elapsed_minutes >= self.position_timeout:
@@ -259,15 +259,15 @@ class PositionManager:
         side: Optional[str] = None
     ) -> List[Dict]:
         """
-        Symbol (ve opsiyonel side) için pozisyonları getir
+        Gets positions for a symbol (and optional side).
 
         Args:
             symbol: Sembol
-            positions: Tüm pozisyonlar
-            side: 'LONG' veya 'SHORT' (None = tüm yönler)
+            positions: All positions
+            side: 'LONG' or 'SHORT' (None = all directions)
 
         Returns:
-            Filtrelenmiş pozisyon listesi
+            Filtered position list
         """
         result = self._get_positions_for_symbol(symbol, positions)
 
@@ -283,15 +283,15 @@ class PositionManager:
         side: Optional[str] = None
     ) -> int:
         """
-        Symbol için pozisyon sayısını getir
+        Get the number of positions for a symbol.
 
         Args:
             symbol: Sembol
-            positions: Tüm pozisyonlar
-            side: 'LONG' veya 'SHORT' (None = tüm yönler)
+            positions: All positions
+            side: 'LONG' or 'SHORT' (None = all directions)
 
         Returns:
-            Pozisyon sayısı
+            Number of positions
         """
         return len(self.get_positions_for_symbol(symbol, positions, side))
 
@@ -302,12 +302,12 @@ class PositionManager:
         positions: List[Dict]
     ) -> Tuple[bool, int, float]:
         """
-        Pyramiding yapılabilir mi kontrol et
+        Check if pyramiding is possible.
 
         Args:
             symbol: Sembol
-            side: 'LONG' veya 'SHORT'
-            positions: Tüm pozisyonlar
+            side: 'LONG' or 'SHORT'
+            positions: All positions
 
         Returns:
             (can_pyramid: bool, current_entries: int, scale_factor: float)
@@ -321,7 +321,7 @@ class PositionManager:
         if current_entries >= self.pyramiding_max_entries:
             return False, current_entries, 1.0
 
-        # Scale factor: her sonraki entry daha küçük
+        # Scale factor: each subsequent entry is smaller
         scale = self.pyramiding_scale_factor ** current_entries if current_entries > 0 else 1.0
 
         return True, current_entries, scale
@@ -331,11 +331,11 @@ class PositionManager:
     # ========================================================================
 
     def _get_positions_for_symbol(self, symbol: str, positions: List[Dict]) -> List[Dict]:
-        """Symbol için pozisyonları filtrele"""
+        """Filter positions for a symbol"""
         return [p for p in positions if p.get('symbol') == symbol]
 
     def _normalize_timestamp(self, ts: Any) -> Optional[datetime]:
-        """Timestamp'i datetime'a çevir"""
+        """Convert timestamp to datetime"""
         if ts is None:
             return None
 
@@ -377,27 +377,27 @@ class PositionManager:
         entry_time: Optional[Any] = None
     ) -> Dict[str, Any]:
         """
-        Standart pozisyon dict oluştur
+        Create a standard position dictionary.
 
-        Bu method TradingEngine ve BacktestEngine'deki manuel dict
-        construction'ın yerini alır. Tek bir yerden position format'ı
-        kontrol edilir.
+        This method replaces the manual dictionary
+        construction in TradingEngine and BacktestEngine.
+        The position format is checked from a single location.
 
         Args:
             position_id: Pozisyon ID
             symbol: Trading symbol
-            side: 'LONG' veya 'SHORT'
-            entry_price: Giriş fiyatı
-            quantity: Miktar
-            sl_price: Stop loss fiyatı (optional)
-            tp_price: Take profit fiyatı (optional)
+            side: 'LONG' or 'SHORT'
+            entry_price: Entry price
+            quantity: Quantity
+            sl_price: Stop loss price (optional)
+            tp_price: Take profit price (optional)
             order_id: Broker order ID (optional)
-            entry_time: Giriş zamanı (optional, default=now)
+            entry_time: Entry time (optional, default=now)
 
         Returns:
             Dict: Standart position dict
 
-        Örnek:
+        Example:
             >>> pos = PositionManager.create_position(
             ...     position_id=1,
             ...     symbol='BTCUSDT',
@@ -420,10 +420,10 @@ class PositionManager:
             'entry_time': entry_time,
             'entry_price': entry_price,
             'quantity': quantity,
-            'original_quantity': quantity,  # Partial exit tracking için
+            'original_quantity': quantity,  # For partial exit tracking
             'sl_price': sl_price,
             'tp_price': tp_price,
-            'stop_loss': sl_price,      # Alias (bazı yerlerde stop_loss kullanılıyor)
+            'stop_loss': sl_price,      # Alias (stop_loss is used in some places)
             'take_profit': tp_price,    # Alias
             'highest_price': entry_price,
             'lowest_price': entry_price,
@@ -437,18 +437,18 @@ class PositionManager:
         current_price: float
     ) -> bool:
         """
-        Pozisyon için highest/lowest fiyat güncelle
+        Update the highest/lowest price for the position.
 
-        Trailing stop ve break-even hesaplamaları için gerekli.
+        Required for trailing stop and break-even calculations.
 
         Args:
-            position: Position dict (mutable - yerinde güncellenir)
-            current_price: Güncel fiyat
+            position: Position dictionary (mutable - updated in place)
+            current_price: Current price
 
         Returns:
-            bool: True = güncelleme yapıldı
+            bool: True = update performed
 
-        Örnek:
+        Example:
             >>> updated = PositionManager.update_extreme_prices(position, current_price)
             >>> if updated:
             ...     print(f"New high/low: {position['highest_price']}/{position['lowest_price']}")
@@ -472,7 +472,7 @@ class PositionManager:
     # ========================================================================
 
     def get_config_summary(self) -> Dict:
-        """Konfigürasyon özetini getir"""
+        """Get the configuration summary"""
         return {
             'max_positions_per_symbol': self.max_positions_per_symbol,
             'pyramiding_enabled': self.pyramiding_enabled,
@@ -519,18 +519,18 @@ if __name__ == "__main__":
 
     pm = PositionManager(MockStrategy())
 
-    # Test 1: Boş pozisyon listesi
+    # Test 1: Empty position list
     print("\n1. Empty positions - can open LONG?")
     result = pm.can_open_position('BTCUSDT', 'LONG', [])
     print(f"   can_open: {result.can_open}, reason: {result.reason}, scale: {result.pyramiding_scale}")
 
-    # Test 2: Bir LONG pozisyon var, ikinci LONG açılabilir mi?
+    # Test 2: There is a LONG position, can a second LONG be opened?
     print("\n2. One LONG exists - can open another LONG?")
     positions = [{'symbol': 'BTCUSDT', 'side': 'LONG'}]
     result = pm.can_open_position('BTCUSDT', 'LONG', positions)
     print(f"   can_open: {result.can_open}, reason: {result.reason}, scale: {result.pyramiding_scale:.2f}")
 
-    # Test 3: Bir LONG var, SHORT açılabilir mi? (one-way mode)
+    # Test 3: Is it possible to open a SHORT position if there is a LONG position open? (one-way mode)
     print("\n3. One LONG exists - can open SHORT? (one-way mode)")
     result = pm.can_open_position('BTCUSDT', 'SHORT', positions)
     print(f"   can_open: {result.can_open}, should_close_opposite: {result.should_close_opposite}")

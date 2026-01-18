@@ -8,22 +8,22 @@ Date: 2025-11-13
 Author: SuperBot Team
 
 Description:
-    Koşul operatörlerinin implementasyonları.
+    Implementation of conditional operators.
     
-    Desteklenen operatörler:
-    - Karşılaştırma: >, <, >=, <=, ==, !=
+    Supported operators:
+    - Comparison: >, <, >=, <=, ==, !=
     - Crossover/Crossunder: crossover, crossunder
     - Trend: rising, falling
     - Range: between, outside, near
 
-Kullanım:
+Usage:
     from components.strategies.helpers.operators import evaluate_condition
     
-    # Karşılaştırma
+    # Comparison
     result = evaluate_condition(45.5, '>', 30)  # True
     
     # Crossover
-    result = evaluate_crossover([29, 31], 30)  # True (crossover yukarı)
+    result = evaluate_crossover([29, 31], 30)  # True (crossover is above)
     
     # Rising
     result = evaluate_rising([40, 42, 45], 3)  # True (3 bar rising)
@@ -35,11 +35,11 @@ import pandas as pd
 
 
 # ============================================================================
-# KARŞILAŞTIRMA OPERATÖRLERI
+# COMPARISON OPERATORS
 # ============================================================================
 
 def compare_gt(left: Union[int, float], right: Union[int, float]) -> bool:
-    """Büyüktür (>)"""
+    """Greater than (>)"""
     # NaN check: if either value is NaN, return False
     if pd.isna(left) or pd.isna(right):
         return False
@@ -47,7 +47,7 @@ def compare_gt(left: Union[int, float], right: Union[int, float]) -> bool:
 
 
 def compare_lt(left: Union[int, float], right: Union[int, float]) -> bool:
-    """Küçüktür (<)"""
+    """Less than (<)"""
     # NaN check: if either value is NaN, return False
     if pd.isna(left) or pd.isna(right):
         return False
@@ -55,7 +55,7 @@ def compare_lt(left: Union[int, float], right: Union[int, float]) -> bool:
 
 
 def compare_gte(left: Union[int, float], right: Union[int, float]) -> bool:
-    """Büyük eşittir (>=)"""
+    """Greater than or equal to (>=)"""
     # NaN check: if either value is NaN, return False
     if pd.isna(left) or pd.isna(right):
         return False
@@ -63,7 +63,7 @@ def compare_gte(left: Union[int, float], right: Union[int, float]) -> bool:
 
 
 def compare_lte(left: Union[int, float], right: Union[int, float]) -> bool:
-    """Küçük eşittir (<=)"""
+    """Less than or equal to (<=)"""
     # NaN check: if either value is NaN, return False
     if pd.isna(left) or pd.isna(right):
         return False
@@ -71,7 +71,7 @@ def compare_lte(left: Union[int, float], right: Union[int, float]) -> bool:
 
 
 def compare_eq(left: Any, right: Any) -> bool:
-    """Eşittir (==)"""
+    """Equals (==)"""
     # Boolean comparison
     if isinstance(left, bool) or isinstance(right, bool):
         return bool(left) == bool(right)
@@ -85,7 +85,7 @@ def compare_eq(left: Any, right: Any) -> bool:
 
 
 def compare_neq(left: Any, right: Any) -> bool:
-    """Eşit değil (!=)"""
+    """Not equal (!=)"""
     return not compare_eq(left, right)
 
 
@@ -98,18 +98,18 @@ def evaluate_crossover(
     threshold: Union[float, List, pd.Series, np.ndarray]
 ) -> bool:
     """
-    Crossover tespiti (yukarı kesme)
+    Crossover detection (upper cut)
     
     Args:
-        series: Indicator serisi (son 2 değer minimum)
-        threshold: Kesilen değer veya seri
+        series: Indicator series (last 2 values are minimum)
+        threshold: The value or series used as a threshold.
     
     Returns:
-        True if crossover occurred (önceki bar altında, şimdi üstte)
+        True if crossover occurred (below the previous bar, now above)
     
-    Örnek:
+    Example:
         series = [29, 31], threshold = 30 -> True (crossover)
-        series = [31, 32], threshold = 30 -> False (zaten üstte)
+        series = [31, 32], threshold = 30 -> False (already above)
     """
     # Convert to numpy array
     if isinstance(series, (list, tuple)):
@@ -152,18 +152,18 @@ def evaluate_crossunder(
     threshold: Union[float, List, pd.Series, np.ndarray]
 ) -> bool:
     """
-    Crossunder tespiti (aşağı kesme)
+    Crossunder detection (undershoot)
     
     Args:
-        series: Indicator serisi (son 2 değer minimum)
-        threshold: Kesilen değer veya seri
+        series: Indicator series (last 2 values are minimum)
+        threshold: The value or series used for thresholding.
     
     Returns:
-        True if crossunder occurred (önceki bar üstte, şimdi altta)
+        True if crossunder occurred (previous bar was above, now it is below)
     
-    Örnek:
+    Example:
         series = [31, 29], threshold = 30 -> True (crossunder)
-        series = [29, 28], threshold = 30 -> False (zaten altta)
+        series = [29, 28], threshold = 30 -> False (already below)
     """
     # Convert to numpy array
     if isinstance(series, (list, tuple)):
@@ -202,7 +202,7 @@ def evaluate_crossunder(
 
 
 # ============================================================================
-# TREND OPERATÖRLERI
+# TREND OPERATORS
 # ============================================================================
 
 def evaluate_rising(
@@ -210,16 +210,16 @@ def evaluate_rising(
     periods: int
 ) -> bool:
     """
-    Rising tespiti (yükseliyor mu?)
+    Rising detection (is it rising?)
     
     Args:
         series: Indicator serisi
-        periods: Kaç bar kontrol edilecek
+        periods: The number of bars to check.
     
     Returns:
         True if rising for N periods
     
-    Örnek:
+    Example:
         series = [40, 42, 45], periods = 3 -> True
         series = [40, 42, 41], periods = 3 -> False
     """
@@ -249,16 +249,16 @@ def evaluate_falling(
     periods: int
 ) -> bool:
     """
-    Falling tespiti (düşüyor mu?)
+    Falling detection (is it falling?)
     
     Args:
         series: Indicator serisi
-        periods: Kaç bar kontrol edilecek
+        periods: The number of bars to check.
     
     Returns:
         True if falling for N periods
     
-    Örnek:
+    Example:
         series = [45, 42, 40], periods = 3 -> True
         series = [45, 42, 43], periods = 3 -> False
     """
@@ -284,7 +284,7 @@ def evaluate_falling(
 
 
 # ============================================================================
-# RANGE OPERATÖRLERI
+# RANGE OPERATORS
 # ============================================================================
 
 def evaluate_between(
@@ -292,21 +292,21 @@ def evaluate_between(
     range_values: List[Union[int, float]]
 ) -> bool:
     """
-    Between tespiti (aralıkta mı?)
+    Check if the value is within the specified range.
     
     Args:
-        value: Kontrol edilecek değer
+        value: The value to be checked
         range_values: [min, max]
     
     Returns:
         True if min <= value <= max
     
-    Örnek:
+    Example:
         value = 50, range_values = [30, 70] -> True
         value = 80, range_values = [30, 70] -> False
     """
     if not isinstance(range_values, (list, tuple)) or len(range_values) != 2:
-        raise ValueError(f"between operatörü için [min, max] gerekli, {range_values} verildi")
+        raise ValueError(f"The [min, max] values are required for the 'between' operator, but {range_values} was provided.")
     
     min_val, max_val = range_values
     return float(min_val) <= float(value) <= float(max_val)
@@ -317,21 +317,21 @@ def evaluate_outside(
     range_values: List[Union[int, float]]
 ) -> bool:
     """
-    Outside tespiti (aralık dışında mı?)
+    Outside detection (is it outside the range?)
     
     Args:
-        value: Kontrol edilecek değer
+        value: The value to be checked
         range_values: [min, max]
     
     Returns:
         True if value < min OR value > max
     
-    Örnek:
+    Example:
         value = 80, range_values = [30, 70] -> True
         value = 50, range_values = [30, 70] -> False
     """
     if not isinstance(range_values, (list, tuple)) or len(range_values) != 2:
-        raise ValueError(f"outside operatörü için [min, max] gerekli, {range_values} verildi")
+        raise ValueError(f"The [min, max] parameters are required for the 'outside' operator, but {range_values} was provided.")
     
     min_val, max_val = range_values
     return float(value) < float(min_val) or float(value) > float(max_val)
@@ -342,22 +342,22 @@ def evaluate_near(
     target_and_threshold: List[Union[int, float]]
 ) -> bool:
     """
-    Near tespiti (yakın mı?)
+    Near detection (is it near?)
     
     Args:
-        value: Kontrol edilecek değer
+        value: The value to be checked
         target_and_threshold: [target, percent_threshold]
     
     Returns:
         True if value is within percent_threshold of target
     
-    Örnek:
-        value = 101, target_and_threshold = [100, 1] -> True (%1 içinde)
+    Example:
+        value = 101, target_and_threshold = [100, 1] -> True (within %1)
         value = 105, target_and_threshold = [100, 1] -> False
     """
     if not isinstance(target_and_threshold, (list, tuple)) or len(target_and_threshold) != 2:
         raise ValueError(
-            f"near operatörü için [target, percent_threshold] gerekli, "
+            f"The 'near' operator requires [target, percent_threshold], "
             f"{target_and_threshold} verildi"
         )
     
@@ -381,25 +381,25 @@ def evaluate_condition(
     right: Any
 ) -> bool:
     """
-    Koşulu değerlendir (unified interface)
+    Evaluate the condition (unified interface)
     
     Args:
-        left: Sol operand (değer veya seri)
-        operator: Operatör string
-        right: Sağ operand (değer veya seri)
+        left: Left operand (value or series)
+        operator: Operator string
+        right: The right operand (value or series)
     
     Returns:
-        bool: Koşul sonucu
+        bool: The result of the condition.
     
     Raises:
-        ValueError: Geçersiz operatör
+        ValueError: Invalid operator
     
-    Örnek:
+    Example:
         evaluate_condition(45, '>', 30)  # True
         evaluate_condition([29, 31], 'crossover', 30)  # True
         evaluate_condition([40, 42, 45], 'rising', 3)  # True
     """
-    # Karşılaştırma operatörleri
+    # Comparison operators
     if operator == '>':
         return compare_gt(left, right)
     elif operator == '<':
@@ -441,7 +441,7 @@ def evaluate_condition(
             return compare_neq(left, right)
     
     else:
-        raise ValueError(f"Desteklenmeyen operatör: '{operator}'")
+        raise ValueError(f"Unsupported operator: '{operator}'")
 
 
 # ============================================================================
@@ -450,14 +450,14 @@ def evaluate_condition(
 
 def get_required_history(operator: str, right_operand: Any) -> int:
     """
-    Operatör için gereken history bar sayısı
+    The number of history bars required for the operator.
     
     Args:
-        operator: Operatör string
-        right_operand: Sağ operand
+        operator: Operator string
+        right_operand: The right operand.
     
     Returns:
-        int: Gereken bar sayısı
+        int: The required number of bars.
     """
     if operator in ('crossover', 'crossunder'):
         return 2
@@ -467,7 +467,7 @@ def get_required_history(operator: str, right_operand: Any) -> int:
             return right_operand
         return 2  # Default
     
-    # Diğer operatörler: 1 bar (mevcut)
+    # Other operators: 1 bar (existing)
     return 1
 
 
@@ -476,7 +476,7 @@ def get_required_history(operator: str, right_operand: Any) -> int:
 # ============================================================================
 
 __all__ = [
-    # Karşılaştırma
+    # Comparison
     'compare_gt',
     'compare_lt',
     'compare_gte',

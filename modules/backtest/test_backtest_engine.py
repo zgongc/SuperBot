@@ -56,7 +56,7 @@ async def test_basic_backtest(strategy_path: str):
     Backtest is starting...
     result = await engine.run(strategy, use_cache=True)
 
-    SONUÇLAR:
+    RESULTS:
     Trade count: {result.metrics.total_trades}
     print(f"   Total Return: ${result.metrics.total_return_usd:,.2f} ({result.metrics.total_return_pct:.2f}%)")
     print(f"   Win Rate: {result.metrics.win_rate:.2f}%")
@@ -118,7 +118,7 @@ async def test_position_sizing(strategy_path: str):
     ratio_expected = 20.0 / 5.0  # 4.0x
     ratio_actual = abs(return2_usd / return1_usd) if return1_usd != 0 else 0
 
-    print(f"   Beklenen oran: {ratio_expected:.1f}x")
+    print(f"   Expected ratio: {ratio_expected:.1f}x")
     print(f"   Actual ratio: {ratio_actual:.1f}x")
 
     Error rate control: 20% error penalty
@@ -184,11 +184,11 @@ async def test_metrics_calculation(strategy_path: str):
 
     # 4. Profit Factor > 0 (if trade exists)
     if metrics.total_trades > 0 and metrics.losers > 0:
-        assert metrics.profit_factor >= 0, "Profit factor negatif olamaz"
+        assert metrics.profit_factor >= 0, "Profit factor cannot be negative"
         Profit Factor is valid
 
     # 5. Maximum drawdown ≤ 0 (maximum drawdown negative should be)
-    assert metrics.max_drawdown_pct <= 0, "Max drawdown pozitif olamaz"
+    assert metrics.max_drawdown_pct <= 0, "Max drawdown cannot be positive"
     Max Drawdown is valid
 
     print("\n   ✅ Test 3 PASSED!")
@@ -225,7 +225,7 @@ async def test_caching(strategy_path: str):
     time3 = result3.execution_time_seconds
     print(f"   Execution time: {time3:.2f}s")
 
-    SONUÇLAR:
+    RESULTS:
     First run: {time1:.2f}s
     print(f"   Cache'li run: {time2:.2f}s")
     print(f"   Cache'siz run: {time3:.2f}s")

@@ -8,13 +8,13 @@ Date: 2025-11-13
 Author: SuperBot Team
 
 Description:
-    Pattern tespiti ve değerlendirmesi:
+    Pattern detection and evaluation:
     - Candlestick patterns (21+ patterns via existing indicators)
     - SMC patterns (FVG, BOS, CHoCH, Order Blocks)
     - Pattern context validation
     - Pattern strength calculation
 
-Kullanım:
+Usage:
     from components.strategies.pattern_generator import PatternGenerator
 
     generator = PatternGenerator(strategy)
@@ -31,9 +31,9 @@ from components.strategies.base_strategy import BaseStrategy
 
 class PatternGenerator:
     """
-    Pattern detection ve validation generator'ı
+    Pattern detection and validation generator.
 
-    Candlestick ve SMC pattern'lerini tespit eder ve değerlendirir
+    Detects and evaluates candlestick and SMC patterns.
     """
     
     # Supported candlestick patterns
@@ -88,10 +88,10 @@ class PatternGenerator:
         pattern_types: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """
-        Data'dan pattern'leri tespit et
+        Detect patterns from the data.
         
         Args:
-            data: OHLCV DataFrame (indicators calculated olmalı)
+            data: OHLCV DataFrame (indicators must be calculated)
             pattern_types: Detect edilecek pattern'ler (None = all)
         
         Returns:
@@ -136,7 +136,7 @@ class PatternGenerator:
         filter_patterns: Optional[List[str]] = None
     ) -> Dict[str, bool]:
         """
-        Candlestick pattern'lerini tespit et
+        Detect candlestick patterns.
         
         Args:
             data: OHLCV DataFrame
@@ -179,7 +179,7 @@ class PatternGenerator:
         filter_patterns: Optional[List[str]] = None
     ) -> Dict[str, Union[bool, int]]:
         """
-        SMC pattern'lerini tespit et
+        Detect SMC patterns.
         
         Args:
             data: OHLCV DataFrame (with SMC indicators)
@@ -245,11 +245,11 @@ class PatternGenerator:
         detected_patterns: Dict[str, Any]
     ) -> bool:
         """
-        Pattern tespit edildi mi?
+        Has a pattern been detected?
         
         Args:
-            pattern_name: Pattern adı
-            detected_patterns: detect_patterns() sonucu
+            pattern_name: Pattern name
+            detected_patterns: The result of the detect_patterns() function.
         
         Returns:
             bool: True if pattern detected
@@ -271,25 +271,25 @@ class PatternGenerator:
         data: pd.DataFrame
     ) -> float:
         """
-        Pattern gücünü hesapla (0-1)
+        Calculate pattern strength (0-1)
         
         Args:
-            pattern_name: Pattern adı
+            pattern_name: Pattern name
             data: OHLCV DataFrame
         
         Returns:
             float: Pattern strength (0-1, 1=strong)
         
         Note:
-            Bu basitleştirilmiş bir implementasyon.
-            Production'da daha sophisticated olmalı.
+            This is a simplified implementation.
+            It should be more sophisticated in production.
         """
         if data.empty:
             return 0.0
         
         current = data.iloc[-1]
         
-        # Candlestick patterns: context ile güçlendir
+        # Candlestick patterns: enhanced with context
         if pattern_name in self.CANDLESTICK_PATTERNS:
             base_strength = 0.7  # Default strength
             
@@ -336,7 +336,7 @@ class PatternGenerator:
         Pattern'in context'i uygun mu?
         
         Args:
-            pattern_name: Pattern adı
+            pattern_name: Pattern name
             data: OHLCV DataFrame
             side: 'LONG' or 'SHORT'
         
@@ -346,7 +346,7 @@ class PatternGenerator:
         if data.empty:
             return False
         
-        # Bullish pattern için LONG, bearish için SHORT kontrol et
+        # Check for LONG for bullish patterns, and SHORT for bearish patterns.
         if side.upper() == 'LONG':
             # Bullish patterns OK
             if any(keyword in pattern_name.lower() for keyword in ['bullish', 'hammer', 'morning', 'piercing', 'white']):
@@ -391,10 +391,10 @@ class PatternGenerator:
         detected_patterns: Dict[str, Any]
     ) -> List[str]:
         """
-        Tüm detect edilen pattern'leri liste olarak dön
+        Returns a list of all detected patterns.
         
         Args:
-            detected_patterns: detect_patterns() sonucu
+            detected_patterns: The result of the detect_patterns() function.
         
         Returns:
             List[str]: Pattern names

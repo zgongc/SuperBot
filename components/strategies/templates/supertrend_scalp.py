@@ -8,26 +8,26 @@ Versiyon: 1.0.0
 
 SuperTrend + EMA + RSI Scalping Strategy
 
-Strateji Mantığı:
-- SuperTrend: Ana trend yönü belirleme
-- EMA Cross (9/21): Hızlı momentum değişimi
-- RSI: Aşırı alım/satım filtresi
-- ADX: Trend gücü filtresi
+Strategy Logic:
+- SuperTrend: Determines the main trend direction.
+- EMA Cross (9/21): Detects rapid momentum changes.
+- RSI: Overbought/oversold filter.
+- ADX: Trend strength filter.
 
 Entry:
-- SuperTrend ile aynı yönde EMA crossover
-- RSI aşırı bölgelerde değil
-- ADX trend gücü yeterli
+- EMA crossover in the same direction as SuperTrend
+- RSI is not in overbought regions
+- ADX trend strength is sufficient.
 
 Exit:
-- SuperTrend yön değişimi
+- SuperTrend direction change
 - EMA crossunder/crossover
-- Trailing stop ile kar kilitleme
+- Trailing stop with profit locking.
 
 Expected Performance:
-- Yüksek frekanslı trade (scalp)
-- Düşük TP/SL ile hızlı çıkışlar
-- Trend takibi ile yüksek win rate
+- High-frequency trading (scalping)
+- Fast exits with low TP/SL
+- High win rate with trend following
 """
 
 import sys
@@ -55,8 +55,8 @@ class Strategy(BaseStrategy):
     """
     SuperTrend Scalp Strategy
 
-    ATR tabanlı SuperTrend ile scalping
-    Hedef: Hızlı giriş/çıkış, trend takibi
+    ATR based SuperTrend for scalping
+    Goal: Fast entry/exit, trend tracking
     """
 
     def __init__(self):
@@ -67,7 +67,7 @@ class Strategy(BaseStrategy):
         # ====================================================================
         self.strategy_name = "SuperTrend Scalp Strategy"
         self.strategy_version = "1.0.0"
-        self.description = "SuperTrend + EMA + RSI ile hızlı scalping stratejisi"
+        self.description = "Fast scalping strategy with SuperTrend + EMA + RSI"
         self.author = "SuperBot Team"
         self.created_date = "2025-12-08"
 
@@ -97,7 +97,7 @@ class Strategy(BaseStrategy):
         self.side_method = TradingSide.BOTH
         self.leverage = 1
 
-        # Timeframe - 1m/5m scalp için
+        # Timeframe - for 1m/5m scalping
         self.mtf_timeframes = []
         self.primary_timeframe = "5m"
 
@@ -157,7 +157,7 @@ class Strategy(BaseStrategy):
         # ====================================================================
         self.exit_strategy = ExitStrategy(
             take_profit_method=ExitMethod.FIXED_PERCENT,
-            take_profit_percent=3.0,              # Scalp için dar TP
+            take_profit_percent=3.0,  # Narrow take profit for scalping
             take_profit_price=110000.0,
             take_profit_risk_reward_ratio=2.0,
             take_profit_atr_multiplier=2.0,
@@ -165,14 +165,14 @@ class Strategy(BaseStrategy):
             take_profit_ai_level=1,
 
             stop_loss_method=StopLossMethod.FIXED_PERCENT,
-            stop_loss_percent=2.0,                # Scalp için dar SL
+            stop_loss_percent=2.0,                # Narrow stop loss for scalping
             stop_loss_price=95000.0,
             stop_loss_atr_multiplier=1.5,
             stop_loss_swing_lookback=5,
             stop_loss_fib_level=0.382,
             stop_loss_ai_level=1,
 
-            # Trailing Stop - scalp için hassas
+            # Trailing Stop - precise for scalping
             trailing_stop_enabled=True,
             trailing_activation_profit_percent=1.0,
             trailing_callback_percent=0.4,
@@ -184,7 +184,7 @@ class Strategy(BaseStrategy):
             break_even_trigger_profit_percent=1.2,
             break_even_offset=0.1,
 
-            # Partial Exit - scalp için hızlı kar al
+            # Partial Exit - for quick profit taking in scalping
             partial_exit_enabled=True,
             partial_exit_levels=[0.8, 1.5, 2.0],
             partial_exit_sizes=[0.40, 0.35, 0.25],
@@ -199,7 +199,7 @@ class Strategy(BaseStrategy):
                 # output: supertrend, upper, lower, trend (1=UP, -1=DOWN)
                 "supertrend": {"period": 10, "multiplier": 3.0},
 
-                # Hızlı EMA'lar - Scalp için
+                # Fast EMAs - for scalping
                 "ema_9": {"period": 9},
                 "ema_21": {"period": 21},
                 "ema_50": {"period": 50},
@@ -207,7 +207,7 @@ class Strategy(BaseStrategy):
                 # RSI - Momentum filtresi
                 "rsi_14": {"period": 14},
 
-                # ADX - Trend gücü
+                # ADX - Trend strength
                 "adx": {"period": 14},
 
                 # ATR - Volatilite
@@ -347,13 +347,13 @@ class Strategy(BaseStrategy):
 
                 # Stop Loss
                 #'stop_loss_method': ['PERCENTAGE', 'ATR_BASED', 'FIBONACCI'],
-                'stop_loss_value': (0.5, 5, 0.1),  # Scalp için dar SL range
+                'stop_loss_value': (0.5, 5, 0.1),  # Narrow SL range for scalping
                 #'stop_loss_atr_multiplier': (1.0, 2.5, 0.25),
                 #'stop_loss_fib_level': [0.236, 0.382, 0.5, 0.618],
 
                 # Take Profit
                 #'take_profit_method': ['PERCENTAGE', 'RISK_REWARD', 'ATR_BASED'],
-                'take_profit_value': (1.0, 10.0, 0.2),  # Scalp için dar TP range
+                'take_profit_value': (1.0, 10.0, 0.2),  # Narrow TP range for scalping
                 #'take_profit_risk_reward': (1.5, 3.0, 0.25),
                 #'take_profit_atr_multiplier': (1.5, 3.0, 0.5),
 

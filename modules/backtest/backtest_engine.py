@@ -95,7 +95,7 @@ def _get_atr_value_from_row(row: pd.Series) -> Optional[float]:
         ATR value or None
 
     Logic:
-        1. 'atr' varsa direkt kullan
+        1. If 'atr' exists, use it directly.
         2. Otherwise, search for patterns like 'atr_14', 'atr_20'.
         3. Return the first one you find
     """
@@ -181,7 +181,7 @@ class BacktestEngine:
                     logger=self.logger
                 )
                 self.feature_extractor = FeatureExtractor(logger=self.logger)
-                self.logger.info("✅ AI veri toplama aktif (FutureLogger)")
+                self.logger.info("✅ AI data collection is active (FutureLogger)")
             except ImportError as e:
                 self.logger.warning(f"⚠️  AI modules could not be loaded: {e}")
                 self.enable_ai_logging = False
@@ -292,7 +292,7 @@ class BacktestEngine:
             try:
                 if self.future_logger.completed_trades:
                     self.future_logger._save_batch()
-                    self.logger.info(f"✅ AI data kaydedildi: {self.future_logger.total_saved} trade")
+                    self.logger.info(f"✅ AI data saved: {self.future_logger.total_saved} trade")
             except Exception as e:
                 self.logger.debug(f"⚠️  AI data flush error: {e}")
 
@@ -311,7 +311,7 @@ class BacktestEngine:
             self.logger.info("✅ Backtest completed!")
             self.logger.info(f"⏱️  Duration: {execution_time:.2f}s")
             self.logger.info(f"💼 Trade Count: {len(trades)}")
-            self.logger.info(f"💰 Getiri: {metrics.total_return_pct:+.2f}%")
+            self.logger.info(f"💰 Return: {metrics.total_return_pct:+.2f}%")
             self.logger.info(f"📊 Profit Factor: {metrics.profit_factor:.2f}")
             self.logger.info(f"📈 Win Rate: {metrics.win_rate:.1f}%")
             self.logger.info("=" * 60)
@@ -1063,8 +1063,8 @@ class BacktestEngine:
                 would_have_won = max_profit > 1.0 and max_profit > max_loss
 
             # AI rejected = AI said "this trade will lose"
-            # If trade would have lost → AI was CORRECT
-            # If trade would have won → AI was WRONG
+            # If the trade would have lost -> AI was CORRECT
+            # If trade would have won -> AI was WRONG
             if would_have_won:
                 wrong_rejections += 1
             else:
@@ -1858,7 +1858,7 @@ class BacktestEngine:
         slippage = position_value * (config.slippage_pct / 100) * 2
 
         # Spread cost: entry and exit spread cost
-        # Entry spread already included in entry_price, exit spread already included in exit_price_with_spread
+        # Entry spread is already included in entry_price, exit spread is already included in exit_price_with_spread
         # Spread cost = |exit_price - exit_price_with_spread| * quantity + entry spread cost
         exit_spread_cost = abs(exit_price - exit_price_with_spread) * position['quantity']
         # There is also the same spread in the Entry, equal to %spread/2 of the position value
@@ -2395,36 +2395,36 @@ async def run_backtest_cli(
     logger.info("📊 BACKTEST RESULTS")
     logger.info("=" * 60)
     logger.info(f"\nStrateji: {strategy.strategy_name} v{strategy.strategy_version}")
-    logger.info(f"Periyod: {result.config.start_date.date()} → {result.config.end_date.date()}")
-    logger.info(f"Sembol: {result.config.symbols[0]} - {strategy.leverage}x")
+    logger.info(f"Period: {result.config.start_date.date()} -> {result.config.end_date.date()}")
+    logger.info(f"Symbol: {result.config.symbols[0]} - {strategy.leverage}x")
     logger.info(f"Primary TF: {result.config.primary_timeframe}")
     if len(result.config.mtf_timeframes) > 1:
         logger.info(f"MTF: {', '.join(result.config.mtf_timeframes)}")
 
-    logger.info(f"\n💼 PERFORMANS:")
-    logger.info(f"   Toplam Trade: {result.metrics.total_trades}")
-    logger.info(f"   Toplam Getiri: ${result.metrics.total_return_usd:,.2f} ({result.metrics.total_return_pct:+.2f}%)")
+    logger.info(f"\n💼 PERFORMANCE:")
+    logger.info(f"   Total Trade: {result.metrics.total_trades}")
+    logger.info(f"   Total Return: ${result.metrics.total_return_usd:,.2f} ({result.metrics.total_return_pct:+.2f}%)")
     logger.info(f"   Win Rate: {result.metrics.win_rate:.2f}%")
     logger.info(f"   Profit Factor: {result.metrics.profit_factor:.2f}")
     logger.info(f"   Sharpe Ratio: {result.metrics.sharpe_ratio:.3f}")
     logger.info(f"   Max Drawdown: {result.metrics.max_drawdown_pct:.2f}%")
 
-    logger.info(f"\n📈 DETAYLAR:")
-    logger.info(f"   Kazanan: {result.metrics.winners} (ort: ${result.metrics.avg_win_usd:,.2f})")
-    logger.info(f"   Kaybeden: {result.metrics.losers} (ort: ${result.metrics.avg_loss_usd:,.2f})")
+    logger.info(f"\n📈 DETAILS:")
+    logger.info(f"   Winner: {result.metrics.winners} (avg: ${result.metrics.avg_win_usd:,.2f}")
+    logger.info(f"   Losers: {result.metrics.losers} (avg: ${result.metrics.avg_loss_usd:,.2f}")
 
     logger.info(f"\n💰 COSTS:")
-    logger.info(f"   Komisyon: ${result.metrics.total_commission:,.2f}")
+    logger.info(f"   Commission: ${result.metrics.total_commission:,.2f}")
     logger.info(f"   Slippage: ${result.metrics.total_slippage:,.2f}")
     logger.info(f"   Spread: ${result.metrics.total_spread:,.2f}")
 
     logger.info(f"\n⏱️  Execution Time: {result.execution_time_seconds:.2f}s")
 
     if verbose:
-        logger.info(f"\n📋 TRADE'LER:")
+        logger.info(f"\n📋 TRADES:")
         for i, trade in enumerate(result.trades[:5], 1):  # First 5 trades
-            logger.info(f"   #{i}: {trade.side.value} @ ${trade.entry_price:,.2f} → ${trade.exit_price:,.2f} "
-                  f"({trade.exit_reason.value}) = ${trade.net_pnl_usd:+.2f}")
+            logger.info(f"   #{i}: {trade.side.value} @ ${trade.entry_price:,.2f} -> ${trade.exit_price:,.2f} "
+                    f"({trade.exit_reason.value}) = ${trade.net_pnl_usd:+.2f}")
         if len(result.trades) > 5:
             logger.info(f"   ... and {len(result.trades) - 5} trade more")
 
@@ -2471,7 +2471,7 @@ async def bulk_backtest(
     logger.info("🚀 BULK BACKTEST STARTED")
     logger.info("=" * 80)
     logger.info(f"Strategy: {strategy_path}")
-    logger.info(f"Semboller: {', '.join(symbols)} ({len(symbols)} adet)")
+    logger.info(f"Symbols: {', '.join(symbols)} ({len(symbols)} items)")
     logger.info(f"Timeframes: {', '.join(timeframes)} ({len(timeframes)} adet)")
 
     # Create all combinations
@@ -2519,7 +2519,7 @@ async def bulk_backtest(
     logger.info("\n" + "=" * 80)
     logger.info("📊 BULK BACKTEST RESULTS")
     logger.info("=" * 80)
-    logger.info(f"Toplam Test: {total_tests}")
+    logger.info(f"Total Tests: {total_tests}")
     logger.info(f"Successful: {len(results)}")
     logger.info(f"Failed: {total_tests - len(results)}")
     logger.info(f"Total Duration: {elapsed:.1f}s")
@@ -2557,7 +2557,7 @@ async def bulk_backtest(
 
         logger.info("")
         logger.info("📈 AVERAGE VALUES:")
-        logger.info(f"   Getiri: {avg_return:.2f}%")
+        logger.info(f"   Return: {avg_return:.2f}%")
         logger.info(f"   Number of Trades: {avg_trades:.1f}")
         logger.info(f"   Win Rate: {avg_winrate:.1f}%")
 

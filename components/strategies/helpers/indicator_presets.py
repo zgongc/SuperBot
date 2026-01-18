@@ -6,31 +6,31 @@ Date: 2025-10-23
 Author: SuperBot Team
 
 Description:
-    72 indikatör için hazır konfigürasyonlar.
-    Strategy'de sadece get_preset() çağır, tüm config gelsin!
+    72 pre-configured indicators.
+    In the Strategy, only call get_preset(), and retrieve the entire config!
 
-    Avantajları:
-    - ✅ 70+ indicator için standart config
-    - ✅ Signal confirmation örnekleri
-    - ✅ Açıklamalı (eğitici)
+    Advantages:
+    - ✅ Standard config for the 70+ indicator
+    - ✅ Signal confirmation examples
+    - ✅ Documented (educational)
     - ✅ Override edilebilir
-    - ✅ Maintenance kolaylaşır
+    - ✅ Makes maintenance easier
 
-    Kullanım:
+    Usage:
         from strategies.helpers.indicator_presets import get_preset, merge_config
 
-        # Standart config kullan
+        # Use standard config
         indicators = {
             "rsi": get_preset("rsi"),
             "ema": get_preset("ema"),
         }
 
-        # Özelleştir
+        # Customize
         indicators = {
             "rsi": get_preset("rsi", period=21, oversold=25),  # Override
             "ema": merge_config(
                 get_preset("ema"),
-                {"default_fast": 12}  # Sadece bir parametreyi değiştir
+                {"default_fast": 12}  # Only change one parameter
             )
         }
 
@@ -60,23 +60,23 @@ INDICATOR_PRESETS: Dict[str, Dict[str, Any]] = {
 
         # 🎯 Signal Confirmation
         "signal_confirmation": {
-            "enabled": False,       # ⚠️ Backtest için False (historical data yok)
+            "enabled": False,       # ⚠️ False for backtesting (no historical data)
 
             # Method: "trend_reversal"
-            # Açıklama: RSI oversold/overbought bölgesine girip
-            #           çıkana kadar bekle (gerçek reversal)
+            # Description: RSI enters the oversold/overbought region.
+            # Wait until it exits (real reversal)
             "method": "trend_reversal",
 
-            # distance_ratio: Ne kadar yakın olmalı (0.2 = %20)
+            # distance_ratio: How close should it be (0.2 = 20%)
             "distance_ratio": 0.2,
 
-            # min_bars_in_zone: Kaç bar oversold/overbought'ta kalmalı
+            # min_bars_in_zone: How many bars should be in the oversold/overbought zone
             "min_bars_in_zone": 2,   # 2 bar zone'da kal
 
-            # confirmation_bars: Çıkış için kaç bar bekle
-            "confirmation_bars": 1,  # 1 bar sonra reversal onayı
+            # confirmation_bars: How many bars to wait for confirmation before exiting.
+            "confirmation_bars": 1,  # Confirmation after 1 bar
 
-            # max_pullback: Max geri çekilme (0.1 = %10)
+            # max_pullback: Maximum pullback (0.1 = 10%)
             "max_pullback": 0.1
         },
     },
@@ -94,13 +94,13 @@ INDICATOR_PRESETS: Dict[str, Dict[str, Any]] = {
             "enabled": False,        # ✅ %K/%D crossover
 
             # Method: "crossover_confirmation"
-            # Açıklama: %K ve %D çizgileri kesiştiğinde
+            # Description: When the %K and %D lines intersect.
             "method": "crossover_confirmation",
 
-            # min_divergence: Min %K-%D farkı
+            # min_divergence: Minimum %K-%D difference
             "min_divergence": 5.0,   # 5 puan fark
 
-            # confirmation_bars: Crossover sonrası kaç bar bekle
+            # confirmation_bars: How many bars to wait after the crossover.
             "confirmation_bars": 1
         },
     },
@@ -108,8 +108,8 @@ INDICATOR_PRESETS: Dict[str, Dict[str, Any]] = {
     "rsi_divergence": {
         "display_info": True,
         "default_period": 14,
-        "lookback": 5,               # Kaç bar geriye bak
-        "min_divergence_strength": 0.5,  # Min divergence gücü
+        "lookback": 5,               # How many bars to look back
+        "min_divergence_strength": 0.5,  # Minimum divergence strength
 
         "signal_confirmation": {
             "enabled": False,
@@ -134,7 +134,7 @@ INDICATOR_PRESETS: Dict[str, Dict[str, Any]] = {
     "roc": {
         "display_info": True,
         "default_period": 12,
-        "zero_line": 0,              # Zero line (momentum değişim noktası)
+        "zero_line": 0,              # Zero line (point of momentum change)
 
         "signal_confirmation": {
             "enabled": False,
@@ -161,7 +161,7 @@ INDICATOR_PRESETS: Dict[str, Dict[str, Any]] = {
         "default_period": 14,
         "oversold": 20,
         "overbought": 80,
-        "requires_volume": True,     # ⚠️ Volume gerekli!
+        "requires_volume": True,     # ⚠️ Volume is required!
 
         "signal_confirmation": {
             "enabled": False,
@@ -239,7 +239,7 @@ INDICATOR_PRESETS: Dict[str, Dict[str, Any]] = {
             "enabled": False,
 
             # Method: "crossover_confirmation"
-            # Açıklama: Price SMA'yı kestiğinde
+            # Description: When the Price SMA is crossed.
             "method": "crossover_confirmation",
 
             "distance_ratio": 0.1,   # %10 mesafe
@@ -249,23 +249,23 @@ INDICATOR_PRESETS: Dict[str, Dict[str, Any]] = {
 
     "ema": {
         "display_info": True,
-        "default_fast": 9,           # Hızlı EMA
-        "default_slow": 21,          # Yavaş EMA
+        "default_fast": 9,           # Fast EMA
+        "default_slow": 21,          # Slow EMA
 
         # 🎯 Signal Confirmation
         "signal_confirmation": {
             "enabled": False,        # ✅ Crossover confirmation
 
             # Method: "crossover_confirmation"
-            # Açıklama: EMA crossover gerçekleştikten sonra
-            #           belli bir mesafe ayrılana kadar bekle
+            # Description: After the EMA crossover occurs.
+            # Wait until a certain distance is achieved
             "method": "crossover_confirmation",
 
-            # distance_ratio: Crossover sonrası min mesafe
-            "distance_ratio": 0.15,  # %15 ayrılma
+            # distance_ratio: Minimum distance after crossover
+            "distance_ratio": 0.15,  # 15% separation
 
             # min_separation: Min absolute separation
-            "min_separation": 0.02   # %2 min ayırma
+            "min_separation": 0.02   # %2 minimum separation
         },
     },
 
@@ -316,7 +316,7 @@ INDICATOR_PRESETS: Dict[str, Dict[str, Any]] = {
     "vwma": {
         "display_info": True,
         "default_period": 20,
-        "requires_volume": True,     # ⚠️ Volume gerekli!
+        "requires_volume": True,     # ⚠️ Volume is required!
 
         "signal_confirmation": {
             "enabled": False,
@@ -336,25 +336,25 @@ INDICATOR_PRESETS: Dict[str, Dict[str, Any]] = {
             "enabled": False,
 
             # Method: "crossover_confirmation"
-            # Açıklama: MACD line ve Signal line kesiştiğinde
+            # Description: When the MACD line and the Signal line intersect.
             "method": "crossover_confirmation",
 
             "distance_ratio": 0.1,
             "confirmation_bars": 1,
-            "min_histogram": 0.001   # Min histogram değeri
+            "min_histogram": 0.001   # Minimum histogram value
         },
     },
 
     "adx": {
         "display_info": True,
         "default_period": 14,
-        "threshold": 25,             # Trend gücü eşiği (>25 = güçlü trend)
+        "threshold": 25,             # Trend strength threshold (>25 = strong trend)
 
         "signal_confirmation": {
             "enabled": False,
 
             # Method: "volatility_filter"
-            # Açıklama: ADX > threshold ise trend var, trade yap
+            # Description: If ADX is greater than the threshold, there is a trend, make a trade.
             "method": "volatility_filter",
 
             "high_threshold": 25,    # Min ADX (trend strength)
@@ -382,7 +382,7 @@ INDICATOR_PRESETS: Dict[str, Dict[str, Any]] = {
             "enabled": False,
 
             # Method: "trend_reversal"
-            # Açıklama: SuperTrend renk değiştirdiğinde
+            # Description: This is triggered when the SuperTrend color changes.
             "method": "trend_reversal",
 
             "confirmation_bars": 1,
@@ -412,11 +412,11 @@ INDICATOR_PRESETS: Dict[str, Dict[str, Any]] = {
             "enabled": False,
 
             # Method: "crossover_confirmation"
-            # Açıklama: Tenkan-Kijun cross + Cloud desteği
+            # Description: Tenkan-Kijun cross + Cloud support
             "method": "crossover_confirmation",
 
             "confirmation_bars": 1,
-            "require_cloud_support": True  # Cloud desteği gerekli mi?
+            "require_cloud_support": True  # Does cloud support required?
         },
     },
 
@@ -440,7 +440,7 @@ INDICATOR_PRESETS: Dict[str, Dict[str, Any]] = {
             "enabled": False,
 
             # Method: "squeeze_expansion"
-            # Açıklama: Keltner channel daraldıktan sonra genişlediğinde
+            # Description: Keltner channel narrowed and then widened.
             "method": "squeeze_expansion",
 
             "min_squeeze": 0.5,
@@ -455,20 +455,20 @@ INDICATOR_PRESETS: Dict[str, Dict[str, Any]] = {
     "atr": {
         "display_info": True,
         "default_period": 14,
-        "multiplier": 1.5,           # Stop loss için ATR çarpanı
+        "multiplier": 1.5,           # ATR multiplier for stop loss
 
         # 🎯 Signal Confirmation
         "signal_confirmation": {
             "enabled": False,        # ✅ Volatility filter
 
             # Method: "volatility_filter"
-            # Açıklama: Aşırı yüksek/düşük volatilitede trade yapma
+            # Description: Do not trade when volatility is excessively high/low.
             "method": "volatility_filter",
 
-            # high_threshold: Çok yüksek volatilite (trade yapma)
+            # high_threshold: Very high volatility (no trading)
             "high_threshold": 2.0,   # 2x average ATR
 
-            # low_threshold: Çok düşük volatilite (range)
+            # low_threshold: Very low volatility (range)
             "low_threshold": 0.5     # 0.5x average ATR
         },
     },
@@ -483,15 +483,15 @@ INDICATOR_PRESETS: Dict[str, Dict[str, Any]] = {
             "enabled": False,        # ✅ Squeeze/expansion detection
 
             # Method: "squeeze_expansion"
-            # Açıklama: BB sıkışıp genişlediğinde sinyal ver
-            #           (volatilite artışı)
+            # Description: Signal when the BB is stuck or expanded.
+            # (increase in volatility)
             "method": "squeeze_expansion",
 
-            # min_squeeze: Min BB genişlik (std cinsinden)
+            # min_squeeze: Minimum BB width (in terms of standard deviation)
             "min_squeeze": 0.5,      # 0.5 std
 
-            # expansion_threshold: Genişleme eşiği
-            "expansion_threshold": 1.5  # 1.5x genişleme
+            # expansion_threshold: Expansion threshold
+            "expansion_threshold": 1.5  # 1.5x expansion
         },
     },
 
@@ -565,11 +565,11 @@ INDICATOR_PRESETS: Dict[str, Dict[str, Any]] = {
             "enabled": False,
 
             # Method: "squeeze_expansion"
-            # Açıklama: TTM Squeeze - BB Keltner içinde sıkıştığında
+            # Description: TTM Squeeze - When compressed within BB Keltner
             "method": "squeeze_expansion",
 
             "confirmation_bars": 1,
-            "require_momentum_shift": True  # Momentum değişimi gerekli mi?
+            "require_momentum_shift": True  # Is a momentum shift required?
         },
     },
 
@@ -585,11 +585,11 @@ INDICATOR_PRESETS: Dict[str, Dict[str, Any]] = {
             "enabled": False,
 
             # Method: "volume_surge"
-            # Açıklama: OBV trend değişimi
+            # Description: OBV trend change
             "method": "volume_surge",
 
             "confirmation_bars": 2,
-            "min_change": 0.05       # %5 min değişim
+            "min_change": 0.05       # 5% minimum change
         },
     },
 
@@ -601,7 +601,7 @@ INDICATOR_PRESETS: Dict[str, Dict[str, Any]] = {
             "enabled": False,
 
             # Method: "crossover_confirmation"
-            # Açıklama: Price VWAP'ı kestiğinde
+            # Description: When the price crosses the VWAP.
             "method": "crossover_confirmation",
 
             "distance_ratio": 0.1,
@@ -633,13 +633,13 @@ INDICATOR_PRESETS: Dict[str, Dict[str, Any]] = {
             "enabled": False,        # ✅ Volume surge detection
 
             # Method: "volume_surge"
-            # Açıklama: Hacim aniden artarsa (volume spike)
+            # Description: If the volume suddenly increases (volume spike)
             "method": "volume_surge",
 
             # distance_ratio: Threshold multiplier
-            "distance_ratio": 0.3,   # %30 fazla
+            "distance_ratio": 0.3,   # 30% more
 
-            # confirmation_bars: Kaç bar yüksek hacim kalmalı
+            # confirmation_bars: How many bars should have high volume for confirmation
             "confirmation_bars": 1
         },
     },
@@ -806,7 +806,7 @@ INDICATOR_PRESETS: Dict[str, Dict[str, Any]] = {
             "enabled": False,
 
             # Method: "trend_reversal"
-            # Açıklama: BOS (Break of Structure) tespit edildiğinde
+            # Description: BOS (Break of Structure) detected.
             "method": "trend_reversal",
 
             "confirmation_bars": 2,
@@ -833,7 +833,7 @@ INDICATOR_PRESETS: Dict[str, Dict[str, Any]] = {
             "enabled": False,
             "method": "trend_reversal",
             "confirmation_bars": 1,
-            "require_fill": False    # Gap doldurulmalı mı?
+            "require_fill": False    # Should the gap be filled?
         },
     },
 
@@ -847,7 +847,7 @@ INDICATOR_PRESETS: Dict[str, Dict[str, Any]] = {
             "enabled": False,
             "method": "trend_reversal",
             "confirmation_bars": 2,
-            "require_volume_spike": True  # Volume spike gerekli mi?
+            "require_volume_spike": True  # Is a volume spike required?
         },
     },
 
@@ -859,7 +859,7 @@ INDICATOR_PRESETS: Dict[str, Dict[str, Any]] = {
             "enabled": False,
             "method": "trend_reversal",
             "confirmation_bars": 2,
-            "require_sweep": True    # Liquidity sweep gerekli mi?
+            "require_sweep": True    # Is a liquidity sweep required?
         },
     },
 
@@ -1016,7 +1016,7 @@ INDICATOR_PRESETS: Dict[str, Dict[str, Any]] = {
             "enabled": False,
             "method": "trend_reversal",
             "confirmation_bars": 1,
-            "require_both": True     # Her iki sinyal de gerekli mi?
+            "require_both": True     # Are both signals required?
         },
     },
 
@@ -1037,13 +1037,13 @@ INDICATOR_PRESETS: Dict[str, Dict[str, Any]] = {
 
     "ema_ribbon": {
         "display_info": True,
-        "periods": [8, 13, 21, 34, 55],  # Fibonacci EMA'ları
+        "periods": [8, 13, 21, 34, 55],  # Fibonacci EMAs
 
         "signal_confirmation": {
             "enabled": False,
             "method": "crossover_confirmation",
             "confirmation_bars": 1,
-            "require_alignment": True  # Tüm EMA'lar sıralı mı?
+            "require_alignment": True  # Are all EMAs aligned?
         },
     },
 
@@ -1068,7 +1068,7 @@ INDICATOR_PRESETS: Dict[str, Dict[str, Any]] = {
             "enabled": False,
             "method": "trend_reversal",
             "confirmation_bars": 3,
-            "require_structure": True  # Market structure gerekli mi?
+            "require_structure": True  # Is market structure required?
         },
     },
 }
@@ -1083,8 +1083,8 @@ def get_preset(indicator_name: str, **overrides) -> Dict[str, Any]:
     Get indicator preset configuration
 
     Args:
-        indicator_name: Indicator adı (örn: 'rsi', 'ema')
-        **overrides: Override parametreleri
+        indicator_name: Indicator name (e.g., 'rsi', 'ema')
+        **overrides:** Override parameters
 
     Returns:
         Dict: Indicator configuration
@@ -1096,22 +1096,22 @@ def get_preset(indicator_name: str, **overrides) -> Dict[str, Any]:
         # Standart config
         rsi_config = get_preset("rsi")
 
-        # Override ile
+        # Using override
         rsi_config = get_preset("rsi", default_period=21, oversold=25)
 
-        # Signal confirmation aktif et
+        # Enable signal confirmation
         ema_config = get_preset("ema", signal_confirmation={"enabled": True})
     """
     if indicator_name not in INDICATOR_PRESETS:
         raise ValueError(
-            f"❌ Indicator preset bulunamadı: '{indicator_name}'\n"
-            f"Mevcut indicator'lar: {list(INDICATOR_PRESETS.keys())}"
+            f"❌ Indicator preset not found: '{indicator_name}'\n"
+            f"Available indicators: {list(INDICATOR_PRESETS.keys())}"
         )
 
-    # Deep copy (original'i değiştirme)
+    # Deep copy (do not modify the original)
     config = deepcopy(INDICATOR_PRESETS[indicator_name])
 
-    # Override parametreleri uygula
+    # Apply override parameters
     if overrides:
         config.update(overrides)
 

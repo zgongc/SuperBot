@@ -8,14 +8,14 @@ Date: 2025-11-13
 Author: SuperBot Team
 
 Description:
-    Multi-symbol koordinasyonu:
-    - Symbol başına pozisyon limitleri
-    - Toplam pozisyon limitleri
-    - Available slot kontrolü
-    - Korelasyon kontrolü (optional)
-    - Portfolio-level risk yönetimi
+    Multi-symbol coordination:
+    - Position limits per symbol
+    - Total position limits
+    - Available slot check
+    - Correlation check (optional)
+    - Portfolio-level risk management
 
-Kullanım:
+Usage:
     from components.strategies.portfolio_coordinator import PortfolioCoordinator
 
     coordinator = PortfolioCoordinator(strategy, position_manager)
@@ -31,9 +31,9 @@ from components.strategies.base_strategy import BaseStrategy
 
 class PortfolioCoordinator:
     """
-    Portfolio yönetimi coordinator'ı
+    Portfolio management coordinator.
 
-    Multi-symbol pozisyon koordinasyonu ve limitleri yönetir
+    Manages multi-symbol position coordination and limits.
     """
     
     def __init__(
@@ -102,7 +102,7 @@ class PortfolioCoordinator:
         position_id: str
     ) -> None:
         """
-        Pozisyonu kaldır
+        Remove the position.
         
         Args:
             symbol: Trading symbol
@@ -126,10 +126,10 @@ class PortfolioCoordinator:
     
     def update_positions_from_position_manager(self) -> None:
         """
-        PositionManager'dan pozisyonları sync et
+        Synchronize positions from PositionManager.
         
         Note:
-            Bu method position_manager varsa çağrılmalı
+            This method should be called if position_manager exists.
         """
         if self.position_manager is None:
             return
@@ -156,7 +156,7 @@ class PortfolioCoordinator:
         side: Optional[str] = None
     ) -> tuple[bool, Optional[str]]:
         """
-        Yeni pozisyon açılabilir mi?
+        Can a new position be created?
         
         Args:
             symbol: Trading symbol
@@ -187,23 +187,23 @@ class PortfolioCoordinator:
     
     def get_available_slots(self) -> int:
         """
-        Kaç slot daha açık?
+        How many slots are still available?
         
         Returns:
-            int: Kalan pozisyon slot sayısı
+            int: The number of remaining position slots.
         """
         total = self.get_total_position_count()
         return max(0, self.max_total_positions - total)
     
     def get_symbol_available_slots(self, symbol: str) -> int:
         """
-        Symbol için kaç slot daha açık?
+        How many slots are still available for this symbol?
         
         Args:
             symbol: Trading symbol
         
         Returns:
-            int: Symbol için kalan slot sayısı
+            int: The number of remaining slots for the symbol.
         """
         count = self.get_symbol_position_count(symbol)
         return max(0, self.max_positions_per_symbol - count)
@@ -213,20 +213,20 @@ class PortfolioCoordinator:
     # ========================================================================
     
     def get_total_position_count(self) -> int:
-        """Toplam aktif pozisyon sayısı"""
+        """Total number of active positions"""
         return sum(len(positions) for positions in self.active_positions.values())
     
     def get_symbol_position_count(self, symbol: str) -> int:
-        """Symbol için aktif pozisyon sayısı"""
+        """Number of active positions for a symbol"""
         return len(self.active_positions.get(symbol, []))
     
     def get_active_symbols(self) -> List[str]:
-        """Aktif pozisyonu olan symbol'ler"""
+        """Symbols with active positions"""
         return list(self.active_positions.keys())
     
     def has_position(self, symbol: str, side: Optional[str] = None) -> bool:
         """
-        Symbol için pozisyon var mı?
+        Is there a position for the symbol?
         
         Args:
             symbol: Trading symbol
@@ -250,7 +250,7 @@ class PortfolioCoordinator:
     
     def get_symbol_positions(self, symbol: str) -> List[Dict]:
         """
-        Symbol için tüm pozisyonları dön
+        Return all positions for the symbol.
         
         Args:
             symbol: Trading symbol
@@ -261,7 +261,7 @@ class PortfolioCoordinator:
         return self.active_positions.get(symbol, [])
     
     def get_all_positions(self) -> Dict[str, List[Dict]]:
-        """Tüm pozisyonları dön"""
+        """Rotate all positions"""
         return dict(self.active_positions)
     
     # ========================================================================
@@ -270,17 +270,17 @@ class PortfolioCoordinator:
     
     def _check_correlation(self, symbol: str) -> bool:
         """
-        Symbol mevcut pozisyonlarla korele mi?
+        Is the symbol correlated with existing positions?
         
         Args:
-            symbol: Kontrol edilecek symbol
+            symbol: The symbol to be checked.
         
         Returns:
             bool: True if correlated (should block)
         
         Note:
-            Bu basitleştirilmiş bir implementasyon.
-            Production'da gerçek korelasyon analizi yapılmalı.
+            This is a simplified implementation.
+            Real correlation analysis should be performed in production.
         """
         if not self.correlation_enabled:
             return False
@@ -290,17 +290,17 @@ class PortfolioCoordinator:
         if not active_symbols:
             return False
         
-        # Basit heuristic: aynı base currency
+        # Simple heuristic: same base currency
         symbol_base = symbol.replace('USDT', '').replace('USD', '').replace('BUSD', '')
         
         for active_symbol in active_symbols:
             active_base = active_symbol.replace('USDT', '').replace('USD', '').replace('BUSD', '')
             
             if symbol_base == active_base:
-                # Aynı coin, farklı quote
+                # Same coin, different quote
                 return True
         
-        # TODO: Gerçek korelasyon hesaplama (price correlation)
+        # TODO: Calculate the actual correlation (price correlation)
         
         return False
     
@@ -319,14 +319,14 @@ class PortfolioCoordinator:
     
     def get_portfolio_risk_percent(self) -> float:
         """
-        Portfolio risk yüzdesini hesapla
+        Calculate the portfolio risk percentage.
         
         Returns:
             float: Total risk percent (sum of all position risks)
         
         Note:
-            Bu basitleştirilmiş bir implementasyon.
-            Production'da gerçek PnL/risk hesabı yapılmalı.
+            This is a simplified implementation.
+            Real PnL/risk calculations should be performed in production.
         """
         if self.position_manager is None:
             # Approximate risk
@@ -339,7 +339,7 @@ class PortfolioCoordinator:
     
     def is_portfolio_risk_exceeded(self) -> bool:
         """
-        Portfolio risk limiti aşıldı mı?
+        Has the portfolio risk limit been exceeded?
         
         Returns:
             bool: True if exceeded
@@ -354,7 +354,7 @@ class PortfolioCoordinator:
     # ========================================================================
     
     def clear(self) -> None:
-        """Tüm pozisyon tracking'i temizle"""
+        """Clear all position tracking."""
         self.active_positions.clear()
         
         if self.logger:
@@ -362,7 +362,7 @@ class PortfolioCoordinator:
     
     def get_summary(self) -> Dict[str, Any]:
         """
-        Portfolio özeti
+        Portfolio summary
         
         Returns:
             Dict: Portfolio summary

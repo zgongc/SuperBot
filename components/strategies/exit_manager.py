@@ -8,14 +8,14 @@ Date: 2025-11-13
 Author: SuperBot Team
 
 Description:
-    Exit stratejisi yönetimi:
+    Exit strategy management:
     - Stop Loss calculation (all methods)
     - Take Profit calculation (all methods)
     - Trailing stop logic
     - Break-even logic
     - Partial exits
 
-Kullanım:
+Usage:
     from components.strategies.exit_manager import ExitManager
     
     manager = ExitManager(strategy)
@@ -41,7 +41,7 @@ class ExitManager:
     """
     Exit strategy manager
     
-    SL, TP, trailing, break-even mantığını yönetir
+    SL, TP, trailing, break-even logic is managed.
     """
     
     def __init__(
@@ -64,7 +64,7 @@ class ExitManager:
         self.ai_predictor = ai_predictor
 
         if not self.exit_strategy:
-            raise ValueError("Strategy exit_strategy gerekli")
+            raise ValueError("Strategy exit_strategy is required")
     
     # ========================================================================
     # STOP LOSS CALCULATION
@@ -78,16 +78,16 @@ class ExitManager:
         atr_value: Optional[float] = None
     ) -> Optional[float]:
         """
-        Stop loss fiyatını hesapla
+        Calculate the stop loss price.
 
         Args:
-            entry_price: Entry fiyatı
+            entry_price: Entry price
             side: 'LONG' or 'SHORT'
             data: Market data (optional, for swing/fibonacci)
-            atr_value: ATR değeri (optional, for ATR-based)
+            atr_value: ATR value (optional, for ATR-based)
 
         Returns:
-            Stop loss price veya None (disabled)
+            Stop loss price or None (disabled)
         """
         method = self.exit_strategy.stop_loss_method
 
@@ -112,7 +112,7 @@ class ExitManager:
                 return None
             if atr_value is None:
                 if self.logger:
-                    self.logger.warning("ATR_BASED SL ama ATR değeri yok")
+                    self.logger.warning("ATR_BASED SL but ATR value is missing")
                 return None
             return self._calculate_sl_atr_based(entry_price, atr_value, multiplier, side)
 
@@ -123,7 +123,7 @@ class ExitManager:
                 return None
             if data is None or data.empty:
                 if self.logger:
-                    self.logger.warning("SWING_POINTS SL ama data yok")
+                    self.logger.warning("SWING_POINTS SL but data is missing")
                 return None
             return self._calculate_sl_swing_point(entry_price, data, side, lookback)
 
@@ -134,7 +134,7 @@ class ExitManager:
                 return None
             if data is None or data.empty:
                 if self.logger:
-                    self.logger.warning("FIBONACCI SL ama data yok")
+                    self.logger.warning("FIBONACCI SL but no data")
                 return None
             return self._calculate_sl_fibonacci(entry_price, data, fib_level, side)
 
@@ -143,7 +143,7 @@ class ExitManager:
             ai_level = self.exit_strategy.stop_loss_ai_level
             if data is None or data.empty:
                 if self.logger:
-                    self.logger.warning("DYNAMIC_AI SL ama data yok")
+                    self.logger.warning("DYNAMIC_AI SL but no data")
                 return None
             return self._calculate_sl_dynamic_ai(entry_price, data, side, ai_level, atr_value)
 
@@ -188,7 +188,7 @@ class ExitManager:
         """
         SWING_POINTS stop loss - Simple lookback min/max
 
-        lookback=3 → Son 3 mumun en düşük/yüksek fiyatını kullan
+        lookback=3 -> Use the lowest/highest price of the last 3 candles.
         """
         try:
             # Need enough data
@@ -201,12 +201,12 @@ class ExitManager:
             recent_data = data.tail(lookback)
 
             if side.upper() == 'LONG':
-                # LONG: Son N mumun en düşük fiyatı (dip)
+                # LONG: The lowest price (dip) of the last N candles.
                 swing_low = recent_data['low'].min()
                 # Add small buffer below swing low
                 return swing_low * 0.998
             else:  # SHORT
-                # SHORT: Son N mumun en yüksek fiyatı (zirve)
+                # SHORT: The highest price (peak) of the last N candles.
                 swing_high = recent_data['high'].max()
                 # Add small buffer above swing high
                 return swing_high * 1.002
@@ -223,7 +223,7 @@ class ExitManager:
         side: str
     ) -> float:
         """SUPPORT_RESISTANCE stop loss"""
-        # Simplified: swing points ile aynı (gerçek SR detection gerekir)
+        # Simplified: same as swing points (real SR detection is needed)
         return self._calculate_sl_swing_point(entry_price, data, side, lookback=20)
 
     def _calculate_sl_fibonacci(
@@ -386,17 +386,17 @@ class ExitManager:
         data: Optional[pd.DataFrame] = None
     ) -> Optional[float]:
         """
-        Take profit fiyatını hesapla
+        Calculate the take profit price.
 
         Args:
-            entry_price: Entry fiyatı
+            entry_price: Entry price
             side: 'LONG' or 'SHORT'
-            stop_loss_price: SL fiyatı (for RISK_REWARD)
-            atr_value: ATR değeri (for ATR_BASED)
+            stop_loss_price: SL price (for RISK_REWARD)
+            atr_value: ATR value (for ATR_BASED)
             data: Market data (for FIBONACCI)
 
         Returns:
-            Take profit price veya None (disabled)
+            Take profit price or None (disabled)
         """
         method = self.exit_strategy.take_profit_method
 
@@ -421,7 +421,7 @@ class ExitManager:
                 return None
             if stop_loss_price is None:
                 if self.logger:
-                    self.logger.warning("RISK_REWARD TP ama SL yok")
+                    self.logger.warning("RISK_REWARD TP but no SL")
                 return None
             return self._calculate_tp_risk_reward(entry_price, stop_loss_price, ratio, side)
 
@@ -432,7 +432,7 @@ class ExitManager:
                 return None
             if atr_value is None:
                 if self.logger:
-                    self.logger.warning("ATR_BASED TP ama ATR yok")
+                    self.logger.warning("ATR_BASED TP but ATR is not available")
                 return None
             return self._calculate_tp_atr_based(entry_price, atr_value, multiplier, side)
 
@@ -443,7 +443,7 @@ class ExitManager:
                 return None
             if data is None or data.empty:
                 if self.logger:
-                    self.logger.warning("FIBONACCI TP ama data yok")
+                    self.logger.warning("FIBONACCI TP but no data")
                 return None
             return self._calculate_tp_fibonacci(entry_price, data, fib_level, side)
 
@@ -452,7 +452,7 @@ class ExitManager:
             ai_level = self.exit_strategy.take_profit_ai_level
             if data is None or data.empty:
                 if self.logger:
-                    self.logger.warning("DYNAMIC_AI TP ama data yok")
+                    self.logger.warning("DYNAMIC_AI TP but no data")
                 return None
             return self._calculate_tp_dynamic_ai(entry_price, data, side, ai_level, stop_loss_price, atr_value)
 
@@ -592,10 +592,10 @@ class ExitManager:
         """
         DYNAMIC_AI take profit - AI decides when to exit based on prediction.
 
-        DYNAMIC_AI TP mantığı:
-        - TP fiyatı yerine AI'ın CLOSE veya ters sinyal vermesini bekle
-        - Bu metod sadece fallback TP hesaplar (AI yoksa)
-        - Gerçek exit kararı check_ai_exit() ile yapılır
+        DYNAMIC_AI TP logic:
+        - Wait for the AI to give a CLOSE or reverse signal instead of the TP price.
+        - This method only calculates fallback TP values (if AI is not available).
+        - The actual exit decision is made by check_ai_exit().
 
         Args:
             entry_price: Entry price
@@ -606,11 +606,11 @@ class ExitManager:
             atr_value: ATR value (optional, calculated if not provided)
 
         Returns:
-            Fallback TP price (AI exit kararı ayrı kontrol edilir)
+            Fallback TP price (AI exit decision is checked separately)
         """
-        # DYNAMIC_AI modunda TP fiyatı çok uzak tutulur
-        # Çünkü asıl exit kararı AI prediction'a göre yapılır
-        # Bu sadece "maximum TP" limiti olarak çalışır
+        # In DYNAMIC_AI mode, the TP price is kept very far away.
+        # Because the actual exit decision is made based on AI prediction.
+        # This only works as a "maximum TP" limit.
 
         if self.ai_predictor is None:
             if self.logger:
@@ -624,8 +624,8 @@ class ExitManager:
                 return self._calculate_tp_risk_reward(entry_price, stop_loss_price, ratio, side)
             return None
 
-        # AI varsa, çok geniş bir TP limiti koy (AI karar verene kadar)
-        # AI exit sinyali check_ai_exit() metoduyla kontrol edilir
+        # If AI exists, set a very wide TP limit (until the AI makes a decision)
+        # The AI exit signal is checked using the check_ai_exit() method.
         max_tp_percent = 10.0 + (ai_level - 1) * 5.0  # level 1=10%, 2=15%, 3=20%
 
         if side.upper() == 'LONG':
@@ -640,12 +640,12 @@ class ExitManager:
         current_pnl_percent: float = 0.0
     ) -> Dict[str, Any]:
         """
-        AI'ın exit sinyali verip vermediğini kontrol et.
+        Check if the AI has sent an exit signal.
 
-        DYNAMIC_AI exit mantığı:
+        DYNAMIC_AI exit logic:
         - AI CLOSE sinyali verirse → Exit
         - AI ters sinyal verirse (LONG'dayken SHORT) → Exit
-        - AI confidence düşükse → Hold (exit etme)
+        - If AI confidence is low -> Hold (do not exit)
 
         Args:
             data: OHLCV DataFrame
@@ -683,7 +683,7 @@ class ExitManager:
             confidence = prediction.get('confidence', 0.0)
             probs = prediction.get('probabilities', {})
 
-            # Exit koşulları:
+            # Exit conditions:
             # 1. AI CLOSE sinyali verdi
             if ai_action == 'CLOSE':
                 return {
@@ -693,10 +693,10 @@ class ExitManager:
                     'confidence': confidence
                 }
 
-            # 2. AI ters sinyal verdi (yüksek confidence ile)
+            # 2. AI gave the reverse signal (with high confidence)
             if side.upper() == 'LONG' and ai_action == 'SHORT':
                 short_prob = probs.get('SHORT', 0)
-                if short_prob > 0.6:  # %60+ SHORT olasılığı
+                if short_prob > 0.6:  # Probability of SHORT is 60%+
                     return {
                         'should_exit': True,
                         'reason': f"AI signals SHORT ({short_prob:.1%}) while in LONG",
@@ -706,7 +706,7 @@ class ExitManager:
 
             if side.upper() == 'SHORT' and ai_action == 'LONG':
                 long_prob = probs.get('LONG', 0)
-                if long_prob > 0.6:  # %60+ LONG olasılığı
+                if long_prob > 0.6:  # If the probability of LONG is 60% or higher
                     return {
                         'should_exit': True,
                         'reason': f"AI signals LONG ({long_prob:.1%}) while in SHORT",
@@ -714,7 +714,7 @@ class ExitManager:
                         'confidence': confidence
                     }
 
-            # 3. Karda ve AI HOLD diyor ama düşük confidence
+            # 3. It says "snow" and "AI HOLD" but with low confidence.
             if current_pnl_percent > 1.0 and confidence < 0.4:
                 return {
                     'should_exit': True,
@@ -723,7 +723,7 @@ class ExitManager:
                     'confidence': confidence
                 }
 
-            # Exit yok, devam et
+            # No exit, continue
             return {
                 'should_exit': False,
                 'reason': f"AI says {ai_action} with {confidence:.1%} confidence",
@@ -753,12 +753,12 @@ class ExitManager:
         side: str
     ) -> Tuple[bool, Optional[float]]:
         """
-        Trailing stop güncellenmeli mi?
+        Should the trailing stop be updated?
         
         Args:
-            entry_price: Entry fiyatı
-            current_price: Mevcut fiyat
-            current_sl: Mevcut SL fiyatı
+            entry_price: Entry price
+            current_price: Current price
+            current_sl: Current SL price
             side: 'LONG' or 'SHORT'
         
         Returns:
@@ -767,7 +767,7 @@ class ExitManager:
         if not self.exit_strategy.trailing_stop_enabled:
             return False, None
         
-        # Trailing activation kontrolü
+        # Trailing activation check
         activation_percent = self.exit_strategy.trailing_activation_profit_percent
         current_profit_percent = self._calculate_profit_percent(
             entry_price,
@@ -776,10 +776,10 @@ class ExitManager:
         )
         
         if current_profit_percent < activation_percent:
-            # Henüz aktif değil
+            # Not active yet
             return False, None
         
-        # Trailing callback yüzdesi
+        # Trailing callback percentage
         callback_percent = self.exit_strategy.trailing_callback_percent
 
         # If no SL set, cannot trail
@@ -790,13 +790,13 @@ class ExitManager:
         if side.upper() == 'LONG':
             new_sl = current_price * (1 - callback_percent / 100.0)
 
-            # SL yukarı hareket etmeli (trailing)
+            # SL should move upwards (trailing)
             if new_sl > current_sl:
                 return True, new_sl
         else:  # SHORT
             new_sl = current_price * (1 + callback_percent / 100.0)
 
-            # SL aşağı hareket etmeli (trailing)
+            # SL should move down (trailing)
             if new_sl < current_sl:
                 return True, new_sl
 
@@ -814,12 +814,12 @@ class ExitManager:
         side: str
     ) -> Tuple[bool, Optional[float]]:
         """
-        SL break-even'a çekilmeli mi?
+        Should the SL be adjusted to the break-even point?
         
         Args:
-            entry_price: Entry fiyatı
-            current_price: Mevcut fiyat
-            current_sl: Mevcut SL fiyatı
+            entry_price: Entry price
+            current_price: Current price
+            current_sl: Current SL price
             side: 'LONG' or 'SHORT'
         
         Returns:
@@ -828,7 +828,7 @@ class ExitManager:
         if not self.exit_strategy.break_even_enabled:
             return False, None
         
-        # Trigger profit kontrolü
+        # Trigger profit control
         trigger_percent = self.exit_strategy.break_even_trigger_profit_percent
         current_profit_percent = self._calculate_profit_percent(
             entry_price,
@@ -837,7 +837,7 @@ class ExitManager:
         )
         
         if current_profit_percent < trigger_percent:
-            # Henüz tetiklenmedi
+            # Not yet triggered
             return False, None
         
         # Break-even offset
@@ -850,13 +850,13 @@ class ExitManager:
         if side.upper() == 'LONG':
             breakeven_price = entry_price * (1 + offset_percent / 100.0)
 
-            # Mevcut SL break-even'ın altındaysa güncelle
+            # If the current SL is below the break-even point, update it.
             if current_sl < breakeven_price:
                 return True, breakeven_price
         else:  # SHORT
             breakeven_price = entry_price * (1 - offset_percent / 100.0)
 
-            # Mevcut SL break-even'ın üstündeyse güncelle
+            # If it is above the current SL break-even, update it.
             if current_sl > breakeven_price:
                 return True, breakeven_price
 
@@ -874,13 +874,13 @@ class ExitManager:
         completed_exits: int = 0
     ) -> Tuple[bool, float]:
         """
-        Partial exit yapılmalı mı? Kaç lot?
+        Should a partial exit be performed? How many lots?
         
         Args:
-            entry_price: Entry fiyatı
-            current_price: Mevcut fiyat
+            entry_price: Entry price
+            current_price: Current price
             side: 'LONG' or 'SHORT'
-            completed_exits: Kaç partial exit yapılmış
+            completed_exits: Number of partial exits performed
         
         Returns:
             (should_exit, exit_size_percent)
@@ -892,17 +892,17 @@ class ExitManager:
         sizes = self.exit_strategy.partial_exit_sizes
         
         if completed_exits >= len(levels):
-            # Tüm partial exitler tamamlanmış
+            # All partial exits are completed
             return False, 0.0
         
-        # Mevcut profit
+        # Current profit
         current_profit_percent = self._calculate_profit_percent(
             entry_price,
             current_price,
             side
         )
         
-        # Sonraki level'ı kontrol et
+        # Check the next level
         next_level = levels[completed_exits]
         
         if current_profit_percent >= next_level:
@@ -922,10 +922,10 @@ class ExitManager:
         side: str
     ) -> float:
         """
-        Kar yüzdesini hesapla
+        Calculate the percentage of snow.
         
         Returns:
-            Profit percent (pozitif = kar, negatif = zarar)
+            Profit percent (positive = profit, negative = loss)
         """
         if side.upper() == 'LONG':
             return ((current_price - entry_price) / entry_price) * 100.0
@@ -947,25 +947,25 @@ class ExitManager:
         current_bar_data: Optional[pd.DataFrame] = None  # Current bar for ATR, etc.
     ) -> Optional[Dict[str, Any]]:
         """
-        Kapsamlı exit kontrolü - Backtest entegrasyonu için
+        Comprehensive exit control - For backtest integration.
         
-        Kontrol sırası:
-        1. Position Timeout (eğer enabled)
-        2. Stop Loss (temel veya trailing/break-even ile güncellenmiş)
+        Check order:
+        1. Position Timeout (if enabled)
+        2. Stop Loss (basic or updated with trailing/break-even)
         3. Take Profit
-        4. Trailing Stop güncelleme
-        5. Break-even güncelleme
+        4. Trailing stop update
+        5. Break-even update
         6. Partial Exit
-        7. Exit Conditions (strateji tanımlı)
+        7. Exit Conditions (strategy defined)
         
         Args:
-            position: Pozisyon objesi (entry_price, side, entry_time, stop_loss, take_profit)
-            current_price: Mevcut fiyat (close)
-            current_timestamp: Mevcut timestamp (bar time)
-            current_idx: Mevcut bar index
-            position_management: PositionManagement config (timeout için)
-            timeframe_data: MTF data dict (exit conditions için)
-            current_bar_data: Current bar DataFrame (ATR, indicators için)
+            position: Position object (entry_price, side, entry_time, stop_loss, take_profit)
+            current_price: Current price (close)
+            current_timestamp: Current timestamp (bar time)
+            current_idx: Current bar index
+            position_management: PositionManagement config (for timeout)
+            timeframe_data: MTF data dict (for exit conditions)
+            current_bar_data: Current bar DataFrame (for ATR, indicators)
         
         Returns:
             {
@@ -974,10 +974,10 @@ class ExitManager:
                 'exit_price': float,
                 'exit_timestamp': Any,
                 'exit_idx': int,
-                'update_sl': Optional[float],  # Trailing veya break-even için yeni SL
+                'update_sl': Optional[float],  # New SL for trailing or break-even
                 'partial_exit_size': Optional[float]  # Partial exit varsa %
             }
-            veya None (exit yok)
+            or None (no exit)
         """
         if current_idx <= getattr(position, 'entry_idx', 0):
             return None
@@ -1175,7 +1175,7 @@ class ExitManager:
         timeframe_data: Dict[str, Dict]
     ) -> bool:
         """
-        Exit condition'ları kontrol et
+        Check exit conditions.
         
         Args:
             conditions: Exit conditions list
@@ -1228,7 +1228,7 @@ class ExitManager:
         indicator_name: str
     ) -> bool:
         """
-        Tek bir condition'ı evaluate et
+        Evaluate a single condition.
         
         Args:
             indicator_value: Current indicator value

@@ -8,14 +8,14 @@ Date: 2025-11-13
 Author: SuperBot Team
 
 Description:
-    Entry/exit koşullarını değerlendirir.
+    Evaluates entry/exit conditions.
 
-    - Koşul parsing
+    - Condition parsing
     - Indicator value extraction
     - Condition evaluation
     - Multi-timeframe support
 
-Kullanım:
+Usage:
     from components.strategies.signal_validator import SignalValidator
 
     validator = SignalValidator(strategy)
@@ -37,9 +37,9 @@ from components.strategies.helpers import (
 
 class SignalValidator:
     """
-    Sinyal değerlendirme validator'ı
+    Signal evaluation validator.
 
-    Entry ve exit koşullarını değerlendirir
+    Evaluates entry and exit conditions.
     """
     
     def __init__(
@@ -78,14 +78,14 @@ class SignalValidator:
         _verbose: bool = False
     ) -> Dict[str, Any]:
         """
-        Entry sinyalini değerlendir
+        Evaluate the entry signal.
 
         Args:
             symbol: Trading symbol
             data: Market data
                 - Single timeframe: pd.DataFrame
                 - Multi-timeframe: {'5m': df, '15m': df, ...}
-            current_positions: Mevcut pozisyonlar (optional)
+            current_positions: Current positions (optional)
             _verbose: Temporary verbose flag (for debug status logging)
 
         Returns:
@@ -102,7 +102,7 @@ class SignalValidator:
             'score': 0.0,
             'conditions_met': [],
             'conditions_failed': [],
-            'pending_side': None,  # Hangi yöne doğru koşullar sağlanıyor
+            'pending_side': None,  # Which side the conditions are being met for
             'timestamp': None
         }
 
@@ -161,7 +161,7 @@ class SignalValidator:
         position: Optional[Dict] = None
     ) -> Dict[str, Any]:
         """
-        Exit sinyalini değerlendir
+        Evaluate the exit signal.
         
         Args:
             symbol: Trading symbol
@@ -219,12 +219,12 @@ class SignalValidator:
         _verbose: bool = False
     ) -> Dict[str, Any]:
         """
-        Bir tarafın (long/short) koşullarını değerlendir
+        Evaluate the conditions of one side (long/short).
 
         Args:
             side: 'long' or 'short'
             data: Market data
-            parsed_conditions: Parse edilmiş koşullar
+            parsed_conditions: Parsed conditions
             _verbose: Temporary verbose flag (for debug status logging)
 
         Returns:
@@ -288,15 +288,15 @@ class SignalValidator:
         _verbose: bool = False
     ) -> bool:
         """
-        Tek bir koşulu değerlendir
+        Evaluates a single condition.
 
         Args:
-            parsed_cond: Parse edilmiş koşul
+            parsed_cond: Parsed condition
             data: Market data
             _verbose: Temporary verbose flag (for debug status logging)
 
         Returns:
-            bool: Koşul met mi?
+            bool: Is it a condition string?
         """
         left = parsed_cond['left']
         operator = parsed_cond['operator']
@@ -305,24 +305,24 @@ class SignalValidator:
 
         # V8: MTF INDICATOR HANDLING - Per-Timeframe DataFrames
         #
-        # Her timeframe kendi DataFrame'ine sahip:
+        # Each timeframe has its own DataFrame:
         #   result['5m']  = {close, ema_50, rsi_14, ...}  ← 5m OHLCV + indicators
         #   result['15m'] = {close, ema_50, rsi_14, ...}  ← 15m OHLCV + indicators
         #
         # Condition: ['close', '>', 'ema_50', '15m']
         # → result['15m']['close'] > result['15m']['ema_50']
-        # Her ikisi de 15m DataFrame'inden gelir
+        # Both come from a 15m DataFrame.
 
-        # V8: Her timeframe kendi DataFrame'ine sahip
-        # Timeframe belirtilmişse → o TF'nin DataFrame'i (close, ema_50, vs.)
-        # Timeframe belirtilmemişse → primary timeframe DataFrame'i
+        # V8: Each timeframe has its own DataFrame.
+        # If a timeframe is specified -> the DataFrame for that TF (close, ema_50, etc.)
+        # If no timeframe is specified -> use the primary timeframe DataFrame.
         #
-        # Örnek:
+        # Example:
         #   ['close', '>', 'ema_50']        → result['5m']['close'] > result['5m']['ema_50']
         #   ['close', '>', 'ema_50', '15m'] → result['15m']['close'] > result['15m']['ema_50']
         target_df = self._get_dataframe_for_timeframe(data, timeframe)
 
-        # DEBUG: İlk çağrıda data dict'in key'lerini ve her df'in close değerini logla
+        # DEBUG: Log the keys of the data dictionary on the first call and the close value of each DataFrame.
         if not hasattr(self, '_debug_logged') and self.logger and isinstance(data, dict):
             self._debug_logged = True
             self.logger.info(f"🔍 DEBUG MTF Data keys: {list(data.keys())}")
@@ -337,7 +337,7 @@ class SignalValidator:
                 self.logger.info(f"      ❌ Condition FAILED (no data): {parsed_cond['raw']}")
             return False
 
-        # Extract operand values - artık tek DataFrame kullanılıyor
+        # Extract operand values - now a single DataFrame is used
         left_value = self._extract_value(left, target_df, operator, timeframe)
         right_value = self._extract_value(right, target_df, operator, timeframe)
 
@@ -378,14 +378,14 @@ class SignalValidator:
         timeframe: Optional[str]
     ) -> Optional[pd.DataFrame]:
         """
-        Timeframe için uygun DataFrame'i al
+        Get the appropriate DataFrame for the timeframe.
         
         Args:
             data: Market data
             timeframe: Timeframe (None = primary)
         
         Returns:
-            pd.DataFrame veya None
+            pd.DataFrame or None
         """
         # Single timeframe data
         if isinstance(data, pd.DataFrame):
@@ -419,7 +419,7 @@ class SignalValidator:
         timeframe: Optional[str] = None
     ) -> Any:
         """
-        Operand değerini extract et
+        Extract the operand value.
 
         Args:
             operand: Operand (indicator name, number, or keyword)
@@ -453,9 +453,9 @@ class SignalValidator:
                 else:
                     raise ValueError(f"Column '{operand}' not found in dataframe")
 
-            # V8: Her timeframe kendi DataFrame'ine sahip
-            # DataFrame zaten doğru timeframe'i içeriyor (suffix yok!)
-            # result['5m']['ema_50'], result['15m']['ema_50'] gibi
+            # V8: Each timeframe has its own DataFrame.
+            # The DataFrame already contains the correct timeframe (no suffix!)
+            # result['5m']['ema_50'], result['15m']['ema_50'] like
             column_name = operand
 
             if column_name in df.columns:
@@ -475,7 +475,7 @@ class SignalValidator:
         operator: str
     ) -> Union[float, List, np.ndarray]:
         """
-        Operatöre göre series'i hazırla
+        Prepare the series according to the operator.
         
         Args:
             series: Pandas Series
@@ -485,24 +485,24 @@ class SignalValidator:
             - Comparison operators: last value (float)
             - Crossover/Rising/Falling: last N values (list)
         """
-        # Comparison operators: sadece son değer
+        # Comparison operators: only the last value
         if operator in {'>', '<', '>=', '<=', '==', '!=', 'between', 'outside', 'near'}:
             return series.iloc[-1]
         
-        # Crossover/Crossunder: son 2 değer
+        # Crossover/Crossunder: last 2 values
         if operator in {'crossover', 'crossunder'}:
             if len(series) >= 2:
                 return series.iloc[-2:].values
             else:
                 return [series.iloc[-1]]
         
-        # Rising/Falling: operator context'e göre (right operand period'u belirler)
-        # Şimdilik son 10 değer (yeterli olmalı)
+        # Rising/Falling: depends on the operator context (right operand determines the period)
+        # For now, the last 10 values (should be enough)
         if operator in {'rising', 'falling'}:
             lookback = min(10, len(series))
             return series.iloc[-lookback:].values
         
-        # Default: son değer
+        # Default: last value
         return series.iloc[-1]
     
     # ========================================================================
@@ -511,7 +511,7 @@ class SignalValidator:
     
     def has_entry_conditions(self, side: str) -> bool:
         """
-        Bir side için entry condition var mı?
+        Is there an entry condition for a side?
         
         Args:
             side: 'long' or 'short'
@@ -527,7 +527,7 @@ class SignalValidator:
     
     def has_exit_conditions(self, side: str) -> bool:
         """
-        Bir side için exit condition var mı?
+        Is there an exit condition for a side?
         
         Args:
             side: 'long' or 'short'
@@ -543,7 +543,7 @@ class SignalValidator:
     
     def get_required_indicators(self) -> List[str]:
         """
-        Tüm koşullarda kullanılan indikatörleri dön
+        Returns the indicators used in all conditions.
         
         Returns:
             List[str]: Indicator names
@@ -566,11 +566,11 @@ class SignalValidator:
         side: str = 'long'
     ) -> Dict[str, Any]:
         """
-        Belirli bir side için koşul özetini döndür (TierManager için)
+        Returns the condition summary for a specific side (for TierManager).
 
         Args:
             data: Market data
-            side: 'long' veya 'short'
+            side: 'long' or 'short'
 
         Returns:
             Dict: {
@@ -605,10 +605,10 @@ class SignalValidator:
 
         for parsed_cond in parsed_conditions:
             try:
-                # V8: Her timeframe kendi DataFrame'ine sahip
+                # V8: Each timeframe has its own DataFrame.
                 # Condition: ['close', '>', 'ema_50', '15m']
                 # → result['15m']['close'] > result['15m']['ema_50']
-                # Hem price hem indicator aynı timeframe'den gelir!
+                # Both price and indicator come from the same timeframe!
                 timeframe = parsed_cond.get('timeframe')
                 target_df = self._get_dataframe_for_timeframe(data, timeframe)
 
@@ -626,7 +626,7 @@ class SignalValidator:
                 operator = parsed_cond['operator']
                 right = parsed_cond['right']
 
-                # V8: Tek DataFrame kullan - hem price hem indicator aynı TF'den
+                # V8: Use a single DataFrame - both price and indicator from the same time frame.
                 left_value = self._extract_value(left, target_df, operator, timeframe)
                 right_value = self._extract_value(right, target_df, operator, timeframe)
 
@@ -679,24 +679,24 @@ class SignalValidator:
         data: Union[pd.DataFrame, Dict[str, pd.DataFrame]]
     ) -> Dict[str, Any]:
         """
-        En yüksek skorlu side için koşul özetini döndür
+        Returns a summary of the condition for the side with the highest score.
 
         Args:
             data: Market data
 
         Returns:
-            Dict: get_conditions_summary() formatında, en iyi side için
+            Dict: In the format of get_conditions_summary(), for the best side.
         """
         long_summary = self.get_conditions_summary(data, 'long')
         short_summary = self.get_conditions_summary(data, 'short')
 
-        # Tam eşleşme varsa onu döndür
+        # If a complete match is found, return it.
         if long_summary['score'] == 1.0:
             return long_summary
         if short_summary['score'] == 1.0:
             return short_summary
 
-        # En yüksek skoru döndür
+        # Returns the highest score
         if long_summary['score'] >= short_summary['score']:
             return long_summary
         return short_summary

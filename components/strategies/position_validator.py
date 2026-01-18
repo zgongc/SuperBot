@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """
-Position Validator - Pozisyon Kurallarını Kontrol Eder
+Position Validator - Checks position rules.
 
-Strateji parametrelerine göre pozisyon açılıp açılamayacağını validate eder.
-Bu dosya strategies/ klasöründe çünkü STRATEJI KURALLARI ile ilgilidir.
+It validates whether a position can be opened based on the strategy parameters.
+This file is in the strategies/ folder because it is related to STRATEGY RULES.
 
 Sorumluluklar:
-- Pyramiding kurallarını kontrol et
-- Hedging kurallarını kontrol et
-- Pozisyon limitlerini kontrol et
-- Pozisyon timeout kurallarını kontrol et
+- Check pyramiding rules
+- Check hedging rules
+- Check position limits
+- Check position timeout rules
 
-NOT: Execution (gerçek pozisyon açma/kapama) managers/position_manager.py'de yapılır.
+NOTE: Execution (actual position opening/closing) is handled in managers/position_manager.py.
 """
 
 from typing import Dict, Optional, Any
@@ -21,12 +21,12 @@ from dataclasses import dataclass
 @dataclass
 class ValidationResult:
     """
-    Pozisyon validasyon sonucu
+    Position validation result
     
     Attributes:
-        accepted: Pozisyon kabul edildi mi?
-        reason: Red/kabul sebebi (Türkçe açıklama)
-        action: Yapılacak aksiyon ('open_new', 'pyramid', 'reject', 'close_opposite')
+        accepted: Was the position accepted?
+        reason: Red/acceptance reason (Turkish explanation)
+        action: Action to be performed ('open_new', 'pyramid', 'reject', 'close_opposite')
     """
     accepted: bool
     reason: str
@@ -35,59 +35,59 @@ class ValidationResult:
 
 class PositionValidator:
     """
-    Pozisyon Validasyon Mantığı (Strateji Kuralları)
+    Position Validation Logic (Strategy Rules)
     
     Sorumluluklar:
-    - Sinyalin pozisyon açıp açamayacağını kontrol et
-    - Pyramiding mantığını yönet
-    - Hedging mantığını yönet
+    - Check if the signal can open a position.
+    - Manage the pyramiding logic.
+    - Manage the hedging logic.
     - Pozisyon limitlerini zorla
     
     Sorumlu OLMADIKLARI:
-    - Gerçek pozisyon açma (PositionManager)
-    - Risk hesaplama (RiskManager)
-    - Emir çalıştırma (OrderManager)
+    - Opening real positions (PositionManager)
+    - Risk calculation (RiskManager)
+    - Order execution (OrderManager)
     
     Mimari:
-    - Strateji kuralları burada (strategies/)
+    - Strategy rules are located here (strategies/).
     - Execution logic manager'da (managers/)
-    - DRY: Canlı trading ve backtest aynı kodu kullanır
+    - DRY: Live trading and backtesting use the same code.
     - SOLID: Single Responsibility Principle
-    - Testable: Unit test yazılabilir
+    - Testable: Unit tests can be written.
     """
     
     def __init__(self, position_management_config: Any, logger: Optional[Any] = None):
         """
-        Validator'ı stratejinin position_management config'i ile başlat
+        Initialize the Validator with the strategy's position_management config.
         
         Args:
-            position_management_config: Stratejinin PositionManagement objesi
-            logger: Opsiyonel logger
+            position_management_config: The PositionManagement object for the strategy.
+            logger: Optional logger.
         """
         self.config = position_management_config
         self.logger = logger
         
-        # Ayarları çıkar
+        # Extract settings
         self.max_positions_per_symbol = getattr(position_management_config, 'max_positions_per_symbol', 1)
         self.max_total_positions = getattr(position_management_config, 'max_total_positions', 2)
         self.allow_hedging = getattr(position_management_config, 'allow_hedging', False)
         
-        # Pyramiding ayarları
+        # Pyramiding settings
         self.pyramiding_enabled = getattr(position_management_config, 'pyramiding_enabled', False)
         self.pyramiding_max_entries = getattr(position_management_config, 'pyramiding_max_entries', 1)
         self.pyramiding_scale_factor = getattr(position_management_config, 'pyramiding_scale_factor', 1.0)
         
-        # Timeout ayarları
+        # Timeout settings
         self.timeout_enabled = getattr(position_management_config, 'position_timeout_enabled', False)
         self.timeout_minutes = getattr(position_management_config, 'position_timeout', 1800)
         
         if self.logger:
-            self.logger.debug(f"PositionValidator başlatıldı:")
+            self.logger.debug(f"PositionValidator started:")
             self.logger.debug(f"  - Max pozisyon/sembol: {self.max_positions_per_symbol}")
-            self.logger.debug(f"  - Max toplam pozisyon: {self.max_total_positions}")
-            self.logger.debug(f"  - Hedging izni: {self.allow_hedging}")
+            self.logger.debug(f"  - Max total positions: {self.max_total_positions}")
+            self.logger.debug(f"  - Hedging permission: {self.allow_hedging}")
             self.logger.debug(f"  - Pyramiding: {self.pyramiding_enabled} (max: {self.pyramiding_max_entries})")
-            self.logger.debug(f"  - Timeout: {self.timeout_enabled} ({self.timeout_minutes} dakika)")
+            self.logger.debug(f"  - Timeout: {self.timeout_enabled} ({self.timeout_minutes} minutes)")
     
     def can_open_position(
         self,
@@ -96,33 +96,33 @@ class PositionValidator:
         total_positions_count: Optional[int] = None
     ) -> ValidationResult:
         """
-        Sinyalin pozisyon açıp açamayacağını kontrol et
+        Checks if the signal can be positioned.
         
         Args:
-            signal_side: 'long' veya 'short'
-            open_positions: Açık pozisyonlar dict'i {side -> Position veya List[Position]}
-            total_positions_count: Tüm sembollerdeki toplam açık pozisyon (opsiyonel)
+            signal_side: 'long' or 'short'
+            open_positions: A dictionary of open positions {side -> Position or List[Position]}
+            total_positions_count: The total number of open positions across all symbols (optional)
         
         Returns:
-            ValidationResult (kabul/red kararı)
+            ValidationResult (acceptance/rejection decision)
         """
-        # Adım 1: Toplam pozisyon limitini kontrol et
+        # Step 1: Check the total position limit
         if total_positions_count is None:
             total_positions_count = self._count_total_positions(open_positions)
         
         if total_positions_count >= self.max_total_positions:
             return ValidationResult(
                 accepted=False,
-                reason=f"Maksimum toplam pozisyon limitine ulaşıldı ({total_positions_count}/{self.max_total_positions})"
+                reason=f"Maximum total position limit reached ({total_positions_count}/{self.max_total_positions})"
             )
         
-        # Adım 2: Bu tarafta pozisyon var mı kontrol et
+        # Step 2: Check if there is a position on this side
         same_side_positions = self._get_positions_by_side(open_positions, signal_side)
         opposite_side = 'short' if signal_side == 'long' else 'long'
         opposite_side_positions = self._get_positions_by_side(open_positions, opposite_side)
         
-        # Adım 2.5: max_positions_per_symbol kontrolü (multi-symbol desteği için)
-        # Bu sembol için tüm pozisyonları say (her iki taraf)
+        # Step 2.5: max_positions_per_symbol check (for multi-symbol support)
+        # Count all positions for this symbol (both sides)
         symbol_position_count = 0
         if same_side_positions:
             symbol_position_count += len(same_side_positions) if isinstance(same_side_positions, list) else 1
@@ -132,13 +132,13 @@ class PositionValidator:
         if symbol_position_count >= self.max_positions_per_symbol:
             return ValidationResult(
                 accepted=False,
-                reason=f"Sembol başına maksimum pozisyon limitine ulaşıldı ({symbol_position_count}/{self.max_positions_per_symbol})"
+                reason=f"Maximum position limit reached per symbol ({symbol_position_count}/{self.max_positions_per_symbol})"
             )
         
-        # Adım 3: PYRAMIDING mantığı
+        # Step 3: PYRAMIDING logic
         if same_side_positions:
             if self.pyramiding_enabled:
-                # Başka bir entry eklenebilir mi?
+                # Can another entry be added?
                 num_entries = len(same_side_positions) if isinstance(same_side_positions, list) else 1
                 
                 if num_entries < self.pyramiding_max_entries:
@@ -150,47 +150,47 @@ class PositionValidator:
                 else:
                     return ValidationResult(
                         accepted=False,
-                        reason=f"Pyramiding limitine ulaşıldı ({num_entries}/{self.pyramiding_max_entries})"
+                        reason=f"Reached pyramiding limit ({num_entries}/{self.pyramiding_max_entries})"
                     )
             else:
-                # Pyramiding kapalı - aynı tarafta açılamaz
+                # Pyramiding is disabled - cannot be opened on the same side.
                 return ValidationResult(
                     accepted=False,
-                    reason=f"Zaten {signal_side} pozisyonu var (pyramiding devre dışı)"
+                    reason=f"There is already a {signal_side} position (pyramiding is disabled)"
                 )
         
-        # Adım 4: HEDGING mantığı
+        # Step 4: HEDGING logic
         if opposite_side_positions:
             if self.allow_hedging:
-                # Ters taraf açılabilir (hedging)
+                # The reverse side can be opened (hedging)
                 return ValidationResult(
                     accepted=True,
-                    reason=f"Hedging: {opposite_side} pozisyonu varken {signal_side} açılıyor",
+                    reason=f"Hedging: A {signal_side} position is being opened while there is an {opposite_side} position",
                     action='open_new'
                 )
             else:
-                # Hedging kapalı - ters taraf açılamaz
+                # Hedging is disabled - the opposite side cannot be opened.
                 return ValidationResult(
                     accepted=False,
-                    reason=f"Zaten {opposite_side} pozisyonu var (hedging devre dışı)"
+                    reason=f"It already has the {opposite_side} position (hedging is disabled)"
                 )
         
-        # Adım 5: Normal giriş (çakışma yok)
+        # Step 5: Normal entry (no collision)
         return ValidationResult(
             accepted=True,
-            reason=f"Yeni {signal_side} pozisyonu açılıyor",
+            reason=f"A new {signal_side} position is being opened",
             action='open_new'
         )
     
     def _count_total_positions(self, open_positions: Dict[str, Any]) -> int:
         """
-        Toplam açık pozisyon sayısını hesapla
+        Calculate the total number of open positions.
         
         Args:
-            open_positions: Açık pozisyonlar dict'i
+            open_positions: Dictionary of open positions.
         
         Returns:
-            Toplam sayı
+            Total number
         """
         count = 0
         for side, pos in open_positions.items():
@@ -202,29 +202,29 @@ class PositionValidator:
     
     def _get_positions_by_side(self, open_positions: Dict[str, Any], side: str) -> Any:
         """
-        Belirli bir taraf için pozisyonları getir
+        Retrieves positions for a specific side.
         
         Args:
-            open_positions: Açık pozisyonlar dict'i
-            side: 'long' veya 'short'
+            open_positions: Dictionary of open positions
+            side: 'long' or 'short'
         
         Returns:
-            Position, List[Position], veya None
+            Position, List[Position], or None
         """
         return open_positions.get(side)
     
     def calculate_pyramid_size(self, base_size: float, entry_number: int) -> float:
         """
-        Pyramiding entry için pozisyon boyutunu hesapla
+        Calculate the position size for pyramiding entry.
         
         Args:
-            base_size: Baz pozisyon boyutu
-            entry_number: Entry numarası (1, 2, 3, ...)
+            base_size: Base position size
+            entry_number: Entry number (1, 2, 3, ...)
         
         Returns:
-            Ölçeklendirilmiş pozisyon boyutu
+            Scaled position size.
         
-        Örnek:
+        Example:
             base_size = 1.0, scale_factor = 0.5
             Entry 1: 1.0 (100%)
             Entry 2: 0.5 (50%)
@@ -233,7 +233,7 @@ class PositionValidator:
         if entry_number == 1:
             return base_size
         
-        # Her entry için pyramiding_scale_factor ile ölçeklendir
+        # Scale each entry by the pyramiding_scale_factor
         scaled_size = base_size * (self.pyramiding_scale_factor ** (entry_number - 1))
         return scaled_size
     
@@ -243,18 +243,18 @@ class PositionValidator:
         open_positions: Dict[str, Any]
     ) -> bool:
         """
-        Giriş öncesi ters pozisyon kapatılmalı mı kontrol et
-        (Hedging olmayan stratejiler için)
+        Check if the reverse position should be closed before entering.
+        (For strategies without hedging)
         
         Args:
-            signal_side: 'long' veya 'short'
-            open_positions: Açık pozisyonlar dict'i
+            signal_side: 'long' or 'short'
+            open_positions: Dictionary of open positions
         
         Returns:
-            True ise ters pozisyon kapatılmalı
+            If True, the reverse position should be closed.
         """
         if self.allow_hedging:
-            return False  # Hedging izinli, kapatmaya gerek yok
+            return False  # Hedging is allowed, no need to close
         
         opposite_side = 'short' if signal_side == 'long' else 'long'
         opposite_pos = self._get_positions_by_side(open_positions, opposite_side)

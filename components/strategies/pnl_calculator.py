@@ -6,15 +6,15 @@ Yazar: SuperBot Team
 Tarih: 2025-12-07
 Versiyon: 1.0.0
 
-PnL (Profit and Loss) hesaplama utility class
+PnL (Profit and Loss) calculation utility class
 
-Amaç: TradingEngine ve BacktestEngine'deki duplicate PnL hesaplama kodunu
-merkezi bir yere taşımak. DRY prensibi.
+Purpose: To remove duplicate PnL calculation code in TradingEngine and BacktestEngine.
+move to a central location. DRY principle.
 
-Kullanım:
+Usage:
     from components.strategies.pnl_calculator import PnLCalculator
 
-    # Tek hesaplama
+    # Single calculation
     gross, net, pct = PnLCalculator.calculate(
         entry_price=95000,
         exit_price=96000,
@@ -23,7 +23,7 @@ Kullanım:
         fee=10.0
     )
 
-    # Detaylı sonuç
+    # Detailed result
     result = PnLCalculator.calculate_detailed(
         entry_price=95000,
         exit_price=96000,
@@ -40,12 +40,12 @@ from dataclasses import dataclass
 
 @dataclass
 class PnLResult:
-    """PnL hesaplama sonucu"""
-    gross_pnl: float       # Fee öncesi PnL
-    net_pnl: float         # Fee sonrası PnL
-    net_pnl_pct: float     # Net PnL yüzdesi
-    position_value: float  # Entry değeri (entry_price * quantity)
-    total_fee: float       # Toplam fee
+    """P&L calculation result"""
+    gross_pnl: float       # PnL before fees
+    net_pnl: float         # PnL after fees
+    net_pnl_pct: float     # Net PnL percentage
+    position_value: float  # Entry value (entry_price * quantity)
+    total_fee: float       # Total fee
     is_profitable: bool    # Net PnL >= 0
 
 
@@ -53,7 +53,7 @@ class PnLCalculator:
     """
     PnL (Profit and Loss) Calculator
 
-    Static utility class - instance oluşturmaya gerek yok.
+    Static utility class - no need to create an instance.
 
     LONG pozisyon:  PnL = (exit_price - entry_price) * quantity
     SHORT pozisyon: PnL = (entry_price - exit_price) * quantity
@@ -71,16 +71,16 @@ class PnLCalculator:
         PnL hesapla (basit)
 
         Args:
-            entry_price: Giriş fiyatı
-            exit_price: Çıkış fiyatı
-            quantity: Miktar
-            side: 'LONG' veya 'SHORT'
-            fee: Toplam fee (entry + exit)
+            entry_price: Entry price
+            exit_price: Exit price
+            quantity: Quantity
+            side: 'LONG' or 'SHORT'
+            fee: Total fee (entry + exit)
 
         Returns:
             Tuple: (gross_pnl, net_pnl, net_pnl_pct)
 
-        Örnek:
+        Example:
             >>> gross, net, pct = PnLCalculator.calculate(95000, 96000, 0.1, 'LONG', 10)
             >>> print(f"PnL: ${net:.2f} ({pct:.2f}%)")
             PnL: $90.00 (0.95%)
@@ -110,18 +110,18 @@ class PnLCalculator:
         exit_fee: float = 0.0
     ) -> PnLResult:
         """
-        PnL hesapla (detaylı)
+        Calculate PnL (detailed)
 
         Args:
-            entry_price: Giriş fiyatı
-            exit_price: Çıkış fiyatı
-            quantity: Miktar
-            side: 'LONG' veya 'SHORT'
-            entry_fee: Giriş fee
-            exit_fee: Çıkış fee
+            entry_price: Entry price
+            exit_price: Exit price
+            quantity: Quantity
+            side: 'LONG' or 'SHORT'
+            entry_fee: Entry fee
+            exit_fee: Exit fee
 
         Returns:
-            PnLResult: Detaylı sonuç dataclass
+            PnLResult: Detailed result dataclass
         """
         total_fee = entry_fee + exit_fee
         gross_pnl, net_pnl, net_pnl_pct = PnLCalculator.calculate(
@@ -151,11 +151,11 @@ class PnLCalculator:
         Partial close PnL hesapla
 
         Args:
-            entry_price: Orijinal giriş fiyatı
-            exit_price: Kısmi çıkış fiyatı
-            close_quantity: Kapatılan miktar
-            side: 'LONG' veya 'SHORT'
-            fee: Bu partial close için fee
+            entry_price: Original entry price
+            exit_price: Partial exit price
+            close_quantity: Quantity closed
+            side: 'LONG' or 'SHORT'
+            fee: Fee for this partial close
 
         Returns:
             Tuple: (gross_pnl, net_pnl)

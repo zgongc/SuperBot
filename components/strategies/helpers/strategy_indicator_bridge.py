@@ -6,20 +6,20 @@ Yazar: SuperBot Team
 Tarih: 2025-11-18
 Versiyon: 3.0.0 (Registry-Based Auto-Aliasing)
 
-Strategy template ile IndicatorManager arasındaki köprü.
+Bridge between strategy template and IndicatorManager.
 
-Özellikler:
-- Strategy template'teki indicator config'ini IndicatorManager'a aktarır
-- Multi-timeframe indicator yönetimi
-- **YENİ v3:** Registry-based automatic smart aliasing (yeni indicator → otomatik çalışır!)
-- Indicator sonuçlarını strategy formatına çevirir
-- Her iki syntax desteklenir: kısa ('macd') ve açık ('macd_macd')
+Features:
+- Transfers the indicator configuration from the strategy template to the IndicatorManager.
+- Management of indicators across multiple timeframes.
+- **NEW v3:** Registry-based automatic smart aliasing (new indicator → works automatically!)
+- Converts indicator results to the strategy format.
+- Both syntax are supported: short ('macd') and explicit ('macd_macd')
 - Cache integration
 
-Kullanım:
+Usage:
     from strategies.helpers.strategy_indicator_bridge import create_indicator_manager_from_strategy
 
-    # Strategy'den indicator manager oluştur
+    # Create an indicator manager from the Strategy.
     indicator_manager = create_indicator_manager_from_strategy(
         strategy=my_strategy,
         cache_manager=cache,
@@ -29,7 +29,7 @@ Kullanım:
     # Indicators hesapla
     results = indicator_manager.calculate_all(symbol="BTCUSDT", data=df)
 
-Bağımlılıklar:
+Dependencies:
     - components.indicators.indicator_manager
     - components.strategies.base_strategy_template
 """
@@ -54,7 +54,7 @@ def create_indicator_manager_from_strategy(
     verbose: bool = False
 ) -> Any:
     """
-    Strategy template'ten IndicatorManager oluştur
+    Create an IndicatorManager from the strategy template.
 
     Args:
         strategy: BaseStrategyTemplate instance
@@ -75,19 +75,19 @@ def create_indicator_manager_from_strategy(
         ...     logger=logger,
         ...     event_bus=event_bus
         ... )
-        >>> # Artık indicator_manager.calculate_all() kullanılabilir
-        >>> # EventBus ile real-time updates da aktif
+        >>> # indicator_manager.calculate_all() can now be used
+        >>> # Enable real-time updates with EventBus
     """
     try:
         from components.indicators.indicator_manager import IndicatorManager
     except ImportError:
-        # Fallback: indicators modülü doğrudan erişilebilirse
+        # Fallback: If the indicators module can be accessed directly.
         from indicators.indicator_manager import IndicatorManager
 
-    # Config hazırla
+    # Prepare configuration
     manager_config = config or {}
 
-    # IndicatorManager oluştur (with EventBus support)
+    # Create IndicatorManager (with EventBus support)
     indicator_manager = IndicatorManager(
         config=manager_config,
         cache_manager=cache_manager,
@@ -98,24 +98,24 @@ def create_indicator_manager_from_strategy(
         verbose=verbose
     )
 
-    # Strategy'nin indicator config'ini yükle
+    # Load the strategy's indicator configuration
     if hasattr(strategy, 'technical_parameters') and strategy.technical_parameters:
         indicators_config = strategy.technical_parameters.indicators
 
         if indicators_config and len(indicators_config) > 0:
             if logger and verbose:
-                logger.info(f"📊 Strategy'den {len(indicators_config)} indicator yükleniyor...")
+                logger.info(f"📊 Loading {len(indicators_config)} indicators from the strategy...")
 
             indicator_manager.load_from_config(indicators_config)
 
             if logger and verbose:
-                logger.info(f"✅ {len(indicators_config)} indicator yüklendi")
+                logger.info(f"✅ {len(indicators_config)} indicator loaded")
         else:
             if logger:
-                logger.warning("⚠️ Strategy'de indicator config bulunamadı")
+                logger.warning("⚠️ Indicator configuration not found in the strategy")
     else:
         if logger:
-            logger.warning("⚠️ Strategy'de technical_parameters bulunamadı")
+            logger.warning("⚠️ Technical parameters not found in the strategy")
 
     return indicator_manager
 
@@ -126,28 +126,28 @@ def format_indicator_results_for_strategy(
     ohlcv_data: Optional[Any] = None
 ) -> Dict[str, Any]:
     """
-    IndicatorManager sonuçlarını strategy için formatlama
+    Formats the results from IndicatorManager for use by the strategy.
 
     **v3 - Registry-Based Automatic Smart Aliasing:**
-    - Registry'den output_keys otomatik okunur (yeni indicator → manuel kod gerekmez!)
-    - Self-named outputs otomatik tespit edilir
-    - Her iki syntax desteklenir: kısa ve açık
+    - Output keys are automatically read from the registry (new indicator -> no manual coding required!)
+    - Self-named outputs are automatically detected
+    - Both syntax styles are supported: short and verbose.
 
-    IndicatorManager bazı indicator'lar için complex objeler döner
-    (örn: Supertrend → {"trend": 1, "value": 50000})
+    IndicatorManager returns complex objects for some indicators.
+    (example: Supertrend -> {"trend": 1, "value": 50000})
 
-    Bu fonksiyon bunları strategy'nin kolayca kullanabileceği
-    flat dict'e çevirir ve smart aliasing ekler.
+    This function makes it easy for the strategy to use them.
+    Converts to a flat dictionary and adds smart aliasing.
 
     Args:
-        indicator_results: IndicatorManager.calculate_all() sonucu
-        timeframe: Timeframe (örn: "1m", "5m")
+        indicator_results: The result of IndicatorManager.calculate_all()
+        timeframe: Timeframe (e.g., "1m", "5m")
         ohlcv_data: Optional DataFrame with OHLCV data (for MTF conditions)
 
     Returns:
         Formatted dict with smart aliasing:
         {
-            # Main output aliases (kısa syntax)
+            # Main output aliases (short syntax)
             "macd": 0.5,
             "supertrend": 49500,
 
@@ -167,9 +167,9 @@ def format_indicator_results_for_strategy(
         >>> results = indicator_manager.calculate_all("BTCUSDT", df)
         >>> formatted = format_indicator_results_for_strategy(results, "1m")
         >>>
-        >>> # Her iki syntax de çalışır:
-        >>> if formatted["macd"] > formatted["macd_signal"]:  # Kısa
-        >>> if formatted["macd_macd"] > formatted["macd_signal"]:  # Açık
+        >>> # Both syntax options work:
+        >>> if formatted["macd"] > formatted["macd_signal"]:  # Short
+        >>> if formatted["macd_macd"] > formatted["macd_signal"]:  # Bullish
     """
     from components.indicators import get_indicator_info
 
@@ -179,7 +179,7 @@ def format_indicator_results_for_strategy(
         if result is None:
             continue
 
-        # IndicatorResult objesi ise value'yu çıkar
+        # If it's an IndicatorResult object, extract the value.
         if hasattr(result, 'value'):
             value = result.value
         else:
@@ -191,10 +191,10 @@ def format_indicator_results_for_strategy(
 
         # Multi-value indicator (MACD, Bollinger, Stochastic, etc.)
         elif isinstance(value, dict):
-            # Base indicator name'i al (custom naming için: ema_21 → ema)
+            # Get the base indicator name (for custom naming: ema_21 → ema)
             base_indicator_name = _extract_base_indicator_name(indicator_name)
 
-            # Registry'den bu indicator'ü kontrol et (automatic!)
+            # Check this indicator from the registry (automatic!)
             try:
                 indicator_info = get_indicator_info(base_indicator_name)
                 output_keys = indicator_info.get('output_keys', [])
@@ -203,7 +203,7 @@ def format_indicator_results_for_strategy(
                 output_keys = []
 
             # Check if this indicator has a self-named main output
-            # (örn: macd indicator'ünün 'macd' output'u var mı?)
+            # (e.g., does the MACD indicator have an output named 'macd'?)
             has_self_named_output = base_indicator_name in value or indicator_name in value
 
             for key, val in value.items():
@@ -211,8 +211,8 @@ def format_indicator_results_for_strategy(
                 full_key = f"{indicator_name}_{key}"
                 formatted[full_key] = val
 
-                # Main output alias (kısa syntax için)
-                # Sadece key == base_indicator_name veya key == indicator_name ise
+                # Main output alias (for short syntax)
+                # Only if key == base_indicator_name or key == indicator_name
                 if key == base_indicator_name or key == indicator_name:
                     # Self-named main output → add short aliases
                     # 1. Custom name alias (supertrend_10_4.0)
@@ -222,11 +222,11 @@ def format_indicator_results_for_strategy(
                     if indicator_name != base_indicator_name:
                         formatted[base_indicator_name] = val
 
-        # Array/list → son değeri al
+        # Array/list → get the last value
         elif isinstance(value, (list, tuple)) and len(value) > 0:
             formatted[indicator_name] = value[-1]
 
-        # Diğer tipler → olduğu gibi geçir
+        # Other types → pass as is
         else:
             formatted[indicator_name] = value
 
@@ -243,9 +243,9 @@ def format_indicator_results_for_strategy(
 
 def _extract_base_indicator_name(indicator_name: str) -> str:
     """
-    Custom indicator name'den base indicator name'i çıkar
+    Removes the base indicator name from the custom indicator name.
 
-    Örnekler:
+    Examples:
         "ema_21" → "ema"
         "macd_12_26_9" → "macd"
         "rsi" → "rsi"
@@ -253,19 +253,19 @@ def _extract_base_indicator_name(indicator_name: str) -> str:
         "stochastic_rsi_14_14" → "stochastic_rsi"
 
     Args:
-        indicator_name: Full indicator name (custom veya base)
+        indicator_name: Full indicator name (custom or base)
 
     Returns:
         Base indicator name
 
     Not:
         Multi-word indicators (stochastic_rsi, volume_sma, pivot_points, etc.)
-        için özel logic var
+        for a specific logic
     """
-    # Underscore'dan önceki kısmı al
+    # Get the part before the underscore
     parts = indicator_name.split('_')
 
-    # İlk part base name
+    # Initial part base name
     base_name = parts[0]
 
     # Multi-word indicators (2 kelime)
@@ -382,14 +382,14 @@ def get_multi_timeframe_data(
     logger: Optional[Any] = None
 ) -> Dict[str, Dict[str, Any]]:
     """
-    Multi-timeframe indicator hesaplama
+    Multi-timeframe indicator calculation.
 
-    Strategy'nin check_entry_conditions() metoduna gönderilecek
-    timeframe_data'yı hazırlar.
+    Strategy's check_entry_conditions() method will be sent to.
+    Prepares the timeframe data.
 
     Args:
         indicator_manager: IndicatorManager instance
-        symbol: Symbol (örn: "BTCUSDT")
+        symbol: Symbol (e.g., "BTCUSDT")
         timeframe_data: {
             "1m": pd.DataFrame(...),
             "5m": pd.DataFrame(...),
@@ -418,7 +418,7 @@ def get_multi_timeframe_data(
         >>>     logger
         >>> )
         >>>
-        >>> # Strategy'ye gönder
+        >>> # Send to Strategy
         >>> result = strategy.check_entry_conditions(
         >>>     symbol="BTCUSDT",
         >>>     timeframe_data=indicator_data,
@@ -438,11 +438,11 @@ def get_multi_timeframe_data(
             multi_tf_indicators[timeframe] = formatted
 
             if logger:
-                logger.debug(f"✅ {timeframe}: {len(formatted)} indicator hesaplandı")
+                logger.debug(f"✅ {timeframe}: {len(formatted)} indicator calculated")
 
         except Exception as e:
             if logger:
-                logger.error(f"❌ {timeframe} indicator hesaplama hatası: {e}")
+                logger.error(f"❌ Error calculating {timeframe} indicator: {e}")
             multi_tf_indicators[timeframe] = {}
 
     return multi_tf_indicators
@@ -542,11 +542,11 @@ if __name__ == "__main__":
     print(f"   ✅ Different values: {formatted_multi.get('macd_signal') != formatted_multi.get('tsi_signal')}")
 
     print("\n" + "=" * 80)
-    print("✅ Tüm testler tamamlandı!")
+    print("✅ All tests completed!")
     print("=" * 80)
-    print("\n💡 Özellikler:")
-    print("   ✅ Registry-based automatic detection (yeni indicator → otomatik çalışır)")
-    print("   ✅ Smart aliasing (main output → kısa alias)")
+    print("\n💡 Features:")
+    print("   ✅ Registry-based automatic detection (new indicator -> automatically runs)")
+    print("   ✅ Smart aliasing (main output → short alias)")
     print("   ✅ Full names (collision-safe)")
     print("   ✅ Backward compatible")
     print("   ✅ Multi-word indicator support (stochastic_rsi, volume_sma, etc.)")

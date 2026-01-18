@@ -6,9 +6,9 @@ Yazar: SuperBot Team
 Tarih: 2025-10-16
 Versiyon: 1.0.0
 
-Risk Manager - Risk kontrolü ve validasyon
+Risk Manager - Risk control and validation
 
-Özellikler:
+Features:
 - Position size validation
 - Max open positions limit
 - Daily loss limit
@@ -19,16 +19,16 @@ Risk Manager - Risk kontrolü ve validasyon
 - Portfolio heat check
 - Emergency stop mechanism
 
-Risk Parametreleri:
+Risk Parameters:
     max_position_size: 10%      # Portfolio'nun max %10'u
-    max_open_positions: 5       # Aynı anda max 5 pozisyon
-    daily_loss_limit: -5%       # Günlük max %5 loss
+    max_open_positions: 5       # Maximum 5 positions at the same time
+    daily_loss_limit: -5%       # Maximum %5 loss per day
     max_drawdown: -15%          # Max drawdown %15
     max_portfolio_heat: 20%     # Max risk exposure
     min_risk_reward: 1.5        # Min 1:1.5 risk/reward
     max_leverage: 10            # Max leverage
 
-Kullanım:
+Usage:
     rm = RiskManager(
         config=config,
         logger=logger,
@@ -68,7 +68,7 @@ class RiskLevel(str, Enum):
 
 class RiskManager:
     """
-    Risk Manager - Trading risk kontrolü ve validasyon
+    Risk Manager - Trading risk control and validation
     
     Risk Checks:
     1. Position size (portfolio %)
@@ -121,7 +121,7 @@ class RiskManager:
         self.rejected_trades = []
         self.risk_violations = []
         
-        self.logger.info("🛡️ RiskManager başlatıldı")
+        self.logger.info("🛡️ RiskManager started")
     
     # ========================================================================
     # INITIALIZATION
@@ -187,29 +187,29 @@ class RiskManager:
         Position size hesapla (Strategy RiskManagement config'inden)
 
         BaseStrategy.RiskManagement config'ini kullanarak position size hesaplar.
-        Stratejiden gelen TÜM risk parametrelerini uygular:
+        Applies ALL risk parameters from the strategy:
 
         Desteklenen metodlar:
         - FIXED_PERCENT: Portfolio'nun %X'i
-        - FIXED_USD: Sabit $X değerinde
+        - FIXED_USD: Fixed $X value.
         - FIXED_QUANTITY: Sabit X adet
-        - RISK_BASED: Stop loss'a göre (max_risk_per_trade kullanır)
+        - RISK_BASED: Based on stop loss (uses max_risk_per_trade).
 
         Risk Limitleri (stratejiden):
-        - max_risk_per_trade: Trade başına max risk %
+        - max_risk_per_trade: Maximum risk percentage per trade.
         - max_portfolio_risk: Auto-calculated from strategy.leverage (leverage × 100)
 
         Args:
             strategy: Strategy instance (for accessing max_portfolio_risk property)
-            risk_management: Strategy.risk_management objesi (RiskManagement dataclass)
-            entry_price: Giriş fiyatı
-            portfolio_value: Güncel portfolio değeri (balance)
-            stop_loss_price: Stop loss fiyatı (RISK_BASED için gerekli)
+            risk_management: Strategy.risk_management object (RiskManagement dataclass)
+            entry_price: Entry price
+            portfolio_value: Current portfolio value (balance)
+            stop_loss_price: Stop loss price (required for RISK_BASED)
 
         Returns:
             Position size (quantity)
         
-        Örnek:
+        Example:
             >>> rm = RiskManager()
             >>> size = rm.calculate_position_size_from_strategy(
             ...     risk_management=strategy.risk_management,
@@ -218,14 +218,14 @@ class RiskManager:
             ...     stop_loss_price=98500
             ... )
         """
-        # === STRATEJI PARAMETRELERINI OVERRIDE ET ===
-        # Strateji kendi risk kurallarını belirler!
+        # === OVERRIDE STRATEGY PARAMETERS ===
+        # The strategy defines its own risk rules!
         if hasattr(risk_management, 'max_risk_per_trade'):
             strategy_max_risk = risk_management.max_risk_per_trade
         else:
             strategy_max_risk = self.max_position_size_pct  # Fallback
         
-        # Get sizing method (enum veya string olabilir)
+        # Get sizing method (can be an enum or a string)
         sizing_method = getattr(risk_management.sizing_method, 'value', risk_management.sizing_method)
         sizing_method = str(sizing_method).lower()
         
@@ -252,7 +252,7 @@ class RiskManager:
             if self.logger:
                 self.logger.debug(f"  FIXED_PERCENT: {percent_value}% of ${portfolio_value:,.2f} × {leverage}x leverage = {size:.6f}")
 
-        # FIXED_USD: Sabit $X değerinde pozisyon × leverage
+        # FIXED_USD: Position with a fixed $X value x leverage
         elif sizing_method == 'fixed_usd':
             # Use new parameter (position_usd_size), fallback to old (size_value) for backward compatibility
             usd_value = risk_management.position_usd_size if hasattr(risk_management, 'position_usd_size') else risk_management.size_value
@@ -274,7 +274,7 @@ class RiskManager:
             if self.logger:
                 self.logger.debug(f"  FIXED_QUANTITY: {size:.6f}")
         
-        # RISK_BASED: Stop loss'a göre (stratejiden max_risk_per_trade kullanır) × leverage
+        # RISK_BASED: Based on stop loss (uses max_risk_per_trade from the strategy) x leverage
         elif sizing_method == 'risk_based':
             if stop_loss_price is None:
                 if self.logger:
@@ -311,9 +311,9 @@ class RiskManager:
             risk_pct = 0.02
             size = (portfolio_value * risk_pct) / entry_price
         
-        # === VALIDATE: max_risk_per_trade limiti (stratejiden) ===
-        # NOT: max_risk_per_trade sadece RISK_BASED için kullanılır
-        # FIXED_PERCENT ve FIXED_USD için global_max (leverage × 100) kontrolü yeterli
+        # === VALIDATE: max_risk_per_trade limit (from the strategy) ===
+        # NOTE: max_risk_per_trade is only used for RISK_BASED.
+        # The global_max check (leverage x 100) for FIXED_PERCENT and FIXED_USD is sufficient.
         position_value = size * entry_price
         position_pct = (position_value / portfolio_value) * 100
 
@@ -365,25 +365,25 @@ class RiskManager:
         timestamp: any = None
     ) -> Tuple[bool, str]:
         """
-        Pozisyon açılabilir mi kontrol et (KAPSAMLI - Stratejiden gelen TÜM kuralları uygula)
+        Check if the position can be opened (COMPREHENSIVE - Apply ALL rules from the strategy)
 
         Kontroller (stratejiden):
-        1. max_portfolio_risk: Açık pozisyonların toplam riski (auto: leverage × 100)
-        2. max_drawdown: Peak balance'dan düşüş
-        3. max_daily_trades: Günlük trade limiti
-        4. emergency_stop: Acil durum
+        1. max_portfolio_risk: Total risk of open positions (auto: leverage x 100)
+        2. max_drawdown: Drawdown from peak balance
+        3. max_daily_trades: Daily trade limit
+        4. emergency_stop: Emergency stop
         
         Args:
-            risk_management: Strategy.risk_management objesi
-            portfolio_value: Güncel portfolio değeri
-            current_balance: Güncel balance
-            open_positions: Açık pozisyonlar dict (symbol -> Position list)
-            timestamp: Güncel timestamp (daily trades için)
+            risk_management: Strategy.risk_management object
+            portfolio_value: Current portfolio value
+            current_balance: Current balance
+            open_positions: Open positions dictionary (symbol -> List of Positions)
+            timestamp: Current timestamp (for daily trades)
         
         Returns:
             (can_open: bool, reason: str)
         
-        Örnek:
+        Example:
             >>> can_open, reason = rm.validate_can_open_position(
             ...     risk_management=strategy.risk_management,
             ...     portfolio_value=10000,
@@ -394,13 +394,13 @@ class RiskManager:
         """
         # === 1. EMERGENCY STOP CHECK ===
         if self.emergency_stop:
-            return False, "Emergency stop aktif!"
+            return False, "Emergency stop is active!"
         
         # === 2. MAX PORTFOLIO RISK CHECK (auto-calculated from leverage) ===
         if hasattr(strategy, 'max_portfolio_risk'):
             max_portfolio_risk = strategy.max_portfolio_risk  # leverage × 100
 
-            # Açık pozisyonların toplam değeri
+            # Total value of open positions
             total_open_value = 0.0
             for side, positions in open_positions.items():
                 if isinstance(positions, list):
@@ -414,7 +414,7 @@ class RiskManager:
             portfolio_risk_pct = (total_open_value / portfolio_value) * 100 if portfolio_value > 0 else 0
 
             if portfolio_risk_pct >= max_portfolio_risk:
-                reason = f"Max portfolio risk aşıldı ({portfolio_risk_pct:.2f}% >= {max_portfolio_risk}% [leverage={strategy.leverage}x])"
+                reason = f"Max portfolio risk exceeded ({portfolio_risk_pct:.2f}% >= {max_portfolio_risk}% [leverage={strategy.leverage}x])"
                 if self.logger:
                     self.logger.warning(f"❌ {reason}")
                 return False, reason
@@ -423,7 +423,7 @@ class RiskManager:
         if hasattr(risk_management, 'max_drawdown'):
             max_drawdown = risk_management.max_drawdown
             
-            # Peak balance'ı güncelle
+            # Update the peak balance
             if current_balance > self.peak_balance:
                 self.peak_balance = current_balance
             
@@ -432,7 +432,7 @@ class RiskManager:
                 drawdown_pct = ((self.peak_balance - current_balance) / self.peak_balance) * 100
                 
                 if drawdown_pct >= max_drawdown:
-                    reason = f"Max drawdown aşıldı ({drawdown_pct:.2f}% >= {max_drawdown}%)"
+                    reason = f"Max drawdown exceeded ({drawdown_pct:.2f}% >= {max_drawdown}%)"
                     if self.logger:
                         self.logger.error(f"🚨 {reason} - EMERGENCY STOP!")
                     
@@ -444,42 +444,42 @@ class RiskManager:
         if hasattr(risk_management, 'max_daily_trades'):
             max_daily_trades = risk_management.max_daily_trades
             
-            # Günlük trade sayacını kontrol et
+            # Check the daily trade counter
             if timestamp:
                 can_trade, reason = self._check_daily_trades_limit(max_daily_trades, timestamp)
                 if not can_trade:
                     return False, reason
         
-        # === TÜM KONTROLLER GEÇTİ ===
+        # === ALL CHECKS PASSED ===
         return True, "OK"
     
     def _check_daily_trades_limit(self, max_daily_trades: int, timestamp: any) -> Tuple[bool, str]:
         """
-        Günlük trade limitini kontrol et
+        Check the daily trade limit.
         
         Args:
-            max_daily_trades: Max günlük trade sayısı
-            timestamp: Güncel timestamp
+            max_daily_trades: Maximum number of daily trades
+            timestamp: Current timestamp
         
         Returns:
             (can_trade: bool, reason: str)
         """
-        # Timestamp'i date'e çevir
+        # Convert timestamp to date
         if isinstance(timestamp, (int, float)):
             import pandas as pd
             current_date = pd.Timestamp(timestamp, unit='ms').date()
         else:
             current_date = timestamp.date() if hasattr(timestamp, 'date') else datetime.now().date()
         
-        # Yeni gün mü?
+        # Is it a new day?
         if self.last_trade_date is None or current_date != self.last_trade_date:
-            # Yeni gün - reset
+            # New day - reset
             self.daily_trades_count = 0
             self.last_trade_date = current_date
         
-        # Limit kontrolü
+        # Limit check
         if self.daily_trades_count >= max_daily_trades:
-            reason = f"Günlük trade limiti aşıldı ({self.daily_trades_count}/{max_daily_trades})"
+            reason = f"Daily trade limit exceeded ({self.daily_trades_count}/{max_daily_trades})"
             if self.logger:
                 self.logger.warning(f"❌ {reason}")
             return False, reason
@@ -488,7 +488,7 @@ class RiskManager:
     
     def increment_daily_trades(self):
         """
-        Günlük trade sayacını artır (trade açıldığında çağır)
+        Increment the daily trade counter (called when a trade is opened).
         """
         self.daily_trades_count += 1
         if self.logger:
@@ -496,7 +496,7 @@ class RiskManager:
     
     def reset_emergency_stop(self):
         """
-        Emergency stop'u resetle (dikkatli kullan!)
+        Reset the emergency stop (use with caution!)
         """
         self.emergency_stop = False
         if self.logger:
@@ -518,10 +518,10 @@ class RiskManager:
         
         Args:
             symbol: Symbol
-            entry_price: Giriş fiyatı
-            stop_loss: Stop loss fiyatı
-            portfolio_value: Portfolio değeri
-            risk_per_trade_pct: Trade başına risk (%)
+            entry_price: Entry price
+            stop_loss: Stop loss price
+            portfolio_value: Portfolio value
+            risk_per_trade_pct: Risk per trade (%)
             leverage: Leverage
         
         Returns:
@@ -535,7 +535,7 @@ class RiskManager:
             price_diff = abs(entry_price - stop_loss)
             
             if price_diff == 0:
-                return False, 0.0, "Stop loss fiyatı giriş fiyatına eşit olamaz"
+                return False, 0.0, "Stop loss price cannot be equal to the entry price"
             
             # Risk per unit percentage
             risk_per_unit_pct = (price_diff / entry_price) * 100
@@ -565,7 +565,7 @@ class RiskManager:
             quantity = round(quantity, 8)
             
             if quantity <= 0:
-                return False, 0.0, "Hesaplanan miktar sıfır veya negatif"
+                return False, 0.0, "The calculated amount is zero or negative"
             
             if self.logger:
                 self.logger.info(
@@ -577,7 +577,7 @@ class RiskManager:
         
         except Exception as e:
             if self.logger:
-                self.logger.error(f"❌ Position size hesaplama hatası: {e}")
+                self.logger.error(f"❌ Error calculating position size: {e}")
             return False, 0.0, str(e)
     
     # ========================================================================
@@ -594,7 +594,7 @@ class RiskManager:
         leverage: int = 1
     ) -> Tuple[bool, str]:
         """
-        Pozisyon açılabilir mi kontrolü
+        Checks if the position can be opened.
         
         Returns:
             (can_open, reason)
@@ -602,43 +602,43 @@ class RiskManager:
         try:
             # 1. Emergency stop check
             if self.emergency_stop:
-                return False, "Emergency stop aktif"
+                return False, "Emergency stop is active"
             
             # 2. Max open positions check
             if not await self._check_max_positions():
-                return False, f"Max açık pozisyon limiti ({self.max_open_positions})"
+                return False, f"Max open position limit ({self.max_open_positions})"
             
             # 3. Daily loss limit check
             if not await self._check_daily_loss():
-                return False, f"Günlük loss limiti aşıldı ({self.daily_loss_limit_pct}%)"
+                return False, f"Daily loss limit exceeded ({self.daily_loss_limit_pct}%)"
             
             # 4. Max drawdown check
             if not await self._check_max_drawdown():
-                return False, f"Max drawdown limiti aşıldı ({self.max_drawdown_pct}%)"
+                return False, f"Maximum drawdown limit exceeded ({self.max_drawdown_pct}%)"
             
             # 5. Portfolio heat check
             position_value = quantity * entry_price / leverage
             if not await self._check_portfolio_heat(position_value):
-                return False, f"Portfolio heat limiti aşılır ({self.max_portfolio_heat_pct}%)"
+                return False, f"Portfolio heat limit exceeded ({self.max_portfolio_heat_pct}%)"
             
             # 6. Leverage check
             if leverage > self.max_leverage:
-                return False, f"Max leverage limiti ({self.max_leverage}x)"
+                return False, f"Maximum leverage limit ({self.max_leverage}x)"
             
             # 7. Risk/Reward check
             if stop_loss and take_profit:
                 if not self._check_risk_reward(entry_price, stop_loss, take_profit):
-                    return False, f"Risk/Reward oranı yetersiz (min {self.min_risk_reward})"
+                    return False, f"Risk/Reward ratio is insufficient (min {self.min_risk_reward})"
             
             return True, "OK"
         
         except Exception as e:
             if self.logger:
-                self.logger.error(f"❌ Pozisyon validasyon hatası: {e}")
+                self.logger.error(f"❌ Position validation error: {e}")
             return False, str(e)
     
     async def _check_max_positions(self) -> bool:
-        """Max açık pozisyon kontrolü"""
+        """Maximum open position check"""
         if not self.data_manager:
             return True
         
@@ -648,14 +648,14 @@ class RiskManager:
         if current_count >= self.max_open_positions:
             if self.logger:
                 self.logger.warning(
-                    f"⚠️ Max pozisyon limiti: {current_count}/{self.max_open_positions}"
+                    f"⚠️ Maximum position limit: {current_count}/{self.max_open_positions}"
                 )
             return False
         
         return True
     
     async def _check_daily_loss(self) -> bool:
-        """Günlük loss limit kontrolü"""
+        """Daily loss limit check"""
         if not self.data_manager:
             return True
 
@@ -682,7 +682,7 @@ class RiskManager:
         if daily_pnl_pct <= self.daily_loss_limit_pct:
             if self.logger:
                 self.logger.error(
-                    f"🚨 Günlük loss limiti aşıldı: {daily_pnl_pct:.2f}% "
+                    f"🚨 Daily loss limit exceeded: {daily_pnl_pct:.2f}% "
                     f"(limit: {self.daily_loss_limit_pct}%)"
                 )
             
@@ -695,7 +695,7 @@ class RiskManager:
         return True
     
     async def _check_max_drawdown(self) -> bool:
-        """Max drawdown kontrolü"""
+        """Maximum drawdown check"""
         if not self.data_manager:
             return True
 
@@ -723,7 +723,7 @@ class RiskManager:
         if drawdown_pct <= self.max_drawdown_pct:
             if self.logger:
                 self.logger.error(
-                    f"🚨 Max drawdown limiti aşıldı: {drawdown_pct:.2f}% "
+                    f"🚨 Maximum drawdown limit exceeded: {drawdown_pct:.2f}% "
                     f"(limit: {self.max_drawdown_pct}%)"
                 )
             
@@ -736,7 +736,7 @@ class RiskManager:
         return True
     
     async def _check_portfolio_heat(self, new_position_value: float) -> bool:
-        """Portfolio heat (exposure) kontrolü"""
+        """Portfolio heat (exposure) control"""
         if not self.data_manager:
             return True
         
@@ -765,7 +765,7 @@ class RiskManager:
         if heat_pct > self.max_portfolio_heat_pct:
             if self.logger:
                 self.logger.warning(
-                    f"⚠️ Portfolio heat limiti aşılır: {heat_pct:.2f}% "
+                    f"⚠️ Portfolio heat limit exceeded: {heat_pct:.2f}% "
                     f"(limit: {self.max_portfolio_heat_pct}%)"
                 )
             return False
@@ -778,7 +778,7 @@ class RiskManager:
         stop_loss: float,
         take_profit: float
     ) -> bool:
-        """Risk/Reward ratio kontrolü"""
+        """Risk/Reward ratio check"""
         risk = abs(entry_price - stop_loss)
         reward = abs(take_profit - entry_price)
         
@@ -802,11 +802,11 @@ class RiskManager:
     # ========================================================================
     
     def is_emergency_stop(self) -> bool:
-        """Emergency stop kontrolü"""
+        """Emergency stop control"""
         return self.emergency_stop
     
     def trigger_emergency_stop(self, reason: str = "Manual"):
-        """Emergency stop tetikle"""
+        """Trigger emergency stop"""
         self.emergency_stop = True
         self._log_risk_violation("EMERGENCY_STOP", 0, reason)
         
@@ -814,11 +814,11 @@ class RiskManager:
             self.logger.error(f"🚨 EMERGENCY STOP TRIGGERED: {reason}")
     
     def reset_emergency_stop(self):
-        """Emergency stop sıfırla"""
+        """Reset emergency stop"""
         self.emergency_stop = False
         
         if self.logger:
-            self.logger.info("✅ Emergency stop sıfırlandı")
+            self.logger.info("✅ Emergency stop reset")
     
     # ========================================================================
     # RISK METRICS
@@ -871,12 +871,12 @@ class RiskManager:
         return metrics
     
     def get_risk_level(self) -> RiskLevel:
-        """Mevcut risk seviyesini getir"""
+        """Gets the current risk level"""
         if self.emergency_stop:
             return RiskLevel.CRITICAL
         
         # Simple risk level calculation
-        # TODO: Daha gelişmiş hesaplama
+        # TODO: Implement more advanced calculations
         return RiskLevel.LOW
     
     # ========================================================================
@@ -884,13 +884,13 @@ class RiskManager:
     # ========================================================================
     
     async def _reset_daily_if_needed(self):
-        """Yeni gün kontrolü ve reset"""
+        """New day check and reset"""
         now = datetime.now()
         
         # Check if new day
         if now.date() > self.last_reset.date():
             if self.logger:
-                self.logger.info("🔄 Yeni gün - Risk metrikleri sıfırlandı")
+                self.logger.info("🔄 New day - Risk metrics reset")
             
             # Get current balance as new start
             if self.data_manager:
@@ -904,7 +904,7 @@ class RiskManager:
             if self.emergency_stop:
                 self.emergency_stop = False
                 if self.logger:
-                    self.logger.info("✅ Emergency stop sıfırlandı (yeni gün)")
+                    self.logger.info("✅ Emergency stop reset (new day)")
     
     def _log_risk_violation(self, violation_type: str, value: float, reason: str = ""):
         """Risk ihlalini kaydet"""

@@ -9,22 +9,22 @@ Versiyon: 2.0.0
 Smart Money Concept (SMC) / ICT Strategy v2
 
 v2 Degisiklikler:
-- Entry: BOS VEYA CHoCH ile giris (herhangi bir structure break)
-- Exit: Ters yonde structure break (BOS veya CHoCH)
-- Daha dogru BOS/CHoCH sinyal kullanimi
+- Entry: Empty or CHoCH (any structure break)
+- Exit: Structure break in the reverse direction (Empty or CHoCH)
+- More accurate use of BOS/CHoCH signal
 
-Strateji Mantigi:
+Strategy Logic:
 - BOS (Break of Structure): Trend devam sinyali
 - CHoCH (Change of Character): Trend donus sinyali
-- Her ikisi de structure break, farkli market koşullarinda
+- Both cause structure breaks, under different market conditions.
 
 Entry:
-- Long: Bullish BOS (trend devam) veya Bullish CHoCH (trend donus)
-- Short: Bearish BOS (trend devam) veya Bearish CHoCH (trend donus)
+- Long: Bullish BOS (trend continuation) or Bullish CHoCH (trend reversal)
+- Short: Bearish BOS (trend continuation) or Bearish CHoCH (trend reversal)
 
 Exit:
-- Long: Bearish structure break (BOS veya CHoCH)
-- Short: Bullish structure break (BOS veya CHoCH)
+- Long: Bearish structure break (BOS or CHoCH)
+- Short: Bullish structure break (BOS or CHoCH)
 """
 
 import sys
@@ -52,7 +52,7 @@ class Strategy(BaseStrategy):
     """
     Smart Money Concept (SMC) Strategy v2
 
-    BOS ve CHoCH'u birlikte kullanan strateji
+    Strategy that uses both BOS and CHoCH together.
     """
 
     def __init__(self):
@@ -209,15 +209,15 @@ class Strategy(BaseStrategy):
         )
 
         # ====================================================================
-        # ENTRY CONDITIONS (SMC v2 - CHoCH ile entry)
+        # ENTRY CONDITIONS (SMC v2 - entry with CHoCH)
         # ====================================================================
         # SMC Mantigi:
         # - CHoCH = Trend donus sinyali (daha guvenilir entry)
-        # - BOS = Trend devam sinyali (pyramiding icin kullanilabilir)
+        # - BOS = Trend continuation signal (can be used for pyramiding)
         #
-        # v2'de CHoCH ile entry yapiyoruz cunku:
+        # In version 2, we use CHoCH to create an entry because:
         # - CHoCH trend donusunu yakalar (dip/tepe)
-        # - BOS zaten trend yonunde, daha gec sinyal
+        # - BOS is already in the trend direction, so it gives a later signal.
         self.entry_conditions = {
             'long': [
                 # CHoCH bullish = Downtrend'den uptrend'e donus
@@ -246,7 +246,7 @@ class Strategy(BaseStrategy):
         # ====================================================================
         self.exit_conditions = {
             'long': [
-                # Bearish structure break (CHoCH veya BOS)
+                # Bearish structure break (CHoCH or BOS)
                 ['choch', '==', -1],
                 ['close', 'crossunder', 'ema_50'],
             ],

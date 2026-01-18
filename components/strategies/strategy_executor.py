@@ -8,16 +8,16 @@ Date: 2025-11-13
 Author: SuperBot Team
 
 Description:
-    Strateji çalıştırma orkestratörü.
+    Strategy execution orchestrator.
     
-    Tüm manager'ları koordine eder:
-    - SignalValidator (entry/exit koşulları)
+    Coordinates all managers:
+    - SignalValidator (entry/exit conditions)
     - ExitManager (SL/TP/trailing)
     - MarketValidator (session/time filters)
     - PatternGenerator (pattern detection)
     - PortfolioCoordinator (multi-symbol coordination)
 
-Kullanım:
+Usage:
     from components.strategies.strategy_executor import StrategyExecutor
     
     executor = StrategyExecutor(strategy)
@@ -39,7 +39,7 @@ class StrategyExecutor:
     """
     Strategy Executor
     
-    Strateji mantığını çalıştıran ve tüm manager'ları koordine eden class
+    This class executes the strategy logic and coordinates all managers.
     """
     
     def __init__(
@@ -91,7 +91,7 @@ class StrategyExecutor:
         _verbose: bool = False
     ) -> Dict[str, Any]:
         """
-        Strateji'yi evaluate et (unified interface for engines)
+        Evaluate the strategy (unified interface for engines)
 
         Args:
             symbol: Trading symbol
@@ -199,7 +199,7 @@ class StrategyExecutor:
         current_price: float
     ) -> Dict[str, Any]:
         """
-        Exit koşullarını evaluate et
+        Evaluate exit conditions.
         
         Args:
             symbol: Trading symbol
@@ -640,7 +640,7 @@ class StrategyExecutor:
         self,
         data: Union[pd.DataFrame, Dict[str, pd.DataFrame]]
     ) -> pd.DataFrame:
-        """Primary timeframe data'yı dön"""
+        """Returns the primary timeframe data"""
         if isinstance(data, pd.DataFrame):
             return data
         
@@ -668,7 +668,7 @@ class StrategyExecutor:
     
     def on_position_opened(self, position: Dict[str, Any]) -> None:
         """
-        Pozisyon açıldığında çağrılır
+        Called when a position is opened.
         
         Args:
             position: Position data
@@ -682,7 +682,7 @@ class StrategyExecutor:
     
     def on_position_closed(self, position: Dict[str, Any]) -> None:
         """
-        Pozisyon kapandığında çağrılır
+        Called when the position is closed.
         
         Args:
             position: Position data
@@ -702,15 +702,15 @@ class StrategyExecutor:
     
     def get_required_indicators(self) -> List[str]:
         """
-        Strateji için gereken tüm indikatörleri dön
+        Returns all the indicators required for the strategy.
         
         Returns:
             List[str]: Indicator names
         """
-        # Strategy'de tanımlı indikatörler
+        # Indicators defined in the Strategy.
         strategy_indicators = self.strategy.get_indicator_names()
         
-        # Signal koşullarında kullanılan indikatörler
+        # Indicators used in signal conditions
         signal_indicators = self.signal_manager.get_required_indicators()
         
         # Combine
@@ -719,11 +719,11 @@ class StrategyExecutor:
         return sorted(all_indicators)
     
     def sync_portfolio_from_position_manager(self) -> None:
-        """PositionManager'dan pozisyonları sync et"""
+        """Synchronize positions from PositionManager"""
         self.portfolio_manager.update_positions_from_position_manager()
     
     def get_portfolio_summary(self) -> Dict[str, Any]:
-        """Portfolio özetini dön"""
+        """Returns the portfolio summary"""
         return self.portfolio_manager.get_summary()
     
     def __repr__(self) -> str:

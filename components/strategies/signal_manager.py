@@ -8,20 +8,20 @@ Date: 2025-11-17
 Author: SuperBot Team
 
 Description:
-    Signal generation, logging ve persistence yönetimi.
+    Signal generation, logging, and persistence management.
 
     - Signal generation (entry/exit)
-    - Signal logging ve persistence
+    - Signal logging and persistence
     - Signal history tracking
     - Signal filtering
     - Signal statistics
 
-Kullanım:
+Usage:
     from components.strategies.signal_manager import SignalManager
 
     manager = SignalManager(logger=logger)
 
-    # Signal üret
+    # Generate signal
     signal = manager.generate_signal(
         symbol='BTCUSDT',
         signal_type='LONG',
@@ -55,7 +55,7 @@ from core.logger_engine import LoggerEngine
 
 
 class SignalType(str, Enum):
-    """Signal türleri"""
+    """Signal types"""
     LONG = "LONG"
     SHORT = "SHORT"
     EXIT_LONG = "EXIT_LONG"
@@ -64,7 +64,7 @@ class SignalType(str, Enum):
 
 
 class SignalSource(str, Enum):
-    """Signal kaynağı"""
+    """Signal source"""
     STRATEGY = "STRATEGY"
     AI = "AI"
     FUSION = "FUSION"
@@ -74,9 +74,9 @@ class SignalSource(str, Enum):
 @dataclass
 class Signal:
     """
-    Signal veri yapısı
+    Signal data structure
 
-    Bir trading signal'inin tüm bilgilerini içerir
+    It contains all the information about a trading signal.
     """
     # Core fields
     signal_id: str
@@ -112,12 +112,12 @@ class Signal:
     execution_price: Optional[float] = None
 
     def to_dict(self) -> Dict[str, Any]:
-        """Signal'i dict'e çevir (JSON serialization için)"""
+        """Convert the signal to a dictionary (for JSON serialization)"""
         data = asdict(self)
-        # Datetime'ları string'e çevir
+        # Convert datetimes to strings
         data['timestamp'] = self.timestamp.isoformat() if self.timestamp else None
         data['execution_time'] = self.execution_time.isoformat() if self.execution_time else None
-        # Enum'ları string'e çevir
+        # Convert enums to string
         data['signal_type'] = self.signal_type.value
         data['source'] = self.source.value
         return data
@@ -125,11 +125,11 @@ class Signal:
 
 class SignalManager:
     """
-    Signal Manager - Signal generation, logging ve tracking
+    Signal Manager - Signal generation, logging, and tracking.
 
-    Sorumlulukları:
+    Responsibilities:
     1. Signal generation (entry/exit)
-    2. Signal validation ve filtering
+    2. Signal validation and filtering
     3. Signal persistence (JSON/Database)
     4. Signal history tracking
     5. Signal statistics
@@ -141,7 +141,7 @@ class SignalManager:
         data_dir: Optional[Path] = None
     ) -> None:
         """
-        SignalManager'ı başlat
+        Initialize the SignalManager.
 
         Args:
             logger: Logger instance
@@ -182,7 +182,7 @@ class SignalManager:
             'MANUAL': 0
         }
 
-        self.logger.info("✅ SignalManager başlatıldı")
+        self.logger.info("✅ SignalManager started")
         self.logger.info(f"   Data directory: {self.data_dir}")
 
     # ========================================================================
@@ -206,25 +206,25 @@ class SignalManager:
         metadata: Optional[Dict[str, Any]] = None
     ) -> Signal:
         """
-        Yeni signal üret
+        Generate a new signal.
 
         Args:
             symbol: Trading symbol
-            signal_type: Signal türü (LONG/SHORT/EXIT_LONG/EXIT_SHORT)
+            signal_type: Signal type (LONG/SHORT/EXIT_LONG/EXIT_SHORT)
             score: Signal confidence (0.0 - 1.0)
             price: Current price
             timeframe: Timeframe
-            strategy_name: Strategy adı
-            source: Signal kaynağı
-            conditions_met: Karşılanan koşullar
-            conditions_failed: Karşılanmayan koşullar
+            strategy_name: Strategy name
+            source: Signal source
+            conditions_met: Met conditions
+            conditions_failed: Failed conditions
             stop_loss: Stop loss price
             take_profit: Take profit price
             position_size: Position size
             metadata: Additional metadata
 
         Returns:
-            Signal: Oluşturulan signal
+            Signal: The generated signal.
         """
         # Type conversions
         if isinstance(signal_type, str):
@@ -268,7 +268,7 @@ class SignalManager:
         self.signal_history.append(signal)
 
         self.logger.info(
-            f"📊 Signal üretildi: {symbol} {signal_type.value} "
+            f"📊 Signal generated: {symbol} {signal_type.value} "
             f"(score: {score:.2%}, source: {source.value})"
         )
 
@@ -315,10 +315,10 @@ class SignalManager:
             self.logger.debug(f"💾 Signal kaydedildi: {signal_file}")
 
         except Exception as e:
-            self.logger.error(f"❌ Signal kaydetme hatası: {e}")
+            self.logger.error(f"❌ Error saving signal: {e}")
 
     def save_all_signals(self) -> None:
-        """Tüm aktif signal'leri kaydet"""
+        """Save all active signals"""
         for symbol, signals in self.active_signals.items():
             for signal in signals:
                 if signal.is_active:
@@ -384,7 +384,7 @@ class SignalManager:
         symbol: Optional[str] = None
     ) -> List[Signal]:
         """
-        Aktif signal'leri al
+        Receive active signals.
 
         Args:
             symbol: Symbol filter (None = all)
@@ -406,7 +406,7 @@ class SignalManager:
         execution_price: Optional[float] = None
     ) -> bool:
         """
-        Signal'i executed olarak işaretle
+        Mark the signal as executed.
 
         Args:
             signal_id: Signal ID
@@ -428,7 +428,7 @@ class SignalManager:
                     )
                     return True
 
-        self.logger.warning(f"⚠️  Signal bulunamadı: {signal_id}")
+        self.logger.warning(f"⚠️ Signal not found: {signal_id}")
         return False
 
     def deactivate_signal(self, signal_id: str) -> bool:
@@ -459,7 +459,7 @@ class SignalManager:
         Signal istatistiklerini al
 
         Returns:
-            dict: İstatistikler
+            dict: Statistics
         """
         # Active signals count
         active_count = sum(
@@ -486,7 +486,7 @@ class SignalManager:
         }
 
     def print_statistics(self) -> None:
-        """Signal istatistiklerini yazdır"""
+        """Prints signal statistics"""
         stats = self.get_statistics()
 
         self.logger.info("📊 Signal Statistics:")
@@ -557,5 +557,5 @@ if __name__ == "__main__":
     print("\n6️⃣ Statistics testi:")
     manager.print_statistics()
 
-    print("\n✅ Tüm testler tamamlandı!")
+    print("\n✅ All tests completed!")
     print("=" * 60)

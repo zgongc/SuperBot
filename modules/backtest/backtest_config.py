@@ -312,7 +312,7 @@ if __name__ == "__main__":
     strategy = MockStrategy()
     config = build_config(strategy)
     print(f"   ✅ Config created")
-    print(f"   ✅ Sembol: {config.symbols[0]}")
+    print(f"   ✅ Symbol: {config.symbols[0]}")
     print(f"   ✅ Primary TF: {config.primary_timeframe}")
     print(f"   ✅ MTF TFs: {config.mtf_timeframes}")
     print(f"   ✅ Tarih: {config.start_date} → {config.end_date}")

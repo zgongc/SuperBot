@@ -8,14 +8,14 @@ Date: 2025-11-13
 Author: SuperBot Team
 
 Description:
-    Strateji template yükleme ve lifecycle yönetimi.
+    Strategy template loading and lifecycle management.
     
-    - Template dosyasından strateji yükle
-    - Strateji config'i doğrula
-    - Indikatörleri initialize et
-    - StrategyExecutor oluştur
+    - Load strategy from template file
+    - Validate strategy config
+    - Initialize indicators
+    - Create StrategyExecutor
 
-Kullanım:
+Usage:
     from components.strategies.strategy_manager import StrategyManager
     
     manager = StrategyManager(indicator_manager)
@@ -36,7 +36,7 @@ class StrategyManager:
     """
     Strategy lifecycle manager
     
-    Template yükleme, validation, initialization
+    Template loading, validation, initialization
     """
     
     def __init__(
@@ -74,23 +74,23 @@ class StrategyManager:
         validate: bool = True
     ) -> Tuple[BaseStrategy, StrategyExecutor]:
         """
-        Strateji template'ini yükle
+        Load the strategy template.
 
         Args:
-            template_path: Template dosya yolu
+            template_path: Template file path
                 - "grok_scalp.py" → components/strategies/templates/grok_scalp.py
                 - "grok_scalp" → components/strategies/templates/grok_scalp.py
                 - "components/strategies/templates/grok_scalp.py" → as-is
                 - "/full/path/to/strategy.py" → as-is
-            validate: Validation yap mı?
+            validate: Should validation be performed?
 
         Returns:
-            (strategy, executor): BaseStrategy ve StrategyExecutor instance'ları
+            (strategy, executor): BaseStrategy and StrategyExecutor instances.
 
         Raises:
-            FileNotFoundError: Template bulunamadı
-            ValidationError: Validation başarısız
-            Exception: Import hatası
+            FileNotFoundError: Template not found
+            ValidationError: Validation failed
+            Exception: Import error
         """
         # 0. Normalize path
         template_path = self._normalize_strategy_path(template_path)
@@ -176,10 +176,10 @@ class StrategyManager:
 
     def _list_available_templates(self) -> List[str]:
         """
-        Mevcut strategy template'lerini listele
+        List the currently available strategy templates.
 
         Returns:
-            List[str]: Template dosya adları (without .py)
+            List[str]: Template file names (without .py)
         """
         templates = []
         template_dir = Path(self.DEFAULT_TEMPLATE_DIR)
@@ -195,7 +195,7 @@ class StrategyManager:
 
     def _load_template_module(self, template_path: str) -> BaseStrategy:
         """
-        Template dosyasını import et ve strategy instance oluştur
+        Import the template file and create a strategy instance.
 
         Args:
             template_path: Template file path
@@ -212,14 +212,14 @@ class StrategyManager:
         if not path.exists():
             # List available templates
             available = self._list_available_templates()
-            error_msg = f"❌ Strategy bulunamadı: '{template_path}'"
+            error_msg = f"❌ Strategy not found: '{template_path}'"
 
             if available:
-                error_msg += f"\n\n📋 Mevcut strategy template'leri:\n"
+                error_msg += f"\n\n📋 Available strategy templates:\n"
                 for t in available:
                     error_msg += f"   • {t}\n"
             else:
-                error_msg += f"\n\n⚠️ '{self.DEFAULT_TEMPLATE_DIR}' klasöründe template yok!"
+                error_msg += f"\n\n⚠️ No template found in the '{self.DEFAULT_TEMPLATE_DIR}' folder!"
 
             raise FileNotFoundError(error_msg)
         
@@ -257,7 +257,7 @@ class StrategyManager:
     
     def _initialize_indicators(self, strategy: BaseStrategy) -> None:
         """
-        Strateji için indikatörleri initialize et
+        Initialize the indicators for the strategy.
         
         Args:
             strategy: BaseStrategy instance
@@ -287,7 +287,7 @@ class StrategyManager:
             )
         
         # Initialize via IndicatorManager
-        # Note: Bu method IndicatorManager'ın interface'ine göre ayarlanmalı
+        # Note: This method should be adjusted according to the IndicatorManager's interface.
         if hasattr(self.indicator_manager, 'load_from_config'):
             self.indicator_manager.load_from_config(
                 indicators,
@@ -304,34 +304,34 @@ class StrategyManager:
     
     def get_strategy(self, strategy_name: str) -> Optional[BaseStrategy]:
         """
-        Yüklenmiş strateji'yi dön
+        Returns the loaded strategy.
         
         Args:
             strategy_name: Strategy name
         
         Returns:
-            BaseStrategy veya None
+            BaseStrategy or None
         """
         return self.loaded_strategies.get(strategy_name)
     
     def get_executor(self, strategy_name: str) -> Optional[StrategyExecutor]:
         """
-        Strategy executor'ı dön
+        Return the strategy executor.
         
         Args:
             strategy_name: Strategy name
         
         Returns:
-            StrategyExecutor veya None
+            StrategyExecutor or None
         """
         return self.strategy_executors.get(strategy_name)
     
     def get_all_strategies(self) -> Dict[str, BaseStrategy]:
-        """Tüm yüklenmiş stratejileri dön"""
+        """Returns all loaded strategies"""
         return dict(self.loaded_strategies)
     
     def has_strategy(self, strategy_name: str) -> bool:
-        """Strateji yüklü mü?"""
+        """Is the strategy loaded?"""
         return strategy_name in self.loaded_strategies
     
     # ========================================================================
@@ -340,7 +340,7 @@ class StrategyManager:
     
     def unload_strategy(self, strategy_name: str) -> bool:
         """
-        Strateji'yi unload et
+        Unload the strategy.
         
         Args:
             strategy_name: Strategy name
@@ -366,7 +366,7 @@ class StrategyManager:
         template_path: str
     ) -> Tuple[BaseStrategy, StrategyExecutor]:
         """
-        Strateji'yi reload et
+        Reload the strategy.
         
         Args:
             strategy_name: Strategy name
@@ -382,7 +382,7 @@ class StrategyManager:
         return self.load_strategy(template_path)
     
     def clear_all(self) -> None:
-        """Tüm stratejileri temizle"""
+        """Clear all strategies"""
         self.loaded_strategies.clear()
         self.strategy_executors.clear()
         
@@ -395,7 +395,7 @@ class StrategyManager:
     
     def list_templates(self, templates_dir: str = 'components/strategies/templates') -> list[str]:
         """
-        Template dizinindeki tüm strategy template'lerini listele
+        Lists all strategy templates in the template directory.
         
         Args:
             templates_dir: Templates directory path
@@ -418,7 +418,7 @@ class StrategyManager:
     
     def get_summary(self) -> Dict[str, Any]:
         """
-        Manager özeti
+        Manager summary
         
         Returns:
             Dict: Summary info

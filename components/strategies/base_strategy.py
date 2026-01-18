@@ -8,10 +8,10 @@ Date: 2025-11-13
 Author: SuperBot Team
 
 Description:
-    Base strategy class ve tüm config type'ları.
-    Her strategy template bu class'ı inherit eder.
+    Base strategy class and all config types.
+    Each strategy template inherits from this class.
 
-Kullanım:
+Usage:
     from components.strategies.base_strategy import BaseStrategy, TradingSide
     
     class MyStrategy(BaseStrategy):
@@ -33,39 +33,39 @@ from abc import ABC, abstractmethod
 # ============================================================================
 
 class TradingSide(str, Enum):
-    """Trading yönü - Strateji hangi yönde pozisyon açabilir"""
-    LONG = "LONG"      # Sadece LONG pozisyon aç
-    SHORT = "SHORT"    # Sadece SHORT pozisyon aç
-    BOTH = "BOTH"      # Hem LONG hem SHORT açabilir
-    FLAT = "FLAT"      # Hiçbir pozisyon açma (pause)
+    """Trading direction - The strategy can open positions in which direction"""
+    LONG = "LONG"      # Open only LONG position
+    SHORT = "SHORT"    # Open only SHORT position
+    BOTH = "BOTH"      # Can open both LONG and SHORT
+    FLAT = "FLAT"  # No position opening (pause)
 
 
 class PositionSizeMethod(str, Enum):
-    """Pozisyon boyutu hesaplama metodları"""
+    """Position size calculation methods"""
     FIXED_USD = "FIXED_USD"                  # Sabit dolar ($100)
-    FIXED_PERCENT = "FIXED_PERCENT"          # Sabit yüzde (%5 of capital)
-    FIXED_QUANTITY = "FIXED_QUANTITY"        # Sabit miktar (0.01 BTC)
-    RISK_BASED = "RISK_BASED"                # Risk bazlı (stop loss'a göre)
-    KELLY_CRITERION = "KELLY_CRITERION"      # Kelly formülü
-    VOLATILITY_SCALED = "VOLATILITY_SCALED"  # ATR/volatility bazlı
+    FIXED_PERCENT = "FIXED_PERCENT"          # Fixed percentage (%5 of capital)
+    FIXED_QUANTITY = "FIXED_QUANTITY"        # Fixed quantity (0.01 BTC)
+    RISK_BASED = "RISK_BASED"                # Risk-based (based on stop loss)
+    KELLY_CRITERION = "KELLY_CRITERION"  # Kelly formula
+    VOLATILITY_SCALED = "VOLATILITY_SCALED"  # Based on ATR/volatility
     DYNAMIC_AI = "DYNAMIC_AI"                # AI-based dynamic sizing
 
 
 class ExitMethod(str, Enum):
-    """Take profit metodları"""
-    FIXED_PERCENT = "FIXED_PERCENT"          # Sabit yüzde (%2)
+    """Take profit methods"""
+    FIXED_PERCENT = "FIXED_PERCENT"          # Fixed percentage (%2)
     FIXED_PRICE = "FIXED_PRICE"              # Sabit fiyat ($45000)
     RISK_REWARD = "RISK_REWARD"              # Risk/Reward ratio (1:2)
-    ATR_BASED = "ATR_BASED"                  # ATR çarpanı (2x ATR)
+    ATR_BASED = "ATR_BASED"                  # ATR factor (2 x ATR)
     FIBONACCI = "FIBONACCI"                  # Fibonacci seviyeleri
     DYNAMIC_AI = "DYNAMIC_AI"                # AI-based dynamic exit
 
 
 class StopLossMethod(str, Enum):
-    """Stop loss metodları"""
-    FIXED_PERCENT = "FIXED_PERCENT"          # Sabit yüzde (%1)
+    """Stop loss methods"""
+    FIXED_PERCENT = "FIXED_PERCENT"          # Fixed percentage (%1)
     FIXED_PRICE = "FIXED_PRICE"              # Sabit fiyat ($95000)
-    ATR_BASED = "ATR_BASED"                  # ATR çarpanı (1.5x ATR)
+    ATR_BASED = "ATR_BASED"                  # ATR factor (1.5 x ATR)
     SWING_POINTS = "SWING_POINTS"            # Swing low/high
     FIBONACCI = "FIBONACCI"                  # Fibonacci retracement
     DYNAMIC_AI = "DYNAMIC_AI"                # AI-based adaptive SL
@@ -78,11 +78,11 @@ class StopLossMethod(str, Enum):
 @dataclass
 class SymbolConfig:
     """
-    Symbol konfigürasyonu
+    Symbol configuration
     
     Attributes:
-        symbol: Base asset listesi (örn: ['BTC', 'ETH'])
-        quote: Quote currency (örn: 'USDT')
+        symbol: List of base assets (e.g., ['BTC', 'ETH'])
+        quote: Quote currency (e.g., 'USDT')
         enabled: Bu semboller trade edilsin mi?
     """
     symbol: List[str]
@@ -93,10 +93,10 @@ class SymbolConfig:
 @dataclass
 class TechnicalParameters:
     """
-    Teknik indikatör parametreleri
+    Technical indicator parameters
     
     Attributes:
-        indicators: Indikatör dict'i
+        indicators: Dictionary of indicators.
             Format: {
                 "rsi_14": {"period": 14, "overbought": 70, "oversold": 30},
                 "ema_50": {"period": 50},
@@ -109,53 +109,53 @@ class TechnicalParameters:
 @dataclass
 class RiskManagement:
     """
-    Risk yönetimi parametreleri
+    Risk management parameters
 
-    POSITION SIZING METHODS (sadece leverage ayarla, gerisi otomatik!):
+    POSITION SIZING METHODS (only set the leverage, the rest is automatic!):
 
-    1. FIXED_PERCENT (ÖNERİLEN - En basit):
-       - size_value: Portfolio'nun kaç %'i (leverage ile çarpılır)
-       - max_risk_per_trade: KULLANILMAZ (ignore edilir)
-       - Örnek: size_value=10, leverage=5 → Her trade %50 pozisyon (10% × 5x)
+    1. FIXED_PERCENT (RECOMMENDED - Simplest):
+       - size_value: What percentage (%) of the portfolio (multiplied by leverage)
+       - max_risk_per_trade: NOT USED (will be ignored)
+       - Example: size_value=10, leverage=5 -> Each trade is %50 of the position (10% x 5 x)
 
     2. FIXED_USD:
-       - size_value: Her trade'de kaç $ (leverage UYGULANMAZ!)
-       - max_risk_per_trade: KULLANILMAZ
-       - Örnek: size_value=1000 → Her trade $1000 pozisyon
+       - size_value: How many $ per trade (leverage NOT APPLIED!)
+       - max_risk_per_trade: DO NOT USE
+       - Example: size_value=1000 -> Each trade is a $1000 position.
 
-    3. RISK_BASED (KARMAŞIK - Dikkatli kullan!):
-       - size_value: KULLANILMAZ
-       - max_risk_per_trade: Kaybetmeye hazır olduğun % (stop_loss ile bölünür)
-       - Formül: Position = (Portfolio × max_risk_per_trade) / stop_loss_distance
-       - Örnek: max_risk=2%, stop_loss=2%, leverage=1 → %100 pozisyon
-       - ⚠️ UYARI: max_risk/stop_loss > leverage ise LIMIT AŞIMI olur!
+    3. RISK_BASED (COMPLEX - Use with caution!):
+       - size_value: DO NOT USE
+       - max_risk_per_trade: The percentage you are willing to lose (divided by the stop_loss)
+       - Formula: Position = (Portfolio x max_risk_per_trade) / stop_loss_distance
+       - Example: max_risk=2%, stop_loss=2%, leverage=1 -> 100% position
+       - ⚠️ WARNING: If max_risk/stop_loss > leverage, a LIMIT EXCEEDS!
 
     Attributes:
-        sizing_method: Pozisyon boyutu hesaplama metodu (yukarıdaki 3'ten biri)
-        size_value: Pozisyon boyutu değeri (method'a göre değişir - yukarıya bak)
-        max_risk_per_trade: Her trade'de maksimum risk (sadece RISK_BASED'de kullanılır)
-        max_correlation: Maksimum korelasyon limiti
-        position_correlation_limit: Pozisyon korelasyon limiti
-        max_drawdown: Maksimum drawdown (%)
-        max_daily_trades: Günlük maksimum trade sayısı
-        emergency_stop_enabled: Acil durum durdurucu aktif mi?
-        ai_risk_enabled: AI risk yönetimi aktif mi? (henüz implement edilmedi)
-        dynamic_position_sizing: Dinamik pozisyon boyutu aktif mi?
+        sizing_method: Position sizing calculation method (one of the three above)
+        size_value: Position size value (varies depending on the method - see above)
+        max_risk_per_trade: Maximum risk per trade (used only with RISK_BASED)
+        max_correlation: Maximum correlation limit
+        position_correlation_limit: Position correlation limit
+        max_drawdown: Maximum drawdown (%)
+        max_daily_trades: Maximum number of trades per day
+        emergency_stop_enabled: Is the emergency stop enabled?
+        ai_risk_enabled: Is AI risk management enabled? (not yet implemented)
+        dynamic_position_sizing: Is dynamic position sizing enabled?
 
     Note:
-        max_portfolio_risk otomatik hesaplanır: strategy.leverage × 100
-        Örnek: leverage=5 → max_portfolio_risk=500% (5x kaldıraç ile max %500 pozisyon)
+        max_portfolio_risk is automatically calculated: strategy.leverage x 100
+        Example: leverage=5 -> max_portfolio_risk=500% (With a leverage of 5 x, the maximum position is 500%)
     """
     sizing_method: PositionSizeMethod
 
-    # Position sizing parameters (her method kendi parametresini kullanır)
-    position_percent_size: float = 10.0      # FIXED_PERCENT için: Portfolio'nun kaç %'i
-    position_usd_size: float = 1000.0        # FIXED_USD için: Kaç dolar
-    position_quantity_size: float = 0.01     # FIXED_QUANTITY için: Kaç adet (örn: 0.01 BTC)
-    max_risk_per_trade: float = 2.0          # RISK_BASED için: Kaybetmeye hazır %
+    # Position sizing parameters (each method uses its own parameters)
+    position_percent_size: float = 10.0      # For FIXED_PERCENT: What percentage of the portfolio?
+    position_usd_size: float = 1000.0        # For FIXED_USD: How many dollars
+    position_quantity_size: float = 0.01     # For FIXED_QUANTITY: How many units (e.g., 0.01 BTC)
+    max_risk_per_trade: float = 2.0          # For RISK_BASED: Percentage of capital you are willing to lose.
 
-    # Backward compatibility (deprecated - kullanma!)
-    size_value: float = 0.0                  # DEPRECATED: Yeni parametreleri kullan (position_*_size)
+    # Backward compatibility (deprecated - do not use!)
+    size_value: float = 0.0                  # DEPRECATED: Use the new parameters (position_*_size)
 
     # max_portfolio_risk: REMOVED - Now auto-calculated from strategy.leverage
     max_correlation: float = 0.7
@@ -170,23 +170,23 @@ class RiskManagement:
 @dataclass
 class PositionManagement:
     """
-    Pozisyon yönetimi parametreleri
+    Position management parameters
     
     Attributes:
-        max_positions_per_symbol: Her symbol için maksimum pozisyon
-        max_total_positions: Toplam maksimum pozisyon sayısı
-        allow_hedging: Hedging izni
-        position_timeout_enabled: Timeout kontrolü aktif mi?
-        position_timeout: Pozisyon timeout süresi (dakika)
-        pyramiding_enabled: Pyramiding aktif mi?
-        pyramiding_max_entries: Maksimum pyramiding entry sayısı
-        pyramiding_scale_factor: Her entry'de boyut çarpanı
+        max_positions_per_symbol: Maximum number of positions per symbol
+        max_total_positions: Total maximum number of positions
+        allow_hedging: Allows hedging.
+        position_timeout_enabled: Is the timeout control active?
+        position_timeout: Position timeout duration (minutes)
+        pyramiding_enabled: Is pyramiding enabled?
+        pyramiding_max_entries: Maximum number of pyramiding entries
+        pyramiding_scale_factor: Size factor for each entry
     """
     max_positions_per_symbol: int
     max_total_positions: int
     allow_hedging: bool = False
     position_timeout_enabled: bool = False
-    position_timeout: int = 1800  # dakika (default: 30 saat)
+    position_timeout: int = 1800  # minute (default: 30 hours)
     pyramiding_enabled: bool = False
     pyramiding_max_entries: int = 3
     pyramiding_scale_factor: float = 0.5
@@ -195,43 +195,43 @@ class PositionManagement:
 @dataclass
 class ExitStrategy:
     """
-    Exit stratejisi parametreleri
+    Exit strategy parameters
 
     Attributes:
         # Take Profit Methods
-        take_profit_method: TP hesaplama metodu
-        take_profit_percent: FIXED_PERCENT için %TP
-        take_profit_price: FIXED_PRICE için fiyat
-        take_profit_risk_reward_ratio: RISK_REWARD için R/R oranı
-        take_profit_atr_multiplier: ATR_BASED için ATR çarpanı
-        take_profit_fib_level: FIBONACCI için extension seviyesi
-        take_profit_ai_level: DYNAMIC_AI için seviye
+        take_profit_method: Method for calculating the take profit.
+        take_profit_percent: %TP for FIXED_PERCENT
+        take_profit_price: price for FIXED_PRICE
+        take_profit_risk_reward_ratio: R/R ratio for RISK_REWARD
+        take_profit_atr_multiplier: ATR multiplier for ATR_BASED
+        take_profit_fib_level: extension level for FIBONACCI
+        take_profit_ai_level: level for DYNAMIC_AI
 
         # Stop Loss Methods
-        stop_loss_method: SL hesaplama metodu
-        stop_loss_percent: FIXED_PERCENT için %SL
-        stop_loss_price: FIXED_PRICE için fiyat
-        stop_loss_atr_multiplier: ATR_BASED için ATR çarpanı
-        stop_loss_swing_lookback: SWING_POINTS için lookback period
-        stop_loss_fib_level: FIBONACCI için retracement seviyesi
-        stop_loss_ai_level: DYNAMIC_AI için seviye
+        stop_loss_method: Method for calculating the stop loss.
+        stop_loss_percent: %SL for FIXED_PERCENT
+        stop_loss_price: price for FIXED_PRICE
+        stop_loss_atr_multiplier: ATR multiplier for ATR_BASED
+        stop_loss_swing_lookback: lookback period for SWING_POINTS
+        stop_loss_fib_level: retracement level for FIBONACCI
+        stop_loss_ai_level: level for DYNAMIC_AI
 
         # Trailing Stop
-        trailing_stop_enabled: Trailing stop aktif mi?
-        trailing_activation_profit_percent: Trailing aktif olacağı kar yüzdesi
-        trailing_callback_percent: Geri çekilme yüzdesi
-        trailing_take_profit: TP'ye ulaşınca trail başlat
-        trailing_distance: TP'den uzaklık
+        trailing_stop_enabled: Is the trailing stop active?
+        trailing_activation_profit_percent: Trailing will activate at this profit percentage.
+        trailing_callback_percent: Callback percentage for trailing.
+        trailing_take_profit: Start trailing when the take profit is reached.
+        trailing_distance: Distance from the take profit.
 
         # Break Even
-        break_even_enabled: Break-even aktif mi?
-        break_even_trigger_profit_percent: Tetikleme kar yüzdesi
+        break_even_enabled: Is break-even enabled?
+        break_even_trigger_profit_percent: Trigger profit percentage
         break_even_offset: Entry'den offset
 
         # Partial Exit
-        partial_exit_enabled: Kısmi çıkış aktif mi?
-        partial_exit_levels: Kar seviyeleri (%)
-        partial_exit_sizes: Her seviyede kapatılacak miktar
+        partial_exit_enabled: Is partial exit enabled?
+        partial_exit_levels: Snow levels (%)
+        partial_exit_sizes: The amount to exit at each level.
     """
     # Take Profit (method is required, all parameters optional)
     take_profit_method: ExitMethod = ExitMethod.FIXED_PERCENT
@@ -272,55 +272,55 @@ class ExitStrategy:
 @dataclass
 class AIConfig:
     """
-    AI Model Konfigürasyonu
+    AI Model Configuration
 
-    AI modeli strateji kararlarına yardımcı olur:
-    - Entry Decision: Sinyalin kalitesini değerlendir
-    - TP/SL Optimization: Optimal TP/SL öner
-    - Position Sizing: Risk bazlı pozisyon boyutu
-    - Exit Timing: Çıkış zamanlaması
+    AI model helps with strategy decisions:
+    - Entry Decision: Evaluate the quality of the signal
+    - TP/SL Optimization: Suggest optimal TP/SL values
+    - Position Sizing: Risk-based position size
+    - Exit Timing: Exit timing
 
     Attributes:
         # General
-        ai_enabled: AI aktif mi?
-        model_path: Model checkpoint dosyası
-        model_type: Model tipi (rl_model, signal_model, lstm, transformer)
+        ai_enabled: Is AI enabled?
+        model_path: Model checkpoint file
+        model_type: Model type (rl_model, signal_model, lstm, transformer)
 
         # Entry Decision
-        entry_decision: AI giriş kararında kullanılsın mı?
-        confidence_threshold: Minimum güven eşiği (0.5-0.9)
+        entry_decision: Should be used in the AI entry decision?
+        confidence_threshold: Minimum confidence threshold (0.5-0.9)
 
         # TP/SL Optimization
-        tp_optimization: AI optimal TP önersin mi?
-        sl_optimization: AI optimal SL önersin mi?
-        use_ai_tp: AI TP'yi direkt kullan (override strategy TP)
-        use_ai_sl: AI SL'yi direkt kullan (override strategy SL)
+        tp_optimization: Should the AI suggest an optimal Take Profit (TP)?
+        sl_optimization: Should the AI suggest an optimal Stop Loss (SL)?
+        use_ai_tp: Use AI TP directly (override strategy TP)
+        use_ai_sl: Use AI SL directly (override strategy SL)
 
         # Position Sizing
-        position_sizing: AI pozisyon boyutu önersin mi?
-        risk_assessment: AI risk değerlendirmesi yapsın mı?
-        max_ai_position_mult: AI max pozisyon çarpanı (1.0 = normal)
+        position_sizing: Should the AI suggest position sizes?
+        risk_assessment: Should the AI perform risk assessment?
+        max_ai_position_mult: AI maximum position multiplier (1.0 = normal)
 
         # Exit Timing
-        exit_timing: AI çıkış zamanlaması önersin mi?
-        early_exit_enabled: Erken çıkış aktif mi?
-        early_exit_threshold: Erken çıkış için kayıp eşiği
+        exit_timing: Should the AI suggest an exit timing?
+        early_exit_enabled: Is early exit enabled?
+        early_exit_threshold: Early exit loss threshold.
 
         # Break Even & Trailing
         ai_break_even: AI break-even tetiklemesi
-        ai_trailing: AI trailing stop yönetimi
+        ai_trailing: AI trailing stop management
 
         # Lookback/Forward Config (per timeframe)
-        lookback_bars: Kaç bar geriye bak (feature extraction)
-        forward_bars: Kaç bar ileriye bak (default)
-        forward_bars_1m: 1m için forward bars
-        forward_bars_5m: 5m için forward bars
-        forward_bars_15m: 15m için forward bars
-        forward_bars_30m: 30m için forward bars
-        forward_bars_1h: 1h için forward bars
-        forward_bars_4h: 4h için forward bars
-        forward_bars_1d: 1d için forward bars
-        forward_bars_1w: 1w için forward bars
+        lookback_bars: How many bars to look back (feature extraction)
+        forward_bars: How many bars to look forward (default)
+        forward_bars_1m: Forward bars for 1 minute
+        forward_bars_5m: Forward bars for 5 minutes
+        forward_bars_15m: Forward bars for 15 minutes
+        forward_bars_30m: Forward bars for 30 minutes
+        forward_bars_1h: Forward bars for 1 hour
+        forward_bars_4h: Forward bars for 4 hours
+        forward_bars_1d: Forward bars for 1 day
+        forward_bars_1w: Forward bars for 1 week
 
     Example:
         ai_config = AIConfig(
@@ -342,68 +342,68 @@ class AIConfig:
     # ═══════════════════════════════════════════════════════════════
     # ENTRY DECISION
     # ═══════════════════════════════════════════════════════════════
-    entry_decision: bool = True           # AI giriş kararında kullanılsın mı?
-    confidence_threshold: float = 0.6     # Min güven (LONG > threshold, SHORT < 1-threshold)
+    entry_decision: bool = True           # Should be used in the AI entry decision?
+    confidence_threshold: float = 0.6     # Min confidence (LONG > threshold, SHORT < 1-threshold)
 
     # ═══════════════════════════════════════════════════════════════
     # TP/SL OPTIMIZATION
     # ═══════════════════════════════════════════════════════════════
-    tp_optimization: bool = False         # AI optimal TP önersin mi?
-    sl_optimization: bool = False         # AI optimal SL önersin mi?
-    use_ai_tp: bool = False               # AI TP'yi direkt kullan (strategy TP'yi override et)
-    use_ai_sl: bool = False               # AI SL'yi direkt kullan (strategy SL'yi override et)
-    tp_blend_ratio: float = 0.5           # AI/Strategy TP blend oranı (0=strategy, 1=AI)
-    sl_blend_ratio: float = 0.5           # AI/Strategy SL blend oranı (0=strategy, 1=AI)
+    tp_optimization: bool = False         # Should the AI suggest the optimal TP?
+    sl_optimization: bool = False         # Should the AI suggest an optimal stop loss?
+    use_ai_tp: bool = False               # Use AI TP directly (override the strategy TP)
+    use_ai_sl: bool = False               # Use AI SL directly (overrides the strategy SL)
+    tp_blend_ratio: float = 0.5           # AI/Strategy TP blend ratio (0=strategy, 1=AI)
+    sl_blend_ratio: float = 0.5           # AI/Strategy stop loss blend ratio (0=strategy, 1=AI)
 
     # ═══════════════════════════════════════════════════════════════
     # POSITION SIZING
     # ═══════════════════════════════════════════════════════════════
-    position_sizing: bool = False         # AI pozisyon boyutu önersin mi?
-    risk_assessment: bool = False         # AI risk değerlendirmesi yapsın mı?
-    max_ai_position_mult: float = 1.5     # AI max pozisyon çarpanı (güven yüksekse büyüt)
-    min_ai_position_mult: float = 0.5     # AI min pozisyon çarpanı (güven düşükse küçült)
+    position_sizing: bool = False         # Should the AI suggest position size?
+    risk_assessment: bool = False         # Should it perform an AI risk assessment?
+    max_ai_position_mult: float = 1.5     # AI max position multiplier (increase if confidence is high)
+    min_ai_position_mult: float = 0.5     # AI minimum position multiplier (reduce if confidence is low)
 
     # ═══════════════════════════════════════════════════════════════
     # EXIT TIMING
     # ═══════════════════════════════════════════════════════════════
-    exit_timing: bool = False             # AI çıkış zamanlaması önersin mi?
-    early_exit_enabled: bool = False      # Erken çıkış aktif mi?
-    early_exit_profit_threshold: float = 0.5   # Min kar % için erken çıkış
-    early_exit_loss_threshold: float = -1.0    # Max kayıp % için erken çıkış
+    exit_timing: bool = False             # Should the AI suggest exit timing?
+    early_exit_enabled: bool = False      # Is early exit enabled?
+    early_exit_profit_threshold: float = 0.5   # Minimum profit percentage for early exit
+    early_exit_loss_threshold: float = -1.0    # Max loss percentage for early exit
 
     # ═══════════════════════════════════════════════════════════════
     # BREAK EVEN & TRAILING
     # ═══════════════════════════════════════════════════════════════
     ai_break_even: bool = False           # AI break-even tetiklemesi
-    ai_trailing: bool = False             # AI trailing stop yönetimi
-    ai_partial_exit: bool = False         # AI partial exit kararı
+    ai_trailing: bool = False             # AI trailing stop management
+    ai_partial_exit: bool = False         # AI partial exit decision
 
     # ═══════════════════════════════════════════════════════════════
     # EXIT MODEL (Dynamic Exit Optimization)
     # ═══════════════════════════════════════════════════════════════
-    exit_model_enabled: bool = False      # Exit Model aktif mi?
+    exit_model_enabled: bool = False      # Is the Exit Model active?
     exit_model_path: str = "data/ai/checkpoints/simple_train/simple_rsi/exit_model.pkl"
-    use_exit_model_tp: bool = False       # Exit Model TP'yi override etsin mi?
-    use_exit_model_sl: bool = False       # Exit Model SL'yi override etsin mi?
-    use_exit_model_trailing: bool = False # Exit Model trailing kararını alsın mı?
-    use_exit_model_break_even: bool = False # Exit Model BE kararını alsın mı?
-    exit_model_blend_ratio: float = 1.0  # Exit Model blend oranı (0=strategy, 1=AI)
+    use_exit_model_tp: bool = False       # Should this override the Exit Model TP?
+    use_exit_model_sl: bool = False       # Should this override the Exit Model SL?
+    use_exit_model_trailing: bool = False # Should it make the Exit Model trailing decision?
+    use_exit_model_break_even: bool = False # Should the Exit Model break-even decision be made?
+    exit_model_blend_ratio: float = 1.0  # Exit Model blend ratio (0=strategy, 1=AI)
 
     # ═══════════════════════════════════════════════════════════════
     # LOOKBACK/FORWARD CONFIG
     # ═══════════════════════════════════════════════════════════════
-    lookback_bars: int = 200              # Feature extraction için geriye bakış
+    lookback_bars: int = 200              # Lookback period for feature extraction
 
-    # Forward bars (prediction horizon) - timeframe bazlı
+    # Forward bars (prediction horizon) - time-based
     forward_bars: int = 24                # Default forward bars
-    forward_bars_1m: int = 24             # 1m: 24 bar = 24 dakika
-    forward_bars_5m: int = 24             # 5m: 24 bar = 2 saat
-    forward_bars_15m: int = 24            # 15m: 24 bar = 6 saat
-    forward_bars_30m: int = 24            # 30m: 24 bar = 12 saat
-    forward_bars_1h: int = 24             # 1h: 24 bar = 24 saat
-    forward_bars_4h: int = 24             # 4h: 24 bar = 4 gün
-    forward_bars_1d: int = 12             # 1d: 12 bar = 12 gün
-    forward_bars_1w: int = 5              # 1w: 5 bar = 5 hafta
+    forward_bars_1m: int = 24             # 1m: 24 bar = 24 minutes
+    forward_bars_5m: int = 24             # 5m: 24 bar = 2 hours
+    forward_bars_15m: int = 24            # 15m: 24 bar = 6 hours
+    forward_bars_30m: int = 24            # 30m: 24 bar = 12 hours
+    forward_bars_1h: int = 24             # 1h: 24 bar = 24 hours
+    forward_bars_4h: int = 24             # 4h: 24 bar = 4 days
+    forward_bars_1d: int = 12             # 1d: 12 bar = 12 days
+    forward_bars_1w: int = 5              # 1w: 5 bar = 5 weeks
 
     def get_forward_bars(self, timeframe: str) -> int:
         """Get forward bars for specific timeframe."""
@@ -428,9 +428,9 @@ class BaseStrategy(ABC):
     """
     Base strategy class
     
-    Tüm strategy template'leri bu class'ı inherit eder.
+    All strategy templates inherit from this class.
     
-    Örnek:
+    Example:
         class MyStrategy(BaseStrategy):
             def __init__(self):
                 super().__init__()
@@ -468,7 +468,7 @@ class BaseStrategy(ABC):
         self.update_klines: bool = False
         self.warmup_period: int = 200
         
-        # Backtest parametreleri
+        # Backtest parameters
         self.backtest_parameters: Dict[str, Any] = {
             "min_spread": 0.0,
             "commission": 0.0,
@@ -559,18 +559,18 @@ class BaseStrategy(ABC):
         }
         
         # ====================================================================
-        # OPTIMIZER MANAGEMENT (backtest için, trade'de kullanılmaz)
+        # OPTIMIZER MANAGEMENT (for backtesting, not used in trading)
         # ====================================================================
         self.optimizer_parameters: Dict[str, Any] = {}
 
     def __init_subclass__(cls, **kwargs):
         """
-        Alt sınıf oluşturulduğunda çağrılır.
-        Primary TF'nin MTF içinde olmasını garanti eder.
+        Called when a subclass is created.
+        Ensures that the primary TF is within the MTF.
         """
         super().__init_subclass__(**kwargs)
 
-        # Original __init__'i wrap et
+        # Wrap the original __init__
         original_init = cls.__init__
 
         def wrapped_init(self, *args, **kw):
@@ -581,10 +581,10 @@ class BaseStrategy(ABC):
 
     def _ensure_primary_tf_in_mtf(self) -> None:
         """
-        Primary timeframe'in MTF listesinde olmasını garanti et.
+        Ensure that the primary timeframe is present in the MTF list.
 
-        Bazı stratejilerde primary_timeframe mtf_timeframes içinde olmayabilir.
-        Bu güvenlik kontrolü her zaman primary TF'nin MTF'de olmasını sağlar.
+        In some strategies, the primary_timeframe may not be within the mtf_timeframes.
+        This security check always ensures that the primary timeframe is within the MTF.
         """
         if not hasattr(self, 'primary_timeframe') or not self.primary_timeframe:
             return
@@ -615,7 +615,7 @@ class BaseStrategy(ABC):
         Args:
             symbol: Trading symbol
             timeframe: Timeframe
-            data: Market data (DataFrame veya dict)
+            data: Market data (DataFrame or dict)
         """
         pass
     
@@ -630,8 +630,8 @@ class BaseStrategy(ABC):
         Returns:
             True if valid, raises exception otherwise
         """
-        # Bu method helpers/validation.py tarafından implement edilecek
-        # Şimdilik placeholder
+        # This method will be implemented by helpers/validation.py
+        # Placeholder for now
         return True
     
     # ========================================================================
@@ -639,11 +639,11 @@ class BaseStrategy(ABC):
     # ========================================================================
     
     def get_all_timeframes(self) -> List[str]:
-        """Tüm kullanılan timeframe'leri dön"""
+        """Return all used timeframes"""
         return self.mtf_timeframes
     
     def get_indicator_names(self) -> List[str]:
-        """Tüm indikatör isimlerini dön"""
+        """Returns all indicator names"""
         return list(self.technical_parameters.indicators.keys())
     
     def __repr__(self) -> str:

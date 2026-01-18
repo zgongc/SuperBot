@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """
-Strategy Validation - Wrapper Module (Geriye Uyumluluk İçin)
+Strategy Validation - Wrapper Module (For backward compatibility)
 
-Bu modül artık sadece bir WRAPPER'dır.
-Gerçek validation logic'i components/strategies/strategy_validator.py'de bulunur.
+This module is now just a wrapper.
+The actual validation logic is located in components/strategies/strategy_validator.py.
 
-Bu dosya sadece geriye uyumluluk için tutulmaktadır.
+This file is kept only for backward compatibility.
 
-Yeni kodlarda doğrudan strategy_validator.py kullanılmalıdır:
+New code should directly use strategy_validator.py:
     from components.strategies.strategy_validator import validate_strategy
 """
 
 from typing import Any, Optional
 
-# Import edilebilir tüm öğeler
+# All items that can be imported
 from components.strategies.strategy_validator import (
     StrategyValidator,
     ValidationError,
@@ -25,53 +25,53 @@ from components.strategies.strategy_validator import (
 
 
 # ==================== LEGACY WRAPPER FUNCTIONS ====================
-# (Eski kodlar için geriye uyumluluk - yeni validation'ı çağırır)
+# (Backward compatibility for old code - calls the new validation)
 
 
 def validate_condition(condition: Any, context: str = "") -> None:
     """
-    Tek bir koşulu validate et (LEGACY)
+    Validate a single condition (LEGACY)
     
-    Artık bu fonksiyon StrategyValidator içindedir.
-    Geriye uyumluluk için tutulmuştur.
+    Now this function is inside the StrategyValidator.
+    # Kept for backward compatibility.
     
     Args:
-        condition: Koşul (list/tuple)
-        context: Hata mesajı context'i
+        condition: Condition (list/tuple)
+        context: The context of the error message.
     
     Raises:
-        ValidationException: Geçersiz koşul varsa
+        ValidationException: Raised when an invalid condition is encountered.
     """
-    # Bu fonksiyon artık deprecated, ama geriye uyumluluk için
-    # minimal validation yapalım
+    # This function is now deprecated, but kept for backward compatibility.
+    # Let's do a minimal validation
     if not isinstance(condition, (list, tuple)):
-        raise ValidationException(f"{context}: Koşul list veya tuple olmalı")
+        raise ValidationException(f"{context}: The condition must be a list or a tuple")
     
     if len(condition) < 3:
-        raise ValidationException(f"{context}: Koşul en az 3 eleman içermeli")
+        raise ValidationException(f"{context}: The condition must contain at least 3 elements")
 
 
 def validate_entry_conditions(entry_conditions: Any) -> None:
     """
-    Entry conditions'ı validate et (LEGACY)
+    Validate entry conditions (LEGACY)
     
-    Artık bu fonksiyon StrategyValidator içindedir.
+    Now this function is inside the StrategyValidator.
     
     Args:
         entry_conditions: Entry conditions dict
     
     Raises:
-        ValidationException: Geçersiz koşul varsa
+        ValidationException: Raised when an invalid condition is encountered.
     """
     if not isinstance(entry_conditions, dict):
-        raise ValidationException("entry_conditions dict olmalı")
+        raise ValidationException("entry_conditions must be a dictionary")
     
     if 'long' not in entry_conditions and 'short' not in entry_conditions:
-        raise ValidationException("En az 'long' veya 'short' koşulu gerekli")
+        raise ValidationException("At least one of 'long' or 'short' condition is required")
     
     for side, conditions in entry_conditions.items():
         if not isinstance(conditions, list):
-            raise ValidationException(f"{side} koşulları list olmalı")
+            raise ValidationException(f"The {side} must be a list")
         
         for idx, condition in enumerate(conditions):
             validate_condition(condition, f"entry_conditions.{side}[{idx}]")
@@ -79,22 +79,22 @@ def validate_entry_conditions(entry_conditions: Any) -> None:
 
 def validate_exit_conditions(exit_conditions: Any) -> None:
     """
-    Exit conditions'ı validate et (LEGACY)
+    Validate exit conditions (LEGACY)
     
-    Artık bu fonksiyon StrategyValidator içindedir.
+    This function is now inside the StrategyValidator.
     
     Args:
         exit_conditions: Exit conditions dict
     
     Raises:
-        ValidationException: Geçersiz koşul varsa
+        ValidationException: Raised when an invalid condition is encountered.
     """
     if not isinstance(exit_conditions, dict):
-        raise ValidationException("exit_conditions dict olmalı")
+        raise ValidationException("exit_conditions must be a dictionary")
     
     for side, conditions in exit_conditions.items():
         if not isinstance(conditions, list):
-            raise ValidationException(f"{side} koşulları list olmalı")
+            raise ValidationException(f"The {side} must be a list")
         
         for idx, condition in enumerate(conditions):
             validate_condition(condition, f"exit_conditions.{side}[{idx}]")
@@ -104,73 +104,73 @@ def validate_risk_management(risk_management: Any) -> None:
     """
     Risk management config'ini validate et (LEGACY)
     
-    Artık bu fonksiyon StrategyValidator içindedir.
+    This function is now inside the StrategyValidator.
     
     Args:
         risk_management: RiskManagement dataclass
     
     Raises:
-        ValidationException: Geçersiz config varsa
+        ValidationException: If the config is invalid.
     """
     if not hasattr(risk_management, 'size_value'):
-        raise ValidationException("Risk management'da size_value gerekli")
+        raise ValidationException("size_value is required in risk management")
     
     if risk_management.size_value <= 0:
-        raise ValidationException("size_value pozitif olmalı")
+        raise ValidationException("size_value must be positive")
 
 
 def validate_exit_strategy(exit_strategy: Any) -> None:
     """
     Exit strategy config'ini validate et (LEGACY)
     
-    Artık bu fonksiyon StrategyValidator içindedir.
+    Now this function is inside the StrategyValidator.
     
     Args:
         exit_strategy: ExitStrategy dataclass
     
     Raises:
-        ValidationException: Geçersiz config varsa
+        ValidationException: If the config is invalid.
     """
     if hasattr(exit_strategy, 'take_profit_value'):
         if exit_strategy.take_profit_value <= 0:
-            raise ValidationException("take_profit_value pozitif olmalı")
+            raise ValidationException("take_profit_value must be positive")
     
     if hasattr(exit_strategy, 'stop_loss_value'):
         if exit_strategy.stop_loss_value <= 0:
-            raise ValidationException("stop_loss_value pozitif olmalı")
+            raise ValidationException("stop_loss_value must be positive")
 
 
 def validate_position_management(position_management: Any) -> None:
     """
     Position management config'ini validate et (LEGACY)
     
-    Artık bu fonksiyon StrategyValidator içindedir.
+    Now this function is inside the StrategyValidator.
     
     Args:
         position_management: PositionManagement dataclass
     
     Raises:
-        ValidationException: Geçersiz config varsa
+        ValidationException: If the config is invalid.
     """
     if hasattr(position_management, 'max_total_positions'):
         if position_management.max_total_positions <= 0:
-            raise ValidationException("max_total_positions pozitif olmalı")
+            raise ValidationException("max_total_positions must be positive")
 
 
 def validate_complete_strategy(strategy: Any) -> None:
     """
-    Tüm stratejiyi validate et (LEGACY)
+    Validate the entire strategy (LEGACY)
     
-    Artık bu fonksiyon StrategyValidator içindedir.
-    Bu wrapper yeni validator'ı çağırır.
+    Now this function is inside the StrategyValidator.
+    This wrapper calls the new validator.
     
     Args:
-        strategy: Strateji objesi
+        strategy: Strategy object
     
     Raises:
-        ValidationException: Geçersiz config varsa
+        ValidationException: If the config is invalid.
     """
-    # Yeni validator'ı kullan
+    # Use the new validator
     validate_strategy_strict(strategy)
 
 

@@ -8,14 +8,14 @@ Date: 2025-11-13
 Author: SuperBot Team
 
 Description:
-    Entry/exit koşul array'lerini parse eder.
+    Parses the entry/exit condition arrays.
     
     Format: ['indicator', 'operator', 'value', 'timeframe']
-    Örnek: ['ema_50', '>', 'ema_200', '15m']
+    Example: ['ema_50', '>', 'ema_200', '15m']
            ['rsi_14', 'crossover', 30]
            ['close', 'rising', 3, '5m']
 
-Kullanım:
+Usage:
     from components.strategies.helpers.condition_parser import ConditionParser
     
     parser = ConditionParser()
@@ -34,21 +34,21 @@ import re
 
 class ConditionParser:
     """
-    Koşul array'lerini parse eder
+    Parses condition arrays.
     
     Desteklenen formatlar:
         3-element: ['indicator', 'operator', 'value']
         4-element: ['indicator', 'operator', 'value', 'timeframe']
         
-    Örnekler:
+    Examples:
         ['rsi_14', '>', 70]
         ['ema_50', 'crossover', 'ema_200', '15m']
         ['close', 'rising', 3, '5m']
     """
     
-    # Geçerli operatörler
+    # Valid operators
     VALID_OPERATORS = {
-        # Karşılaştırma
+        # Comparison
         '>',  '<',  '>=',  '<=',  '==',  '!=',
         
         # Crossover/Crossunder
@@ -64,7 +64,7 @@ class ConditionParser:
         'is', 'is_not',
     }
     
-    # Özel keyword'ler (price/volume data)
+    # Special keywords (price/volume data)
     PRICE_KEYWORDS = {'open', 'high', 'low', 'close', 'volume'}
     
     def __init__(self):
@@ -73,11 +73,11 @@ class ConditionParser:
     
     def parse(self, condition: List) -> Dict[str, Any]:
         """
-        Koşul array'ini parse et
+        Parses the condition array.
         
         Args:
-            condition: Koşul array'i
-                Format: ['left', 'operator', 'right'] veya
+            condition: The condition array.
+                Format: ['left', 'operator', 'right'] or
                         ['left', 'operator', 'right', 'timeframe']
         
         Returns:
@@ -90,21 +90,21 @@ class ConditionParser:
                 }
         
         Raises:
-            ValueError: Geçersiz koşul formatı
+            ValueError: Invalid condition format
         """
         if not isinstance(condition, (list, tuple)):
-            raise ValueError(f"Koşul list veya tuple olmalı, {type(condition)} verildi")
+            raise ValueError(f"The condition must be a list or tuple, {type(condition)} was given")
         
         if len(condition) < 3:
             raise ValueError(
-                f"Koşul en az 3 element olmalı (left, operator, right), "
-                f"{len(condition)} element var: {condition}"
+                f"The condition must have at least 3 elements (left, operator, right), "
+                f"{len(condition)} elements exist: {condition}"
             )
         
         if len(condition) > 4:
             raise ValueError(
-                f"Koşul en fazla 4 element olmalı (left, operator, right, timeframe), "
-                f"{len(condition)} element var: {condition}"
+                f"The condition should have at most 4 elements (left, operator, right, timeframe), "
+                f"{len(condition)} elements exist: {condition}"
             )
         
         # Parse elements
@@ -131,38 +131,38 @@ class ConditionParser:
     
     def parse_batch(self, conditions: List[List]) -> List[Dict[str, Any]]:
         """
-        Birden fazla koşulu parse et
+        Parses multiple conditions.
         
         Args:
-            conditions: Koşul array'leri listesi
+            conditions: A list of condition arrays.
         
         Returns:
-            List[Dict]: Parse edilmiş koşullar
+            List[Dict]: Parsed conditions
         """
         return [self.parse(cond) for cond in conditions]
     
     def _validate_operator(self, operator: str) -> None:
         """
-        Operatör geçerliliğini kontrol et
-        
+        Checks the validity of the operator.
+
         Args:
-            operator: Operatör string
+            operator: Operator string
         
         Raises:
-            ValueError: Geçersiz operatör
+            ValueError: Invalid operator
         """
         if operator not in self.VALID_OPERATORS:
             raise ValueError(
-                f"Geçersiz operatör: '{operator}'\n"
-                f"Geçerli operatörler: {sorted(self.VALID_OPERATORS)}"
+                f"Invalid operator: '{operator}'\n"
+                f"Valid operators: {sorted(self.VALID_OPERATORS)}"
             )
     
     def _normalize_operand(self, operand: Any) -> Any:
         """
-        Operand'ı normalize et
+        Normalize the operand.
         
         Args:
-            operand: Sol veya sağ operand
+            operand: The left or right operand.
         
         Returns:
             Normalized operand
@@ -171,23 +171,23 @@ class ConditionParser:
         if isinstance(operand, str):
             return operand.lower().strip()
         
-        # Numeric ise olduğu gibi dön
+        # If it's a number, return it as is
         if isinstance(operand, (int, float)):
             return operand
         
-        # List/tuple ise olduğu gibi dön (between, outside için)
+        # If it's a list/tuple, return it as is (for between, outside)
         if isinstance(operand, (list, tuple)):
             return operand
         
-        # Boolean ise olduğu gibi dön
+        # If it's a boolean, return it as is
         if isinstance(operand, bool):
             return operand
         
-        # None ise olduğu gibi dön
+        # If it is None, return it as is
         if operand is None:
             return operand
         
-        # Diğer tipler için string'e çevir
+        # Convert to string for other types
         return str(operand)
     
     def _normalize_timeframe(self, timeframe: Optional[str]) -> Optional[str]:
@@ -198,13 +198,13 @@ class ConditionParser:
             timeframe: Timeframe string
         
         Returns:
-            Normalized timeframe (lowercase) veya None
+            Normalized timeframe (lowercase) or None
         """
         if timeframe is None:
             return None
         
         if not isinstance(timeframe, str):
-            raise ValueError(f"Timeframe string olmalı, {type(timeframe)} verildi")
+            raise ValueError(f"Timeframe must be a string, but {type(timeframe)} was provided")
         
         return timeframe.lower().strip()
     
@@ -220,13 +220,13 @@ class ConditionParser:
 
     def extract_indicators(self, condition: Dict[str, Any]) -> List[str]:
         """
-        Koşulda kullanılan indikatörleri çıkar
+        Extracts the indicators used in the condition.
 
         Args:
-            condition: Parse edilmiş koşul
+            condition: Parsed condition
 
         Returns:
-            List[str]: Indikatör isimleri
+            List[str]: Indicator names
         """
         indicators = []
         operator = condition.get('operator', '')
@@ -236,18 +236,18 @@ class ConditionParser:
         if isinstance(left, str) and left not in self.PRICE_KEYWORDS:
             indicators.append(left)
 
-        # Sağ operand
+        # Right operand
         right = condition['right']
         if isinstance(right, str) and right not in self.PRICE_KEYWORDS:
-            # == veya != operatörlerinde sağ taraf string literal olabilir
+            # The right side of the == or != operators can be a string literal.
             if operator in ('==', '!='):
-                # Bilinen string literal'lar indicator değil
+                # Known string literals are not indicators
                 if right.lower() in self.STRING_LITERALS:
                     pass  # Skip - string literal
                 elif not self._is_numeric_string(right):
                     indicators.append(right)
             else:
-                # Numeric string değilse indikatör
+                # If it's not a numeric string, it's an indicator
                 if not self._is_numeric_string(right):
                     indicators.append(right)
 
@@ -255,10 +255,10 @@ class ConditionParser:
     
     def _is_numeric_string(self, value: str) -> bool:
         """
-        String numeric mi kontrol et
+        Check if the string is numeric.
         
         Args:
-            value: String değer
+            value: String value
         
         Returns:
             True if numeric string
@@ -271,7 +271,7 @@ class ConditionParser:
     
     def is_price_keyword(self, operand: str) -> bool:
         """
-        Operand price keyword mu kontrol et
+        Check if the operand is a price keyword.
         
         Args:
             operand: Operand string
@@ -283,10 +283,10 @@ class ConditionParser:
     
     def requires_historical_data(self, operator: str) -> bool:
         """
-        Operatör historical data gerektirir mi?
+        Does the operator require historical data?
         
         Args:
-            operator: Operatör string
+            operator: Operator string
         
         Returns:
             True if historical data needed (crossover, rising, falling)
@@ -295,13 +295,13 @@ class ConditionParser:
     
     def get_lookback_period(self, condition: Dict[str, Any]) -> int:
         """
-        Koşul için gereken lookback period
+        The lookback period required for the condition.
         
         Args:
-            condition: Parse edilmiş koşul
+            condition: Parsed condition
         
         Returns:
-            Lookback period (bar sayısı)
+            Lookback period (number of bars)
         """
         operator = condition['operator']
         
@@ -309,14 +309,14 @@ class ConditionParser:
         if operator in {'crossover', 'crossunder'}:
             return 2
         
-        # Rising/Falling: right operand kadar (örn: rising 3 -> 3 bar)
+        # Rising/Falling: up to the value of the right operand (e.g., rising 3 -> 3 bars)
         if operator in {'rising', 'falling'}:
             right = condition['right']
             if isinstance(right, int):
-                return right + 1  # +1 çünkü comparison için bir önceki bar lazım
+                return right + 1  # +1 because the previous bar is needed for comparison
             return 2  # Default
         
-        # Diğerleri: 1 bar (mevcut)
+        # Others: 1 bar (available)
         return 1
     
     def __repr__(self) -> str:
@@ -329,10 +329,10 @@ class ConditionParser:
 
 def parse_condition(condition: List) -> Dict[str, Any]:
     """
-    Convenience function - koşul parse et
+    Convenience function - parses the condition
     
     Args:
-        condition: Koşul array'i
+        condition: The condition array.
     
     Returns:
         Parsed condition dict
@@ -343,10 +343,10 @@ def parse_condition(condition: List) -> Dict[str, Any]:
 
 def parse_conditions(conditions: List[List]) -> List[Dict[str, Any]]:
     """
-    Convenience function - birden fazla koşul parse et
+    Convenience function - parses multiple conditions.
     
     Args:
-        conditions: Koşul array'leri listesi
+        conditions: A list of condition arrays.
     
     Returns:
         List of parsed conditions

@@ -84,12 +84,12 @@ class BacktestConfig:
     # Data loading
     warmup_period: int = 200                        # Warmup candle count
 
-    # Maliyet parametreleri
+    # Cost parameters
     commission_pct: float = 0.04                    # %0.04 (Binance maker)
-    slippage_pct: float = 0.01                      # %0.01 ortalama slippage
+    slippage_pct: float = 0.01                      # %0.01 average slippage
     spread_pct: float = 0.01                        # %0.01 bid-ask spread
 
-    # Opsiyonel metadatalar
+    # Optional metadata
     strategy_name: Optional[str] = None
     strategy_version: Optional[str] = None
     description: Optional[str] = None
@@ -146,7 +146,7 @@ class Trade:
     exit_price: float
     exit_reason: ExitReason
 
-    # Pozisyon boyutu
+    # Position size
     quantity: float                     # Trade offered amount (e.g. 0.1 BTC)
 
     # Profit and Loss (gross - commission/premium before slippage)
@@ -154,13 +154,13 @@ class Trade:
     gross_pnl_pct: float               # Gross profit/loss (%)
 
     # Profit and Loss (net - commission/slip loss after)
-    net_pnl_usd: float                 # Net kar/zarar ($)
-    net_pnl_pct: float                 # Net kar/zarar (%)
+    net_pnl_usd: float                 # Net profit/loss ($)
+    net_pnl_pct: float                 # Net profit/loss (%)
 
     # Maliyetler
-    commission: float                   # Toplam komisyon ($)
-    slippage: float                    # Toplam slippage ($)
-    spread: float                      # Toplam spread maliyeti ($)
+    commission: float                   # Total commission ($)
+    slippage: float                    # Total slippage ($)
+    spread: float                      # Total spread cost ($)
 
     # Analytics (optional - advanced analysis)
     max_profit_usd: float = 0.0        # Trade during max profit
@@ -173,9 +173,9 @@ class Trade:
     stop_loss_price: Optional[float] = None
     take_profit_price: Optional[float] = None
     entry_signal: Optional[str] = None  # Entry signal description
-    break_even_activated: bool = False  # BE aktive edildi mi?
+    break_even_activated: bool = False  # Is break-even activated?
     is_partial_exit: bool = False       # Partial exit mi?
-    partial_exit_level: int = 0         # PE seviyesi (1, 2, 3...)
+    partial_exit_level: int = 0         # PE level (1, 2, 3...)
 
     def __post_init__(self):
         """Duration hesapla"""
@@ -240,7 +240,7 @@ class Position:
     entry_price: float
     quantity: float
 
-    # Exit parametreleri
+    # Exit parameters
     stop_loss_price: Optional[float] = None
     take_profit_price: Optional[float] = None
     trailing_stop_distance: Optional[float] = None  # as a percentage
@@ -306,10 +306,10 @@ class BacktestMetrics:
     All performance metrics for optimizer and analytics.
     """
     # Returns
-    total_return_usd: float                 # Toplam kar/zarar ($)
-    total_return_pct: float                 # Toplam kar/zarar (%)
+    total_return_usd: float                 # Total profit/loss ($)
+    total_return_pct: float                 # Total profit/loss (%)
 
-    # Trade istatistikleri
+    # Trade statistics
     total_trades: int                       # Total number of trades
     winners: int  # Number of winning trades
     losers: int                             # Number of trades lost
@@ -330,16 +330,16 @@ class BacktestMetrics:
     calmar_ratio: float                     # Calmar ratio (return / max DD)
 
     # Drawdown
-    max_drawdown_usd: float                 # Maksimum drawdown ($)
-    max_drawdown_pct: float                 # Maksimum drawdown (%)
+    max_drawdown_usd: float                 # Maximum drawdown ($)
+    max_drawdown_pct: float                 # Maximum drawdown (%)
     avg_drawdown_pct: float                 # Ortalama drawdown (%)
     recovery_factor: float                  # Net profit / max DD
 
     # Maliyetler
-    total_commission: float                 # Toplam komisyon
-    total_slippage: float                   # Toplam slippage
-    total_spread: float                     # Toplam spread maliyeti
-    total_costs: float                      # Toplam maliyet (commission + slippage + spread)
+    total_commission: float                 # Total commission
+    total_slippage: float                   # Total slippage
+    total_spread: float                     # Total spread cost
+    total_costs: float                      # Total cost (commission + slippage + spread)
 
     # Other
     avg_trade_duration_minutes: float       # Average trade duration
@@ -382,7 +382,7 @@ class BacktestResult:
     # Config
     config: BacktestConfig
 
-    # Trade verileri
+    # Trade data
     trades: List[Trade]
 
     # Metrics
@@ -394,7 +394,7 @@ class BacktestResult:
     # Performance
     execution_time_seconds: float
 
-    # Opsiyonel - debugging
+    # Optional - debugging
     signals: Optional[List[Signal]] = None
 
     def to_dict(self) -> Dict[str, Any]:
@@ -452,7 +452,7 @@ if __name__ == "__main__":
     )
     print(f"   ✔️ Trade created: #{trade.trade_id}")
     print(f"   ✅ Side: {trade.side.value}, PnL: ${trade.net_pnl_usd}")
-    print(f"   ✅ Duration: {trade.duration_minutes} dakika")
+    print(f"   ✅ Duration: {trade.duration_minutes} minutes")
 
     # Test 3: Position
     print("\n📍 Test 3: Position")

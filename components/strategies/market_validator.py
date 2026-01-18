@@ -14,7 +14,7 @@ Description:
     - Day filters (Monday-Sunday)
     - Market tradeable check
 
-Kullanım:
+Usage:
     from components.strategies.market_validator import MarketValidator
 
     validator = MarketValidator(strategy)
@@ -29,9 +29,9 @@ import pytz
 
 class MarketValidator:
     """
-    Market koşulları validator'ı
+    Market conditions validator.
 
-    Trading session, time, day filtrelerini yönetir
+    Manages trading session, time, and day filters.
     """
     
     # Session saatleri (UTC)
@@ -95,10 +95,10 @@ class MarketValidator:
         """
         Market trade edilebilir mi?
         
-        Kontroller (sırasıyla):
-        1. Session Filter (eğer enabled)
-        2. Time Filter (eğer enabled)
-        3. Day Filter (eğer enabled)
+        Checks (in order):
+        1. Session Filter (if enabled)
+        2. Time Filter (if enabled)
+        3. Day Filter (if enabled)
         
         Args:
             timestamp: Timestamp (None = now)
@@ -147,7 +147,7 @@ class MarketValidator:
     
     def _is_session_active(self, timestamp_utc: datetime) -> bool:
         """
-        Trading session aktif mi?
+        Is the trading session active?
         
         Args:
             timestamp_utc: UTC timestamp
@@ -224,7 +224,7 @@ class MarketValidator:
     
     def _is_time_allowed(self, timestamp_utc: datetime) -> bool:
         """
-        Time range içinde mi?
+        Is it within the time range?
         
         Args:
             timestamp_utc: UTC timestamp
@@ -309,7 +309,7 @@ class MarketValidator:
     
     def _is_day_allowed(self, timestamp_utc: datetime) -> bool:
         """
-        Gün trade edilebilir mi?
+        Is the trade possible?
         
         Args:
             timestamp_utc: UTC timestamp
@@ -376,8 +376,8 @@ class MarketValidator:
             Next tradeable datetime or None
         
         Note:
-            Bu basitleştirilmiş bir implementasyon.
-            Production'da daha sophisticated olmalı.
+            This is a simplified implementation.
+            It should be more sophisticated in production.
         """
         # Default: now
         if timestamp is None:
@@ -387,7 +387,7 @@ class MarketValidator:
         if timestamp.tzinfo is None:
             timestamp = pytz.timezone(timezone).localize(timestamp)
         
-        # Max 7 gün ileriye bak
+        # Maximum 7 days into the future
         for days_ahead in range(7):
             check_time = timestamp + pd.Timedelta(days=days_ahead, hours=1)
             
@@ -398,7 +398,7 @@ class MarketValidator:
     
     def has_filters(self) -> bool:
         """
-        Market filtresi var mı?
+        Is there a market filter?
         
         Returns:
             True if any filters are enabled

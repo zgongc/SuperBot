@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Strategy Validator - Strateji Parametrelerini Doğrular
+Strategy Validator - Validates strategy parameters.
 
-Tüm strateji parametrelerinin (RiskManagement, ExitStrategy, entry/exit conditions, vs.)
-doğru formatta ve mantıklı değerlerde olup olmadığını kontrol eder.
+It checks whether all strategy parameters (RiskManagement, ExitStrategy, entry/exit conditions, etc.)
+are in the correct format and have sensible values.
 
-Bu dosya strategies/ klasöründe çünkü STRATEJI PARAMETRELERI ile ilgilidir.
+This file is in the strategies/ folder because it is related to STRATEGY PARAMETERS.
 
-Version: 2.0.0 (helpers/validation.py'deki tüm kontrollerle birleştirildi)
+Version: 2.0.0 (merged with all checks in helpers/validation.py)
 """
 
 from typing import Dict, List, Any, Optional, Tuple
@@ -30,41 +30,41 @@ except ImportError:
 @dataclass
 class ValidationError:
     """
-    Validasyon hatası
+    Validation error
     
     Attributes:
-        field: Hatalı alan adı
-        value: Hatalı değer
-        message: Hata mesajı (Türkçe)
-        severity: Hata ciddiyeti ('error', 'warning')
+        field: Invalid field name
+        value: Invalid value
+        message: Error message (Turkish)
+        severity: Error severity ('error', 'warning')
     """
     field: str
     value: Any
     message: str
-    severity: str = 'error'  # 'error' veya 'warning'
+    severity: str = 'error'  # 'error' or 'warning'
 
 
 @dataclass
 class StrategyValidationResult:
     """
-    Strateji validasyon sonucu
+    Strategy validation result.
     
     Attributes:
-        valid: Strateji geçerli mi?
-        errors: Hata listesi
-        warnings: Uyarı listesi
+        valid: Is the strategy valid?
+        errors: List of errors
+        warnings: List of warnings
     """
     valid: bool
     errors: List[ValidationError]
     warnings: List[ValidationError]
     
     def __str__(self) -> str:
-        """İnsan okunabilir format"""
+        """Human-readable format"""
         lines = []
         if self.valid:
-            lines.append("Strateji gecerli")
+            lines.append("Strategy is valid")
         else:
-            lines.append("Strateji gecersiz")
+            lines.append("Strategy is invalid")
         
         if self.errors:
             lines.append(f"\nHatalar ({len(self.errors)}):")
@@ -81,28 +81,28 @@ class StrategyValidationResult:
 
 class StrategyValidator:
     """
-    Kapsamlı Strateji Parametrelerini Validate Eder
+    Validates comprehensive strategy parameters.
     
-    Kontrol Edilen Parametreler:
+    Checked Parameters:
     - Metadata: strategy_name, version, author
-    - Symbols: Symbol configs ve format
-    - Timeframes: MTF timeframes ve primary timeframe
-    - Indicators: Technical indicators ve parametreleri
-    - RiskManagement: Risk yönetimi ayarları (ENUM + değerler)
-    - ExitStrategy: Çıkış stratejisi ayarları (ENUM + değerler)
-    - PositionManagement: Pozisyon yönetimi ayarları
-    - entry_conditions: Giriş koşulları (syntax, operators, timeframes)
-    - exit_conditions: Çıkış koşulları (syntax, operators, timeframes)
-    - custom_parameters: Özel parametreler
-    - optimizer_parameters: Optimizasyon parametreleri
-    - account_management: Hesap yönetimi
-    - backtest_parameters: Backtest parametreleri
+    - Symbols: Symbol configurations and format
+    - Timeframes: MTF timeframes and primary timeframe
+    - Indicators: Technical indicators and their parameters
+    - RiskManagement: Risk management settings (ENUM + values)
+    - ExitStrategy: Exit strategy settings (ENUM + values)
+    - PositionManagement: Position management settings
+    - entry_conditions: Entry conditions (syntax, operators, timeframes)
+    - exit_conditions: Exit conditions (syntax, operators, timeframes)
+    - custom_parameters: Custom parameters
+    - optimizer_parameters: Optimization parameters
+    - account_management: Account management
+    - backtest_parameters: Backtest parameters
     
-    Validation Türleri:
-    - ✅ Zorunlu alanlar (required fields)
-    - ✅ Değer aralıkları (ranges)
-    - ✅ Mantıksal tutarlılık (TP > SL vs.)
-    - ✅ Format kontrolü (dict, list, vs.)
+    Validation Types:
+    - ✅ Required fields
+    - ✅ Value ranges
+    - ✅ Logical consistency (TP > SL vs.)
+    - ✅ Format check (dict, list, vs.)
     - ✅ Enum validations
     - ✅ Operator validations
     - ✅ Timeframe validations
@@ -122,14 +122,14 @@ class StrategyValidator:
         'position_management',
     ]
     
-    # Geçerli timeframe'ler
+    # Valid timeframes
     VALID_TIMEFRAMES = {
         '1m', '3m', '5m', '15m', '30m',
         '1h', '2h', '4h', '6h', '12h',
         '1d', '3d', '1w', '1M'
     }
     
-    # Geçerli operatörler
+    # Valid operators
     VALID_OPERATORS = {
         '>', '<', '>=', '<=', '==', '!=',
         'crossover', 'crossunder', 'cross_over', 'cross_under',
@@ -144,10 +144,10 @@ class StrategyValidator:
     
     def __init__(self, logger: Optional[Any] = None):
         """
-        Validator'ı başlat
+        Initialize the validator.
         
         Args:
-            logger: Opsiyonel logger
+            logger: Optional logger
         """
         self.logger = logger
         self.errors: List[ValidationError] = []
@@ -158,7 +158,7 @@ class StrategyValidator:
         Stratejiyi tamamen validate et (KAPSAMLI)
 
         Args:
-            strategy: Strateji objesi (BaseStrategy türevi)
+            strategy: Strategy object (derived from BaseStrategy)
 
         Returns:
             StrategyValidationResult
@@ -240,7 +240,7 @@ class StrategyValidator:
         if hasattr(strategy, 'backtest_parameters') and strategy.backtest_parameters:
             self._validate_backtest_parameters(strategy)
         
-        # Sonuç oluştur
+        # Create the result
         result = StrategyValidationResult(
             valid=len(self.errors) == 0,
             errors=self.errors,
@@ -249,16 +249,16 @@ class StrategyValidator:
         
         if self.logger:
             if result.valid:
-                self.logger.info(f"Strateji validasyonu basarili")
+                self.logger.info(f"Strategy validation successful")
                 if result.warnings:
-                    self.logger.warning(f"{len(result.warnings)} uyari var")
+                    self.logger.warning(f"{len(result.warnings)} warnings exist")
             else:
-                self.logger.error(f"Strateji validasyonu basarisiz: {len(result.errors)} hata")
+                self.logger.error(f"Strategy validation failed: {len(result.errors)} errors")
         
         return result
     
     def _validate_required_fields(self, strategy: Any):
-        """Required field'ların varlığını kontrol et"""
+        """Check for the existence of required fields"""
         missing = []
         
         for field in self.REQUIRED_FIELDS:
@@ -275,13 +275,13 @@ class StrategyValidator:
             ))
     
     def _validate_metadata(self, strategy: Any):
-        """Metadata doğrula"""
+        """Validate metadata"""
         if hasattr(strategy, 'strategy_name'):
             if not strategy.strategy_name:
                 self.errors.append(ValidationError(
                     field='strategy_name',
                     value=strategy.strategy_name,
-                    message='strategy_name bos olamaz'
+                    message='strategy_name cannot be empty'
                 ))
         
         if hasattr(strategy, 'strategy_version'):
@@ -289,7 +289,7 @@ class StrategyValidator:
                 self.errors.append(ValidationError(
                     field='strategy_version',
                     value=strategy.strategy_version,
-                    message='strategy_version bos olamaz'
+                    message='strategy_version cannot be empty'
                 ))
         
         # Optional: author validation
@@ -298,17 +298,17 @@ class StrategyValidator:
                 self.warnings.append(ValidationError(
                     field='author',
                     value=strategy.author,
-                    message='author cok uzun (max 100 karakter)',
+                    message='author is too long (max 100 characters)',
                     severity='warning'
                 ))
     
     def _validate_symbols(self, strategy: Any):
-        """Symbol config'leri doğrula"""
+        """Validate symbol configurations"""
         if not strategy.symbols:
             self.errors.append(ValidationError(
                 field='symbols',
                 value=None,
-                message='En az 1 symbol gerekli'
+                message='At least 1 symbol is required'
             ))
             return
         
@@ -317,7 +317,7 @@ class StrategyValidator:
                 self.errors.append(ValidationError(
                     field=f'symbols[{i}].symbol',
                     value=None,
-                    message='Symbol listesi bos'
+                    message='Symbol list is empty'
                 ))
             
             if not hasattr(symbol_config, 'quote') or not symbol_config.quote:
@@ -334,11 +334,11 @@ class StrategyValidator:
                         self.errors.append(ValidationError(
                             field=f'symbols[{i}].symbol',
                             value=sym,
-                            message=f'Gecersiz symbol: {sym}'
+                            message=f'Invalid symbol: {sym}'
                         ))
     
     def _validate_timeframes(self, strategy: Any):
-        """Timeframe'leri doğrula"""
+        """Validate timeframes"""
         # MTF timeframes
         # MTF is optional - allow empty list
         if not strategy.mtf_timeframes:
@@ -349,27 +349,27 @@ class StrategyValidator:
                 self.errors.append(ValidationError(
                     field='mtf_timeframes',
                     value=tf,
-                    message=f"Gecersiz timeframe: '{tf}'. Gecerli: {sorted(self.VALID_TIMEFRAMES)}"
+                    message=f"Invalid timeframe: '{tf}'. Valid: {sorted(self.VALID_TIMEFRAMES)}"
                 ))
         
-        # Primary timeframe mtf_timeframes içinde olmalı
+        # The primary timeframe must be within the mtf_timeframes.
         if hasattr(strategy, 'primary_timeframe'):
             if strategy.primary_timeframe not in strategy.mtf_timeframes:
                 self.errors.append(ValidationError(
                     field='primary_timeframe',
                     value=strategy.primary_timeframe,
-                    message=f"primary_timeframe ('{strategy.primary_timeframe}') mtf_timeframes icinde olmali"
+                    message=f"primary_timeframe ('{strategy.primary_timeframe}') must be within mtf_timeframes"
                 ))
     
     def _validate_indicators(self, strategy: Any):
-        """Indikatör config'lerini doğrula"""
+        """Validate indicator configurations"""
         indicators = strategy.technical_parameters.indicators
 
         if not indicators:
             self.errors.append(ValidationError(
                 field='technical_parameters.indicators',
                 value=None,
-                message='En az 1 indikatör gerekli'
+                message='At least 1 indicator is required'
             ))
             return
 
@@ -378,10 +378,10 @@ class StrategyValidator:
                 self.errors.append(ValidationError(
                     field=f'technical_parameters.indicators.{name}',
                     value=type(params).__name__,
-                    message=f"Parametreler dict olmali, {type(params).__name__} verildi"
+                    message=f"Parameters must be a dict, {type(params).__name__} was given"
                 ))
 
-        # ATR_BASED kontrolü: ATR indicator gerekli mi?
+        # ATR_BASED check: Is the ATR indicator required?
         if hasattr(strategy, 'exit_strategy'):
             sl_method = getattr(strategy.exit_strategy, 'stop_loss_method', None)
             tp_method = getattr(strategy.exit_strategy, 'take_profit_method', None)
@@ -389,33 +389,33 @@ class StrategyValidator:
             sl_name = sl_method.name if hasattr(sl_method, 'name') else str(sl_method) if sl_method else None
             tp_name = tp_method.name if hasattr(tp_method, 'name') else str(tp_method) if tp_method else None
 
-            # ATR_BASED seçilmiş mi?
+            # Is ATR_BASED selected?
             if sl_name == 'ATR_BASED' or tp_name == 'ATR_BASED':
-                # ATR var mı?
+                # Is ATR available?
                 import re
                 atr_pattern = re.compile(r'^atr(_\d+)?$')
                 has_atr = any(atr_pattern.match(key) for key in indicators.keys())
 
                 if not has_atr:
-                    # Otomatik ekle
+                    # Automatically add
                     indicators['atr_14'] = {'period': 14}
-                    # Cache invalidate flag (backtest engine kontrol eder)
+                    # Cache invalidate flag (backtest engine checks)
                     strategy._cache_invalidated = True
                     self.warnings.append(ValidationError(
                         field='technical_parameters.indicators',
                         value='atr_14',
-                        message='ATR_BASED seçili ama ATR yok → Otomatik atr_14 eklendi'
+                        message='ATR_BASED is selected, but ATR is not present -> Automatically added atr_14'
                     ))
     
     def _validate_risk_management(self, rm: Any):
-        """RiskManagement parametrelerini validate et (ENUM + değerler)"""
-        # Enum validation (sadece enum import edildiyse)
+        """Validate RiskManagement parameters (ENUM + values)"""
+        # Enum validation (only if an enum is imported)
         if PositionSizeMethod is not None and hasattr(rm, 'sizing_method'):
             if not isinstance(rm.sizing_method, PositionSizeMethod):
                 self.errors.append(ValidationError(
                     field='risk_management.sizing_method',
                     value=type(rm.sizing_method).__name__,
-                    message='sizing_method PositionSizeMethod enum olmali'
+                    message='must be a PositionSizeMethod enum'
                 ))
         
         # Validate position sizing parameters based on sizing_method
@@ -426,7 +426,7 @@ class StrategyValidator:
                     self.errors.append(ValidationError(
                         field='risk_management.position_percent_size',
                         value=getattr(rm, 'position_percent_size', None),
-                        message='FIXED_PERCENT metodu için position_percent_size pozitif olmali'
+                        message='The position_percent_size must be positive for the FIXED_PERCENT method'
                     ))
             elif rm.sizing_method == PositionSizeMethod.FIXED_USD:
                 # FIXED_USD requires position_usd_size
@@ -434,7 +434,7 @@ class StrategyValidator:
                     self.errors.append(ValidationError(
                         field='risk_management.position_usd_size',
                         value=getattr(rm, 'position_usd_size', None),
-                        message='FIXED_USD metodu için position_usd_size pozitif olmali'
+                        message='The position_usd_size must be positive for the FIXED_USD method'
                     ))
             elif rm.sizing_method == PositionSizeMethod.RISK_BASED:
                 # RISK_BASED requires max_risk_per_trade
@@ -442,44 +442,44 @@ class StrategyValidator:
                     self.errors.append(ValidationError(
                         field='risk_management.max_risk_per_trade',
                         value=getattr(rm, 'max_risk_per_trade', None),
-                        message='RISK_BASED metodu için max_risk_per_trade pozitif olmali'
+                        message='For the RISK_BASED method, max_risk_per_trade must be positive'
                     ))
                 elif rm.max_risk_per_trade > 10:
                     self.warnings.append(ValidationError(
                         field='risk_management.max_risk_per_trade',
                         value=rm.max_risk_per_trade,
-                        message='Trade basina %10+ risk cok yuksek!',
+                        message='Trading carries a risk of over 10% - very high!',
                         severity='warning'
                     ))
         
-        # Portfolio risk kontrolü
+        # Portfolio risk control
         if hasattr(rm, 'max_portfolio_risk'):
             if rm.max_portfolio_risk <= 0:
                 self.errors.append(ValidationError(
                     field='risk_management.max_portfolio_risk',
                     value=rm.max_portfolio_risk,
-                    message='max_portfolio_risk pozitif olmali'
+                    message='max_portfolio_risk must be positive'
                 ))
         
-        # Max drawdown kontrolü
+        # Maximum drawdown check
         if hasattr(rm, 'max_drawdown'):
             if rm.max_drawdown < 5:
                 self.warnings.append(ValidationError(
                     field='risk_management.max_drawdown',
                     value=rm.max_drawdown,
-                    message='Max drawdown cok dusuk (<5%), sik durma olabilir!',
+                    message='Max drawdown is very low (<5%), there might be frequent stops!',
                     severity='warning'
                 ))
     
     def _validate_exit_strategy(self, es: Any):
-        """ExitStrategy parametrelerini validate et (ENUM + değerler)"""
-        # Enum validations (sadece enum import edildiyse)
+        """Validate ExitStrategy parameters (ENUM + values)"""
+        # Enum validations (only if an enum is imported)
         if ExitMethod is not None and hasattr(es, 'take_profit_method'):
             if not isinstance(es.take_profit_method, ExitMethod):
                 self.errors.append(ValidationError(
                     field='exit_strategy.take_profit_method',
                     value=type(es.take_profit_method).__name__,
-                    message='take_profit_method ExitMethod enum olmali'
+                    message='take_profit_method must be an ExitMethod enum'
                 ))
         
         if StopLossMethod is not None and hasattr(es, 'stop_loss_method'):
@@ -487,28 +487,28 @@ class StrategyValidator:
                 self.errors.append(ValidationError(
                     field='exit_strategy.stop_loss_method',
                     value=type(es.stop_loss_method).__name__,
-                    message='stop_loss_method StopLossMethod enum olmali'
+                    message='stop_loss_method must be a StopLossMethod enum'
                 ))
 
-        # Take profit kontrolü
+        # Take profit check
         if hasattr(es, 'take_profit_value'):
             if es.take_profit_value <= 0:
                 self.errors.append(ValidationError(
                     field='exit_strategy.take_profit_value',
                     value=es.take_profit_value,
-                    message='take_profit_value pozitif olmali'
+                    message='take_profit_value must be positive'
                 ))
         
-        # Stop loss kontrolü
+        # Stop loss control
         if hasattr(es, 'stop_loss_value'):
             if es.stop_loss_value <= 0:
                 self.errors.append(ValidationError(
                     field='exit_strategy.stop_loss_value',
                     value=es.stop_loss_value,
-                    message='stop_loss_value pozitif olmali'
+                    message='stop_loss_value must be positive'
                 ))
         
-        # TP/SL oranı kontrolü (risk/reward)
+        # TP/SL ratio check (risk/reward)
         if hasattr(es, 'take_profit_value') and hasattr(es, 'stop_loss_value'):
             if es.take_profit_value > 0 and es.stop_loss_value > 0:
                 ratio = es.take_profit_value / es.stop_loss_value
@@ -520,16 +520,16 @@ class StrategyValidator:
                         severity='warning'
                     ))
         
-        # Trailing stop kontrolü
+        # Trailing stop control
         if hasattr(es, 'trailing_stop_enabled') and es.trailing_stop_enabled:
             if not hasattr(es, 'trailing_activation_profit_percent'):
                 self.errors.append(ValidationError(
                     field='exit_strategy.trailing_activation_profit_percent',
                     value=None,
-                    message='Trailing stop aktif ama aktivasyon seviyesi yok!'
+                    message='Trailing stop is active, but the activation level is not set!'
                 ))
         
-        # Partial exit kontrolü
+        # Partial exit control
         if hasattr(es, 'partial_exit_enabled') and es.partial_exit_enabled:
             if not hasattr(es, 'partial_exit_levels') or not es.partial_exit_levels:
                 self.errors.append(ValidationError(
@@ -550,24 +550,24 @@ class StrategyValidator:
                     self.errors.append(ValidationError(
                         field='exit_strategy.partial_exit',
                         value=f'levels:{len(es.partial_exit_levels)}, sizes:{len(es.partial_exit_sizes)}',
-                        message='partial_exit_levels ve partial_exit_sizes ayni uzunlukta olmali'
+                        message='partial_exit_levels and partial_exit_sizes must have the same length'
                     ))
     
     def _validate_position_management(self, pm: Any):
         """PositionManagement parametrelerini validate et"""
-        # Pozisyon limit kontrolü
+        # Position limit check
         if hasattr(pm, 'max_total_positions'):
             if pm.max_total_positions <= 0:
                 self.errors.append(ValidationError(
                     field='position_management.max_total_positions',
                     value=pm.max_total_positions,
-                    message='max_total_positions pozitif olmali'
+                    message='max_total_positions must be positive'
                 ))
             elif pm.max_total_positions > 20:
                 self.warnings.append(ValidationError(
                     field='position_management.max_total_positions',
                     value=pm.max_total_positions,
-                    message='Cok fazla es zamanli pozisyon (>20), riskli olabilir!',
+                    message='Too many concurrent positions (>20) can be risky!',
                     severity='warning'
                 ))
         
@@ -576,85 +576,85 @@ class StrategyValidator:
                 self.errors.append(ValidationError(
                     field='position_management.max_positions_per_symbol',
                     value=pm.max_positions_per_symbol,
-                    message='max_positions_per_symbol pozitif olmali'
+                    message='max_positions_per_symbol must be positive'
                 ))
         
-        # Mantıksal kontrol
+        # Logical check
         if hasattr(pm, 'max_positions_per_symbol') and hasattr(pm, 'max_total_positions'):
             if pm.max_positions_per_symbol > pm.max_total_positions:
                 self.errors.append(ValidationError(
                     field='position_management',
                     value=f'per_symbol:{pm.max_positions_per_symbol}, total:{pm.max_total_positions}',
-                    message='max_positions_per_symbol max_total_positions\'dan buyuk olamaz'
+                    message='max_positions_per_symbol cannot be greater than max_total_positions'
                 ))
         
-        # Pyramiding kontrolü
+        # Pyramiding check
         if hasattr(pm, 'pyramiding_enabled') and pm.pyramiding_enabled:
             if not hasattr(pm, 'pyramiding_max_entries'):
                 self.errors.append(ValidationError(
                     field='position_management.pyramiding_max_entries',
                     value=None,
-                    message='Pyramiding aktif ama max_entries yok!'
+                    message='Pyramiding is active, but max_entries is not defined!'
                 ))
             elif pm.pyramiding_max_entries > 10:
                 self.warnings.append(ValidationError(
                     field='position_management.pyramiding_max_entries',
                     value=pm.pyramiding_max_entries,
-                    message='Cok fazla pyramiding entry (>10), cok riskli!',
+                    message='Too many pyramiding entries (>10), very risky!',
                     severity='warning'
                 ))
         
-        # Timeout kontrolü
+        # Timeout check
         if hasattr(pm, 'position_timeout_enabled') and pm.position_timeout_enabled:
             if not hasattr(pm, 'position_timeout'):
                 self.errors.append(ValidationError(
                     field='position_management.position_timeout',
                     value=None,
-                    message='Timeout aktif ama timeout suresi yok!'
+                    message='Timeout is active, but there is no timeout duration!'
                 ))
     
     def _validate_conditions(self, strategy: Any, field_name: str):
-        """Entry/Exit conditions'ları validate et (DETAYLI)"""
+        """Validate entry/exit conditions (DETAILED)"""
         conditions = getattr(strategy, field_name, {})
         
         if not isinstance(conditions, dict):
             self.errors.append(ValidationError(
                 field=field_name,
                 value=type(conditions).__name__,
-                message=f'{field_name} dict olmali!'
+                message=f'{field_name} must be a dictionary!'
             ))
             return
         
-        # En az long veya short olmalı (entry için)
+        # It should be at least long or short (for the entry)
         if field_name == 'entry_conditions':
             if 'long' not in conditions and 'short' not in conditions:
                 self.errors.append(ValidationError(
                     field=field_name,
                     value=conditions.keys(),
-                    message="entry_conditions'da en az 'long' veya 'short' olmali"
+                    message="entry_conditions must be at least 'long' or 'short'"
                 ))
         
-        # Her bir koşul grubunu kontrol et
+        # Check each condition group
         for side, cond_list in conditions.items():
             if not isinstance(cond_list, list):
                 self.errors.append(ValidationError(
                     field=f'{field_name}.{side}',
                     value=type(cond_list).__name__,
-                    message=f'{side} kosullari list olmali!'
+                    message=f'{side} conditions must be a list!'
                 ))
                 continue
             
-            # Her bir koşulu kontrol et
+            # Check each condition
             for idx, condition in enumerate(cond_list):
                 self._validate_single_condition(condition, f'{field_name}.{side}[{idx}]', strategy)
     
     def _validate_single_condition(self, condition: Any, context: str, strategy: Any):
-        """Tek bir koşulu doğrula (DETAYLI: syntax, operator, timeframe)"""
+        """Validate a single condition (DETAILED: syntax, operator, timeframe)"""
         if not isinstance(condition, (list, tuple)):
             self.errors.append(ValidationError(
                 field=context,
                 value=type(condition).__name__,
-                message='Kosul list/tuple olmali!'
+                message='The condition must be a list or tuple!'
             ))
             return
         
@@ -662,7 +662,7 @@ class StrategyValidator:
             self.errors.append(ValidationError(
                 field=context,
                 value=condition,
-                message='Kosul en az 3 eleman icermeli: [indicator, operator, value]'
+                message='The condition must contain at least 3 elements: [indicator, operator, value]'
             ))
             return
         
@@ -670,7 +670,7 @@ class StrategyValidator:
             self.errors.append(ValidationError(
                 field=context,
                 value=condition,
-                message='Kosul en fazla 4 eleman icermeli: [indicator, operator, value, timeframe]'
+                message='The condition must contain a maximum of 4 elements: [indicator, operator, value, timeframe]'
             ))
             return
         
@@ -680,7 +680,7 @@ class StrategyValidator:
             self.errors.append(ValidationError(
                 field=f'{context}.operator',
                 value=operator,
-                message=f"Gecersiz operator: '{operator}'. Gecerli: {sorted(self.VALID_OPERATORS)}"
+                message=f"Invalid operator: '{operator}'. Valid operators: {sorted(self.VALID_OPERATORS)}"
             ))
         
         # Timeframe check (if exists)
@@ -690,31 +690,31 @@ class StrategyValidator:
                 self.errors.append(ValidationError(
                     field=f'{context}.timeframe',
                     value=timeframe,
-                    message=f"Gecersiz timeframe: '{timeframe}'. Gecerli: {sorted(self.VALID_TIMEFRAMES)}"
+                    message=f"Invalid timeframe: '{timeframe}'. Valid: {sorted(self.VALID_TIMEFRAMES)}"
                 ))
             
-            # Timeframe, mtf_timeframes içinde olmalı
+            # Timeframe must be within the mtf_timeframes list.
             if hasattr(strategy, 'mtf_timeframes') and timeframe:
                 if timeframe not in strategy.mtf_timeframes:
                     self.warnings.append(ValidationError(
                         field=f'{context}.timeframe',
                         value=timeframe,
-                        message=f"Timeframe '{timeframe}' mtf_timeframes icinde degil!",
+                        message=f"Timeframe '{timeframe}' is not within mtf_timeframes!",
                         severity='warning'
                     ))
     
     def _validate_custom_parameters(self, params: Dict):
-        """Custom parameters'ı validate et"""
+        """Validate custom parameters"""
         if not isinstance(params, dict):
             self.errors.append(ValidationError(
                 field='custom_parameters',
                 value=type(params).__name__,
-                message='custom_parameters dict olmali!'
+                message='custom_parameters must be a dictionary!'
             ))
     
     def _validate_optimizer_parameters(self, params: Any):
-        """Optimizer parameters'ı validate et"""
-        # Optimizer parametreleri opsiyonel, sadece varsa kontrol et
+        """Validate optimizer parameters"""
+        # Optimizer parameters are optional, only check if they exist.
         if params is None:
             return
         
@@ -722,18 +722,18 @@ class StrategyValidator:
             self.errors.append(ValidationError(
                 field='optimizer_parameters',
                 value=type(params).__name__,
-                message='optimizer_parameters dict olmali!'
+                message='optimizer_parameters must be a dictionary!'
             ))
     
     def _validate_account_management(self, acc_mgmt: Any):
-        """Account management config'ini doğrula"""
+        """Validate the account management configuration"""
         # Leverage validation
         if hasattr(acc_mgmt, 'leverage'):
             if acc_mgmt.leverage < 1 or acc_mgmt.leverage > 125:
                 self.errors.append(ValidationError(
                     field='account_management.leverage',
                     value=acc_mgmt.leverage,
-                    message='leverage 1-125 arasinda olmali'
+                    message='must be between 1 and 125'
                 ))
         
         # Initial balance validation
@@ -742,11 +742,11 @@ class StrategyValidator:
                 self.errors.append(ValidationError(
                     field='account_management.initial_balance',
                     value=acc_mgmt.initial_balance,
-                    message='initial_balance pozitif olmali'
+                    message='initial_balance must be positive'
                 ))
     
     def _validate_backtest_parameters(self, strategy: Any):
-        """Backtest parameters config'ini doğrula"""
+        """Validates the backtest parameters configuration."""
         bt_params = strategy.backtest_parameters
         
         # Date validation
@@ -756,7 +756,7 @@ class StrategyValidator:
                     self.errors.append(ValidationError(
                         field='backtest_dates',
                         value=f'start:{strategy.backtest_start_date}, end:{strategy.backtest_end_date}',
-                        message='backtest_start_date backtest_end_date\'den once olmali'
+                        message='The backtest start date must be before the backtest end date'
                     ))
         
         # Commission validation
@@ -765,7 +765,7 @@ class StrategyValidator:
                 self.errors.append(ValidationError(
                     field='backtest_parameters.commission',
                     value=bt_params.commission,
-                    message='commission negatif olamaz'
+                    message='commission cannot be negative'
                 ))
         
         # Slippage validation
@@ -774,7 +774,7 @@ class StrategyValidator:
                 self.errors.append(ValidationError(
                     field='backtest_parameters.max_slippage',
                     value=bt_params.max_slippage,
-                    message='max_slippage negatif olamaz'
+                    message='max_slippage cannot be negative'
                 ))
 
 
@@ -783,43 +783,43 @@ def validate_strategy(strategy: Any, logger: Optional[Any] = None) -> StrategyVa
     Stratejiyi validate et (helper function)
     
     Args:
-        strategy: Strateji objesi
-        logger: Opsiyonel logger
+        strategy: Strategy object
+        logger: Optional logger
     
     Returns:
         StrategyValidationResult
     
-    Örnek:
+    Example:
         >>> from components.strategies.templates.Golden_Cross_Trend import Strategy
         >>> strategy = Strategy()
         >>> result = validate_strategy(strategy)
         >>> if result.valid:
-        >>>     print("Strateji kullanilabilir!")
+        >>>     print("Strategy is usable!")
         >>> else:
         >>>     for error in result.errors:
-        >>>         print(f"Hata: {error.message}")
+        >>>         print(f"Error: {error.message}")
     """
     validator = StrategyValidator(logger=logger)
     return validator.validate_strategy(strategy)
 
 
-# Geriye uyumluluk için eski exception-based function
+# For backward compatibility, the old exception-based function.
 class ValidationException(Exception):
-    """Validation exception (geriye uyumluluk için)"""
+    """Validation exception (for backward compatibility)"""
     pass
 
 
 def validate_strategy_strict(strategy: Any) -> None:
     """
-    Stratejiyi validate et ve hata varsa exception fırlat
+    Validate the strategy and raise an exception if there is an error.
     
-    (Geriye uyumluluk için: helpers/validation.py'deki eski davranış)
+    (For backward compatibility: old behavior from helpers/validation.py)
     
     Args:
-        strategy: Strateji objesi
+        strategy: Strategy object
     
     Raises:
-        ValidationException: Validation hatası varsa
+        ValidationException: If there is a validation error.
     """
     result = validate_strategy(strategy)
     if not result.valid:

@@ -67,7 +67,7 @@ class Strategy(BaseStrategy):
         self.backtest_start_date = "2025-01-05T00:00"
         self.backtest_end_date = "2025-03-30T00:00"
         self.initial_balance = 1000
-        self.warmup_period = 200  # SMA 200 için yeterli
+        self.warmup_period = 200  # Sufficient for SMA 200
         self.download_klines = False
         self.update_klines = False
 
@@ -114,10 +114,10 @@ class Strategy(BaseStrategy):
         # ====================================================================
         self.risk_management = RiskManagement(
             sizing_method=PositionSizeMethod.FIXED_PERCENT,
-            position_percent_size=10.0,         # 10.0 FIXED_PERCENT için (AKTİF) - Portfolio'nun %10'u × leverage
-            position_usd_size=300.0,           # FIXED_USD için (şu an kullanılmaz)
-            position_quantity_size=2.0,         # FIXED_QUANTITY = "FIXED_QUANTITY" # Sabit miktar (0.01 BTC)
-            max_risk_per_trade=2.5,             # RISK_BASED için (şu an kullanılmaz)
+            position_percent_size=10.0,         # 10.0 for FIXED_PERCENT (ACTIVE) - 10% of the portfolio × leverage
+            position_usd_size=300.0,  # For FIXED_USD (currently not used)
+            position_quantity_size=2.0,         # FIXED_QUANTITY = "FIXED_QUANTITY" # Fixed quantity (0.01 BTC)
+            max_risk_per_trade=2.5,  # For RISK_BASED (currently not used)
 
             max_correlation=0.6,
             position_correlation_limit=0.7,
@@ -132,14 +132,14 @@ class Strategy(BaseStrategy):
         # POSITION MANAGEMENT
         # ====================================================================
         self.position_management = PositionManagement(
-            max_positions_per_symbol=1,  # Her sembol için max pozisyon sayısı
-            max_total_positions=400,  # Toplam max pozisyon sayısı (tüm semboller)
-            allow_hedging=False,  # Karşıt yönde pozisyon açma izni (LONG+SHORT birlikte)
-            position_timeout_enabled=True,  # Pozisyon timeout kontrolü (dakika cinsinden)
-            position_timeout=1800,  # Timeout süresi: 1800 dakika = 30 saat
-            pyramiding_enabled=False,  # Aynı yönde kademeli giriş izni
-            pyramiding_max_entries=3,  # Max pyramiding entry sayısı (aynı yön)
-            pyramiding_scale_factor=0.5  # Her yeni entry'de boyut çarpanı (0.5 = yarı yarıya)
+            max_positions_per_symbol=1,  # Maximum number of positions per symbol
+            max_total_positions=400,  # Maximum total number of positions (for all symbols)
+            allow_hedging=False,  # Does not allow opening positions in opposite directions (LONG+SHORT together)
+            position_timeout_enabled=True,  # Enable position timeout check (in minutes)
+            position_timeout=1800,  # Timeout duration: 1800 minutes = 30 hours
+            pyramiding_enabled=False,  # Does not allow step-by-step entry in the same direction
+            pyramiding_max_entries=3,  # Max pyramiding entry count (same direction)
+            pyramiding_scale_factor=0.5  # Size factor for each new entry (0.5 = halves the size)
         )
 
         # ====================================================================
@@ -150,31 +150,31 @@ class Strategy(BaseStrategy):
             take_profit_percent=6.00,             # FIXED_PERCENT - %6 TP
             take_profit_price=110000.0,          # FIXED_PRICE - $110,000'da TP
             take_profit_risk_reward_ratio=2.0,   # RISK_REWARD - 1:2.5 R/R → SL %1.5 ise, TP %3.75 (1.5 × 2.5)
-            take_profit_atr_multiplier=4.0,      # ATR_BASED - 3× ATR kadar yukarıda TP
+            take_profit_atr_multiplier=4.0,  # ATR_BASED - Take profit at 3x ATR above the entry price.
             take_profit_fib_level=1.618,         # FIBONACCI - Fib extension 1.618
             take_profit_ai_level=1,              # DYNAMIC_AI
 
             stop_loss_method=StopLossMethod.FIXED_PERCENT,
             stop_loss_percent=3.2,               # FIXED_PERCENT - %1.5 SL
             stop_loss_price=95000.0,             # FIXED_PRICE - $95,000'da SL
-            stop_loss_atr_multiplier=2.0,        # ATR_BASED - 2× ATR kadar aşağıda SL
-            stop_loss_swing_lookback=10,          # SWING_POINTS - Son 3 mum'un swing low/high'ı
+            stop_loss_atr_multiplier=2.0,        # ATR_BASED - SL is set 2x ATR below the current price.
+            stop_loss_swing_lookback=10,          # SWING_POINTS - The swing low/high of the last 3 candles
             stop_loss_fib_level=0.382,           # FIBONACCI - Fib retracement 0.382
             stop_loss_ai_level=1,                # DYNAMIC_AI
 
             # Trailing Stop (lock profits)
             trailing_stop_enabled=True,
-            trailing_activation_profit_percent=1.0,  # 2.5%'te aktif
-            trailing_callback_percent=0.3,           # 0.6% geri çekilince close
-            trailing_take_profit=False,              # TP'ye ulaştığında trailing devam etsin mi?
+            trailing_activation_profit_percent=1.0,  # Active at 2.5%
+            trailing_callback_percent=0.3,  # When the price retreats by 0.6%, the close value is updated.
+            trailing_take_profit=False,  # Should the trailing continue when the take profit is reached?
             trailing_distance=0.2,                   # Trailing stop distance (%)
 
             # Break-even (early protection)
             break_even_enabled=True,  # TEST: Break-even + partial exit together
-            break_even_trigger_profit_percent=1.4,  # 1.2%'de aktif
+            break_even_trigger_profit_percent=1.4,  # Active at 1.2%
             break_even_offset=0.9,
 
-            # Partial Exit (Kısmi Kar Al) - RECOMMENDED: 3 levels with graduated weights
+            # Partial Exit (Take partial profit) - RECOMMENDED: 3 levels with graduated weights
             partial_exit_enabled=True,  # TEST: Partial exit enabled
             partial_exit_levels=[3, 4, 10],           # %2, %5, %8 (good spacing)
             partial_exit_sizes=[0.40, 0.40, 0.20],   # Graduated: 25% → 35% → 40% = 100%
@@ -286,16 +286,16 @@ class Strategy(BaseStrategy):
         # ====================================================================
         # OPTIMIZER PARAMETERS
         # ====================================================================
-        # Bu parametreler backtest/trade sırasında kullanılmaz.
-        # Sadece optimizer tarafından okunur ve optimize edilir.
+        # These parameters are not used during backtesting/trading.
+        # Only read and optimized by the optimizer.
         #
         # Format:
         #   - Tuple (min, max, step): Numeric range optimization
         #   - List [val1, val2, ...]: Categorical/enum optimization
-        #   - Comment (#) ile kapatılan parametreler optimize edilmez
+        # Parameters closed with a comment (#) are not optimized.
         #
-        # WebUI üzerinden template edit edilirken bu parametreler
-        # otomatik gösterilir ve değiştirilebilir.
+        # These parameters are used when editing the template via the WebUI.
+        # It is automatically displayed and can be modified.
         #
         # Optimizer Stage Flow:
         #   Stage 1 (Risk Management): Position sizing, leverage
@@ -309,17 +309,17 @@ class Strategy(BaseStrategy):
         # ====================================================================
         # OPTIMIZER PARAMETERS
         # ====================================================================
-        # Bu parametreler backtest/trade sırasında kullanılmaz.
-        # Sadece optimizer tarafından okunur ve optimize edilir.
+        # These parameters are not used during backtesting/trading.
+        # Only read and optimized by the optimizer.
         #
         # Format:
         #   - Tuple (min, max, step): Numeric range → [min, min+step, ..., max]
-        #   - List [val1, val2, ...]: Categorical/enum seçenekleri
+        #   - List [val1, val2, ...]: Categorical/enum options
         #
-        # Kullanım:
+        # Usage:
         #   python modules/optimizer/cli.py --strategy <path> --stage <stage_name> --trials 50
         #
-        # ÖNEMLİ: Attribute isimleri base_strategy.py'deki dataclass'larla eşleşmeli!
+        # IMPORTANT: Attribute names must match the dataclasses in base_strategy.py!
         # ====================================================================
 
         self.optimizer_parameters = {
@@ -338,18 +338,18 @@ class Strategy(BaseStrategy):
             # Attribute names: RiskManagement dataclass
             'risk_management': {
                 'enabled': False,
-                # sizing_method kullanıyorsa conditional logic optimizer'da var
+                # If the sizing_method is used, the conditional logic is already in the optimizer.
                 #'sizing_method': ['FIXED_PERCENT', 'RISK_BASED', 'FIXED_USD'],
-                #'position_percent_size': (5.0, 25.0, 2.5),    # FIXED_PERCENT için
-                #'position_usd_size': (100, 1000, 100),        # FIXED_USD için
-                #'max_risk_per_trade': (1.0, 5.0, 0.5),        # RISK_BASED için
+                #'position_percent_size': (5.0, 25.0, 2.5),    # For FIXED_PERCENT
+                #'position_usd_size': (100, 1000, 100),        # For FIXED_USD
+                #'max_risk_per_trade': (1.0, 5.0, 0.5),        # For RISK_BASED
             },
 
             # ================================================================
             # STAGE 2: Exit Strategy
             # ================================================================
             # Attribute names: ExitStrategy dataclass
-            # Önerilen: Aşamalı optimize edin (SL/TP → Break-even → Trailing)
+            # Recommended: Optimize incrementally (SL/TP → Break-even → Trailing)
             'exit_strategy': {
                 'enabled': False,
 
@@ -379,7 +379,7 @@ class Strategy(BaseStrategy):
                 'trailing_distance': (0.1, 0.5, 0.1),
 
                 # --- Partial Exit ---
-                # NOT: Liste parametreleri henüz desteklenmiyor
+                # NOTE: List parameters are not yet supported
                 #'partial_exit_enabled': [True, False],
             },
 
@@ -387,7 +387,7 @@ class Strategy(BaseStrategy):
             # STAGE 3: Indicators
             # ================================================================
             # Nested dict format: {'indicator_name': {'param': range}}
-            # NOT: Henüz tam desteklenmiyor, flat parametreler kullanın
+            # NOTE: Not fully supported yet, use flat parameters
             'indicators': {
                 'enabled': False,
 
@@ -440,7 +440,7 @@ class Strategy(BaseStrategy):
             # ================================================================
             # STAGE 4: Entry Conditions
             # ================================================================
-            # NOT: Henüz implement edilmedi
+            # NOT: Not yet implemented
             'entry_conditions': {
                 'enabled': False,
                 #'min_conditions_met': (1, 5, 1),
@@ -460,13 +460,13 @@ class Strategy(BaseStrategy):
                 #'pyramiding_max_entries': (2, 5, 1),
                 #'pyramiding_scale_factor': (0.3, 1.0, 0.1),
                 #'position_timeout_enabled': [True, False],
-                #'position_timeout': (60, 1440, 60),  # dakika cinsinden
+                #'position_timeout': (60, 1440, 60),  # in minutes
             },
 
             # ================================================================
             # STAGE 6: Market Filters
             # ================================================================
-            # NOT: Henüz implement edilmedi
+            # NOT: Not yet implemented
             'market_filters': {
                 'enabled': False,
                 #'session_filter_enabled': [True, False],
@@ -475,7 +475,7 @@ class Strategy(BaseStrategy):
             },
 
             # ================================================================
-            # CONSTRAINTS (Optimizer global ayarları)
+            # CONSTRAINTS (Optimizer global settings)
             # ================================================================
             'constraints': {
                 'max_combinations': 10000,

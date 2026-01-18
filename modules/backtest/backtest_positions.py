@@ -183,7 +183,7 @@ class PositionSimulator:
         return trades
 
     # ========================================================================
-    POSITION SIZING - CRITICAL SECTION!
+    # POSITION SIZING - CRITICAL SECTION!
     # ========================================================================
 
     def _calculate_position_size(

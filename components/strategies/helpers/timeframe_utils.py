@@ -8,13 +8,13 @@ Date: 2025-11-13
 Author: SuperBot Team
 
 Description:
-    Multi-timeframe helper fonksiyonları.
+    Multi-timeframe helper functions.
     
     - Timeframe conversion
     - Timeframe comparison
     - Bar alignment
 
-Kullanım:
+Usage:
     from components.strategies.helpers.timeframe_utils import timeframe_to_minutes
     
     minutes = timeframe_to_minutes('15m')  # 15
@@ -45,16 +45,16 @@ TIMEFRAME_MINUTES = {
 
 def timeframe_to_minutes(timeframe: str) -> int:
     """
-    Timeframe'i dakikaya çevir
+    Convert the timeframe to minutes.
     
     Args:
         timeframe: Timeframe string ('1m', '5m', '1h', etc.)
     
     Returns:
-        int: Dakika cinsinden
+        int: In minutes.
     
     Raises:
-        ValueError: Geçersiz timeframe
+        ValueError: Invalid timeframe
     """
     timeframe = timeframe.lower().strip()
     
@@ -62,14 +62,14 @@ def timeframe_to_minutes(timeframe: str) -> int:
         return TIMEFRAME_MINUTES[timeframe]
     
     raise ValueError(
-        f"Geçersiz timeframe: '{timeframe}'\n"
-        f"Geçerli timeframe'ler: {sorted(TIMEFRAME_MINUTES.keys())}"
+        f"Invalid timeframe: '{timeframe}'\n"
+        f"Valid timeframes: {sorted(TIMEFRAME_MINUTES.keys())}"
     )
 
 
 def timeframe_to_seconds(timeframe: str) -> int:
     """
-    Timeframe'i saniyeye çevir
+    Convert the timeframe to seconds.
     
     Args:
         timeframe: Timeframe string
@@ -82,7 +82,7 @@ def timeframe_to_seconds(timeframe: str) -> int:
 
 def timeframe_to_milliseconds(timeframe: str) -> int:
     """
-    Timeframe'i millisaniyeye çevir
+    Convert the timeframe to milliseconds.
     
     Args:
         timeframe: Timeframe string
@@ -95,7 +95,7 @@ def timeframe_to_milliseconds(timeframe: str) -> int:
 
 def compare_timeframes(tf1: str, tf2: str) -> int:
     """
-    İki timeframe'i karşılaştır
+    Compare two timeframes.
     
     Args:
         tf1: First timeframe
@@ -119,10 +119,10 @@ def compare_timeframes(tf1: str, tf2: str) -> int:
 
 def is_higher_timeframe(tf: str, base_tf: str) -> bool:
     """
-    tf, base_tf'den daha yüksek mu?
+    tf is greater than base_tf?
     
     Args:
-        tf: Kontrol edilecek timeframe
+        tf: The timeframe to be checked.
         base_tf: Base timeframe
     
     Returns:
@@ -133,10 +133,10 @@ def is_higher_timeframe(tf: str, base_tf: str) -> bool:
 
 def is_lower_timeframe(tf: str, base_tf: str) -> bool:
     """
-    tf, base_tf'den daha düşük mü?
+    tf is less than base_tf?
     
     Args:
-        tf: Kontrol edilecek timeframe
+        tf: The timeframe to be checked.
         base_tf: Base timeframe
     
     Returns:
@@ -147,11 +147,11 @@ def is_lower_timeframe(tf: str, base_tf: str) -> bool:
 
 def sort_timeframes(timeframes: List[str], reverse: bool = False) -> List[str]:
     """
-    Timeframe'leri sırala
+    Sort the timeframes.
     
     Args:
-        timeframes: Timeframe listesi
-        reverse: True ise büyükten küçüğe
+        timeframes: List of timeframes
+        reverse: True if sorting in descending order.
     
     Returns:
         Sorted timeframe list
@@ -165,11 +165,11 @@ def sort_timeframes(timeframes: List[str], reverse: bool = False) -> List[str]:
 
 def get_higher_timeframes(base_tf: str, all_timeframes: List[str]) -> List[str]:
     """
-    Base timeframe'den daha yüksek timeframe'leri al
+    Get higher timeframes than the base timeframe.
     
     Args:
         base_tf: Base timeframe
-        all_timeframes: Tüm timeframe'ler
+        all_timeframes: All timeframes
     
     Returns:
         Higher timeframe'ler (sorted)
@@ -184,11 +184,11 @@ def get_higher_timeframes(base_tf: str, all_timeframes: List[str]) -> List[str]:
 
 def get_lower_timeframes(base_tf: str, all_timeframes: List[str]) -> List[str]:
     """
-    Base timeframe'den daha düşük timeframe'leri al
+    Get timeframes lower than the base timeframe.
     
     Args:
         base_tf: Base timeframe
-        all_timeframes: Tüm timeframe'ler
+        all_timeframes: All timeframes
     
     Returns:
         Lower timeframe'ler (sorted)
@@ -203,16 +203,16 @@ def get_lower_timeframes(base_tf: str, all_timeframes: List[str]) -> List[str]:
 
 def calculate_bars_needed(target_tf: str, source_tf: str) -> int:
     """
-    Target timeframe için kaç source bar gerekli?
+    How many source bars are required for the target timeframe?
     
     Args:
-        target_tf: Hedef timeframe (örn: '1h')
-        source_tf: Kaynak timeframe (örn: '15m')
+        target_tf: Target timeframe (e.g., '1h')
+        source_tf: Source timeframe (e.g., '15m')
     
     Returns:
-        int: Gereken bar sayısı
+        int: The required number of bars.
     
-    Örnek:
+    Example:
         calculate_bars_needed('1h', '15m')  # 4 (1h = 4x15m)
     """
     target_minutes = timeframe_to_minutes(target_tf)
@@ -220,7 +220,7 @@ def calculate_bars_needed(target_tf: str, source_tf: str) -> int:
     
     if target_minutes < source_minutes:
         raise ValueError(
-            f"Target timeframe ({target_tf}) source'dan ({source_tf}) küçük olamaz"
+            f"Target timeframe ({target_tf}) source'dan ({source_tf}) cannot be smaller"
         )
     
     return target_minutes // source_minutes
@@ -228,7 +228,7 @@ def calculate_bars_needed(target_tf: str, source_tf: str) -> int:
 
 def is_valid_timeframe(timeframe: str) -> bool:
     """
-    Timeframe geçerli mi?
+    Is the timeframe valid?
     
     Args:
         timeframe: Timeframe string
@@ -241,7 +241,7 @@ def is_valid_timeframe(timeframe: str) -> bool:
 
 def get_all_timeframes() -> List[str]:
     """
-    Tüm geçerli timeframe'leri dön
+    Returns all valid timeframes.
     
     Returns:
         Sorted timeframe list
