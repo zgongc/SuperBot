@@ -103,6 +103,15 @@ python -m modules.backtest.backtest_engine --strategy simple_rsi.py
 # python -m modules.backtest.backtest_engine --strategy simple_rsi.py --verbose
 ```
 
+#### 📸 Example Screenshots
+
+**Data Download:**
+![Data Download Example](docs/screenshot/data_download.png)
+
+**Backtest Execution:**
+![Backtest Execution 1](docs/screenshot/backtest1.png)
+![Backtest Execution 2](docs/screenshot/backtest2.png)
+
 ### 4. Open WebUI
 ```
 http://localhost:5000
@@ -273,10 +282,22 @@ MIT License
 
 Copyright (c) 2025-2026 SuperBot Team
 
+## 💝 Support the Project
+
+If SuperBot helps your trading journey, consider supporting its development! ☕
+
+### Crypto Donations 🪙
+
+| Asset | Network | Address |
+|-------|---------|---------|
+| **USDT** | TRC20 | `TS2ZbP4PYEQG1tmoBLvtZLkpWXq3yw7V4S` |
+| **ETH/USDT** | ERC20 | `0x35ebcc6127527a738d8ec2a452822423c95fc45c` |
+
+*Every contribution helps maintain and improve SuperBot. Thank you! 🙏*
+
 ## 🆘 Support
 
 - **Issues**: GitHub Issues
-- **Discord**: [SuperBot Community](#)
 - **Docs**: `docs/` directory
 
 ---
