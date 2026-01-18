@@ -25,6 +25,7 @@ config/local.yaml
 *.key
 *.pem
 .env
+.claude/
 
 
 # Data & Cache
