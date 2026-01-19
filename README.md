@@ -15,7 +15,7 @@ AI-powered, multi-exchange cryptocurrency trading platform with modular architec
 - ✅ Multi-timeframe (MTF) strategy support
 - ✅ Rate limiting & error handling
 - ✅ Graceful shutdown & state persistence
-- ✅ Comprehensive logging (Türkçe + emoji)
+- ✅ Comprehensive logging (emoji)
 
 ### Exchange Support
 - **Binance** (python-binance): Primary, Futures + Spot
@@ -70,17 +70,7 @@ cp config/.env.example config/.env
 
 ## 🎯 Quick Start
 
-### 1. Start Daemon
-```bash
-python superbot.py
-```
-
-### 2. Start Trading (Paper Mode)
-```bash
-python superbot-cli.py trading start --mode paper
-```
-
-### 3. Run Backtest
+### Run Backtest
 ```bash
 
 # 1. Update the strategy file (e.g., simple_rsi.py in components\strategies\templates)
@@ -111,11 +101,6 @@ python -m modules.backtest.backtest_engine --strategy simple_rsi.py
 **Backtest Execution:**
 ![Backtest Execution 1](docs/screenshot/backtest1.png)
 ![Backtest Execution 2](docs/screenshot/backtest2.png)
-
-### 4. Open WebUI
-```
-http://localhost:5000
-```
 
 ## 📋 Trading Modes
 
@@ -156,66 +141,10 @@ class MyStrategy(BaseStrategyTemplate):
 ```
 
 See examples:
-- `components/strategies/templates/SMC_Volume.py`
+- `components/strategies/templates/smc_v2.py`
 - `components/strategies/templates/simple_rsi.py`
 
-## 🧪 Testing
 
-```bash
-# Run all tests
-pytest tests/
-
-# Run specific module
-python -m components.database.models
-python -m core.rate_limiter
-```
-
-## 📚 Documentation
-
-### 🤖 For AI Assistants (Claude Code)
-**Start here every new session:**
-1. **Context Guide**: `docs/claude/context_guide.md` ← **Quick reference, read first**
-2. **Project Vision**: `docs/claude/PROJECT_VISION.md` ← **Why we're building this**
-3. **Implementation Plan**: `docs/plans/implementation_plan.md` ← What we're building
-4. **Development Principles**: `docs/plans/rules.md` ← How we work
-5. **Claude Rules**: `docs/claude/claude_rules.md` ← Detailed coding rules
-6. **Localization**: `docs/master/localization_guide.md` ← Turkish translations
-
-### 📖 For Human Developers
-- **Project Overview**: This README
-- **Master Plan**: `docs/plans/implementation_plan.md`
-- **System Architecture**: `docs/master/system_architecture.md`
-- **Development Rules**: `docs/plans/rules.md`
-- **AI Quick Start**: `docs/master/ai_quick_start.md`
-
-## 🛠️ CLI Commands
-
-```bash
-# Daemon
-superbot-cli daemon start|stop|status|restart
-
-# Trading
-superbot-cli trading start --mode paper|demo|live
-superbot-cli trading stop
-superbot-cli trading status
-
-# Backtest
-superbot-cli backtest run --strategy <name> --start <date> --end <date>
-
-# Optimization
-superbot-cli optimize --strategy <name> --trials 100
-
-# AI
-superbot-cli ai train --model signal_enhancer|regime_detector|price_predictor
-superbot-cli ai models
-
-# Data
-superbot-cli data download --symbol BTCUSDT --timeframe 1h
-
-# System
-superbot-cli status
-superbot-cli logs --tail 100
-```
 
 ## 🏗️ Project Structure
 
