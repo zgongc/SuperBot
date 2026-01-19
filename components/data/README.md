@@ -7,14 +7,14 @@
 ## 📋 Overview
 
 This directory contains all of SuperBot's data management operations:
-- **Database Management:** SQLite/PostgreSQL veri saklama
+- **Database Management:** SQLite/PostgreSQL database management
 - **Historical Data:** Parquet-based historical OHLCV data
-- **Data Download:** Exchange'lerden veri indirme
+- **Data Download:** Download data from Exchange
 - **Timeframe Resampling:** Creating a higher timeframe from a lower timeframe.
 
 ---
 
-## 📁 Dosyalar
+## 📁 Files
 
 ### 1. **database_engine.py** → `core/database_engine.py`
 **Responsibility:** Database connection management
@@ -164,7 +164,7 @@ info = hdm.get_data_info('BTCUSDT')
 **Features:**
 - ✅ Binance API integration
 - ✅ All timeframes support (1m → 1M)
-- ✅ Smart incremental update (son timestamp'ten devam)
+- ✅ Smart incremental update (continue from the last timestamp)
 - ✅ Duplicate detection & removal
 - ✅ Parquet save
 - ✅ Progress tracking
@@ -275,7 +275,7 @@ df_2h = resampler.resample(
            └→ Analysis Module
 ```
 
-### Real-time Data Pipeline (Gelecek)
+### Real-time Data Pipeline (Future)
 
 ```
 ┌─────────────────────┐
@@ -359,7 +359,7 @@ df = await hdm.load_data('BTCUSDT', '1m', start_date='2024-01-01')
 # ...
 ```
 
-### Senaryo 2: Live Trading Data Kaydetme (Gelecek)
+### Scenario 2: Saving Live Trading Data (Future)
 ```python
 # DatabaseManager will be used
 dm = get_database_manager()
@@ -387,7 +387,7 @@ await dm.save_trade({
 })
 ```
 
-### Senaryo 3: WebUI Dashboard Data (Gelecek)
+### Scenario 3: WebUI Dashboard Data (Future)
 ```python
 # Recent trades
 trades = await dm.get_trades(limit=50)

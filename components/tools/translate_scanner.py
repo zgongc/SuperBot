@@ -94,7 +94,8 @@ TURKISH_WORDS = [
     r'\b(basari|kayip|elde)\b',
     # Headers/Metadata
     r'\b(yazar|tarih|sistemi|yetersiz)\b',
-    r'\b(sorumluluk|uzun|vadeli|daha)\b', 
+    r'\b(sorumluluk|uzun|vadeli|daha|gelecek)\b', 
+    r'\b(son|devam)\b', 
     
     # Question endings
     r'\b\w+\s+mi\?\b',
