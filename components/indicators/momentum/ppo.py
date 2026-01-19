@@ -2,22 +2,22 @@
 """
 indicators/momentum/ppo.py - PPO (Percentage Price Oscillator)
 
-Yazar: SuperBot Team
-Tarih: 2025-11-20
+Author: SuperBot Team
+Date: 2025-11-20
 Versiyon: 1.0.0
 
-PPO (Percentage Price Oscillator) - Yüzdelik Fiyat Osilatörü.
-İki EMA arasındaki farkı yüzde olarak hesaplar.
+PPO (Percentage Price Oscillator) - Percentage Price Oscillator.
+Calculates the difference between two EMAs as a percentage.
 
-Özellikler:
-- MACD'nin yüzdelik versiyonu
-- Farklı fiyat seviyelerinde karşılaştırma yapılabilir
-- PPO, Signal ve Histogram çıktıları
-- Pozitif değer = Bullish momentum
-- Negatif değer = Bearish momentum
+Features:
+- Percentage version of MACD
+- Comparisons can be made at different price levels
+- PPO, Signal, and Histogram outputs
+- Positive value = Bullish momentum
+- Negative value = Bearish momentum
 - Signal line crossover sinyalleri
 
-Kullanım:
+Usage:
     from components.indicators import get_indicator_class
 
     PPO = get_indicator_class('ppo')
@@ -25,12 +25,12 @@ Kullanım:
     result = ppo.calculate(data)
     print(result.value['ppo'], result.value['signal'])
 
-Formül:
+Formula:
     PPO = ((Fast EMA - Slow EMA) / Slow EMA) * 100
     Signal = EMA(PPO, signal_period)
     Histogram = PPO - Signal
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -62,15 +62,15 @@ class PPO(BaseIndicator):
     """
     PPO - Percentage Price Oscillator
 
-    İki EMA arasındaki farkı yüzde olarak hesaplar.
-    MACD'nin normalize edilmiş versiyonudur.
+    Calculates the difference between two EMAs as a percentage.
+    It is a normalized version of MACD.
 
     Args:
-        fast_period: Hızlı EMA periyodu (varsayılan: 12)
-        slow_period: Yavaş EMA periyodu (varsayılan: 26)
-        signal_period: Signal line periyodu (varsayılan: 9)
-        logger: Logger instance (opsiyonel)
-        error_handler: Error handler (opsiyonel)
+        fast_period: Fast EMA period (default: 12)
+        slow_period: Slow EMA period (default: 26)
+        signal_period: Signal line period (default: 9)
+        logger: Logger instance (optional)
+        error_handler: Error handler (optional)
     """
 
     def __init__(self, fast_period: int = 12, slow_period: int = 26, signal_period: int = 9,
@@ -89,43 +89,43 @@ class PPO(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.slow_period * 2 + self.signal_period
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.fast_period >= self.slow_period:
             raise InvalidParameterError(
                 self.name, 'fast_period', self.fast_period,
-                "Hızlı periyot yavaş periyottan küçük olmalı"
+                "The fast period must be smaller than the slow period"
             )
         if self.signal_period < 1:
             raise InvalidParameterError(
                 self.name, 'signal_period', self.signal_period,
-                "Signal period pozitif olmalı"
+                "Signal period must be positive"
             )
         return True
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        Batch hesaplama (Backtest için)
+        Batch calculation (for backtesting)
 
-        Tüm veriyi vektörel olarak hesaplar.
-        TA-Lib uyumlu: SMA kullanır (varsayılan matype=0)
+        Calculates all data vectorially.
+        TA-Lib compatible: Uses SMA (default matype=0)
 
         Args:
             data: OHLCV DataFrame
 
         Returns:
-            pd.DataFrame: PPO, Signal ve Histogram değerleri
+            pd.DataFrame: PPO, Signal and Histogram values
         """
         close = data['close']
 
-        # TA-Lib uyumlu: SMA kullan (EMA değil!)
+        # Compatible with TA-Lib: Use SMA (not EMA)!
         fast_ma = close.rolling(window=self.fast_period).mean()
         slow_ma = close.rolling(window=self.slow_period).mean()
 
-        # Yüzdelik fark
+        # Percentage difference
         ppo = ((fast_ma - slow_ma) / slow_ma) * 100
 
         # Signal line (EMA of PPO)
@@ -142,11 +142,11 @@ class PPO(BaseIndicator):
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
         """
-        Warmup buffer - state-based update için gerekli
+        Warmup buffer - required for state-based update.
 
         Args:
             data: OHLCV DataFrame (warmup verisi)
-            symbol: Sembol adı (opsiyonel, multi-symbol desteği için)
+            symbol: Symbol name (optional, for multi-symbol support)
         """
         super().warmup_buffer(data, symbol)
 
@@ -156,11 +156,11 @@ class PPO(BaseIndicator):
 
         if len(data) >= self.slow_period:
             close = data['close'].values
-            # PPO hesapla ve signal EMA state'i tut
+            # Calculate PPO and store the EMA state.
             batch = self.calculate_batch(data)
             ppo_values = batch['ppo'].dropna().values
 
-            # Signal line için EMA state
+            # EMA state for the signal line
             alpha = 2 / (self.signal_period + 1)
 
             self._ppo_state[buffer_key] = {
@@ -176,10 +176,10 @@ class PPO(BaseIndicator):
 
         Args:
             candle: Yeni mum verisi (dict)
-            symbol: Sembol adı (opsiyonel)
+            symbol: Symbol name (optional)
 
         Returns:
-            IndicatorResult: Güncel PPO değeri
+            IndicatorResult: Current PPO value
         """
         # Support both dict and list/tuple formats
         if isinstance(candle, dict):
@@ -215,7 +215,7 @@ class PPO(BaseIndicator):
                 new_signal = alpha * ppo_value + (1 - alpha) * signal_ema
                 histogram = ppo_value - new_signal
 
-                # State güncelle
+                # Update state
                 self._ppo_state[buffer_key] = {
                     'close_buffer': close_buffer,
                     'signal_ema': new_signal,
@@ -223,7 +223,7 @@ class PPO(BaseIndicator):
                     'alpha': alpha
                 }
 
-                # Sinyal belirleme: PPO > Signal = BUY
+                # Signal determination: PPO > Signal = BUY
                 if ppo_value > new_signal:
                     signal = SignalType.BUY
                 elif ppo_value < new_signal:
@@ -256,7 +256,7 @@ class PPO(BaseIndicator):
                     }
                 )
 
-        # State yoksa yetersiz veri
+        # If state does not exist, insufficient data
         return IndicatorResult(
             value=0.0,
             timestamp=timestamp_val,
@@ -268,24 +268,24 @@ class PPO(BaseIndicator):
 
     def calculate(self, data: pd.DataFrame) -> IndicatorResult:
         """
-        PPO hesapla (son değer)
+        Calculate PPO (final value)
 
         Args:
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: PPO değerleri
+            IndicatorResult: PPO values
         """
         # Batch hesapla
         batch_result = self.calculate_batch(data)
 
-        # Son değerleri al
+        # Get the last values
         ppo_val = batch_result['ppo'].iloc[-1]
         sig_val = batch_result['signal'].iloc[-1]
         hist_val = batch_result['histogram'].iloc[-1]
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Sinyal belirleme: PPO > Signal = BUY
+        # Signal determination: PPO > Signal = BUY
         if ppo_val > sig_val:
             signal = SignalType.BUY
         elif ppo_val < sig_val:
@@ -322,7 +322,7 @@ class PPO(BaseIndicator):
         )
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {'fast_period': 12, 'slow_period': 26, 'signal_period': 9}
 
     def _get_output_names(self) -> list:
@@ -346,9 +346,9 @@ __all__ = ['PPO']
 # ============================================================================
 
 if __name__ == "__main__":
-    """PPO indikatör testi"""
+    """PPO indicator test"""
 
-    # Windows console UTF-8 desteği
+    # Windows console UTF-8 support
     import sys
     import io
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
@@ -357,8 +357,8 @@ if __name__ == "__main__":
     print("🧪 PPO (PERCENTAGE PRICE OSCILLATOR) TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating example OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(150)]
 
@@ -377,29 +377,29 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in range(150)]
     })
 
-    print(f"   ✅ {len(data)} mum oluşturuldu")
-    print(f"   ✅ Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   ✅ {len(data)} candles created")
+    print(f"   ✅ Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     ppo = PPO(fast_period=12, slow_period=26, signal_period=9)
-    print(f"   ✅ Oluşturuldu: {ppo}")
+    print(f"   ✅ Created: {ppo}")
     print(f"   ✅ Kategori: {ppo.category.value}")
-    print(f"   ✅ Gerekli periyot: {ppo.get_required_periods()}")
+    print(f"   ✅ Required period: {ppo.get_required_periods()}")
 
     result = ppo(data)
     print(f"   ✅ PPO: {result.value['ppo']}")
     print(f"   ✅ Signal: {result.value['signal']}")
     print(f"   ✅ Histogram: {result.value['histogram']}")
-    print(f"   ✅ Sinyal: {result.signal.value}")
+    print(f"   ✅ Signal: {result.signal.value}")
     print(f"   ✅ Trend: {result.trend.name}")
-    print(f"   ✅ Güç: {result.strength:.2f}")
+    print(f"   ✅ Power: {result.strength:.2f}")
 
     # Test 2: Batch Calculation
     print("\n3. Batch Calculation Testi...")
     batch_result = ppo.calculate_batch(data)
     print(f"   ✅ Batch result shape: {batch_result.shape}")
-    print(f"   ✅ Son 5 değer:")
+    print(f"   ✅ Last 5 values:")
     print(batch_result.tail())
 
     # Test 3: Signal line crossover analizi
@@ -408,19 +408,19 @@ if __name__ == "__main__":
     ppo_values = batch_result['ppo'].dropna()
     signal_values = batch_result['signal'].dropna()
 
-    # Crossover sayısı
+    # Crossover count
     crossovers = 0
     for i in range(1, min(len(ppo_values), len(signal_values))):
         if (ppo_values.iloc[i-1] < signal_values.iloc[i-1] and ppo_values.iloc[i] > signal_values.iloc[i]) or \
            (ppo_values.iloc[i-1] > signal_values.iloc[i-1] and ppo_values.iloc[i] < signal_values.iloc[i]):
             crossovers += 1
 
-    print(f"   ✅ Toplam signal crossover: {crossovers}")
+    print(f"   ✅ Total signal crossover: {crossovers}")
     print(f"   ✅ Pozitif histogram barlar: {sum(batch_result['histogram'].dropna() > 0)}")
-    print(f"   ✅ Negatif histogram barlar: {sum(batch_result['histogram'].dropna() < 0)}")
+    print(f"   ✅ Negative histogram bars: {sum(batch_result['histogram'].dropna() < 0)}")
 
-    # Test 4: Farklı periyot kombinasyonları
-    print("\n5. Farklı periyot testi...")
+    # Test 4: Different period combinations
+    print("\n5. Different period test...")
     configs = [(5, 10, 5), (12, 26, 9), (20, 50, 15)]
     for fast, slow, sig in configs:
         ppo_test = PPO(fast_period=fast, slow_period=slow, signal_period=sig)
@@ -432,16 +432,16 @@ if __name__ == "__main__":
     print("\n6. Validasyon testi...")
     try:
         invalid_ppo = PPO(fast_period=26, slow_period=12, signal_period=9)
-        print("   ❌ Hata: Geçersiz periyot kombinasyonu kabul edildi!")
+        print("   ❌ Error: Invalid period combination accepted!")
     except InvalidParameterError as e:
-        print(f"   ✅ Fast/Slow period validasyonu başarılı: {e}")
+        print(f"   ✅ Fast/Slow period validation successful: {e}")
 
     try:
         invalid_ppo2 = PPO(fast_period=12, slow_period=26, signal_period=0)
-        print("   ❌ Hata: Geçersiz signal period kabul edildi!")
+        print("   ❌ Error: Invalid signal period accepted!")
     except InvalidParameterError as e:
-        print(f"   ✅ Signal period validasyonu başarılı: {e}")
+        print(f"   ✅ Signal period validation successful: {e}")
 
     print("\n" + "="*60)
-    print("✅ TÜM TESTLER BAŞARILI!")
+    print("✅ ALL TESTS PASSED!")
     print("="*60 + "\n")

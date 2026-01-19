@@ -2,9 +2,9 @@
 """
 components/strategies/pnl_calculator.py
 SuperBot - PnL Calculator
-Yazar: SuperBot Team
-Tarih: 2025-12-07
-Versiyon: 1.0.0
+Author: SuperBot Team
+Date: 2025-12-07
+Version: 1.0.0
 
 PnL (Profit and Loss) calculation utility class
 

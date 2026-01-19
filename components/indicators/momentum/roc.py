@@ -5,18 +5,18 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    ROC (Rate of Change) - Fiyat değişim yüzdesi
-    Aralık: Sınırsız (pozitif ve negatif değerler)
-    Pozitif ROC: Fiyat artışı
-    Negatif ROC: Fiyat düşüşü
-    0 civarı: Momentum yok
+Description:
+    ROC (Rate of Change) - Percentage of price change
+    Range: Unlimited (positive and negative values)
+    Positive ROC: Price increase
+    Negative ROC: Price decrease
+    Around 0: No momentum
 
-Formül:
+Formula:
     ROC = ((Close - Close[n]) / Close[n]) × 100
-    n = period (geriye bakış periyodu)
+    n = period (lookback period)
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -38,11 +38,11 @@ class ROC(BaseIndicator):
     """
     Rate of Change
 
-    Fiyatın belirli bir periyot öncesine göre yüzde değişimini hesaplar.
-    Momentum gücünü ve yönünü belirlemek için kullanılır.
+    Calculates the percentage change in price compared to a specific period before.
+    Used to determine the momentum's strength and direction.
 
     Args:
-        period: ROC periyodu (varsayılan: 12)
+        period: ROC period (default: 12)
     """
 
     def __init__(
@@ -65,15 +65,15 @@ class ROC(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.period + 1
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 1:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Periyot pozitif olmalı"
+                "The period must be positive"
             )
         return True
 
@@ -85,11 +85,11 @@ class ROC(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: ROC değeri
+            IndicatorResult: ROC value
         """
         close = data['close'].values
 
-        # Şu anki fiyat ve N period önceki fiyat
+        # Current price and price N periods ago
         current_close = close[-1]
         previous_close = close[-(self.period + 1)]
 
@@ -101,8 +101,8 @@ class ROC(BaseIndicator):
 
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Güç hesaplama - ROC'un mutlak değerini 0-100 arası normalize et
-        # Tipik ROC değerleri -20 ile +20 arası olur, bu yüzden 20'ye bölelim
+        # Power calculation - Normalize the absolute value of ROC to a range of 0-100.
+        # Typical ROC values are between -20 and +20, so let's divide by 20.
         strength = min(abs(roc_value) * 5, 100)
 
         # Warmup buffer for update() method
@@ -124,7 +124,7 @@ class ROC(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.Series:
         """
-        ⚡ VECTORIZED batch ROC calculation - BACKTEST için
+        ⚡ VECTORIZED batch ROC calculation - for BACKTEST
 
         ROC Formula:
             ROC = ((Close - Close[n]) / Close[n]) × 100
@@ -155,11 +155,11 @@ class ROC(BaseIndicator):
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
         """
-        Warmup buffer - update() için gerekli
+        Warmup buffer - required for update().
 
         Args:
             data: OHLCV DataFrame (warmup verisi)
-            symbol: Sembol adı (opsiyonel)
+            symbol: Symbol name (optional)
         """
         super().warmup_buffer(data, symbol)
 
@@ -205,35 +205,35 @@ class ROC(BaseIndicator):
 
     def get_signal(self, value: float) -> SignalType:
         """
-        ROC değerinden sinyal üret
+        Generate a signal from the ROC value.
 
         Args:
-            value: ROC değeri
+            value: ROC value
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
-        # Pozitif ROC yukarı momentum, negatif ROC aşağı momentum
-        # Aşırı değerler reversal sinyali olabilir
+        # Positive ROC indicates upward momentum, negative ROC indicates downward momentum
+        # Outliers may indicate a reversal signal
         if value > 10:
-            return SignalType.SELL  # Aşırı pozitif, satış fırsatı
+            return SignalType.SELL  # Extremely positive, a selling opportunity
         elif value < -10:
-            return SignalType.BUY  # Aşırı negatif, alış fırsatı
+            return SignalType.BUY  # Extremely negative, buy opportunity
         elif value > 0:
             return SignalType.HOLD  # Pozitif momentum devam
         elif value < 0:
-            return SignalType.HOLD  # Negatif momentum devam
+            return SignalType.HOLD  # Negative momentum continues
         return SignalType.NEUTRAL
 
     def get_trend(self, value: float) -> TrendDirection:
         """
-        ROC değerinden trend belirle
+        Determine the trend based on the ROC value.
 
         Args:
-            value: ROC değeri
+            value: ROC value
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         if value > 0:
             return TrendDirection.UP
@@ -242,7 +242,7 @@ class ROC(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {'period': 12}
 
     def _requires_volume(self) -> bool:
@@ -258,22 +258,22 @@ __all__ = ['ROC']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """ROC indikatör testi"""
+    """ROC indicator test"""
 
     print("\n" + "="*60)
     print("ROC (RATE OF CHANGE) TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating example OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(30)]
 
-    # Fiyat hareketini simüle et
+    # Simulate price movement
     base_price = 100
     prices = [base_price]
     for i in range(29):
@@ -289,34 +289,34 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     roc = ROC(period=12)
-    print(f"   [OK] Oluşturuldu: {roc}")
+    print(f"   [OK] Created: {roc}")
     print(f"   [OK] Kategori: {roc.category.value}")
-    print(f"   [OK] Gerekli periyot: {roc.get_required_periods()}")
+    print(f"   [OK] Required period: {roc.get_required_periods()}")
 
     result = roc(data)
-    print(f"   [OK] ROC Değeri: {result.value}%")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] ROC Value: {result.value}%")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Power: {result.strength:.2f}")
     print(f"   [OK] Metadata: {result.metadata}")
 
-    # Test 2: Farklı periyotlar
-    print("\n3. Farklı periyot testi...")
+    # Test 2: Different periods
+    print("\n3. Different period test...")
     for period in [6, 12, 20]:
         roc_test = ROC(period=period)
         result = roc_test.calculate(data)
-        print(f"   [OK] ROC({period}): {result.value}% | Sinyal: {result.signal.value}")
+        print(f"   [OK] ROC({period}): {result.value}% | Signal: {result.signal.value}")
 
-    # Test 3: Yükselen trend
-    print("\n4. Yükselen trend testi...")
+    # Test 3: Rising trend
+    print("\n4. Rising trend test...")
     up_data = data.copy()
-    # Son 12 mumda sürekli yükseliş
+    # Continuous upward trend in the last 12 candles
     for i in range(12):
         idx = up_data.index[-(12-i)]
         up_data.loc[idx, 'close'] = 100 + i * 2
@@ -324,14 +324,14 @@ if __name__ == "__main__":
         up_data.loc[idx, 'low'] = 100 + i * 2 - 0.5
 
     result_up = roc.calculate(up_data)
-    print(f"   [OK] Yükselen trend ROC: {result_up.value}%")
-    print(f"   [OK] Sinyal: {result_up.signal.value}")
+    print(f"   [OK] Rising trend ROC: {result_up.value}%")
+    print(f"   [OK] Signal: {result_up.signal.value}")
     print(f"   [OK] Trend: {result_up.trend.name}")
 
-    # Test 4: Düşen trend
-    print("\n5. Düşen trend testi...")
+    # Test 4: Declining trend
+    print("\n5. Downtrend test...")
     down_data = data.copy()
-    # Son 12 mumda sürekli düşüş
+    # Continuous decline in the last 12 candles
     for i in range(12):
         idx = down_data.index[-(12-i)]
         down_data.loc[idx, 'close'] = 120 - i * 2
@@ -339,36 +339,36 @@ if __name__ == "__main__":
         down_data.loc[idx, 'low'] = 120 - i * 2 - 0.5
 
     result_down = roc.calculate(down_data)
-    print(f"   [OK] Düşen trend ROC: {result_down.value}%")
-    print(f"   [OK] Sinyal: {result_down.signal.value}")
+    print(f"   [OK] Declining trend ROC: {result_down.value}%")
+    print(f"   [OK] Signal: {result_down.signal.value}")
     print(f"   [OK] Trend: {result_down.trend.name}")
 
-    # Test 5: Sabit fiyat (değişim yok)
-    print("\n6. Sabit fiyat testi...")
+    # Test 5: Fixed price (no change)
+    print("\n6. Fixed price test...")
     flat_data = data.copy()
     flat_data['close'] = 100.0
     flat_data['high'] = 100.5
     flat_data['low'] = 99.5
 
     result_flat = roc.calculate(flat_data)
-    print(f"   [OK] Sabit fiyat ROC: {result_flat.value}%")
-    print(f"   [OK] Sinyal: {result_flat.signal.value}")
+    print(f"   [OK] Fixed price ROC: {result_flat.value}%")
+    print(f"   [OK] Signal: {result_flat.signal.value}")
     print(f"   [OK] Trend: {result_flat.trend.name}")
 
-    # Test 6: İstatistikler
-    print("\n7. İstatistik testi...")
+    # Test 6: Statistics
+    print("\n7. Statistical test...")
     stats = roc.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 7: Metadata
     print("\n8. Metadata testi...")
     metadata = roc.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

@@ -5,19 +5,19 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    TTM Squeeze - Volatilite sıkışması göstergesi
-    Bollinger Bands ve Keltner Channel karşılaştırması
-    Bollinger Bands, Keltner Channel içindeyse "squeeze" var
-    Squeeze bittiğinde güçlü bir hareket beklenir
+Description:
+    TTM Squeeze - Volatility squeeze indicator
+    Comparison of Bollinger Bands and Keltner Channel
+    If Bollinger Bands are within the Keltner Channel, there is a "squeeze"
+    A strong move is expected when the squeeze ends
 
-Formül:
+Formula:
     BB = Bollinger Bands (20, 2.0)
     KC = Keltner Channel (20, 1.5)
     Squeeze = BB Lower > KC Lower AND BB Upper < KC Upper
     Momentum = LinReg(close - avg(high, low), 20)
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -41,15 +41,15 @@ class TTMSqueeze(BaseIndicator):
     """
     TTM Squeeze
 
-    Bollinger Bands ve Keltner Channel karşılaştırarak volatilite sıkışmasını tespit eder.
-    Squeeze durumu güçlü bir hareketin habercisi olabilir.
+    Compares Bollinger Bands and Keltner Channel to detect volatility compression.
+    A squeeze condition can be a sign of a strong movement.
 
     Args:
-        bb_period: Bollinger Bands periyodu (varsayılan: 20)
-        bb_std: Bollinger Bands standart sapma (varsayılan: 2.0)
-        kc_period: Keltner Channel periyodu (varsayılan: 20)
-        kc_atr_period: Keltner ATR periyodu (varsayılan: 20)
-        kc_mult: Keltner çarpanı (varsayılan: 1.5)
+        bb_period: Bollinger Bands period (default: 20)
+        bb_std: Bollinger Bands standard deviation (default: 2.0)
+        kc_period: Keltner Channel period (default: 20)
+        kc_atr_period: Keltner ATR period (default: 20)
+        kc_mult: Keltner multiplier (default: 1.5)
     """
 
     def __init__(
@@ -68,7 +68,7 @@ class TTMSqueeze(BaseIndicator):
         self.kc_atr_period = kc_atr_period
         self.kc_mult = kc_mult
 
-        # Bollinger Bands ve Keltner Channel indikatörlerini kullan (code reuse)
+        # Use Bollinger Bands and Keltner Channel indicators (code reuse)
         self._bb = BollingerBands(period=bb_period, std_dev=bb_std)
         self._kc = KeltnerChannel(ema_period=kc_period, atr_period=kc_atr_period, multiplier=kc_mult)
 
@@ -88,35 +88,35 @@ class TTMSqueeze(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return max(self.bb_period, self.kc_period, self.kc_atr_period) + 1
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.bb_period < 2:
             raise InvalidParameterError(
                 self.name, 'bb_period', self.bb_period,
-                "BB periyodu en az 2 olmalı"
+                "The BB period must be at least 2"
             )
         if self.bb_std <= 0:
             raise InvalidParameterError(
                 self.name, 'bb_std', self.bb_std,
-                "BB standart sapma pozitif olmalı"
+                "BB standard deviation must be positive"
             )
         if self.kc_period < 1:
             raise InvalidParameterError(
                 self.name, 'kc_period', self.kc_period,
-                "KC periyodu pozitif olmalı"
+                "KC period must be positive"
             )
         if self.kc_atr_period < 1:
             raise InvalidParameterError(
                 self.name, 'kc_atr_period', self.kc_atr_period,
-                "KC ATR periyodu pozitif olmalı"
+                "KC ATR period must be positive"
             )
         if self.kc_mult <= 0:
             raise InvalidParameterError(
                 self.name, 'kc_mult', self.kc_mult,
-                "KC çarpanı pozitif olmalı"
+                "KC factor must be positive"
             )
         return True
 
@@ -128,7 +128,7 @@ class TTMSqueeze(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: Squeeze değeri (pozitif/negatif momentum)
+            IndicatorResult: Squeeze value (positive/negative momentum)
         """
         high = data['high'].values
         low = data['low'].values
@@ -174,25 +174,25 @@ class TTMSqueeze(BaseIndicator):
         kc_upper = kc_middle + (atr * self.kc_mult)
         kc_lower = kc_middle - (atr * self.kc_mult)
 
-        # Squeeze durumu kontrolü
-        # BB, KC içindeyse squeeze var
+        # Squeeze state check
+        # If it's inside BB, there's a squeeze.
         squeeze_on = (bb_lower > kc_lower) and (bb_upper < kc_upper)
 
-        # Momentum hesapla (basitleştirilmiş: close - hl2 ortalaması)
+        # Calculate momentum (simplified: close - average of hl2)
         hl2 = (high + low) / 2
         momentum_source = close - hl2
 
-        # Son 20 mumun momentum ortalaması
+        # Average momentum of the last 20 candles
         momentum_period = min(20, len(momentum_source))
         momentum_value = np.mean(momentum_source[-momentum_period:])
 
         current_price = close[-1]
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Squeeze gücü (bantlar ne kadar yakın)
+        # Squeeze power (how close the bands are)
         if kc_upper != kc_lower:
             squeeze_strength = 1 - ((bb_upper - bb_lower) / (kc_upper - kc_lower))
-            squeeze_strength = max(0, min(1, squeeze_strength))  # 0-1 arası
+            squeeze_strength = max(0, min(1, squeeze_strength))  # between 0 and 1
         else:
             squeeze_strength = 0
 
@@ -204,7 +204,7 @@ class TTMSqueeze(BaseIndicator):
             timestamp=timestamp,
             signal=self.get_signal(squeeze_on, momentum_value),
             trend=self.get_trend(momentum_value),
-            strength=min(abs(momentum_value) * 100, 100),  # 0-100 arası normalize et
+            strength=min(abs(momentum_value) * 100, 100),  # Normalize to a range of 0-100
             metadata={
                 'squeeze_on': squeeze_on,
                 'squeeze_strength': round(squeeze_strength, 4),
@@ -219,7 +219,7 @@ class TTMSqueeze(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        ⚡ VECTORIZED batch TTM Squeeze calculation - BACKTEST için
+        ⚡ VECTORIZED batch TTM Squeeze calculation - for BACKTEST
 
         TTM Squeeze Formula:
             BB = Bollinger Bands (SMA ± std * mult)
@@ -325,20 +325,20 @@ class TTMSqueeze(BaseIndicator):
 
     def get_signal(self, squeeze_on: bool, momentum: float) -> SignalType:
         """
-        Squeeze durumu ve momentum'dan sinyal üret
+        Generate a signal from the squeeze condition and momentum.
 
         Args:
-            squeeze_on: Squeeze aktif mi
-            momentum: Momentum değeri
+            squeeze_on: Is the squeeze feature active?
+            momentum: Momentum value
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
         if squeeze_on:
-            # Squeeze aktif: bekle
+            # Squeeze active: wait
             return SignalType.HOLD
         else:
-            # Squeeze bitti: momentum yönünde sinyal
+            # Squeeze is complete: signal in the momentum direction
             if momentum > 0:
                 return SignalType.BUY
             elif momentum < 0:
@@ -350,10 +350,10 @@ class TTMSqueeze(BaseIndicator):
         Momentum'dan trend belirle
 
         Args:
-            momentum: Momentum değeri
+            momentum: Momentum value
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         if momentum > 0:
             return TrendDirection.UP
@@ -362,7 +362,7 @@ class TTMSqueeze(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'bb_period': 20,
             'bb_std': 2.0,
@@ -384,22 +384,22 @@ __all__ = ['TTMSqueeze']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """TTM Squeeze indikatör testi"""
+    """TTM Squeeze indicator test"""
 
     print("\n" + "="*60)
     print("TTM SQUEEZE TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating example OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(40)]
 
-    # Fiyat hareketini simüle et
+    # Simulate price movement
     base_price = 100
     prices = [base_price]
     for i in range(39):
@@ -415,30 +415,30 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     squeeze = TTMSqueeze()
-    print(f"   [OK] Oluşturuldu: {squeeze}")
+    print(f"   [OK] Created: {squeeze}")
     print(f"   [OK] Kategori: {squeeze.category.value}")
-    print(f"   [OK] Gerekli periyot: {squeeze.get_required_periods()}")
+    print(f"   [OK] Required period: {squeeze.get_required_periods()}")
 
     result = squeeze(data)
     print(f"   [OK] Momentum: {result.value}")
-    print(f"   [OK] Squeeze Aktif: {result.metadata['squeeze_on']}")
-    print(f"   [OK] Squeeze Gücü: {result.metadata['squeeze_strength']}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Squeeze Active: {result.metadata['squeeze_on']}")
+    print(f"   [OK] Squeeze Power: {result.metadata['squeeze_strength']}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
     print(f"   [OK] BB Upper: {result.metadata['bb_upper']:.2f}, Lower: {result.metadata['bb_lower']:.2f}")
     print(f"   [OK] KC Upper: {result.metadata['kc_upper']:.2f}, Lower: {result.metadata['kc_lower']:.2f}")
 
-    # Test 2: Düşük volatilite (squeeze aktif)
-    print("\n3. Düşük volatilite (squeeze) testi...")
+    # Test 2: Low volatility (squeeze active)
+    print("\n3. Low volatility (squeeze) test...")
     low_vol_prices = [100.0]
     for i in range(39):
-        change = np.random.randn() * 0.1  # Çok düşük volatilite
+        change = np.random.randn() * 0.1  # Very low volatility
         low_vol_prices.append(low_vol_prices[-1] + change)
 
     low_vol_data = pd.DataFrame({
@@ -450,16 +450,16 @@ if __name__ == "__main__":
         'volume': [1000] * 40
     })
     result = squeeze.calculate(low_vol_data)
-    print(f"   [OK] Düşük Vol Momentum: {result.value:.6f}")
-    print(f"   [OK] Squeeze Aktif: {result.metadata['squeeze_on']}")
-    print(f"   [OK] Squeeze Gücü: {result.metadata['squeeze_strength']:.4f}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Low Vol Momentum: {result.value:.6f}")
+    print(f"   [OK] Squeeze Active: {result.metadata['squeeze_on']}")
+    print(f"   [OK] Squeeze Power: {result.metadata['squeeze_strength']:.4f}")
+    print(f"   [OK] Signal: {result.signal.value}")
 
-    # Test 3: Yüksek volatilite (squeeze yok)
-    print("\n4. Yüksek volatilite (no squeeze) testi...")
+    # Test 3: High volatility (no squeeze)
+    print("\n4. High volatility (no squeeze) test...")
     high_vol_prices = [100]
     for i in range(39):
-        change = np.random.randn() * 5  # Yüksek volatilite
+        change = np.random.randn() * 5  # High volatility
         high_vol_prices.append(high_vol_prices[-1] + change)
 
     high_vol_data = pd.DataFrame({
@@ -471,16 +471,16 @@ if __name__ == "__main__":
         'volume': [1000] * 40
     })
     result = squeeze.calculate(high_vol_data)
-    print(f"   [OK] Yüksek Vol Momentum: {result.value:.4f}")
-    print(f"   [OK] Squeeze Aktif: {result.metadata['squeeze_on']}")
-    print(f"   [OK] Squeeze Gücü: {result.metadata['squeeze_strength']:.4f}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] High Vol Momentum: {result.value:.4f}")
+    print(f"   [OK] Squeeze Active: {result.metadata['squeeze_on']}")
+    print(f"   [OK] Squeeze Power: {result.metadata['squeeze_strength']:.4f}")
+    print(f"   [OK] Signal: {result.signal.value}")
 
     # Test 4: Pozitif momentum
     print("\n5. Pozitif momentum testi...")
     uptrend_prices = [100]
     for i in range(39):
-        change = abs(np.random.randn()) * 1.0  # Pozitif yön
+        change = abs(np.random.randn()) * 1.0  # Positive direction
         uptrend_prices.append(uptrend_prices[-1] + change)
 
     uptrend_data = pd.DataFrame({
@@ -494,13 +494,13 @@ if __name__ == "__main__":
     result = squeeze.calculate(uptrend_data)
     print(f"   [OK] Pozitif Momentum: {result.value:.4f}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
 
-    # Test 5: Negatif momentum
-    print("\n6. Negatif momentum testi...")
+    # Test 5: Negative momentum
+    print("\n6. Negative momentum test...")
     downtrend_prices = [100]
     for i in range(39):
-        change = abs(np.random.randn()) * 1.0  # Negatif yön
+        change = abs(np.random.randn()) * 1.0  # Negative direction
         downtrend_prices.append(downtrend_prices[-1] - change)
 
     downtrend_data = pd.DataFrame({
@@ -512,12 +512,12 @@ if __name__ == "__main__":
         'volume': [1000] * 40
     })
     result = squeeze.calculate(downtrend_data)
-    print(f"   [OK] Negatif Momentum: {result.value:.4f}")
+    print(f"   [OK] Negative Momentum: {result.value:.4f}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
 
-    # Test 6: Farklı parametreler
-    print("\n7. Farklı parametre testi...")
+    # Test 6: Different parameters
+    print("\n7. Different parameter test...")
     squeeze_tight = TTMSqueeze(bb_std=1.5, kc_mult=1.0)
     result = squeeze_tight.calculate(data)
     print(f"   [OK] Tight Squeeze: {result.metadata['squeeze_on']}")
@@ -526,21 +526,21 @@ if __name__ == "__main__":
     result = squeeze_loose.calculate(data)
     print(f"   [OK] Loose Squeeze: {result.metadata['squeeze_on']}")
 
-    # Test 7: İstatistikler
-    print("\n8. İstatistik testi...")
+    # Test 7: Statistics
+    print("\n8. Statistical test...")
     stats = squeeze.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 8: Metadata
     print("\n9. Metadata testi...")
     metadata = squeeze.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Tip: {metadata.indicator_type.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

@@ -6,15 +6,15 @@ Date: 2025-10-14
 Author: SuperBot Team
 
 Description:
-    Ortak type tanımlamaları (Enum, Dataclass, Exception).
-    Tüm indicator modülleri tarafından kullanılır.
+    Common type definitions (Enum, Dataclass, Exception).
+    Used by all indicator modules.
     
-    İçerik:
+    Content:
     - Enum'lar: IndicatorCategory, TrendDirection, SignalType, TimeframeEnum
     - Dataclass'lar: OHLCV, IndicatorResult, IndicatorConfig
     - Exception'lar: IndicatorError, InsufficientDataError, InvalidParameterError
     
-    Kullanım:
+    Usage:
         from indicators.indicator_types import (
             OHLCV, IndicatorResult, TrendDirection, SignalType
         )
@@ -36,7 +36,7 @@ from datetime import datetime
 # ============================================================================
 
 class IndicatorCategory(Enum):
-    """Indikatör kategorileri"""
+    """Indicator categories"""
     MOMENTUM = "momentum"
     TREND = "trend"
     VOLATILITY = "volatility"
@@ -53,7 +53,7 @@ class IndicatorCategory(Enum):
 
 
 class TrendDirection(Enum):
-    """Trend yönü"""
+    """Trend direction"""
     UP = 1
     DOWN = -1
     NEUTRAL = 0
@@ -72,7 +72,7 @@ class TrendDirection(Enum):
 
 
 class SignalType(Enum):
-    """Sinyal tipleri"""
+    """Signal types"""
     BUY = "buy"
     SELL = "sell"
     HOLD = "hold"
@@ -108,7 +108,7 @@ class TimeframeEnum(Enum):
     
     @property
     def minutes(self) -> int:
-        """Timeframe'i dakika cinsinden döndür"""
+        """Returns the timeframe in minutes"""
         mapping = {
             "1m": 1, "5m": 5, "15m": 15, "30m": 30,
             "1h": 60, "4h": 240, "1d": 1440, "1w": 10080
@@ -117,8 +117,8 @@ class TimeframeEnum(Enum):
 
 
 class IndicatorType(Enum):
-    """Indikatör output tipi"""
-    SINGLE_VALUE = "single"      # RSI, ATR gibi tek değer
+    """Indicator output type"""
+    SINGLE_VALUE = "single"      # RSI, ATR like single value
     MULTIPLE_VALUES = "multiple"  # MACD (signal, histogram)
     BANDS = "bands"              # Bollinger (upper, middle, lower)
     LINES = "lines"              # Ichimoku (tenkan, kijun, ...)
@@ -136,15 +136,15 @@ class IndicatorType(Enum):
 @dataclass
 class OHLCV:
     """
-    OHLCV veri yapısı
+    OHLCV data structure
     
     Attributes:
         timestamp: Unix timestamp (milliseconds)
-        open: Açılış fiyatı
-        high: En yüksek fiyat
-        low: En düşük fiyat
-        close: Kapanış fiyatı
-        volume: Hacim
+        open: Opening price
+        high: Highest price
+        low: Lowest price
+        close: Closing price
+        volume: Volume
     """
     timestamp: int
     open: float
@@ -155,7 +155,7 @@ class OHLCV:
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'OHLCV':
-        """Dict'ten OHLCV oluştur"""
+        """Create OHLCV from a dictionary"""
         return cls(
             timestamp=int(data['timestamp']),
             open=float(data['open']),
@@ -166,7 +166,7 @@ class OHLCV:
         )
     
     def to_dict(self) -> Dict[str, Any]:
-        """OHLCV'yi dict'e çevir"""
+        """Convert OHLCV to a dictionary"""
         return {
             'timestamp': self.timestamp,
             'open': self.open,
@@ -178,22 +178,22 @@ class OHLCV:
     
     @property
     def datetime(self) -> datetime:
-        """Timestamp'i datetime'a çevir"""
+        """Convert timestamp to datetime"""
         return datetime.fromtimestamp(self.timestamp / 1000)
 
 
 @dataclass
 class IndicatorResult:
     """
-    Indikatör hesaplama sonucu (generic)
+    Indicator calculation result (generic)
     
     Attributes:
-        value: Ana değer (float, dict, list, etc.)
-        timestamp: Hesaplamanın yapıldığı zaman
-        metadata: Ek bilgiler (opsiyonel)
-        signal: Sinyal tipi (opsiyonel)
-        trend: Trend yönü (opsiyonel)
-        strength: Sinyal gücü 0-100 arası (opsiyonel)
+        value: Main value (float, dict, list, etc.)
+        timestamp: Time when the calculation was performed
+        metadata: Additional information (optional)
+        signal: Signal type (optional)
+        trend: Trend direction (optional)
+        strength: Signal strength between 0-100 (optional)
     """
     value: Any
     timestamp: int
@@ -210,11 +210,11 @@ class IndicatorResult:
     
     @property
     def datetime(self) -> datetime:
-        """Timestamp'i datetime'a çevir"""
+        """Convert timestamp to datetime"""
         return datetime.fromtimestamp(self.timestamp / 1000)
     
     def to_dict(self) -> Dict[str, Any]:
-        """Dict'e çevir"""
+        """Convert to dictionary"""
         return {
             'value': self.value,
             'timestamp': self.timestamp,
@@ -228,13 +228,13 @@ class IndicatorResult:
 @dataclass
 class IndicatorConfig:
     """
-    Indikatör konfigürasyonu
+    Indicator configuration
     
     Attributes:
-        name: Indikatör adı (örn: 'rsi', 'ema')
+        name: Indicator name (e.g., 'rsi', 'ema')
         category: Kategori
-        params: Parametreler (period, multiplier, vb.)
-        enabled: Aktif mi?
+        params: Parameters (period, multiplier, etc.)
+        enabled: Is it active?
         timeframe: Hangi timeframe'de hesaplanacak
     """
     name: str
@@ -251,7 +251,7 @@ class IndicatorConfig:
             raise ValueError("Params must be a dictionary")
     
     def to_dict(self) -> Dict[str, Any]:
-        """Dict'e çevir"""
+        """Convert to dictionary"""
         return {
             'name': self.name,
             'category': self.category.value,
@@ -264,9 +264,9 @@ class IndicatorConfig:
 @dataclass
 class IndicatorMetadata:
     """
-    Indikatör metadata
+    Indicator metadata
     
-    Registry'de kullanılır, indikatör hakkında bilgi içerir.
+    Used in the registry, contains information about the indicator.
     """
     name: str
     category: IndicatorCategory
@@ -279,7 +279,7 @@ class IndicatorMetadata:
     min_periods: int = 0
     
     def to_dict(self) -> Dict[str, Any]:
-        """Dict'e çevir"""
+        """Convert to dictionary"""
         return {
             'name': self.name,
             'category': self.category.value,
@@ -298,7 +298,7 @@ class IndicatorMetadata:
 # ============================================================================
 
 class IndicatorError(Exception):
-    """Indikatör base exception"""
+    """Indicator base exception"""
     def __init__(self, message: str, indicator_name: str = None):
         self.indicator_name = indicator_name
         super().__init__(f"[{indicator_name}] {message}" if indicator_name else message)
@@ -306,10 +306,10 @@ class IndicatorError(Exception):
 
 class InsufficientDataError(IndicatorError):
     """
-    Yetersiz veri hatası
+    Insufficient data error
     
-    Indikatör hesaplamak için yeterli data yok.
-    Örn: RSI için 14 period gerekli, sadece 10 kline var.
+    Not enough data to calculate the indicator.
+    For example: 14 periods are required for RSI, but only 10 klines are available.
     """
     def __init__(self, indicator_name: str, required: int, available: int):
         self.required = required
@@ -320,10 +320,10 @@ class InsufficientDataError(IndicatorError):
 
 class InvalidParameterError(IndicatorError):
     """
-    Geçersiz parametre hatası
+    Invalid parameter error
     
-    Indikatör parametreleri geçersiz.
-    Örn: RSI period=-5 (negatif olamaz)
+    Indicator parameters are invalid.
+    Example: RSI period=-5 (cannot be negative)
     """
     def __init__(self, indicator_name: str, param_name: str, param_value: Any, reason: str = None):
         self.param_name = param_name
@@ -336,10 +336,10 @@ class InvalidParameterError(IndicatorError):
 
 class CalculationError(IndicatorError):
     """
-    Hesaplama hatası
+    Calculation error
     
-    Indikatör hesaplama sırasında hata oluştu.
-    Örn: Division by zero, NaN values
+    An error occurred during indicator calculation.
+    Example: Division by zero, NaN values
     """
     pass
 
@@ -348,11 +348,11 @@ class CalculationError(IndicatorError):
 # TYPE ALIASES
 # ============================================================================
 
-# Pandas DataFrame alternatifi için
+# For an alternative to Pandas DataFrame
 DataPoint = Dict[str, Any]
 DataSeries = List[DataPoint]
 
-# Indikatör output tipi
+# Indicator output type
 IndicatorOutput = Any  # float, dict, list, DataFrame, etc.
 
 

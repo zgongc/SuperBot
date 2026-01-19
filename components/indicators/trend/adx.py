@@ -5,17 +5,17 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    ADX (Average Directional Index) - Ortalama yönlü hareket endeksi
-    J. Welles Wilder tarafından geliştirilmiş trend gücü indikatörü
-    +DI, -DI ve ADX olmak üzere 3 değer üretir
+Description:
+    ADX (Average Directional Index) - Average directional movement index
+    Trend strength indicator developed by J. Welles Wilder
+    Produces 3 values: +DI, -DI, and ADX
 
-    Kullanım:
-    - Trend gücünü ölçme (ADX > 25 güçlü trend)
-    - Trend yönünü belirleme (+DI vs -DI)
+    Usage:
+    - Measuring trend strength (ADX > 25 indicates a strong trend)
+    - Determining trend direction (+DI vs -DI)
     - Entry/Exit sinyalleri (+DI/-DI crossover)
 
-Formül:
+Formula:
     +DM = High(t) - High(t-1)  (pozitif ise)
     -DM = Low(t-1) - Low(t)    (pozitif ise)
     TR = True Range
@@ -24,7 +24,7 @@ Formül:
     DX = 100 × |+DI - -DI| / (+DI + -DI)
     ADX = EMA(DX)
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -46,12 +46,12 @@ class ADX(BaseIndicator):
     """
     Average Directional Index
 
-    Trend gücünü ve yönünü ölçen indikatör.
-    +DI, -DI ve ADX değerlerini hesaplar.
+    An indicator that measures trend strength and direction.
+    Calculates +DI, -DI, and ADX values.
 
     Args:
-        period: ADX periyodu (varsayılan: 14)
-        adx_threshold: Trend gücü eşiği (varsayılan: 25)
+        period: ADX period (default: 14)
+        adx_threshold: Trend strength threshold (default: 25)
     """
 
     def __init__(
@@ -77,20 +77,20 @@ class ADX(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
-        return self.period * 2  # ADX için smoothing gerekli
+        """Minimum required number of periods"""
+        return self.period * 2  # Smoothing is required for ADX
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 1:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Periyot pozitif olmalı"
+                "The period must be positive"
             )
         if self.adx_threshold < 0 or self.adx_threshold > 100:
             raise InvalidParameterError(
                 self.name, 'adx_threshold', self.adx_threshold,
-                "ADX eşiği 0-100 arasında olmalı"
+                "The ADX threshold must be between 0 and 100"
             )
         return True
 
@@ -102,13 +102,13 @@ class ADX(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: ADX, +DI, -DI değerleri
+            IndicatorResult: ADX, +DI, -DI values
         """
         high = data['high'].values
         low = data['low'].values
         close = data['close'].values
 
-        # +DM ve -DM hesapla
+        # Calculate +DM and -DM
         plus_dm = np.zeros(len(high))
         minus_dm = np.zeros(len(high))
 
@@ -138,14 +138,14 @@ class ADX(BaseIndicator):
         # ADX hesapla (DX'in smoothed average)
         adx_values = self._smooth_dx(dx_values, self.period)
 
-        # Son değerler
+        # Last values
         plus_di = plus_di_values[-1]
         minus_di = minus_di_values[-1]
         adx = adx_values[-1]
 
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Trend ve sinyal belirleme
+        # Trend and signal determination
         trend = self.get_trend(plus_di, minus_di)
         signal = self.get_signal(adx, plus_di, minus_di)
 
@@ -184,10 +184,10 @@ class ADX(BaseIndicator):
         return tr
 
     def _smooth_series(self, dm: np.ndarray, tr: np.ndarray, period: int) -> np.ndarray:
-        """DM/TR oranını smoothing ile hesapla"""
+        """Calculate the DM/TR ratio with smoothing."""
         di = np.zeros(len(dm))
 
-        # İlk period için ortalama
+        # Average for the first period
         sum_dm = np.sum(dm[:period])
         sum_tr = np.sum(tr[:period])
 
@@ -204,10 +204,10 @@ class ADX(BaseIndicator):
         return di
 
     def _smooth_dx(self, dx: np.ndarray, period: int) -> np.ndarray:
-        """DX değerlerini smooth ederek ADX hesapla"""
+        """Calculate ADX by smoothing DX values"""
         adx = np.zeros(len(dx))
 
-        # İlk ADX = DX'lerin ortalaması
+        # Initial ADX = average of DX values
         first_adx_idx = period * 2 - 1
         if first_adx_idx < len(dx):
             adx[first_adx_idx] = np.mean(dx[period:first_adx_idx+1])
@@ -275,7 +275,7 @@ class ADX(BaseIndicator):
             symbol: Symbol identifier (for multi-symbol support)
 
         Returns:
-            IndicatorResult: Güncel ADX değerleri
+            IndicatorResult: Current ADX values
         """
         from collections import deque
 
@@ -343,18 +343,18 @@ class ADX(BaseIndicator):
 
     def get_signal(self, adx: float, plus_di: float, minus_di: float) -> SignalType:
         """
-        ADX'den sinyal üret
+        Generate a signal from ADX.
 
         Args:
-            adx: ADX değeri
-            plus_di: +DI değeri
-            minus_di: -DI değeri
+            adx: ADX value
+            plus_di: +DI value
+            minus_di: -DI value
 
         Returns:
             SignalType: BUY/SELL/HOLD
         """
         if adx < self.adx_threshold:
-            return SignalType.HOLD  # Zayıf trend
+            return SignalType.HOLD  # Weak trend
 
         if plus_di > minus_di:
             return SignalType.BUY
@@ -365,11 +365,11 @@ class ADX(BaseIndicator):
 
     def get_trend(self, plus_di: float, minus_di: float) -> TrendDirection:
         """
-        DI değerlerinden trend belirle
+        Determine the trend from DI values.
 
         Args:
-            plus_di: +DI değeri
-            minus_di: -DI değeri
+            plus_di: The +DI value
+            minus_di: The -DI value
 
         Returns:
             TrendDirection: UP/DOWN/NEUTRAL
@@ -413,7 +413,7 @@ class ADX(BaseIndicator):
             self._adx_buffers[buffer_key]['close'].append(row['close'])
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'period': 14,
             'adx_threshold': 25
@@ -436,26 +436,26 @@ __all__ = ['ADX']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """ADX indikatör testi"""
+    """ADX indicator test"""
 
     print("\n" + "="*60)
     print("ADX (AVERAGE DIRECTIONAL INDEX) TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(50)]
 
-    # Güçlü trend simülasyonu
+    # Powerful trend simulation
     base_price = 100
     prices = [base_price]
     for i in range(49):
-        trend = 1.2  # Güçlü yükseliş
+        trend = 1.2  # Strong upward trend
         noise = np.random.randn() * 0.5
         prices.append(prices[-1] + trend + noise)
 
@@ -468,32 +468,32 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     adx = ADX(period=14)
-    print(f"   [OK] Oluşturuldu: {adx}")
+    print(f"   [OK] Created: {adx}")
     print(f"   [OK] Kategori: {adx.category.value}")
     print(f"   [OK] Tip: {adx.indicator_type.value}")
-    print(f"   [OK] Gerekli periyot: {adx.get_required_periods()}")
+    print(f"   [OK] Required period: {adx.get_required_periods()}")
 
     result = adx(data)
     print(f"   [OK] ADX: {result.value['adx']}")
     print(f"   [OK] +DI: {result.value['plus_di']}")
     print(f"   [OK] -DI: {result.value['minus_di']}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Power: {result.strength:.2f}")
     print(f"   [OK] Metadata: {result.metadata}")
 
-    # Test 2: Trend gücü analizi
-    print("\n3. Trend gücü analizi...")
+    # Test 2: Trend power analysis
+    print("\n3. Trend strength analysis...")
     if result.value['adx'] > adx.adx_threshold:
-        print(f"   [OK] Güçlü trend tespit edildi (ADX={result.value['adx']:.2f} > {adx.adx_threshold})")
+        print(f"   [OK] Strong trend detected (ADX={result.value['adx']:.2f} > {adx.adx_threshold})")
     else:
-        print(f"   [OK] Zayıf trend (ADX={result.value['adx']:.2f} < {adx.adx_threshold})")
+        print(f"   [OK] Weak trend (ADX={result.value['adx']:.2f} < {adx.adx_threshold})")
 
     # Test 3: DI crossover
     print("\n4. DI crossover analizi...")
@@ -506,26 +506,26 @@ if __name__ == "__main__":
     else:
         print(f"   [OK] Bearish (-DI > +DI)")
 
-    # Test 4: Farklı periyotlar
-    print("\n5. Farklı periyot testi...")
+    # Test 4: Different periods
+    print("\n5. Different period test...")
     for period in [7, 14, 21]:
         adx_test = ADX(period=period)
         result = adx_test.calculate(data)
         print(f"   [OK] ADX({period}): {result.value['adx']:.2f}")
 
-    # Test 5: İstatistikler
-    print("\n6. İstatistik testi...")
+    # Test 5: Statistics
+    print("\n6. Statistical test...")
     stats = adx.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 6: Metadata
     print("\n7. Metadata testi...")
     metadata = adx.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Output'lar: {metadata.output_names}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

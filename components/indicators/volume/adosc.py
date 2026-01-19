@@ -2,22 +2,22 @@
 """
 indicators/volume/adosc.py - ADOSC (Chaikin A/D Oscillator)
 
-Yazar: SuperBot Team
-Tarih: 2025-11-20
+Author: SuperBot Team
+Date: 2025-11-20
 Versiyon: 1.0.0
 
-ADOSC (Chaikin A/D Oscillator) - Chaikin Akümülasyon/Dağıtım Osilatörü.
-Accumulation/Distribution Line'ın iki EMA'sının farkını hesaplar.
+ADOSC (Chaikin A/D Oscillator) - Chaikin Accumulation/Distribution Oscillator.
+Calculates the difference between two EMAs of the Accumulation/Distribution Line.
 
-Özellikler:
-- Marc Chaikin tarafından geliştirildi
-- Volume-based momentum göstergesi
-- Alış ve satış baskısını ölçer
-- Pozitif değer = Akümülasyon (Alış baskısı)
-- Negatif değer = Dağıtım (Satış baskısı)
-- Divergence sinyalleri verir
+Features:
+- Developed by Marc Chaikin
+- Volume-based momentum indicator
+- Measures buying and selling pressure
+- Positive value = Accumulation (Buying pressure)
+- Negative value = Distribution (Selling pressure)
+- Divergence signals
 
-Kullanım:
+Usage:
     from components.indicators import get_indicator_class
 
     ADOSC = get_indicator_class('adosc')
@@ -25,12 +25,12 @@ Kullanım:
     result = adosc.calculate(data)
     print(result.value['adosc'])
 
-Formül:
+Formula:
     CLV = ((Close - Low) - (High - Close)) / (High - Low)
     AD = Cumulative(CLV * Volume)
     ADOSC = Fast EMA(AD) - Slow EMA(AD)
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -62,14 +62,14 @@ class ADOSC(BaseIndicator):
     """
     ADOSC - Chaikin A/D Oscillator
 
-    Accumulation/Distribution Line'ın iki EMA'sının farkını hesaplar.
-    Volume-based momentum göstergesidir.
+    Calculates the difference between the two EMAs of the Accumulation/Distribution Line.
+    It is a volume-based momentum indicator.
 
     Args:
-        fast_period: Hızlı EMA periyodu (varsayılan: 3)
-        slow_period: Yavaş EMA periyodu (varsayılan: 10)
-        logger: Logger instance (opsiyonel)
-        error_handler: Error handler (opsiyonel)
+        fast_period: Fast EMA period (default: 3)
+        slow_period: Slow EMA period (default: 10)
+        logger: Logger instance (optional)
+        error_handler: Error handler (optional)
     """
 
     def __init__(self, fast_period: int = 3, slow_period: int = 10, logger=None, error_handler=None):
@@ -86,33 +86,33 @@ class ADOSC(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.slow_period * 2
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.fast_period >= self.slow_period:
             raise InvalidParameterError(
                 self.name, 'fast_period', self.fast_period,
-                "Hızlı periyot yavaş periyottan küçük olmalı"
+                "The fast period must be smaller than the slow period"
             )
         return True
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        Batch hesaplama (Backtest için)
+        Batch calculation (for backtesting)
 
-        Tüm veriyi vektörel olarak hesaplar.
+        Calculates all data vectorially.
 
         Args:
             data: OHLCV DataFrame
 
         Returns:
-            pd.DataFrame: ADOSC değerleri
+            pd.DataFrame: ADOSC values
         """
         # Close Location Value
         clv = ((data['close'] - data['low']) - (data['high'] - data['close'])) / (data['high'] - data['low'])
-        clv = clv.fillna(0)  # Sıfıra bölme durumu
+        clv = clv.fillna(0)  # Handle division by zero cases
 
         # Accumulation/Distribution Line
         ad = (clv * data['volume']).cumsum()
@@ -126,18 +126,18 @@ class ADOSC(BaseIndicator):
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
         """
-        Warmup buffer - update() için gerekli
+        Warmup buffer - required for update().
 
         Args:
             data: OHLCV DataFrame (warmup verisi)
-            symbol: Sembol adı (opsiyonel)
+            symbol: Symbol name (optional)
         """
         super().warmup_buffer(data, symbol)
 
         from collections import deque
         max_len = self.get_required_periods() + 50
 
-        # Buffer'ları oluştur ve doldur
+        # Create and fill the buffers
         self._high_buffer = deque(maxlen=max_len)
         self._low_buffer = deque(maxlen=max_len)
         self._close_buffer = deque(maxlen=max_len)
@@ -159,7 +159,7 @@ class ADOSC(BaseIndicator):
             candle: Yeni mum verisi (dict)
 
         Returns:
-            IndicatorResult: ADOSC değeri
+            IndicatorResult: ADOSC value
         """
         if not hasattr(self, '_buffers_init'):
             from collections import deque
@@ -215,13 +215,13 @@ class ADOSC(BaseIndicator):
 
     def calculate(self, data: pd.DataFrame) -> IndicatorResult:
         """
-        ADOSC hesapla (son değer)
+        Calculate ADOSC (final value)
 
         Args:
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: ADOSC değeri
+            IndicatorResult: ADOSC value
         """
         # Batch hesapla
         batch_result = self.calculate_batch(data)
@@ -233,7 +233,7 @@ class ADOSC(BaseIndicator):
         adosc_val = valid_values[-1]
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Sinyal belirleme
+        # Signal determination
         if adosc_val > 0:
             signal = SignalType.BUY
             trend = TrendDirection.UP
@@ -257,7 +257,7 @@ class ADOSC(BaseIndicator):
         )
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {'fast_period': 3, 'slow_period': 10}
 
     def _get_output_names(self) -> list:
@@ -281,9 +281,9 @@ __all__ = ['ADOSC']
 # ============================================================================
 
 if __name__ == "__main__":
-    """ADOSC indikatör testi"""
+    """ADOSC indicator test"""
 
-    # Windows console UTF-8 desteği
+    # Windows console UTF-8 support
     import sys
     import io
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
@@ -292,8 +292,8 @@ if __name__ == "__main__":
     print("🧪 ADOSC (CHAIKIN A/D OSCILLATOR) TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(150)]
 
@@ -303,7 +303,7 @@ if __name__ == "__main__":
     noise = np.random.randn(150) * 2.5
     close_prices = base_price + trend + noise
 
-    # OHLC oluştur
+    # Create OHLC
     opens = close_prices + np.random.randn(150) * 0.5
     highs = np.maximum(opens, close_prices) + np.abs(np.random.randn(150))
     lows = np.minimum(opens, close_prices) - np.abs(np.random.randn(150))
@@ -320,33 +320,33 @@ if __name__ == "__main__":
         'volume': volumes
     })
 
-    print(f"   ✅ {len(data)} mum oluşturuldu")
-    print(f"   ✅ Fiyat aralığı: {min(close_prices):.2f} -> {max(close_prices):.2f}")
-    print(f"   ✅ Volume aralığı: {min(volumes):.0f} -> {max(volumes):.0f}")
+    print(f"   ✅ {len(data)} candles created")
+    print(f"   ✅ Price range: {min(close_prices):.2f} -> {max(close_prices):.2f}")
+    print(f"   ✅ Volume range: {min(volumes):.0f} -> {max(volumes):.0f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     adosc = ADOSC(fast_period=3, slow_period=10)
-    print(f"   ✅ Oluşturuldu: {adosc}")
+    print(f"   ✅ Created: {adosc}")
     print(f"   ✅ Kategori: {adosc.category.value}")
-    print(f"   ✅ Volume gerekli: {adosc._requires_volume()}")
-    print(f"   ✅ Gerekli periyot: {adosc.get_required_periods()}")
+    print(f"   ✅ Volume required: {adosc._requires_volume()}")
+    print(f"   ✅ Required period: {adosc.get_required_periods()}")
 
     result = adosc(data)
     print(f"   ✅ ADOSC: {result.value['adosc']}")
-    print(f"   ✅ Sinyal: {result.signal.value}")
+    print(f"   ✅ Signal: {result.signal.value}")
     print(f"   ✅ Trend: {result.trend.name}")
-    print(f"   ✅ Güç: {result.strength:.2f}")
+    print(f"   ✅ Power: {result.strength:.2f}")
 
     # Test 2: Batch Calculation
     print("\n3. Batch Calculation Testi...")
     batch_result = adosc.calculate_batch(data)
     print(f"   ✅ Batch result shape: {batch_result.shape}")
-    print(f"   ✅ Son 5 ADOSC değeri:")
+    print(f"   ✅ Last 5 ADOSC values:")
     print(batch_result['adosc'].tail())
 
-    # Test 3: Farklı periyot kombinasyonları
-    print("\n4. Farklı periyot testi...")
+    # Test 3: Different period combinations
+    print("\n4. Different period test...")
     configs = [(3, 10), (5, 15), (7, 20)]
     for fast, slow in configs:
         adosc_test = ADOSC(fast_period=fast, slow_period=slow)
@@ -358,16 +358,16 @@ if __name__ == "__main__":
     batch_result = adosc.calculate_batch(data)
     adosc_values = batch_result['adosc'].dropna()
 
-    # Crossover sayısı
+    # Crossover count
     crossovers = 0
     for i in range(1, len(adosc_values)):
         if (adosc_values.iloc[i-1] < 0 and adosc_values.iloc[i] > 0) or \
            (adosc_values.iloc[i-1] > 0 and adosc_values.iloc[i] < 0):
             crossovers += 1
 
-    print(f"   ✅ Toplam zero-line crossover: {crossovers}")
+    print(f"   ✅ Total zero-line crossover: {crossovers}")
     print(f"   ✅ Pozitif ADOSC barlar: {sum(adosc_values > 0)}")
-    print(f"   ✅ Negatif ADOSC barlar: {sum(adosc_values < 0)}")
+    print(f"   ✅ Negative ADOSC bars: {sum(adosc_values < 0)}")
     print(f"   ✅ Ortalama ADOSC: {adosc_values.mean():.2f}")
     print(f"   ✅ ADOSC std sapma: {adosc_values.std():.2f}")
 
@@ -375,10 +375,10 @@ if __name__ == "__main__":
     print("\n6. Validasyon testi...")
     try:
         invalid_adosc = ADOSC(fast_period=10, slow_period=3)
-        print("   ❌ Hata: Geçersiz periyot kombinasyonu kabul edildi!")
+        print("   ❌ Error: Invalid period combination accepted!")
     except InvalidParameterError as e:
-        print(f"   ✅ Period validasyonu başarılı: {e}")
+        print(f"   ✅ Period validation successful: {e}")
 
     print("\n" + "="*60)
-    print("✅ TÜM TESTLER BAŞARILI!")
+    print("✅ ALL TESTS PASSED!")
     print("="*60 + "\n")

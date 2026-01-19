@@ -2,21 +2,21 @@
 """
 indicators/statistical/typprice.py - TYPPRICE (Typical Price)
 
-Yazar: SuperBot Team
-Tarih: 2025-11-20
+Author: SuperBot Team
+Date: 2025-11-20
 Versiyon: 1.0.0
 
-TYPPRICE (Typical Price) - Tipik Fiyat.
-High, Low ve Close fiyatlarının ortalaması.
+TYPPRICE (Typical Price) - Typical Price.
+The average of the High, Low, and Close prices.
 
-Özellikler:
-- Basit ve hızlı hesaplama
-- Bar'ın temsili fiyatını verir
-- Volume göstergelerinde sıkça kullanılır
-- Her bar için bağımsız hesaplama
-- Medyan fiyat yaklaşımı
+Features:
+- Simple and fast calculation
+- Provides the representative price of the bar
+- Frequently used in volume indicators
+- Independent calculation for each bar
+- Median price approach
 
-Kullanım:
+Usage:
     from components.indicators import get_indicator_class
 
     TYPPRICE = get_indicator_class('typprice')
@@ -24,10 +24,10 @@ Kullanım:
     result = typprice.calculate(data)
     print(result.value['typprice'])
 
-Formül:
+Formula:
     TYPPRICE = (High + Low + Close) / 3
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -59,12 +59,12 @@ class TYPPRICE(BaseIndicator):
     """
     TYPPRICE - Typical Price
 
-    High, Low ve Close fiyatlarının ortalaması.
-    Her bar için bağımsız hesaplanan temsili fiyat.
+    Average of High, Low, and Close prices.
+    Representative price calculated independently for each bar.
 
     Args:
-        logger: Logger instance (opsiyonel)
-        error_handler: Error handler (opsiyonel)
+        logger: Logger instance (optional)
+        error_handler: Error handler (optional)
     """
 
     def __init__(self, logger=None, error_handler=None):
@@ -78,24 +78,24 @@ class TYPPRICE(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return 1
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         return True
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        Batch hesaplama (Backtest için)
+        Batch calculation (for backtesting)
 
-        Tüm veriyi vektörel olarak hesaplar.
+        Calculates all data vectorially.
 
         Args:
             data: OHLCV DataFrame
 
         Returns:
-            pd.DataFrame: TYPPRICE değerleri
+            pd.DataFrame: TYPPRICE values
         """
         typprice = (data['high'] + data['low'] + data['close']) / 3
         return pd.DataFrame({'typprice': typprice}, index=data.index)
@@ -108,7 +108,7 @@ class TYPPRICE(BaseIndicator):
             candle: Yeni mum verisi (dict)
 
         Returns:
-            IndicatorResult: Güncel TYPPRICE değeri
+            IndicatorResult: The current TYPPRICE value.
         """
         # Support both dict and list/tuple formats
         if isinstance(candle, dict):
@@ -124,7 +124,7 @@ class TYPPRICE(BaseIndicator):
 
         typprice = (high_val + low_val + close_val) / 3
 
-        # Typical price kendisi sinyal üretmez
+        # Typical price does not generate a signal itself.
         return IndicatorResult(
             value={'typprice': round(typprice, 2)},
             timestamp=timestamp_val,
@@ -136,20 +136,20 @@ class TYPPRICE(BaseIndicator):
 
     def calculate(self, data: pd.DataFrame) -> IndicatorResult:
         """
-        TYPPRICE hesapla (son değer)
+        Calculate TYPPRICE (final value)
 
         Args:
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: TYPPRICE değeri
+            IndicatorResult: TYPPRICE value
         """
         # Batch hesapla
         batch_result = self.calculate_batch(data)
         typprice = batch_result['typprice'].iloc[-1]
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Typical price kendisi sinyal üretmez
+        # Typical price does not generate a signal itself.
         # Warmup buffer for update() method
         self.warmup_buffer(data)
 
@@ -163,7 +163,7 @@ class TYPPRICE(BaseIndicator):
         )
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {}
 
     def _get_output_names(self) -> list:
@@ -187,9 +187,9 @@ __all__ = ['TYPPRICE']
 # ============================================================================
 
 if __name__ == "__main__":
-    """TYPPRICE indikatör testi"""
+    """TYPPRICE indicator test"""
 
-    # Windows console UTF-8 desteği
+    # Windows console UTF-8 support
     import sys
     import io
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
@@ -198,8 +198,8 @@ if __name__ == "__main__":
     print("🧪 TYPPRICE (TYPICAL PRICE) TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating example OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(100)]
 
@@ -209,7 +209,7 @@ if __name__ == "__main__":
     noise = np.random.randn(100) * 2
     close_prices = base_price + trend + noise
 
-    # OHLC oluştur
+    # Create OHLC
     opens = close_prices + np.random.randn(100) * 0.5
     highs = np.maximum(opens, close_prices) + np.abs(np.random.randn(100))
     lows = np.minimum(opens, close_prices) - np.abs(np.random.randn(100))
@@ -223,15 +223,15 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in range(100)]
     })
 
-    print(f"   ✅ {len(data)} mum oluşturuldu")
-    print(f"   ✅ Fiyat aralığı: {min(close_prices):.2f} -> {max(close_prices):.2f}")
+    print(f"   ✅ {len(data)} candles created")
+    print(f"   ✅ Price range: {min(close_prices):.2f} -> {max(close_prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     typprice = TYPPRICE()
-    print(f"   ✅ Oluşturuldu: {typprice}")
+    print(f"   ✅ Created: {typprice}")
     print(f"   ✅ Kategori: {typprice.category.value}")
-    print(f"   ✅ Gerekli periyot: {typprice.get_required_periods()}")
+    print(f"   ✅ Required period: {typprice.get_required_periods()}")
 
     result = typprice(data)
     print(f"   ✅ TYPPRICE: {result.value['typprice']}")
@@ -243,14 +243,14 @@ if __name__ == "__main__":
     print("\n3. Batch Calculation Testi...")
     batch_result = typprice.calculate_batch(data)
     print(f"   ✅ Batch result shape: {batch_result.shape}")
-    print(f"   ✅ Son 5 TYPPRICE değeri:")
+    print(f"   ✅ Last 5 TYPPRICE values:")
     print(batch_result['typprice'].tail())
 
-    # Test 3: Update metodu
-    print("\n4. Update metodu testi...")
+    # Test 3: Update method
+    print("\n4. Update method test...")
     typprice2 = TYPPRICE()
 
-    # Son 5 bar için update
+    # Update for the last 5 bars
     for i in range(95, 100):
         candle = {
             'timestamp': data.iloc[i]['timestamp'],
@@ -262,8 +262,8 @@ if __name__ == "__main__":
         print(f"   ✅ Bar {i}: TYPPRICE={update_result.value['typprice']:.2f}, "
               f"Close={candle['close']:.2f}")
 
-    # Test 4: Close ile karşılaştırma
-    print("\n5. Close fiyat ile karşılaştırma...")
+    # Test 4: Comparison with close
+    print("\n5. Comparing with the closing price...")
     batch_result = typprice.calculate_batch(data)
     typprice_values = batch_result['typprice']
     close_values = data['close']
@@ -275,23 +275,23 @@ if __name__ == "__main__":
     print(f"   ✅ TYPPRICE > Close: {sum(typprice_values > close_values)}")
     print(f"   ✅ TYPPRICE < Close: {sum(typprice_values < close_values)}")
 
-    # Test 5: Manuel hesaplama doğrulama
-    print("\n6. Manuel hesaplama doğrulama...")
+    # Test 5: Manual calculation verification
+    print("\n6. Manual calculation verification...")
     last_bar = data.iloc[-1]
     manual_typprice = (last_bar['high'] + last_bar['low'] + last_bar['close']) / 3
     calc_typprice = result.value['typprice']
 
-    print(f"   ✅ Manuel hesaplama: {manual_typprice:.2f}")
-    print(f"   ✅ İndikatör hesaplama: {calc_typprice:.2f}")
-    print(f"   ✅ Eşit mi: {abs(manual_typprice - calc_typprice) < 0.01}")
+    print(f"   ✅ Manual calculation: {manual_typprice:.2f}")
+    print(f"   ✅ Indicator calculation: {calc_typprice:.2f}")
+    print(f"   ✅ Is it equal: {abs(manual_typprice - calc_typprice) < 0.01}")
 
-    # Test 6: İstatistik analizi
-    print("\n7. İstatistik analizi...")
+    # Test 6: Statistical analysis
+    print("\n7. Statistical analysis...")
     print(f"   ✅ Ortalama TYPPRICE: {typprice_values.mean():.2f}")
     print(f"   ✅ Std sapma: {typprice_values.std():.2f}")
     print(f"   ✅ Min TYPPRICE: {typprice_values.min():.2f}")
     print(f"   ✅ Max TYPPRICE: {typprice_values.max():.2f}")
 
     print("\n" + "="*60)
-    print("✅ TÜM TESTLER BAŞARILI!")
+    print("✅ ALL TESTS PASSED!")
     print("="*60 + "\n")

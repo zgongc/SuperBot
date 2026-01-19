@@ -5,12 +5,12 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    Camarilla Pivot Points - Camarilla formülü ile pivot seviyeleri
-    Kısa vadeli destek ve direnç seviyelerini belirlemek için kullanılır.
-    Genellikle intraday trading için tercih edilir.
+Description:
+    Camarilla Pivot Points - Pivot levels calculated using the Camarilla formula.
+    Used to determine short-term support and resistance levels.
+    Often preferred for intraday trading.
 
-Formül:
+Formula:
     R4 = Close + ((High - Low) × 1.1 / 2)
     R3 = Close + ((High - Low) × 1.1 / 4)
     R2 = Close + ((High - Low) × 1.1 / 6)
@@ -20,7 +20,7 @@ Formül:
     S3 = Close - ((High - Low) × 1.1 / 4)
     S4 = Close - ((High - Low) × 1.1 / 2)
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -42,11 +42,11 @@ class Camarilla(BaseIndicator):
     """
     Camarilla Pivot Points
 
-    Önceki periyodun High, Low ve Close değerlerini kullanarak
+    Using the High, Low, and Close values from the previous period.
     Camarilla pivot seviyeleri (R1-R4, S1-S4) hesaplar.
 
     Args:
-        period: Pivot hesaplama periyodu (varsayılan: 1 - günlük)
+        period: Pivot calculation period (default: 1 - day)
     """
 
     def __init__(
@@ -69,15 +69,15 @@ class Camarilla(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.period + 1
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 1:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Periyot pozitif olmalı"
+                "The period must be positive"
             )
         return True
 
@@ -91,7 +91,7 @@ class Camarilla(BaseIndicator):
         Returns:
             IndicatorResult: Camarilla pivot seviyeleri (R1-R4, S1-S4)
         """
-        # Önceki periyodun H, L, C değerlerini al
+        # Get the H, L, C values from the previous period
         high = data['high'].iloc[-self.period - 1:-1].max()
         low = data['low'].iloc[-self.period - 1:-1].min()
         close = data['close'].iloc[-self.period - 1]
@@ -115,7 +115,7 @@ class Camarilla(BaseIndicator):
         current_price = data['close'].iloc[-1]
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Seviyeleri sözlük olarak oluştur
+        # Create levels as a dictionary
         levels = {
             'R4': round(r4, 2),
             'R3': round(r3, 2),
@@ -148,7 +148,7 @@ class Camarilla(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        ⚡ VECTORIZED batch Camarilla Pivot Points calculation - BACKTEST için
+        ⚡ VECTORIZED batch Camarilla Pivot Points calculation - for BACKTEST
 
         Camarilla Formula:
             Range = High - Low
@@ -272,33 +272,33 @@ class Camarilla(BaseIndicator):
 
     def get_signal(self, price: float, levels: dict) -> SignalType:
         """
-        Fiyatın camarilla seviyelerine göre sinyal üret
+        Generates a signal based on the price levels of the camarilla.
 
         Args:
-            price: Güncel fiyat
+            price: Current price
             levels: Camarilla seviyeleri
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
-        # S3 altında güçlü alım
+        # Powerful acquisition under S3
         if price < levels['S3']:
             return SignalType.BUY
-        # R3 üstünde güçlü satış
+        # Strong sales above R3
         elif price > levels['R3']:
             return SignalType.SELL
         return SignalType.HOLD
 
     def get_trend(self, price: float, close: float) -> TrendDirection:
         """
-        Fiyatın önceki kapanışa göre trend belirle
+        Determine the trend of the price compared to the previous closing.
 
         Args:
-            price: Güncel fiyat
-            close: Önceki kapanış
+            price: Current price
+            close: Previous closing
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         if price > close:
             return TrendDirection.UP
@@ -308,30 +308,30 @@ class Camarilla(BaseIndicator):
 
     def calculate_strength(self, price: float, levels: dict) -> float:
         """
-        Fiyatın seviyelere göre güç hesapla
+        Calculate the strength of the price based on levels.
 
         Args:
-            price: Güncel fiyat
+            price: Current price
             levels: Camarilla seviyeleri
 
         Returns:
-            float: Güç değeri (0-100)
+            float: Power value (0-100)
         """
         r4 = levels['R4']
         s4 = levels['S4']
         mid_point = (r4 + s4) / 2
 
         if price > mid_point:
-            # Yukarı yönde güç
+            # Upward force
             strength = ((price - mid_point) / (r4 - mid_point)) * 100
         else:
-            # Aşağı yönde güç
+            # Downward force
             strength = ((mid_point - price) / (mid_point - s4)) * 100
 
         return min(max(strength, 0), 100)
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'period': 1
         }
@@ -349,22 +349,22 @@ __all__ = ['Camarilla']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """Camarilla Pivot Points indikatör testi"""
+    """Camarilla Pivot Points indicator test"""
 
     print("\n" + "="*60)
     print("CAMARILLA PIVOT POINTS TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating example OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(50)]
 
-    # Fiyat hareketini simüle et
+    # Simulate price movement
     base_price = 100
     prices = [base_price]
     for i in range(49):
@@ -380,28 +380,28 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     camarilla = Camarilla(period=1)
-    print(f"   [OK] Oluşturuldu: {camarilla}")
+    print(f"   [OK] Created: {camarilla}")
     print(f"   [OK] Kategori: {camarilla.category.value}")
     print(f"   [OK] Tip: {camarilla.indicator_type.value}")
-    print(f"   [OK] Gerekli periyot: {camarilla.get_required_periods()}")
+    print(f"   [OK] Required period: {camarilla.get_required_periods()}")
 
     result = camarilla(data)
     print(f"   [OK] Camarilla Seviyeleri:")
     for level, value in result.value.items():
         print(f"        {level}: {value}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Power: {result.strength:.2f}")
     print(f"   [OK] Metadata: {result.metadata}")
 
-    # Test 2: Farklı periyotlar
-    print("\n3. Farklı periyot testi...")
+    # Test 2: Different periods
+    print("\n3. Different period test...")
     for period in [1, 5, 10]:
         cam_test = Camarilla(period=period)
         result = cam_test.calculate(data)
@@ -412,40 +412,40 @@ if __name__ == "__main__":
     result = camarilla.calculate(data)
     current = result.metadata['current_price']
     close_prev = result.metadata['close']
-    print(f"   [OK] Güncel fiyat: {current}")
-    print(f"   [OK] Önceki kapanış: {close_prev}")
+    print(f"   [OK] Current price: {current}")
+    print(f"   [OK] Previous close: {close_prev}")
     print(f"   [OK] Range: {result.metadata['range']}")
 
-    # En yakın seviyeleri bul
+    # Find the nearest levels
     levels_list = [(k, v) for k, v in result.value.items()]
     if current > close_prev:
-        print(f"   [OK] Fiyat yükseliyor (Bullish)")
+        print(f"   [OK] Price is increasing (Bullish)")
         print(f"   [OK] R1: {result.value['R1']}")
         print(f"   [OK] R2: {result.value['R2']}")
-        print(f"   [OK] R3: {result.value['R3']} (kritik direnç)")
-        print(f"   [OK] R4: {result.value['R4']} (breakout seviyesi)")
+        print(f"   [OK] R3: {result.value['R3']} (critical resistance)")
+        print(f"   [OK] R4: {result.value['R4']} (breakout level)")
     else:
-        print(f"   [OK] Fiyat düşüyor (Bearish)")
+        print(f"   [OK] Price is decreasing (Bearish)")
         print(f"   [OK] S1: {result.value['S1']}")
         print(f"   [OK] S2: {result.value['S2']}")
         print(f"   [OK] S3: {result.value['S3']} (kritik destek)")
-        print(f"   [OK] S4: {result.value['S4']} (breakdown seviyesi)")
+        print(f"   [OK] S4: {result.value['S4']} (breakdown level)")
 
-    # Test 4: İstatistikler
-    print("\n5. İstatistik testi...")
+    # Test 4: Statistics
+    print("\n5. Statistical test...")
     stats = camarilla.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 5: Metadata
     print("\n6. Metadata testi...")
     metadata = camarilla.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Tip: {metadata.indicator_type.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

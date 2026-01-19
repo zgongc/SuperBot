@@ -5,17 +5,17 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    Swing Points - Swing high ve swing low noktalarını tespit eder
-    Yerel maksimum ve minimum noktaları belirleyerek potansiyel
-    destek ve direnç seviyelerini gösterir.
+Description:
+    Swing Points - Detects swing high and swing low points.
+    Identifies local maximum and minimum points, indicating potential
+    support and resistance levels.
 
-Formül:
-    Swing High: Ortadaki mum, solundaki ve sağındaki N mumdan yüksek
-    Swing Low: Ortadaki mum, solundaki ve sağındaki N mumdan düşük
-    N = left_bars veya right_bars
+Formula:
+    Swing High: The middle candle is higher than the N candles to its left and right.
+    Swing Low: The middle candle is lower than the N candles to its left and right.
+    N = left_bars or right_bars
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -37,14 +37,14 @@ class SwingPoints(BaseIndicator):
     """
     Swing Points Detector
 
-    Yerel maksimum (swing high) ve minimum (swing low) noktalarını
-    tespit eder. Her swing noktası, belirtilen sayıda önceki ve sonraki
-    mumdan daha yüksek veya düşük olmalıdır.
+    Local maximum (swing high) and minimum (swing low) points.
+    detects. Each swing point is the specified number of previous and subsequent
+    It must be higher or lower than the candle.
 
     Args:
-        left_bars: Sol taraftaki karşılaştırma mum sayısı (varsayılan: 5)
-        right_bars: Sağ taraftaki karşılaştırma mum sayısı (varsayılan: 5)
-        lookback: Geriye dönük arama periyodu (varsayılan: 50)
+        left_bars: The number of comparison candles on the left side (default: 5)
+        right_bars: The number of comparison candles on the right side (default: 5)
+        lookback: The lookback period (default: 50)
     """
 
     def __init__(
@@ -73,26 +73,26 @@ class SwingPoints(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.lookback + self.right_bars
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.left_bars < 1:
             raise InvalidParameterError(
                 self.name, 'left_bars', self.left_bars,
-                "Left bars pozitif olmalı"
+                "Left bars must be positive"
             )
         if self.right_bars < 1:
             raise InvalidParameterError(
                 self.name, 'right_bars', self.right_bars,
-                "Right bars pozitif olmalı"
+                "Right bars must be positive"
             )
         min_lookback = self.left_bars + self.right_bars
         if self.lookback < min_lookback:
             raise InvalidParameterError(
                 self.name, 'lookback', self.lookback,
-                f"Lookback en az {min_lookback} olmalı (left_bars + right_bars)"
+                f"Lookback must be at least {min_lookback} (left_bars + right_bars)"
             )
         return True
 
@@ -104,21 +104,21 @@ class SwingPoints(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: Swing high ve low seviyeleri
+            IndicatorResult: Swing high and low levels
         """
-        # Lookback periyodu + sağ taraf için extra veri al
+        # Lookback period + get extra data for the right side
         recent_data = data.iloc[-self.lookback - self.right_bars:]
         high = recent_data['high'].values
         low = recent_data['low'].values
 
-        # Swing noktalarını bul
+        # Find swing points
         swing_highs = self._find_swing_highs(high)
         swing_lows = self._find_swing_lows(low)
 
         current_price = data['close'].iloc[-1]
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Swing seviyelerini oluştur (son swing high ve low - calculate_batch ile tutarlı)
+        # Create swing levels (consistent with the last swing high and low - calculate_batch)
         levels = {
             'swing_high': round(swing_highs[-1], 2) if len(swing_highs) > 0 else None,
             'swing_low': round(swing_lows[-1], 2) if len(swing_lows) > 0 else None
@@ -147,22 +147,22 @@ class SwingPoints(BaseIndicator):
 
     def _find_swing_highs(self, high: np.ndarray) -> list:
         """
-        Swing high noktalarını bul
+        Find swing high points.
 
         Args:
-            high: High fiyatları
+            high: High prices
 
         Returns:
             list: Swing high seviyeleri
         """
         swing_highs = []
 
-        # Sadece tamamlanmış swing'leri kontrol et (sağ taraf için veri olmalı)
+        # Only check completed swings (data must be available for the right side)
         for i in range(self.left_bars, len(high) - self.right_bars):
-            # Sol taraf kontrolü
+            # Left side check
             is_highest_left = all(high[i] > high[i - j] for j in range(1, self.left_bars + 1))
 
-            # Sağ taraf kontrolü
+            # Right-hand side check
             is_highest_right = all(high[i] >= high[i + j] for j in range(1, self.right_bars + 1))
 
             if is_highest_left and is_highest_right:
@@ -172,22 +172,22 @@ class SwingPoints(BaseIndicator):
 
     def _find_swing_lows(self, low: np.ndarray) -> list:
         """
-        Swing low noktalarını bul
+        Find swing low points.
 
         Args:
-            low: Low fiyatları
+            low: Low prices
 
         Returns:
             list: Swing low seviyeleri
         """
         swing_lows = []
 
-        # Sadece tamamlanmış swing'leri kontrol et (sağ taraf için veri olmalı)
+        # Only check completed swings (data must be available for the right side)
         for i in range(self.left_bars, len(low) - self.right_bars):
-            # Sol taraf kontrolü
+            # Left side check
             is_lowest_left = all(low[i] < low[i - j] for j in range(1, self.left_bars + 1))
 
-            # Sağ taraf kontrolü
+            # Right-hand side check
             is_lowest_right = all(low[i] <= low[i + j] for j in range(1, self.right_bars + 1))
 
             if is_lowest_left and is_lowest_right:
@@ -275,15 +275,15 @@ class SwingPoints(BaseIndicator):
 
     def get_signal(self, price: float, swing_highs: list, swing_lows: list) -> SignalType:
         """
-        Fiyatın swing noktalarına göre sinyal üret
+        Generate a signal based on the price's swing points.
 
         Args:
-            price: Güncel fiyat
+            price: Current price
             swing_highs: Swing high seviyeleri
             swing_lows: Swing low seviyeleri
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
         if not swing_highs or not swing_lows:
             return SignalType.HOLD
@@ -291,33 +291,33 @@ class SwingPoints(BaseIndicator):
         last_high = swing_highs[-1]
         last_low = swing_lows[-1]
 
-        # En yakın swing seviyesine yakınlık kontrolü
+        # Check proximity to the nearest swing level
         distance_to_low = abs(price - last_low) / price
         distance_to_high = abs(price - last_high) / price
 
-        if distance_to_low < 0.01:  # %1 içinde
+        if distance_to_low < 0.01:  # within 1%
             return SignalType.BUY
-        elif distance_to_high < 0.01:  # %1 içinde
+        elif distance_to_high < 0.01:  # within 1%
             return SignalType.SELL
 
         return SignalType.HOLD
 
     def get_trend(self, swing_highs: list, swing_lows: list) -> TrendDirection:
         """
-        Swing noktalarına göre trend belirle
+        Determine the trend based on swing points.
 
         Args:
             swing_highs: Swing high seviyeleri
             swing_lows: Swing low seviyeleri
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         if not swing_highs or not swing_lows or len(swing_highs) < 2 or len(swing_lows) < 2:
             return TrendDirection.NEUTRAL
 
-        # Yükselen dip ve yükselen tepe = yükseliş trendi
-        # Alçalan dip ve alçalan tepe = düşüş trendi
+        # Higher low and higher high = uptrend
+        # Descending bottom and descending peak = downtrend
         higher_lows = swing_lows[-1] > swing_lows[-2]
         higher_highs = swing_highs[-1] > swing_highs[-2]
         lower_lows = swing_lows[-1] < swing_lows[-2]
@@ -332,15 +332,15 @@ class SwingPoints(BaseIndicator):
 
     def calculate_strength(self, price: float, swing_highs: list, swing_lows: list) -> float:
         """
-        Fiyatın swing noktalarına göre güç hesapla
+        Calculate power based on price swing points.
 
         Args:
-            price: Güncel fiyat
+            price: Current price
             swing_highs: Swing high seviyeleri
             swing_lows: Swing low seviyeleri
 
         Returns:
-            float: Güç değeri (0-100)
+            float: Power value (0-100)
         """
         if not swing_highs or not swing_lows:
             return 50.0
@@ -351,12 +351,12 @@ class SwingPoints(BaseIndicator):
         if last_high == last_low:
             return 50.0
 
-        # Fiyatın swing range içindeki konumu
+        # The position of the price within the swing range.
         position = (price - last_low) / (last_high - last_low) * 100
         return min(max(position, 0), 100)
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'left_bars': 5,
             'right_bars': 5,
@@ -369,7 +369,7 @@ class SwingPoints(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        ⚡ VECTORIZED batch Swing Points calculation - BACKTEST için
+        ⚡ VECTORIZED batch Swing Points calculation - for BACKTEST
 
         Proper swing point detection using left_bars and right_bars.
         A swing high is a peak higher than N bars on both left and right.
@@ -452,27 +452,27 @@ __all__ = ['SwingPoints']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """Swing Points indikatör testi"""
+    """Swing Points indicator test"""
 
     print("\n" + "="*60)
     print("SWING POINTS TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating example OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(100)]
 
-    # Dalgalı fiyat hareketi simüle et
+    # Simulate fluctuating price movements
     base_price = 100
     prices = [base_price]
 
     for i in range(99):
-        # Sinüs dalgası + noise
+        # Sine wave + noise
         wave = 10 * np.sin(i / 8)
         noise = np.random.randn() * 1
         prices.append(base_price + wave + noise)
@@ -486,42 +486,42 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     swing = SwingPoints(left_bars=5, right_bars=5, lookback=50)
-    print(f"   [OK] Oluşturuldu: {swing}")
+    print(f"   [OK] Created: {swing}")
     print(f"   [OK] Kategori: {swing.category.value}")
     print(f"   [OK] Tip: {swing.indicator_type.value}")
-    print(f"   [OK] Gerekli periyot: {swing.get_required_periods()}")
+    print(f"   [OK] Required period: {swing.get_required_periods()}")
 
     result = swing(data)
     print(f"   [OK] Swing Seviyeleri:")
     for level, value in sorted(result.value.items(), key=lambda x: x[1], reverse=True):
         level_type = "Swing High" if level.startswith('SH') else "Swing Low"
         print(f"        {level} ({level_type}): {value}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Power: {result.strength:.2f}")
     print(f"   [OK] Metadata: {result.metadata}")
 
-    # Test 2: Farklı left/right bar kombinasyonları
-    print("\n3. Farklı bar kombinasyonu testi...")
+    # Test 2: Different left/right bar combinations
+    print("\n3. Testing different bar combinations...")
     for left, right in [(3, 3), (5, 5), (7, 7)]:
         swing_test = SwingPoints(left_bars=left, right_bars=right, lookback=50)
         result = swing_test.calculate(data)
         print(f"   [OK] Swing(L={left},R={right}) - Highs: {result.metadata['total_swing_highs']}, "
               f"Lows: {result.metadata['total_swing_lows']}")
 
-    # Test 3: Farklı lookback değerleri
-    print("\n4. Farklı lookback testi...")
+    # Test 3: Different lookback values
+    print("\n4. Different lookback test...")
     for lookback in [30, 50, 70]:
         swing_test = SwingPoints(left_bars=5, right_bars=5, lookback=lookback)
         result = swing_test.calculate(data)
         print(f"   [OK] Swing(lookback={lookback}) - "
-              f"Tespit: {result.metadata['total_swing_highs'] + result.metadata['total_swing_lows']} nokta")
+              f"Detection: {result.metadata['total_swing_highs'] + result.metadata['total_swing_lows']} points")
 
     # Test 4: Swing analizi
     print("\n5. Swing analizi...")
@@ -530,7 +530,7 @@ if __name__ == "__main__":
     last_high = result.metadata['last_swing_high']
     last_low = result.metadata['last_swing_low']
 
-    print(f"   [OK] Güncel fiyat: {current}")
+    print(f"   [OK] Current price: {current}")
     print(f"   [OK] Son swing high: {last_high}")
     print(f"   [OK] Son swing low: {last_low}")
 
@@ -538,43 +538,43 @@ if __name__ == "__main__":
         swing_range = last_high - last_low
         position = (current - last_low) / swing_range * 100
         print(f"   [OK] Swing range: {swing_range:.2f}")
-        print(f"   [OK] Fiyat konumu: {position:.1f}% (range içinde)")
+        print(f"   [OK] Price location: {position:.1f}% (within range)")
 
         if position > 70:
-            print(f"   [OK] Fiyat swing range'in üst bölgesinde (direnç yakını)")
+            print(f"   [OK] Price is in the upper region of the swing range (near resistance)")
         elif position < 30:
-            print(f"   [OK] Fiyat swing range'in alt bölgesinde (destek yakını)")
+            print(f"   [OK] Price is below the lower band of the swing range (near support)")
         else:
-            print(f"   [OK] Fiyat swing range'in orta bölgesinde")
+            print(f"   [OK] Price is in the middle of the swing range")
 
     # Test 5: Trend analizi
     print("\n6. Trend analizi...")
-    print(f"   [OK] Tespit edilen trend: {result.trend.name}")
+    print(f"   [OK] Detected trend: {result.trend.name}")
     if result.trend == TrendDirection.UP:
-        print(f"   [OK] Yükselen dipler ve tepeler - Yükseliş trendi")
-        print(f"   [OK] Strateji: Swing low seviyelerinde alım ara")
+        print(f"   [OK] Rising lows and highs - Rising trend")
+        print(f"   [OK] Strategy: Look for buy opportunities at swing low levels")
     elif result.trend == TrendDirection.DOWN:
-        print(f"   [OK] Alçalan dipler ve tepeler - Düşüş trendi")
-        print(f"   [OK] Strateji: Swing high seviyelerinde satış ara")
+        print(f"   [OK] Declining lows and highs - Downtrend")
+        print(f"   [OK] Strategy: Look for sell opportunities at swing high levels")
     else:
-        print(f"   [OK] Net bir trend yok - Yatay hareket")
-        print(f"   [OK] Strateji: Range trading (destek/dirençten işlem)")
+        print(f"   [OK] No clear trend - Horizontal movement")
+        print(f"   [OK] Strategy: Range trading (trading from support/resistance)")
 
-    # Test 6: İstatistikler
-    print("\n7. İstatistik testi...")
+    # Test 6: Statistics
+    print("\n7. Statistical test...")
     stats = swing.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 7: Metadata
     print("\n8. Metadata testi...")
     metadata = swing.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Tip: {metadata.indicator_type.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

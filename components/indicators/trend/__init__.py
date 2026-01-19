@@ -6,8 +6,8 @@ Date: 2025-10-14
 Author: SuperBot Team
 
 Description:
-    Trend kategorisindeki tüm indikatörleri içerir.
-    15 trend indikatörü:
+    It includes all indicators in the "Trend" category.
+    15 trend indicators:
 
     Moving Averages (Hareketli Ortalamalar):
     - SMA: Simple Moving Average
@@ -18,7 +18,7 @@ Description:
     - DEMA: Double Exponential Moving Average
     - VWMA: Volume Weighted Moving Average
 
-    Trend Strength (Trend Gücü):
+    Trend Strength (Trend Strength):
     - SuperTrend: ATR-based trend indicator
     - ADX: Average Directional Index
     - Aroon: Aroon Up/Down indicator
@@ -33,11 +33,11 @@ Description:
 Usage:
     from indicators.trend import SMA, EMA, MACD, ADX
 
-    # SMA kullanımı
+    # SMA usage
     sma = SMA(period=20)
     result = sma(data)
 
-    # MACD kullanımı
+    # MACD usage
     macd = MACD(fast_period=12, slow_period=26, signal_period=9)
     result = macd(data)
 
@@ -108,10 +108,10 @@ __version__ = '2.0.0'
 __author__ = 'SuperBot Team'
 __category__ = 'trend'
 
-# Indikatör sayısı
+# Number of indicators
 TOTAL_INDICATORS = len(__all__)
 
-# Kategori bazında indikatörler
+# Category-based indicators
 MOVING_AVERAGES = ['SMA', 'EMA', 'WMA', 'HMA', 'TEMA', 'DEMA', 'VWMA']
 TREND_STRENGTH = ['SuperTrend', 'ADX', 'Aroon', 'ParabolicSAR']
 CHANNELS_COMPLEX = ['Ichimoku', 'KeltnerChannel', 'DonchianChannel', 'MACD']
@@ -123,10 +123,10 @@ CHANNELS_COMPLEX = ['Ichimoku', 'KeltnerChannel', 'DonchianChannel', 'MACD']
 
 def get_all_indicators():
     """
-    Tüm trend indikatörlerinin listesini döndür
+    Returns a list of all trend indicators.
 
     Returns:
-        list: Tüm trend indikatör class'ları
+        list: All trend indicator classes.
     """
     return [
         SMA, EMA, WMA, HMA, TEMA, DEMA, VWMA,
@@ -137,40 +137,40 @@ def get_all_indicators():
 
 def get_moving_averages():
     """
-    Sadece hareketli ortalamaları döndür
+    Returns only the moving averages.
 
     Returns:
-        list: Moving average indikatör class'ları
+        list: Moving average indicator classes
     """
     return [SMA, EMA, WMA, HMA, TEMA, DEMA, VWMA]
 
 
 def get_trend_strength_indicators():
     """
-    Trend gücü indikatörlerini döndür
+    Returns trend strength indicators.
 
     Returns:
-        list: Trend strength indikatör class'ları
+        list: Trend strength indicator classes
     """
     return [SuperTrend, ADX, Aroon, ParabolicSAR]
 
 
 def get_channel_indicators():
     """
-    Kanal indikatörlerini döndür
+    Returns the channel indicators.
 
     Returns:
-        list: Channel indikatör class'ları
+        list: Channel indicator class types.
     """
     return [Ichimoku, KeltnerChannel, DonchianChannel, MACD]
 
 
 def get_indicator_info():
     """
-    Tüm trend indikatörleri hakkında bilgi
+    Information about all trend indicators.
 
     Returns:
-        dict: İndikatör bilgileri
+        dict: Indicator information
     """
     return {
         'category': 'trend',
@@ -196,7 +196,7 @@ def get_indicator_info():
 # ============================================================================
 
 def _validate_imports():
-    """Import edilen indikatörleri doğrula"""
+    """Validate imported indicators"""
     expected = 15
     actual = len(__all__)
 
@@ -206,7 +206,7 @@ def _validate_imports():
         )
 
 
-# Otomatik doğrulama
+# Automatic validation
 _validate_imports()
 
 
@@ -228,7 +228,7 @@ if __name__ == "__main__":
     print(f"   [OK] Total Indicators: {TOTAL_INDICATORS}")
 
     # Kategori bilgileri
-    print("\n2. Kategori Bazında İndikatörler:")
+    print("\n2. Indicators by Category:")
     print(f"   [OK] Moving Averages ({len(MOVING_AVERAGES)}):")
     for ind in MOVING_AVERAGES:
         print(f"       - {ind}")
@@ -244,30 +244,30 @@ if __name__ == "__main__":
     # Import testi
     print("\n3. Import Testi:")
     all_indicators = get_all_indicators()
-    print(f"   [OK] {len(all_indicators)} indikatör başarıyla import edildi")
+    print(f"   [OK] {len(all_indicators)} indicators were successfully imported")
 
-    # Her indikatörü kontrol et
-    print("\n4. İndikatör Kontrolleri:")
+    # Check each indicator
+    print("\n4. Indicator Checks:")
     for ind_class in all_indicators:
         try:
-            # Varsayılan parametrelerle oluştur
+            # Create with default parameters
             ind = ind_class()
             print(f"   [OK] {ind.name}: {ind.__class__.__name__} - {ind.category.value}")
         except Exception as e:
-            print(f"   [HATA] {ind_class.__name__}: {e}")
+            print(f"   [ERROR] {ind_class.__name__}: {e}")
 
     # Helper fonksiyon testi
     print("\n5. Helper Fonksiyon Testi:")
     info = get_indicator_info()
-    print(f"   [OK] get_indicator_info() çalıştı")
-    print(f"   [OK] Toplam: {info['total_count']} indikatör")
+    print(f"   [OK] get_indicator_info() executed")
+    print(f"   [OK] Total: {info['total_count']} indicators")
 
-    # Export kontrolü
-    print("\n6. Export Kontrolü:")
-    print(f"   [OK] __all__ içinde {len(__all__)} item var")
+    # Export control
+    print("\n6. Export Control:")
+    print(f"   [OK] There are {len(__all__)} items in __all__")
     for item in __all__:
         print(f"       - {item}")
 
     print("\n" + "="*70)
-    print("[BAŞARILI] TREND PACKAGE TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] TREND PACKAGE ALL TESTS PASSED!")
     print("="*70 + "\n")

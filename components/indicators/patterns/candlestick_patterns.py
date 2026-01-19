@@ -2,16 +2,16 @@
 """
 components/indicators/patterns/candlestick_patterns.py
 SuperBot - Candlestick Pattern Detector
-Yazar: SuperBot Team
-Tarih: 2025-10-26
+Author: SuperBot Team
+Date: 2025-10-26
 Versiyon: 1.0.0
 
-🎯 Görev:
-    Popüler candlestick pattern'lerini tespit eder (vectorized)
+🎯 Task:
+    Detect popular candlestick patterns (vectorized)
 
-📊 Pattern'ler (15 adet):
+📊 Patterns (15 items):
     Single Candle:
-    - Doji (ve varyantları: Dragonfly, Gravestone, Long-legged)
+    - Doji (and variants: Dragonfly, Gravestone, Long-legged)
     - Hammer / Inverted Hammer
     - Hanging Man / Shooting Star
     - Marubozu (Bullish/Bearish)
@@ -24,7 +24,7 @@ Versiyon: 1.0.0
     - Piercing Line / Dark Cloud Cover
     - Three White Soldiers / Three Black Crows
 
-🔧 Kullanım:
+🔧 Usage:
     # Strategy template'de
     technical_parameters:
       indicators:
@@ -40,7 +40,7 @@ Versiyon: 1.0.0
         - ["hammer", "equals", true, "1m"]
         - ["rsi_14", "below", 30, "1m"]
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -67,11 +67,11 @@ class CandlestickPatterns(BaseIndicator):
     """
     Candlestick Pattern Detector
 
-    15 popüler candlestick pattern'ini vectorized şekilde tespit eder.
+    Detects 15 popular candlestick patterns in a vectorized manner.
 
     Attributes:
-        doji_threshold: Doji için body/range oranı (default: 0.1)
-        shadow_ratio: Hammer/Shooting Star için shadow/body oranı (default: 2.0)
+        doji_threshold: Body/range ratio for Doji (default: 0.1)
+        shadow_ratio: Shadow/body ratio for Hammer/Shooting Star (default: 2.0)
         min_body_size: Minimum body size (noise filtreleme) (default: 0.0001)
 
     Output (DataFrame):
@@ -110,8 +110,8 @@ class CandlestickPatterns(BaseIndicator):
         Initialize Candlestick Patterns Indicator
 
         Args:
-            doji_threshold: Doji için body/range oranı (0.1 = %10)
-            shadow_ratio: Hammer/Star için shadow/body oranı (2.0 = 2x)
+            doji_threshold: Body/range ratio for Doji (0.1 = 10%)
+            shadow_ratio: Shadow/body ratio for Hammer/Star (2.0 = 2 x)
             min_body_size: Minimum body size (noise filter)
             logger: Logger instance
             error_handler: Error handler instance
@@ -132,23 +132,23 @@ class CandlestickPatterns(BaseIndicator):
     def _validate_parameters(self):
         """Parametre validasyonu"""
         if self.doji_threshold <= 0 or self.doji_threshold >= 1:
-            raise ValueError(f"doji_threshold 0 ile 1 arasında olmalı, aldı: {self.doji_threshold}")
+            raise ValueError(f"doji_threshold must be between 0 and 1, received: {self.doji_threshold}")
 
         if self.shadow_ratio < 1:
-            raise ValueError(f"shadow_ratio >= 1 olmalı, aldı: {self.shadow_ratio}")
+            raise ValueError(f"shadow_ratio must be greater than or equal to 1, received: {self.shadow_ratio}")
 
         if self.min_body_size < 0:
-            raise ValueError(f"min_body_size >= 0 olmalı, aldı: {self.min_body_size}")
+            raise ValueError(f"min_body_size must be greater than or equal to 0, received: {self.min_body_size}")
 
     def _requires_volume(self) -> bool:
-        """Volume gerekli mi?"""
+        """Is volume required?"""
         return False
 
     def get_required_periods(self) -> int:
         """
-        Minimum kaç bar gerekli?
+        What is the minimum number of bars required?
 
-        Multi-candle pattern'ler için 3 bar gerekli (Morning Star, Evening Star, etc.)
+        3 bars are required for multi-candle patterns (Morning Star, Evening Star, etc.).
 
         Returns:
             3
@@ -157,10 +157,10 @@ class CandlestickPatterns(BaseIndicator):
 
     def calculate(self, data: pd.DataFrame) -> Optional[IndicatorResult]:
         """
-        Son bar için pattern tespit et (single bar mode)
+        Detect the pattern for the last bar (single bar mode).
 
-        NOT: Pattern detection için calculate_batch() kullanılmalı (daha hızlı)
-        Bu metod sadece geriye dönük uyumluluk için mevcut.
+        NOTE: calculate_batch() should be used for pattern detection (faster).
+        This method is only available for backward compatibility.
 
         Args:
             data: OHLCV DataFrame
@@ -171,16 +171,16 @@ class CandlestickPatterns(BaseIndicator):
         if len(data) < 3:
             return None
 
-        # Son 3 bar'a bak (multi-candle pattern'ler için)
+        # Look at the last 3 bars (for multi-candle patterns)
         patterns_df = self.calculate_batch(data.tail(3))
 
         if patterns_df is None or len(patterns_df) == 0:
             return None
 
-        # Son bar'ın pattern'lerini al
+        # Get the patterns of the last bar
         last_patterns = patterns_df.iloc[-1].to_dict()
 
-        # True olan pattern'leri bul
+        # Find the patterns that are true
         active_patterns = [k for k, v in last_patterns.items() if v == True]
 
         return IndicatorResult(
@@ -196,7 +196,7 @@ class CandlestickPatterns(BaseIndicator):
         """
         Incremental update (Real-time) - Symbol-aware
 
-        Buffer'a yeni mum ekler ve yeterli veri varsa pattern hesaplar.
+        Adds a new candle to the buffer and calculates the pattern if there is enough data.
 
         Args:
             candle: New candle data (dict with open, high, low, close, timestamp)
@@ -244,7 +244,7 @@ class CandlestickPatterns(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        Tüm data için pattern tespit et (vectorized)
+        Detect the pattern for all data (vectorized).
 
         Args:
             data: OHLCV DataFrame
@@ -253,7 +253,7 @@ class CandlestickPatterns(BaseIndicator):
             DataFrame with pattern columns (bool)
         """
         if len(data) < 3:
-            self._log('warning', "En az 3 bar gerekli (multi-candle pattern'ler için)")
+            self._log('warning', "At least 3 bars are required (for multi-candle patterns)")
             return pd.DataFrame(index=data.index)
 
         result = pd.DataFrame(index=data.index)
@@ -275,31 +275,31 @@ class CandlestickPatterns(BaseIndicator):
         # SINGLE CANDLE PATTERNS
         # ====================================================================
 
-        # 1. Doji (body çok küçük)
+        # 1. Doji (body is very small)
         result['doji'] = (body_ratio < self.doji_threshold) & (body > self.min_body_size)
 
-        # 2. Dragonfly Doji (body küçük, üst shadow yok, alt shadow uzun)
+        # 2. Dragonfly Doji (body is small, no upper shadow, long lower shadow)
         result['dragonfly_doji'] = (
             result['doji'] &
             (upper_shadow < body) &
             (lower_shadow > self.shadow_ratio * body)
         )
 
-        # 3. Gravestone Doji (body küçük, alt shadow yok, üst shadow uzun)
+        # 3. Gravestone Doji (body is small, no lower shadow, long upper shadow)
         result['gravestone_doji'] = (
             result['doji'] &
             (lower_shadow < body) &
             (upper_shadow > self.shadow_ratio * body)
         )
 
-        # 4. Long-legged Doji (body küçük, her iki shadow da uzun)
+        # 4. Long-legged Doji (body small, both shadows are long)
         result['longlegged_doji'] = (
             result['doji'] &
             (upper_shadow > self.shadow_ratio * body) &
             (lower_shadow > self.shadow_ratio * body)
         )
 
-        # 5. Hammer (bullish, alt shadow uzun, üst shadow küçük)
+        # 5. Hammer (bullish, long lower shadow, short upper shadow)
         result['hammer'] = (
             is_bullish &
             (lower_shadow > self.shadow_ratio * body) &
@@ -307,7 +307,7 @@ class CandlestickPatterns(BaseIndicator):
             (body > self.min_body_size)
         )
 
-        # 6. Inverted Hammer (bullish, üst shadow uzun, alt shadow küçük)
+        # 6. Inverted Hammer (bullish, long upper shadow, small lower shadow)
         result['inverted_hammer'] = (
             is_bullish &
             (upper_shadow > self.shadow_ratio * body) &
@@ -315,7 +315,7 @@ class CandlestickPatterns(BaseIndicator):
             (body > self.min_body_size)
         )
 
-        # 7. Hanging Man (bearish, alt shadow uzun, üst shadow küçük)
+        # 7. Hanging Man (bearish, long lower shadow, small upper shadow)
         result['hanging_man'] = (
             is_bearish &
             (lower_shadow > self.shadow_ratio * body) &
@@ -323,7 +323,7 @@ class CandlestickPatterns(BaseIndicator):
             (body > self.min_body_size)
         )
 
-        # 8. Shooting Star (bearish, üst shadow uzun, alt shadow küçük)
+        # 8. Shooting Star (bearish, long upper shadow, small lower shadow)
         result['shooting_star'] = (
             is_bearish &
             (upper_shadow > self.shadow_ratio * body) &
@@ -331,7 +331,7 @@ class CandlestickPatterns(BaseIndicator):
             (body > self.min_body_size)
         )
 
-        # 9. Bullish Marubozu (shadow'lar çok küçük, body büyük, bullish)
+        # 9. Bullish Marubozu (shadows are very small, body is large, bullish)
         result['marubozu_bullish'] = (
             is_bullish &
             (body_ratio > 0.9) &
@@ -339,7 +339,7 @@ class CandlestickPatterns(BaseIndicator):
             (lower_shadow < 0.05 * body)
         )
 
-        # 10. Bearish Marubozu (shadow'lar çok küçük, body büyük, bearish)
+        # 10. Bearish Marubozu (shadows are very small, body is large, bearish)
         result['marubozu_bearish'] = (
             is_bearish &
             (body_ratio > 0.9) &
@@ -347,7 +347,7 @@ class CandlestickPatterns(BaseIndicator):
             (lower_shadow < 0.05 * body)
         )
 
-        # 11. Spinning Top (body küçük, shadow'lar orta boy)
+        # 11. Spinning Top (body small, shadows medium size)
         result['spinning_top'] = (
             (body_ratio > self.doji_threshold) &
             (body_ratio < 0.3) &
@@ -506,16 +506,16 @@ class CandlestickPatterns(BaseIndicator):
             (body_ratio.shift(2) > 0.6)
         )
 
-        # Fill NaN with False (ilk barlar için)
+        # Fill NaN with False (for the initial bars)
         result = result.fillna(False)
 
-        self._log('debug', f"Pattern detection tamamlandı: {len(result)} bar, {len(result.columns)} pattern")
+        self._log('debug', f"Pattern detection completed: {len(result)} bars, {len(result.columns)} patterns")
 
         return result
 
     def get_pattern_summary(self, data: pd.DataFrame) -> dict:
         """
-        Pattern özeti (kaç adet pattern tespit edildi)
+        Pattern summary (number of patterns detected)
 
         Args:
             data: OHLCV DataFrame
@@ -528,7 +528,7 @@ class CandlestickPatterns(BaseIndicator):
         if patterns_df is None or len(patterns_df) == 0:
             return {}
 
-        # Her pattern için toplam sayı
+        # Total number for each pattern
         summary = {}
         for col in patterns_df.columns:
             count = patterns_df[col].sum()

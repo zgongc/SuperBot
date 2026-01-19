@@ -5,24 +5,24 @@ Version: 3.0.0
 Date: 2025-12-24
 Author: SuperBot Team
 
-Açıklama:
+Description:
     BOS (Break of Structure) - Smart Money Concepts
-    Piyasa yapısının kırılma noktalarını tespit eder
+    Detects the breaking points of the market structure.
 
-    BOS Nedir:
-    - Yükseliş trendinde: Önceki swing high'ın kırılması
-    - Düşüş trendinde: Önceki swing low'un kırılması
-    - Trend devamını gösterir (güçlü hareket)
+    BOS is:
+    - Uprising trend: Breaking the previous swing high.
+    - Declining trend: Breaking the previous swing low.
+    - Indicates trend continuation (strong movement).
 
-Formül:
-    1. Swing High/Low tespiti (SwingPoints kullanır - TradingView uyumlu)
+Formula:
+    1. Swing High/Low detection (uses SwingPoints - compatible with TradingView)
     2. Son swing high/low seviyelerini takip et
-    3. Fiyat seviyeyi geçerse -> BOS
+    3. If the price exceeds the level -> BOS
 
     Bullish BOS: Close > Previous Swing High
     Bearish BOS: Close < Previous Swing Low
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
     - SwingPoints (../support_resistance/swing_points.py)
@@ -40,15 +40,15 @@ from components.indicators.indicator_types import (
     TrendDirection,
     InvalidParameterError
 )
-# SwingPoints'i lazy import ile kullan (circular import önlemek için)
+# Use SwingPoints with lazy import (to prevent circular import)
 
 
 class BOS(BaseIndicator):
     """
     Break of Structure (BOS)
 
-    Piyasa yapısının kırılma noktalarını tespit eder.
-    Trend devamı sinyali verir.
+    Detects the breaking points of the market structure.
+    Provides a signal for trend continuation.
 
     IMPORTANT: BOS and CHoCH are MUTUALLY EXCLUSIVE for the same break event!
     - BOS: Break in the SAME direction as current trend (continuation)
@@ -61,10 +61,10 @@ class BOS(BaseIndicator):
     - Uptrend + bearish break (below swing low) = CHoCH (trend reversal)
 
     Args:
-        left_bars: Sol taraf bar sayısı (varsayılan: 5)
-        right_bars: Sağ taraf bar sayısı (varsayılan: 5)
-        max_levels: Maksimum seviye sayısı (varsayılan: 3)
-        trend_strength: Trend gücü eşiği (varsayılan: 3) - for trend detection
+        left_bars: Number of bars on the left side (default: 5)
+        right_bars: Number of bars on the right side (default: 5)
+        max_levels: Maximum number of levels (default: 3)
+        trend_strength: Trend strength threshold (default: 3) - for trend detection
     """
 
     def __init__(
@@ -81,7 +81,7 @@ class BOS(BaseIndicator):
         self.max_levels = max_levels
         self.trend_strength = trend_strength
 
-        # SwingPoints'i lazy import ile oluştur
+        # Create SwingPoints with lazy import
         self._swing_points = None
 
         super().__init__(
@@ -99,34 +99,34 @@ class BOS(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.left_bars + self.right_bars + 10
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.left_bars < 1:
             raise InvalidParameterError(
                 self.name, 'left_bars', self.left_bars,
-                "Left bars pozitif olmalı"
+                "Left bars must be positive"
             )
         if self.right_bars < 1:
             raise InvalidParameterError(
                 self.name, 'right_bars', self.right_bars,
-                "Right bars pozitif olmalı"
+                "Right bars must be positive"
             )
         if self.max_levels < 1:
             raise InvalidParameterError(
                 self.name, 'max_levels', self.max_levels,
-                "Max levels pozitif olmalı"
+                "Max levels must be positive"
             )
         return True
 
     def _get_swing_points(self):
-        """SwingPoints instance'ını lazy load et"""
+        """Lazy load the SwingPoints instance."""
         if self._swing_points is None:
             import sys
             import os
-            # components/indicators'i 'indicators' olarak ekle (eski import uyumluluğu için)
+            # Add 'components/indicators' as 'indicators' (for old import compatibility)
             components_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             if components_path not in sys.path:
                 sys.path.insert(0, components_path)
@@ -141,23 +141,23 @@ class BOS(BaseIndicator):
 
     def _find_swings(self, data: pd.DataFrame) -> tuple:
         """
-        SwingPoints kullanarak swing high/low noktalarını tespit et (alternating filtreli)
+        Detect swing high/low points using SwingPoints (with alternating filter).
 
-        SwingPoints TradingView uyumlu pivot algoritması kullanır:
-        - Sol taraf: strictly greater/less
-        - Sağ taraf: greater/less or equal (ilk oluşan pivot kazanır)
-        - Alternating filter: High-Low-High-Low pattern zorunlu
+        SwingPoints uses a TradingView compatible pivot algorithm:
+        - Left side: strictly greater/less
+        - Right side: greater/less or equal (the first pivot created wins)
+        - Alternating filter: High-Low-High-Low pattern is mandatory
 
         Args:
             data: OHLCV DataFrame
 
         Returns:
-            tuple: (swing_highs, swing_lows) - Her biri List[Dict] formatında
+            tuple: (swing_highs, swing_lows) - Each is in List[Dict] format
         """
         swing_points = self._get_swing_points()
         swing_df = swing_points.calculate_batch(data)
 
-        # Önce tüm swing'leri topla (index, type, value)
+        # First, collect all swings (index, type, value)
         raw_swings = []
         for i in range(len(swing_df)):
             if not np.isnan(swing_df['swing_high'].iloc[i]):
@@ -165,7 +165,7 @@ class BOS(BaseIndicator):
             if not np.isnan(swing_df['swing_low'].iloc[i]):
                 raw_swings.append((i, 'low', swing_df['swing_low'].iloc[i]))
 
-        # Index'e göre sırala (kronolojik)
+        # Sort by index (chronological)
         raw_swings.sort(key=lambda x: x[0])
 
         # Alternating swing'leri filtrele (High-Low-High-Low pattern)
@@ -174,17 +174,17 @@ class BOS(BaseIndicator):
             if not filtered_swings:
                 filtered_swings.append((idx, swing_type, value))
             elif filtered_swings[-1][1] != swing_type:
-                # Farklı tip - ekle
+                # Different type - add
                 filtered_swings.append((idx, swing_type, value))
             else:
-                # Aynı tip - daha ekstrem olanı tut
+                # Same type - keep the more extreme one
                 last_idx, last_type, last_value = filtered_swings[-1]
                 if swing_type == 'high' and value > last_value:
                     filtered_swings[-1] = (idx, swing_type, value)
                 elif swing_type == 'low' and value < last_value:
                     filtered_swings[-1] = (idx, swing_type, value)
 
-        # Filtrelenmiş swing'lerden ayrı listeler oluştur
+        # Create separate lists from the filtered swings
         swing_highs = []
         swing_lows = []
         for idx, swing_type, value in filtered_swings:
@@ -201,12 +201,12 @@ class BOS(BaseIndicator):
         swing_lows: List[Dict[str, Any]]
     ) -> str:
         """
-        Mevcut trend yönünü tespit et
+        Detect the current trend direction.
 
-        SMC Approach (structure_detector.py ile aynı logic):
+        SMC Approach (same logic as structure_detector.py):
         - Uptrend: Higher High OR Higher Low (any bullish structure)
         - Downtrend: Lower Low OR Lower High (any bearish structure)
-        - Daha esnek - sadece son 2 swing'e bakıyor
+        - More flexible - only looks at the last 2 swings.
 
         Args:
             swing_highs: Swing high'lar
@@ -218,11 +218,11 @@ class BOS(BaseIndicator):
         if len(swing_highs) < 2 or len(swing_lows) < 2:
             return 'ranging'
 
-        # Son 2-3 swing'e bak (structure_detector.py gibi)
+        # Look at the last 2-3 swings (like in structure_detector.py)
         last_highs = [h['value'] for h in swing_highs[-3:]]
         last_lows = [l['value'] for l in swing_lows[-3:]]
 
-        # En son swing yönünü kontrol et
+        # Check the latest swing direction
         last_high_direction = 'higher' if last_highs[-1] > last_highs[-2] else 'lower'
         last_low_direction = 'higher' if last_lows[-1] > last_lows[-2] else 'lower'
 
@@ -254,7 +254,7 @@ class BOS(BaseIndicator):
         """
         CORE DETECTION FUNCTION - Used by calculate(), calculate_batch(), update()
 
-        BOS tespiti - TEK BAR için trend kontrolü ile.
+        Empty detection - Trend check for SINGLE BAR.
 
         IMPORTANT: BOS and CHoCH are MUTUALLY EXCLUSIVE!
         - BOS: Break in SAME direction as trend (continuation)
@@ -262,15 +262,15 @@ class BOS(BaseIndicator):
 
         Args:
             index: Current bar index
-            closes: Close fiyat dizisi
-            recent_highs: Recent swing highs (max_levels adet)
-            recent_lows: Recent swing lows (max_levels adet)
+            closes: Close price array
+            recent_highs: Recent swing highs (number of max_levels)
+            recent_lows: Recent swing lows (number of max_levels)
             current_trend: 'uptrend', 'downtrend', 'ranging'
             broken_highs: Set of already broken swing high indices
             broken_lows: Set of already broken swing low indices
 
         Returns:
-            Dict: BOS bilgisi veya None
+            Dict: Empty dictionary or None
 
         Side Effects:
             Updates broken_highs and broken_lows sets
@@ -352,17 +352,17 @@ class BOS(BaseIndicator):
         swing_lows: List[Dict[str, Any]]
     ) -> Optional[Dict[str, Any]]:
         """
-        BOS tespiti - Son bar için (calculate() için wrapper)
+        Empty detection - For the last bar (wrapper for calculate())
 
         Uses _detect_bos_at_index() with trend detection.
 
         Args:
-            closes: Close fiyat dizisi
+            closes: Close price array
             swing_highs: Swing high'lar
             swing_lows: Swing low'lar
 
         Returns:
-            Dict: BOS bilgisi veya None
+            Dict: Empty dictionary or None
         """
         if len(closes) < 2:
             return None
@@ -409,13 +409,13 @@ class BOS(BaseIndicator):
         if bos_result:
             return bos_result
 
-        # BOS yoksa (kırılma yok) - pending olarak son swing level'ı döndür
+        # If BOS is not present (no breakout) - return the pending last swing level.
         if swing_highs and swing_lows:
             current_close = closes[-1]
             last_high = swing_highs[-1]['value']
             last_low = swing_lows[-1]['value']
 
-            # Hangi seviye daha yakın?
+            # Which level is closer?
             if abs(current_close - last_high) < abs(current_close - last_low):
                 return {
                     'type': 'pending_bullish',
@@ -441,9 +441,9 @@ class BOS(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: BOS değeri
-                - value: Sinyal değeri (1=bullish, -1=bearish, 0=none)
-                - metadata: BOS seviyesi ve detayları
+            IndicatorResult: BOS value
+                - value: Signal value (1=bullish, -1=bearish, 0=none)
+                - metadata: BOS level and details
         """
         closes = data['close'].values
 
@@ -455,8 +455,8 @@ class BOS(BaseIndicator):
 
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Değer: Sinyal (1=bullish, -1=bearish, 0=none/pending)
-        # calculate_batch() ile tutarlı!
+        # Value: Signal (1=bullish, -1=bearish, 0=none/pending)
+        # Consistent with calculate_batch()!
         bos_type = bos_data.get('type', 'none') if bos_data else 'none'
         if bos_type == 'bullish':
             value = 1
@@ -465,7 +465,7 @@ class BOS(BaseIndicator):
         else:
             value = 0  # 'none', 'pending_bullish', 'pending_bearish'
 
-        # Metadata: Tüm BOS seviyeleri ve fiyat bilgisi
+        # Metadata: All BOS levels and price information
         metadata = {
             'swing_highs': [{'level': s['value'], 'index': s['index']} for s in swing_highs[-self.max_levels:]],
             'swing_lows': [{'level': s['value'], 'index': s['index']} for s in swing_lows[-self.max_levels:]],
@@ -568,14 +568,14 @@ class BOS(BaseIndicator):
 
     def _calculate_strength(self, bos_data: Dict[str, Any], current_close: float) -> float:
         """
-        BOS gücünü hesapla (0-100)
+        Calculate the BOS power (0-100).
 
         Args:
             bos_data: BOS bilgisi
-            current_close: Güncel close fiyatı
+            current_close: The current close price.
 
         Returns:
-            float: Güç skoru
+            float: Power score
         """
         if not bos_data or not bos_data.get('broken_at'):
             return 0.0
@@ -583,7 +583,7 @@ class BOS(BaseIndicator):
         level = bos_data['level']
         distance = abs(current_close - level)
 
-        # Kırılma mesafesine göre güç hesapla
+        # Calculate power based on breaking distance.
         strength = min((distance / level) * 1000, 100)
 
         return round(strength, 2)
@@ -646,7 +646,7 @@ class BOS(BaseIndicator):
         
         if len(self._close_buffer) < self.get_required_periods():
             return IndicatorResult(
-                value=0,  # Sinyal yok (calculate() ile tutarlı)
+                value=0,  # No signal (consistent with calculate())
                 timestamp=timestamp_val,
                 signal=SignalType.HOLD,
                 trend=TrendDirection.NEUTRAL,
@@ -667,13 +667,13 @@ class BOS(BaseIndicator):
 
     def get_signal(self, bos_data: Optional[Dict[str, Any]]) -> SignalType:
         """
-        BOS'tan sinyal üret
+        Generate a signal from BOS.
 
         Args:
             bos_data: BOS bilgisi
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
         if not bos_data:
             return SignalType.HOLD
@@ -695,7 +695,7 @@ class BOS(BaseIndicator):
             bos_data: BOS bilgisi
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         if not bos_data:
             return TrendDirection.NEUTRAL
@@ -710,7 +710,7 @@ class BOS(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'left_bars': 5,
             'right_bars': 5,
@@ -731,33 +731,33 @@ __all__ = ['BOS']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """BOS indikatör testi"""
+    """BOS indicator test"""
 
     print("\n" + "="*60)
     print("BOS (BREAK OF STRUCTURE) TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(50)]
 
-    # Trend simülasyonu (yükseliş -> düşüş -> yükseliş)
+    # Trend simulation (rise -> fall -> rise)
     base_price = 100
     prices = []
     for i in range(50):
         if i < 15:
-            # Yükseliş
+            # Ascent
             prices.append(base_price + i * 0.5 + np.random.randn() * 0.3)
         elif i < 35:
-            # Düşüş
+            # Fall
             prices.append(base_price + 7.5 - (i - 15) * 0.4 + np.random.randn() * 0.3)
         else:
-            # Yükseliş
+            # Ascent
             prices.append(base_price - (i - 35) * 0.6 + np.random.randn() * 0.3)
 
     data = pd.DataFrame({
@@ -769,53 +769,53 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     bos = BOS(left_bars=5, right_bars=5, max_levels=3)
-    print(f"   [OK] Oluşturuldu: {bos}")
+    print(f"   [OK] Created: {bos}")
     print(f"   [OK] Kategori: {bos.category.value}")
-    print(f"   [OK] Gerekli periyot: {bos.get_required_periods()}")
+    print(f"   [OK] Required period: {bos.get_required_periods()}")
 
     result = bos(data)
-    print(f"   [OK] BOS Değeri: {result.value}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] BOS Value: {result.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength}")
-    print(f"   [OK] BOS Tipi: {result.metadata['bos_type']}")
-    print(f"   [OK] Swing Highs: {len(result.metadata['swing_highs'])} adet")
-    print(f"   [OK] Swing Lows: {len(result.metadata['swing_lows'])} adet")
+    print(f"   [OK] Power: {result.strength}")
+    print(f"   [OK] BOS Type: {result.metadata['bos_type']}")
+    print(f"   [OK] Swing Highs: {len(result.metadata['swing_highs'])} items")
+    print(f"   [OK] Swing Lows: {len(result.metadata['swing_lows'])} items")
 
-    # Test 2: Swing seviyelerini göster
+    # Test 2: Show swing levels
     print("\n3. Swing seviyeleri...")
     for i, high in enumerate(result.metadata['swing_highs'][-3:]):
         print(f"   [OK] Swing High #{i+1}: {high['level']:.2f} @ index {high['index']}")
     for i, low in enumerate(result.metadata['swing_lows'][-3:]):
         print(f"   [OK] Swing Low #{i+1}: {low['level']:.2f} @ index {low['index']}")
 
-    # Test 3: Farklı parametreler
-    print("\n4. Farklı parametre testi...")
+    # Test 3: Different parameters
+    print("\n4. Different parameter test...")
     for left, right in [(3, 3), (5, 5), (7, 7)]:
         bos_test = BOS(left_bars=left, right_bars=right)
         result = bos_test.calculate(data)
         print(f"   [OK] BOS({left},{right}): {result.value} | Tip: {result.metadata['bos_type']}")
 
-    # Test 4: İstatistikler
-    print("\n5. İstatistik testi...")
+    # Test 4: Statistics
+    print("\n5. Statistical test...")
     stats = bos.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 5: Metadata
     print("\n6. Metadata testi...")
     metadata = bos.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

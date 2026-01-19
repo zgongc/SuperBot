@@ -5,25 +5,25 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    Ichimoku Kinko Hyo - İchimoku Bulutu
-    Goichi Hosoda tarafından geliştirilmiş kapsamlı trend indikatörü
-    5 çizgiden oluşur: Tenkan, Kijun, Senkou A, Senkou B, Chikou
+Description:
+    Ichimoku Kinko Hyo - Ichimoku Cloud
+    A comprehensive trend indicator developed by Goichi Hosoda
+    Consists of 5 lines: Tenkan, Kijun, Senkou A, Senkou B, Chikou
 
-    Kullanım:
-    - Trend yönünü ve gücünü belirleme
-    - Destek/direnç seviyeleri (bulut)
+    Usage:
+    - Determining trend direction and strength
+    - Support/resistance levels (cloud)
     - Entry/Exit sinyalleri
-    - Momentum ölçme
+    - Measuring momentum
 
-Formül:
+Formula:
     Tenkan-sen = (9 period high + 9 period low) / 2
     Kijun-sen = (26 period high + 26 period low) / 2
-    Senkou Span A = (Tenkan + Kijun) / 2, 26 period ileriye kaydırılmış
+    Senkou Span A = (Tenkan + Kijun) / 2, shifted 26 periods forward.
     Senkou Span B = (52 period high + 52 period low) / 2, 26 period ileriye
-    Chikou Span = Close, 26 period geriye kaydırılmış
+    Chikou Span = Close, shifted 26 periods backward.
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -46,13 +46,13 @@ class Ichimoku(BaseIndicator):
     """
     Ichimoku Cloud Indicator
 
-    Trend, momentum ve destek/direnç bilgilerini sağlayan kapsamlı indikatör.
+    Comprehensive indicator providing trend, momentum, and support/resistance information.
 
     Args:
-        tenkan_period: Tenkan-sen periyodu (varsayılan: 9)
-        kijun_period: Kijun-sen periyodu (varsayılan: 26)
-        senkou_b_period: Senkou Span B periyodu (varsayılan: 52)
-        displacement: Senkou kaydırma (varsayılan: 26)
+        tenkan_period: Tenkan-sen period (default: 9)
+        kijun_period: Kijun-sen period (default: 26)
+        senkou_b_period: Senkou Span B period (default: 52)
+        displacement: Senkou displacement (default: 26)
     """
 
     def __init__(
@@ -96,39 +96,39 @@ class Ichimoku(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.senkou_b_period + self.displacement
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.tenkan_period < 1:
             raise InvalidParameterError(
                 self.name, 'tenkan_period', self.tenkan_period,
-                "Tenkan period pozitif olmalı"
+                "Tenkan period must be positive"
             )
         if self.kijun_period < 1:
             raise InvalidParameterError(
                 self.name, 'kijun_period', self.kijun_period,
-                "Kijun period pozitif olmalı"
+                "Kijun period must be positive"
             )
         if self.senkou_b_period < 1:
             raise InvalidParameterError(
                 self.name, 'senkou_b_period', self.senkou_b_period,
-                "Senkou B period pozitif olmalı"
+                "Senkou B period must be positive"
             )
         return True
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        Batch hesaplama (Backtest için)
+        Batch calculation (for backtesting)
         
-        Tüm veriyi vektörel olarak hesaplar.
+        Calculates all data vectorially.
         
         Args:
             data: OHLCV DataFrame
             
         Returns:
-            pd.DataFrame: Ichimoku çizgileri
+            pd.DataFrame: Ichimoku lines
         """
         high = data['high']
         low = data['low']
@@ -170,16 +170,16 @@ class Ichimoku(BaseIndicator):
         """
         Incremental update (Real-time)
         
-        Not: Ichimoku'nun "shift" (kaydırma) mantığı burada özel olarak işlenir.
-        - Senkou A ve B değerleri hesaplandığı an buffer'a (history) eklenir.
-        - Sinyal üretilirken, buffer'dan 26 bar önceki (displacement) değerler çekilir.
-        - Bu sayede "Price vs Cloud" karşılaştırması, grafikteki görsel kaydırmaya uygun yapılır.
+        Note: Ichimoku's "shift" (offset) logic is handled specifically here.
+        - Senkou A and B values are added to the buffer (history) as soon as they are calculated.
+        - When generating a signal, values from 26 bars ago (displacement) are retrieved from the buffer.
+        - This ensures that the "Price vs Cloud" comparison is performed with the visual shift on the chart.
         
         Args:
             candle: Yeni mum verisi (dict)
             
         Returns:
-            IndicatorResult: Güncel Ichimoku değerleri
+            IndicatorResult: Current Ichimoku values
         """
         # Support both dict and list/tuple formats
         if isinstance(candle, dict):
@@ -300,11 +300,11 @@ class Ichimoku(BaseIndicator):
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
         """
-        Warmup buffer - update() için gerekli state'i hazırlar
+        Warmup buffer - prepares the necessary state for update().
 
         Args:
             data: OHLCV DataFrame (warmup verisi)
-            symbol: Sembol adı (opsiyonel)
+            symbol: Symbol name (optional)
         """
         super().warmup_buffer(data, symbol)
 
@@ -363,7 +363,7 @@ class Ichimoku(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: Ichimoku çizgileri
+            IndicatorResult: Ichimoku lines
         """
         # Populate buffers for subsequent updates
         self.highs.clear()
@@ -448,12 +448,12 @@ class Ichimoku(BaseIndicator):
         # Close price, shifted backward
         chikou = close[-1]
         
-        # Mevcut fiyat
+        # Current price
         current_price = close[-1]
         
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Trend ve sinyal belirleme
+        # Trend and signal determination
         trend = self.get_trend(current_price, senkou_a, senkou_b)
         signal = self.get_signal(current_price, tenkan, kijun, senkou_a, senkou_b)
 
@@ -487,22 +487,22 @@ class Ichimoku(BaseIndicator):
 
     def _calculate_midpoint(self, high: np.ndarray, low: np.ndarray, period: int) -> float:
         """
-        Belirtilen periyotta yüksek ve düşük ortalaması
+        Calculates the high and low average for the specified period.
 
         Args:
-            high: Yüksek fiyatlar
-            low: Düşük fiyatlar
+            high: High prices
+            low: Low prices
             period: Periyot
 
         Returns:
-            float: Midpoint değeri
+            float: The midpoint value.
         """
         period_high = np.max(high[-period:])
         period_low = np.min(low[-period:])
         return (period_high + period_low) / 2
 
     def _price_vs_cloud(self, price: float, senkou_a: float, senkou_b: float) -> str:
-        """Fiyatın buluta göre pozisyonu"""
+        """Position of the price relative to the cloud."""
         cloud_top = max(senkou_a, senkou_b)
         cloud_bottom = min(senkou_a, senkou_b)
 
@@ -516,14 +516,14 @@ class Ichimoku(BaseIndicator):
     def get_signal(self, price: float, tenkan: float, kijun: float,
                    senkou_a: float, senkou_b: float) -> SignalType:
         """
-        Ichimoku'dan sinyal üret
+        Generate signals from Ichimoku.
 
         Args:
-            price: Mevcut fiyat
-            tenkan: Tenkan-sen değeri
-            kijun: Kijun-sen değeri
-            senkou_a: Senkou Span A değeri
-            senkou_b: Senkou Span B değeri
+            price: Current price
+            tenkan: Tenkan-sen value
+            kijun: Kijun-sen value
+            senkou_a: Senkou Span A value
+            senkou_b: Senkou Span B value
 
         Returns:
             SignalType: BUY/SELL/HOLD
@@ -531,11 +531,11 @@ class Ichimoku(BaseIndicator):
         cloud_top = max(senkou_a, senkou_b)
         cloud_bottom = min(senkou_a, senkou_b)
 
-        # Güçlü bullish: Fiyat bulutun üstünde ve Tenkan > Kijun
+        # Strong bullish: Price is above the cloud, and Tenkan > Kijun
         if price > cloud_top and tenkan > kijun:
             return SignalType.BUY
 
-        # Güçlü bearish: Fiyat bulutun altında ve Tenkan < Kijun
+        # Strong bearish: Price is below the cloud, and Tenkan < Kijun
         if price < cloud_bottom and tenkan < kijun:
             return SignalType.SELL
 
@@ -546,9 +546,9 @@ class Ichimoku(BaseIndicator):
         Ichimoku'dan trend belirle
 
         Args:
-            price: Mevcut fiyat
-            senkou_a: Senkou Span A değeri
-            senkou_b: Senkou Span B değeri
+            price: Current price
+            senkou_a: Senkou Span A value
+            senkou_b: Senkou Span B value
 
         Returns:
             TrendDirection: UP/DOWN/NEUTRAL
@@ -563,13 +563,13 @@ class Ichimoku(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _calculate_strength(self, price: float, senkou_a: float, senkou_b: float) -> float:
-        """Sinyal gücünü hesapla (0-100)"""
+        """Calculate signal strength (0-100)"""
         cloud_mid = (senkou_a + senkou_b) / 2
         distance_pct = abs((price - cloud_mid) / cloud_mid * 100)
         return min(distance_pct * 10, 100)
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'tenkan_period': 9,
             'kijun_period': 26,
@@ -594,22 +594,22 @@ __all__ = ['Ichimoku']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """Ichimoku indikatör testi"""
+    """Ichimoku indicator test"""
 
     print("\n" + "="*60)
     print("ICHIMOKU CLOUD TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(100)]
 
-    # Güçlü trend simülasyonu
+    # Powerful trend simulation
     base_price = 100
     prices = [base_price]
     for i in range(99):
@@ -626,16 +626,16 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     ichimoku = Ichimoku()
-    print(f"   [OK] Oluşturuldu: {ichimoku}")
+    print(f"   [OK] Created: {ichimoku}")
     print(f"   [OK] Kategori: {ichimoku.category.value}")
     print(f"   [OK] Tip: {ichimoku.indicator_type.value}")
-    print(f"   [OK] Gerekli periyot: {ichimoku.get_required_periods()}")
+    print(f"   [OK] Required periods: {ichimoku.get_required_periods()}")
 
     result = ichimoku(data)
     print(f"   [OK] Tenkan-sen: {result.value['tenkan']}")
@@ -643,44 +643,44 @@ if __name__ == "__main__":
     print(f"   [OK] Senkou Span A: {result.value['senkou_a']}")
     print(f"   [OK] Senkou Span B: {result.value['senkou_b']}")
     print(f"   [OK] Chikou Span: {result.value['chikou']}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Power: {result.strength:.2f}")
     print(f"   [OK] Metadata: {result.metadata}")
 
     # Test 2: Cloud analizi
     print("\n3. Cloud analizi...")
     print(f"   [OK] Cloud Rengi: {result.metadata['cloud_color']}")
-    print(f"   [OK] Fiyat pozisyonu: {result.metadata['price_vs_cloud']}")
+    print(f"   [OK] Price position: {result.metadata['price_vs_cloud']}")
     print(f"   [OK] TK Crossover: {result.metadata['tk_cross']}")
 
-    # Test 3: Sinyal analizi
-    print("\n4. Sinyal analizi...")
+    # Test 3: Signal analysis
+    print("\n4. Signal analysis...")
     if result.signal == SignalType.BUY:
-        print(f"   [OK] Güçlü BUY sinyali (fiyat bulutun üstünde, Tenkan > Kijun)")
+        print(f"   [OK] Strong BUY signal (price above cloud, Tenkan > Kijun)")
     elif result.signal == SignalType.SELL:
-        print(f"   [OK] Güçlü SELL sinyali (fiyat bulutun altında, Tenkan < Kijun)")
+        print(f"   [OK] Strong SELL signal (price below cloud, Tenkan < Kijun)")
     else:
-        print(f"   [OK] Nötr bölge (fiyat bulut içinde veya belirsiz)")
+        print(f"   [OK] Neutral zone (price cloud inside or uncertain)")
 
-    # Test 4: Farklı parametreler
-    print("\n5. Farklı parametre testi...")
+    # Test 4: Different parameters
+    print("\n5. Different parameter test...")
     configs = [(9, 26, 52), (7, 22, 44), (12, 30, 60)]
     for t, k, s in configs:
         ich_test = Ichimoku(tenkan_period=t, kijun_period=k, senkou_b_period=s)
         result = ich_test.calculate(data)
         print(f"   [OK] Ichimoku({t},{k},{s}): Cloud={result.metadata['cloud_color']}")
 
-    # Test 5: İstatistikler
-    print("\n6. İstatistik testi...")
+    # Test 5: Statistics
+    print("\n6. Statistical test...")
     stats = ichimoku.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 7: Metadata
     print("\n7. Metadata testi...")
     metadata = ichimoku.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Output'lar: {metadata.output_names}")
 
@@ -702,5 +702,5 @@ if __name__ == "__main__":
     # Let's check if they match at the same index.
     
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

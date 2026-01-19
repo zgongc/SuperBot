@@ -1,25 +1,25 @@
 """
-indicators/combo/__init__.py - Combo (Birleşik) İndikatörler Modülü
+indicators/combo/__init__.py - Combo (Combined) Indicator Module
 
 Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    Birden fazla indikatörü birleştirerek güçlü sinyaller üreten
-    kombine indikatörler koleksiyonu.
+Description:
+    Combining multiple indicators to generate strong signals.
+    A collection of combined indicators.
 
-    Bu kategori, farklı indikatör türlerini (trend, momentum, volume)
-    bir araya getirerek daha güvenilir al/sat sinyalleri sağlar.
+    This category combines different indicator types (trend, momentum, volume)
+    to provide more reliable buy/sell signals.
 
-Mevcut İndikatörler:
+Available Indicators:
     1. RSIBollinger - RSI + Bollinger Bands kombinasyonu
     2. MACDRSICombo - MACD + RSI kombinasyonu
-    3. EMARibbon - Çoklu EMA bantları (5,10,20,50,100,200)
-    4. TripleScreen - Elder'ın ünlü 3 ekran sistemi
+    3. EMARibbon - Multiple EMA bands (5, 10, 20, 50, 100, 200)
+    4. TripleScreen - Elder's famous 3-screen system
     5. SmartMoney - Smart Money Concept (SMC) analizi
 
-Kullanım Örnekleri:
+Usage Examples:
     >>> from indicators.combo import RSIBollinger, MACDRSICombo
     >>>
     >>> # RSI + Bollinger kombinasyonu
@@ -42,13 +42,13 @@ Kullanım Örnekleri:
     >>> smc = SmartMoney(adx_threshold=25)
     >>> result5 = smc.calculate(data)
 
-Özellikler:
-    - Çoklu indikatör onayı
-    - Güçlü sinyal filtreleme
-    - Risk yönetimi entegrasyonu
-    - Yüksek doğruluk oranı
+Features:
+    - Multiple indicator confirmation
+    - Powerful signal filtering
+    - Risk management integration
+    - High accuracy rate
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
     - indicators.momentum
@@ -70,13 +70,13 @@ from indicators.combo.smart_grok import SmartGrok
 # ============================================================================
 
 __all__ = [
-    # Combo indikatörler
+    # Combo indicators
     'RSIBollinger',      # RSI + Bollinger Bands
     'MACDRSICombo',      # MACD + RSI
-    'EMARibbon',         # Çoklu EMA bantları
-    'TripleScreen',      # Elder'ın 3 ekran sistemi
+    'EMARibbon',         # Multiple EMA bands
+    'TripleScreen',      # Elder's 3-screen system
     'SmartMoney',        # Smart Money Concept
-    'SmartGrok',         # Smart Money Concept - Geliştirilmiş
+    'SmartGrok',         # Smart Money Concept - Improved
 ]
 
 
@@ -87,7 +87,7 @@ __all__ = [
 __version__ = '2.0.0'
 __author__ = 'SuperBot Team'
 __category__ = 'combo'
-__description__ = 'Birleşik (Combo) teknik indikatörler - Çoklu indikatör kombinasyonları'
+__description__ = 'Combined technical indicators - Multiple indicator combinations'
 
 
 # ============================================================================
@@ -96,10 +96,10 @@ __description__ = 'Birleşik (Combo) teknik indikatörler - Çoklu indikatör ko
 
 def get_combo_indicators():
     """
-    Tüm combo indikatörlerin listesini döndür
+    Returns the list of all combo indicators.
 
     Returns:
-        list: Combo indikatör sınıflarının listesi
+        list: A list of Combo indicator classes.
     """
     return [
         RSIBollinger,
@@ -113,20 +113,20 @@ def get_combo_indicators():
 
 def get_combo_indicator_names():
     """
-    Tüm combo indikatör isimlerini döndür
+    Returns all combo indicator names.
 
     Returns:
-        list: İndikatör isimlerinin listesi
+        list: A list of indicator names.
     """
     return [cls.__name__ for cls in get_combo_indicators()]
 
 
 def get_combo_indicator_info():
     """
-    Tüm combo indikatörlerin detaylı bilgisini döndür
+    Returns detailed information about all combo indicators.
 
     Returns:
-        dict: İndikatör isimleri ve açıklamaları
+        dict: Indicator names and descriptions
     """
     return {
         'RSIBollinger': {
@@ -144,14 +144,14 @@ def get_combo_indicator_info():
             'requires_volume': False
         },
         'EMARibbon': {
-            'description': 'Çoklu EMA bantları (5,10,20,50,100,200)',
+            'description': 'Multiple EMA bands (5, 10, 20, 50, 100, 200)',
             'components': ['EMA (multiple)'],
             'category': 'Trend',
             'output_type': 'LINES',
             'requires_volume': False
         },
         'TripleScreen': {
-            'description': "Elder'ın 3 ekran ticaret sistemi",
+            'description': "Elder's 3-screen trading system",
             'components': ['MACD/EMA', 'RSI', 'Price Action'],
             'category': 'Multi-timeframe System',
             'output_type': 'MULTIPLE_VALUES',
@@ -165,7 +165,7 @@ def get_combo_indicator_info():
             'requires_volume': True
         },
         'SmartGrok': {
-            'description': 'Smart Money Concept (SMC) - Geliştirilmiş',
+            'description': 'Smart Money Concept (SMC) - Improved',
             'components': ['FVG', 'Order Blocks', 'BOS/CHoCH', 'Market Structure'],
             'category': 'Volume + Structure',
             'output_type': 'MULTIPLE_VALUES',
@@ -176,17 +176,17 @@ def get_combo_indicator_info():
 
 def create_combo_indicator(name: str, **params):
     """
-    İsme göre combo indikatör oluştur
+    Create a combo indicator based on the name.
 
     Args:
-        name: İndikatör ismi
-        **params: İndikatör parametreleri
+        name: Indicator name
+        **params: Indicator parameters
 
     Returns:
-        BaseIndicator: Oluşturulan indikatör
+        BaseIndicator: The created indicator.
 
     Raises:
-        ValueError: Geçersiz indikatör ismi
+        ValueError: Invalid indicator name
 
     Example:
         >>> indicator = create_combo_indicator('RSIBollinger', rsi_period=14)
@@ -204,8 +204,8 @@ def create_combo_indicator(name: str, **params):
     if name not in indicators_map:
         available = ', '.join(indicators_map.keys())
         raise ValueError(
-            f"Geçersiz combo indikatör ismi: '{name}'. "
-            f"Mevcut indikatörler: {available}"
+            f"Invalid combo indicator name: '{name}'. "
+            f"Available indicators: {available}"
         )
 
     return indicators_map[name](**params)
@@ -215,7 +215,7 @@ def create_combo_indicator(name: str, **params):
 # MODULE INITIALIZATION
 # ============================================================================
 
-# Module başlatma mesajı (development mode)
+# Module initialization message (development mode)
 import os
 if os.getenv('SUPERBOT_DEBUG'):
     print(f"[COMBO] Loaded {len(__all__)} combo indicators")

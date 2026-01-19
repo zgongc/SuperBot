@@ -5,25 +5,25 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    MACD (Moving Average Convergence Divergence) - Hareketli ortalama yakınsama/ıraksama
-    Gerald Appel tarafından geliştirilmiş popüler momentum ve trend indikatörü
-    MACD çizgisi, Sinyal çizgisi ve Histogram'dan oluşur
+Description:
+    MACD (Moving Average Convergence Divergence) - Moving average convergence/divergence
+    A popular momentum and trend indicator developed by Gerald Appel
+    Consists of the MACD line, the Signal line, and the Histogram
 
-    Kullanım:
-    - Trend yönünü belirleme
-    - Momentum ölçme
-    - Crossover sinyalleri (MACD/Signal kesişimi)
+    Usage:
+    - Determining the trend direction
+    - Measuring momentum
+    - Crossover signals (MACD/Signal intersection)
     - Divergence tespiti
 
-Formül:
+Formula:
     MACD Line = EMA(fast) - EMA(slow)
     Signal Line = EMA(MACD Line, signal_period)
     Histogram = MACD Line - Signal Line
 
-    Varsayılan: fast=12, slow=26, signal=9
+    Default: fast=12, slow=26, signal=9
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -46,12 +46,12 @@ class MACD(BaseIndicator):
     """
     Moving Average Convergence Divergence
 
-    İki EMA'nın farkını alarak momentum ve trend ölçer.
+    Calculates momentum and trend by taking the difference between two EMAs.
 
     Args:
-        fast_period: Hızlı EMA periyodu (varsayılan: 12)
-        slow_period: Yavaş EMA periyodu (varsayılan: 26)
-        signal_period: Sinyal EMA periyodu (varsayılan: 9)
+        fast_period: Fast EMA period (default: 12)
+        slow_period: Slow EMA period (default: 26)
+        signal_period: Signal EMA period (default: 9)
     """
 
     def __init__(
@@ -66,7 +66,7 @@ class MACD(BaseIndicator):
         self.slow_period = slow_period
         self.signal_period = signal_period
 
-        # EMA indikatörlerini kullan (code reuse)
+        # Use EMA indicators (code reuse)
         self._fast_ema_ind = EMA(period=fast_period)
         self._slow_ema_ind = EMA(period=slow_period)
         self._signal_ema_ind = EMA(period=signal_period)
@@ -85,31 +85,31 @@ class MACD(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.slow_period + self.signal_period
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.fast_period < 1:
             raise InvalidParameterError(
                 self.name, 'fast_period', self.fast_period,
-                "Fast period pozitif olmalı"
+                "Fast period must be positive"
             )
         if self.slow_period < 1:
             raise InvalidParameterError(
                 self.name, 'slow_period', self.slow_period,
-                "Slow period pozitif olmalı"
+                "Slow period must be positive"
             )
         if self.signal_period < 1:
             raise InvalidParameterError(
                 self.name, 'signal_period', self.signal_period,
-                "Signal period pozitif olmalı"
+                "Signal period must be positive"
             )
         if self.fast_period >= self.slow_period:
             raise InvalidParameterError(
                 self.name, 'periods',
                 f"fast={self.fast_period}, slow={self.slow_period}",
-                "Fast period, slow period'dan küçük olmalı"
+                "Fast period must be smaller than slow period"
             )
         return True
 
@@ -121,38 +121,38 @@ class MACD(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: MACD, Signal ve Histogram değerleri
+            IndicatorResult: MACD, Signal and Histogram values
         """
         close = data['close'].values
 
-        # Fast ve Slow EMA'ları hesapla
+        # Calculate Fast and Slow EMA values
         fast_ema = self._calculate_ema(close, self.fast_period)
         slow_ema = self._calculate_ema(close, self.slow_period)
 
         # MACD Line
         macd_line = fast_ema - slow_ema
 
-        # MACD serisini oluştur (sinyal için)
+        # Create the MACD series (for the signal).
         macd_series = np.zeros(len(close))
         for i in range(self.slow_period - 1, len(close)):
             f_ema = self._calculate_ema(close[:i+1], self.fast_period)
             s_ema = self._calculate_ema(close[:i+1], self.slow_period)
             macd_series[i] = f_ema - s_ema
 
-        # Signal Line (MACD'nin EMA'sı)
+        # Signal Line (EMA of MACD)
         signal_line = self._calculate_ema(macd_series[self.slow_period-1:], self.signal_period)
 
         # Histogram
         histogram = macd_line - signal_line
 
-        # Son değerler
+        # Last values
         macd_value = macd_line
         signal_value = signal_line
         histogram_value = histogram
 
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Trend ve sinyal belirleme
+        # Trend and signal determination
         trend = self.get_trend(macd_value, signal_value)
         signal = self.get_signal(macd_value, signal_value, histogram_value)
 
@@ -203,7 +203,7 @@ class MACD(BaseIndicator):
         """
         self._validate_data(data)
 
-        # EMA.calculate_batch kullan (code reuse)
+        # Use EMA.calculate_batch (code reuse)
         fast_ema = self._fast_ema_ind.calculate_batch(data)
         slow_ema = self._slow_ema_ind.calculate_batch(data)
 
@@ -243,14 +243,14 @@ class MACD(BaseIndicator):
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
         """
-        Warmup buffer - update() için gerekli
+        Warmup buffer - required for update().
 
-        MACD için EMA state'lerini saklar. Bu sayede update() incremental
-        hesaplama yapabilir.
+        Stores the EMA states for MACD. This allows for incremental updates in the update() function.
+        It can perform calculations.
 
         Args:
             data: OHLCV DataFrame (warmup verisi)
-            symbol: Sembol adı (opsiyonel)
+            symbol: Symbol name (optional)
         """
         super().warmup_buffer(data, symbol)
 
@@ -359,12 +359,12 @@ class MACD(BaseIndicator):
 
     def get_signal(self, macd: float, signal: float, histogram: float) -> SignalType:
         """
-        MACD'den sinyal üret
+        Generate a signal from MACD.
 
         Args:
-            macd: MACD line değeri
-            signal: Signal line değeri
-            histogram: Histogram değeri
+            macd: MACD line value
+            signal: Signal line value
+            histogram: Histogram value
 
         Returns:
             SignalType: BUY/SELL/HOLD
@@ -382,8 +382,8 @@ class MACD(BaseIndicator):
         MACD'den trend belirle
 
         Args:
-            macd: MACD line değeri
-            signal: Signal line değeri
+            macd: MACD line value
+            signal: Signal line value
 
         Returns:
             TrendDirection: UP/DOWN/NEUTRAL
@@ -395,7 +395,7 @@ class MACD(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'fast_period': 12,
             'slow_period': 26,
@@ -419,31 +419,31 @@ __all__ = ['MACD']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """MACD indikatör testi"""
+    """MACD indicator test"""
 
     print("\n" + "="*60)
     print("MACD (MOVING AVERAGE CONVERGENCE DIVERGENCE) TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(100)]
 
-    # Trend simülasyonu
+    # Trend simulation
     base_price = 100
     prices = [base_price]
     for i in range(99):
         if i < 40:
-            trend = 0.5  # Yavaş yükseliş
+            trend = 0.5  # Slow increase
         elif i < 70:
-            trend = -0.3  # Düşüş
+            trend = -0.3  # Decrease
         else:
-            trend = 0.7  # Güçlü yükseliş
+            trend = 0.7  # Strong upward trend
         noise = np.random.randn() * 1.5
         prices.append(prices[-1] + trend + noise)
 
@@ -456,24 +456,24 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     macd = MACD()
-    print(f"   [OK] Oluşturuldu: {macd}")
+    print(f"   [OK] Created: {macd}")
     print(f"   [OK] Kategori: {macd.category.value}")
     print(f"   [OK] Tip: {macd.indicator_type.value}")
-    print(f"   [OK] Gerekli periyot: {macd.get_required_periods()}")
+    print(f"   [OK] Required periods: {macd.get_required_periods()}")
 
     result = macd(data)
     print(f"   [OK] MACD: {result.value['macd']}")
     print(f"   [OK] Signal: {result.value['signal']}")
     print(f"   [OK] Histogram: {result.value['histogram']}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Power: {result.strength:.2f}")
     print(f"   [OK] Metadata: {result.metadata}")
 
     # Test 2: Crossover analizi
@@ -487,34 +487,34 @@ if __name__ == "__main__":
     else:
         print(f"   [OK] Bearish (MACD < Signal)")
 
-    # Test 3: Trend değişimi testi
-    print("\n4. Trend değişimi testi...")
+    # Test 3: Trend change test
+    print("\n4. Trend change test...")
     for i in [45, 65, 85]:
         data_slice = data.iloc[:i+1]
         result = macd.calculate(data_slice)
         print(f"   [OK] Mum {i}: MACD={result.value['macd']:.4f}, Histogram={result.value['histogram']:.4f}, Trend={result.trend.name}")
 
-    # Test 4: Farklı parametreler
-    print("\n5. Farklı parametre testi...")
+    # Test 4: Different parameters
+    print("\n5. Different parameter test...")
     configs = [(12, 26, 9), (5, 35, 5), (8, 17, 9)]
     for fast, slow, sig in configs:
         macd_test = MACD(fast_period=fast, slow_period=slow, signal_period=sig)
         result = macd_test.calculate(data)
         print(f"   [OK] MACD({fast},{slow},{sig}): {result.value['macd']:.4f}")
 
-    # Test 5: İstatistikler
-    print("\n6. İstatistik testi...")
+    # Test 5: Statistics
+    print("\n6. Statistical test...")
     stats = macd.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 6: Metadata
     print("\n7. Metadata testi...")
     metadata = macd.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Output'lar: {metadata.output_names}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

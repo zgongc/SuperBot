@@ -5,17 +5,17 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    ZigZag - Swing high ve low noktalarını belirler
-    Belirli bir yüzde değişim eşiğini aşan fiyat hareketlerini filtreler.
-    Trend değişimlerini ve önemli destek/direnç noktalarını gösterir.
+Description:
+    ZigZag - Determines swing high and low points.
+    Filters price movements that exceed a specific percentage change threshold.
+    Displays trend reversals and important support/resistance points.
 
-Formül:
-    - Fiyat önceki pivot'tan %deviation kadar değiştiğinde yeni pivot oluşur
-    - Swing High: Yukarı yönlü pivot noktası
-    - Swing Low: Aşağı yönlü pivot noktası
+Formula:
+    - A new pivot is formed when the price changes by a percentage deviation from the previous pivot.
+    - Swing High: Pivot point in the upward direction.
+    - Swing Low: Pivot point in the downward direction.
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -37,12 +37,12 @@ class ZigZag(BaseIndicator):
     """
     ZigZag Indicator
 
-    Belirli bir yüzde değişim eşiğini aşan fiyat hareketlerini filtreler
-    ve swing high/low noktalarını belirler.
+    Filters price movements that exceed a specific percentage change threshold
+    and determines swing high/low points.
 
     Args:
-        deviation: Minimum değişim yüzdesi (varsayılan: 5.0)
-        depth: Geriye dönük arama derinliği (varsayılan: 12)
+        deviation: Minimum percentage change (default: 5.0)
+        depth: Backward search depth (default: 12)
     """
 
     def __init__(
@@ -68,20 +68,20 @@ class ZigZag(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.depth * 2
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.deviation <= 0:
             raise InvalidParameterError(
                 self.name, 'deviation', self.deviation,
-                "Deviation pozitif olmalı"
+                "Deviation must be positive"
             )
         if self.depth < 1:
             raise InvalidParameterError(
                 self.name, 'depth', self.depth,
-                "Depth pozitif olmalı"
+                "Depth must be positive"
             )
         return True
 
@@ -93,13 +93,13 @@ class ZigZag(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: Son pivot değeri ve bilgileri
+            IndicatorResult: The last pivot value and its information.
         """
         high = data['high'].values
         low = data['low'].values
         close = data['close'].values
         
-        # Bufferları doldur (Incremental update için hazırlık)
+        # Fill the buffers (preparation for incremental update)
         if not hasattr(self, '_high_buffer'):
             from collections import deque
             self._high_buffer = deque(maxlen=self.depth + 1)
@@ -110,15 +110,15 @@ class ZigZag(BaseIndicator):
             self._pivots = []
             
         # Son verileri buffer'a at
-        # Not: Tam senkronizasyon için tüm geçmişi işleyip state'i kurmak gerekir.
-        # Ancak calculate() zaten tüm geçmişi işliyor.
-        # Biz sadece son durumu state'e aktaracağız.
+        # Note: For a complete synchronization, it is necessary to process the entire history and establish the state.
+        # However, calculate() already processes the entire history.
+        # We will only transfer the final state to the 'state'.
         
-        # Calculate çağrıldığında state'i sıfırlayıp yeniden kurmak en doğrusu
-        # Ama bu pahalı olabilir. 
-        # Basitçe son durumu alalım:
+        # It's best to reset and rebuild the state when calculate is called.
+        # But this can be expensive.
+        # Simply get the final state:
         
-        # Pivots zaten hesaplandı
+        # Pivots are already calculated
         pivots = self._find_pivots(high, low)
         
         if pivots:
@@ -132,7 +132,7 @@ class ZigZag(BaseIndicator):
             
         self._total_candles = len(data)
         
-        # Bufferları son verilerle doldur
+        # Fill the buffers with the latest data
         self._high_buffer.clear()
         self._low_buffer.clear()
         
@@ -141,7 +141,7 @@ class ZigZag(BaseIndicator):
         self._high_buffer.extend(high[start_idx:])
         self._low_buffer.extend(low[start_idx:])
 
-        # Pivotları bul
+        # Find pivots
         pivots = self._find_pivots(high, low)
 
         # Son pivot bilgisini al
@@ -156,20 +156,20 @@ class ZigZag(BaseIndicator):
 
             # Trend belirle
             if pivot_type == 'high':
-                trend = TrendDirection.DOWN  # High'dan sonra düşüş beklenir
+                trend = TrendDirection.DOWN  # A decrease is expected after the high
                 signal = SignalType.SELL
             else:
-                trend = TrendDirection.UP  # Low'dan sonra yükseliş beklenir
+                trend = TrendDirection.UP  # An upward trend is expected after the low.
                 signal = SignalType.BUY
 
-            # Güç hesapla (son pivot'tan uzaklık)
+            # Calculate power (distance from the last pivot)
             price_change = abs((current_price - pivot_value) / pivot_value * 100)
             strength = min(price_change / self.deviation * 100, 100)
 
-            # Önceki pivot varsa ona göre sinyal güncelle
+            # Update the signal based on the previous pivot if it exists.
             if len(pivots) > 1:
                 prev_pivot = pivots[-2]
-                # Trend doğrultusunda hareket ediyorsa sinyali güçlendir
+                # If moving in the trend direction, strengthen the signal.
                 if pivot_type == 'low' and current_price > pivot_value:
                     signal = SignalType.BUY
                 elif pivot_type == 'high' and current_price < pivot_value:
@@ -211,30 +211,30 @@ class ZigZag(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        Batch hesaplama (Backtest için)
+        Batch calculation (for backtesting)
         
         Args:
             data: OHLCV DataFrame
             
         Returns:
-            pd.DataFrame: ZigZag değerleri
+            pd.DataFrame: ZigZag values
         """
         high = data['high'].values
         low = data['low'].values
         
         pivots = self._find_pivots(high, low)
         
-        # Sonuçları DataFrame'e dönüştür
-        # Her bar için o anki "son pivot" değerini döndüreceğiz
+        # Convert the results to a DataFrame
+        # We will return the "latest pivot" value for each bar.
         
         result_values = np.full(len(data), np.nan)
         result_types = np.full(len(data), None)
         
-        # Pivotları zaman serisine yay
-        # Pivot listesi: [{'index': 10, 'value': 100, 'type': 'high'}, ...]
-        # Pivotlar bulundukları index'te "oluşur" (veya teyit edilir).
-        # Ancak ZigZag genellikle geçmişe dönük çizilir.
-        # Real-time kullanım için: O an bilinen son pivot değeri geçerlidir.
+        # Spread the pivots to the time series
+        # Pivot list: [{'index': 10, 'value': 100, 'type': 'high'}, ...]
+        # Pivots are "created" (or confirmed) at their respective indices.
+        # However, ZigZag is usually drawn backwards.
+        # For real-time usage: The most recently known pivot value is valid at that moment.
         
         current_pivot_val = np.nan
         current_pivot_type = None
@@ -242,56 +242,56 @@ class ZigZag(BaseIndicator):
         pivot_idx = 0
         num_pivots = len(pivots)
         
-        # Bu döngü biraz verimsiz olabilir ama ZigZag doğası gereği sparse.
-        # Daha hızlı yöntem: Pivot indexlerini kullanıp fillna yapmak.
+        # This loop may be a bit inefficient, but it is sparse due to its ZigZag nature.
+        # A faster method: Use pivot indices and fillna.
         
-        # Pivotların oluştuğu indexleri al
+        # Get the indices where the pivots are formed
         pivot_indices = [p['index'] for p in pivots]
         pivot_vals = [p['value'] for p in pivots]
         pivot_types = [p['type'] for p in pivots]
         
-        # Series oluştur
+        # Create a series
         s_values = pd.Series(np.nan, index=data.index)
         s_types = pd.Series(dtype=object, index=data.index)  # Explicitly object dtype for string values
         
-        # Pivot noktalarını işaretle
+        # Mark the pivot points
         # Not: _find_pivots indexleri integer index (iloc).
         if pivots:
-            # İlk pivot öncesi değer yok (veya ilk fiyat?)
-            # İlk pivot indexine kadar NaN kalabilir veya backfill yapılabilir.
-            # Biz forward fill mantığıyla gideceğiz.
+            # No value before the first pivot (or the first price?)
+            # It may contain NaN values up to the first pivot index, or it can be backfilled.
+            # We will use the forward fill logic.
             
-            # Pivotları yerleştir
-            # Dikkat: Pivot indexi, pivotun "oluştuğu" yer değil, "zirve/dip" yaptığı yerdir.
-            # Ancak teyit edildiği yer (confirmation) daha ileride olabilir.
-            # _find_pivots logic'inde pivot eklendiği an (loop index i), teyit anıdır.
-            # Ancak pivot['index'] zirve noktasıdır.
-            # Real-time simülasyonu için: Pivot teyit edildiği andan itibaren geçerlidir.
-            # Ancak _find_pivots teyit anını döndürmüyor, sadece pivot noktasını döndürüyor.
-            # Bu yüzden batch hesaplamada "repainting" olmadan (lookahead olmadan) değer üretmek zor.
+            # Place the pivots
+            # Attention: The pivot index is not the place where the pivot "forms", but the place where it reaches a "peak/trough".
+            # However, the confirmation might be available later.
+            # In the _find_pivots logic, the moment a pivot is added (loop index), is the confirmation moment.
+            # However, pivot['index'] is the peak point.
+            # For real-time simulation: It is valid from the moment the pivot is confirmed.
+            # However, _find_pivots does not return the confirmation time, it only returns the pivot point.
+            # That's why it's difficult to generate values without "repainting" (without lookahead) in batch calculations.
             
-            # Basit yaklaşım: Pivot noktalarını yerleştir ve forward fill yap (Step function).
-            # Bu, "son bilinen pivot" mantığıdır.
+            # Simple approach: Place pivot points and perform forward fill (Step function).
+            # This is the "last known pivot" logic.
             
-            # Ancak _find_pivots listesi sıralı mı? Evet.
+            # However, is the _find_pivots list sorted? Yes.
             
-            # Pivot indexlerini data indexine çevir
+            # Convert pivot indices to data indices
             # data.index[pivot_indices]
             
-            # Ancak burada bir sorun var: Pivot indexi geçmişte kalmış olabilir.
-            # Bizim batch sonucumuzda, t anında "bilinen son pivot" olmalı.
-            # _find_pivots fonksiyonunu modifiye etmeden teyit anını bilemeyiz.
-            # Ama _find_pivots fonksiyonu teyit anında listeye ekliyor.
-            # Yani pivot listesindeki sıra, teyit sırasıdır.
+            # However, there is a problem here: The pivot index may be in the past.
+            # In our batch result, t must be the "latest known pivot" at that moment.
+            # We cannot determine the confirmation time without modifying the _find_pivots function.
+            # But the _find_pivots function adds it to the list immediately.
+            # That means the order in the pivot list is the confirmation order.
             
-            # Tekrar _find_pivots mantığını batch içinde simüle etmek yerine,
-            # _find_pivots'u kullanıp, pivot indexlerine göre yerleştirip ffill yapalım.
-            # Bu "repainting" içerir (çünkü pivot indexi t-k olabilir).
-            # Ama görselleştirme ve trend takibi için genelde bu istenir.
+            # Instead of simulating the logic of _find_pivots within the batch,
+            # Let's use '_find_pivots', place them according to their pivot indices, and then perform ffill.
+            # This includes "repainting" (because the pivot index can be t-k).
+            # But this is usually desired for visualization and trend tracking.
             
-            # Eğer "non-repainting" istiyorsak, teyit anını bilmemiz lazım.
-            # Şimdilik standart ZigZag davranışı (pivot noktalarını birleştiren çizgi) yerine
-            # "Son Pivot Değeri"ni döndüreceğiz.
+            # If we want a "non-repainting" indicator, we need to know the confirmation time.
+            # Instead of the standard ZigZag behavior (a line connecting pivot points) for now
+            # We will return the "Last Pivot Value".
             
             for p in pivots:
                 idx = p['index']
@@ -315,20 +315,20 @@ class ZigZag(BaseIndicator):
             candle: Yeni mum verisi (dict)
             
         Returns:
-            IndicatorResult: Güncel ZigZag değeri
+            IndicatorResult: Current ZigZag value
         """
-        # Buffer yönetimi
+        # Buffer management
         if not hasattr(self, '_high_buffer'):
             from collections import deque
-            # Depth kadar geriye bakmamız lazım
+            # We need to look back up to the depth.
             self._high_buffer = deque(maxlen=self.depth + 1)
             self._low_buffer = deque(maxlen=self.depth + 1)
             # State
             self._last_pivot_val = None
             self._last_pivot_type = None
-            self._last_pivot_idx = 0 # Relative index veya count
+            self._last_pivot_idx = 0 # Relative index or count
             self._total_candles = 0
-            self._pivots = [] # Son birkaç pivotu tutabiliriz
+            self._pivots = [] # We can store the last few pivots
             
         # Support both dict and list/tuple formats
         if isinstance(candle, dict):
@@ -350,7 +350,7 @@ class ZigZag(BaseIndicator):
         
         # Yeterli veri yoksa
         if len(self._high_buffer) < self.depth + 1:
-             # İlk değerler için basit initialization
+             # Simple initialization for initial values
              if self._last_pivot_val is None:
                  self._last_pivot_val = current_price
                  self._last_pivot_type = 'none'
@@ -365,15 +365,15 @@ class ZigZag(BaseIndicator):
             )
 
         # Incremental Calculation Logic
-        # _find_pivots mantığını tek bir adım için uygula
+        # Apply the logic of _find_pivots for a single step.
         
         high_arr = np.array(self._high_buffer)
         low_arr = np.array(self._low_buffer)
         
-        # Son depth kadar pencere
+        # Window up to the last depth
         # window_high = np.max(high[max(0, i - self.depth):i + 1])
-        # Buffer zaten son (depth+1) veriyi tutuyor.
-        # i (şu an) buffer'ın son elemanı.
+        # The buffer already holds the last (depth+1) data.
+        # i (currently) is the last element of the buffer.
         # window_high = np.max(buffer)
         
         window_high = np.max(high_arr)
@@ -381,24 +381,24 @@ class ZigZag(BaseIndicator):
         
         threshold = self.deviation / 100
         
-        # İlk pivot initialization (eğer henüz yoksa)
+        # Initial pivot initialization (if it doesn't exist yet)
         if self._last_pivot_val is None:
             # Buffer doldu, ilk pivotu belirle
-            # Basitçe en yüksek/düşük ile başla
+            # Simply start with the highest/lowest
             if (window_high - window_low) / window_low > threshold:
                 self._last_pivot_val = window_high
                 self._last_pivot_type = 'high'
                 self._pivots.append({'value': window_high, 'type': 'high', 'index': self._total_candles - 1})
             else:
-                # Henüz belirgin hareket yok
+                # No significant movement yet
                 self._last_pivot_val = current_price
                 self._last_pivot_type = 'none'
         
         else:
-            # Mevcut pivot var, yenisini ara
+            # There is an existing pivot, search for a new one.
             if self._last_pivot_type == 'low' or self._last_pivot_type == 'none':
                 # High pivot ara
-                # Eğer none ise ve yükseliş varsa high başlat
+                # If it is none and there is an increase, initialize high
                 ref_val = self._last_pivot_val
                 change = (window_high - ref_val) / ref_val
                 
@@ -419,11 +419,11 @@ class ZigZag(BaseIndicator):
                     self._last_pivot_type = 'low'
                     self._pivots.append({'value': window_low, 'type': 'low', 'index': self._total_candles - 1})
 
-        # Sonuç oluştur
+        # Create the result
         pivot_value = self._last_pivot_val
         pivot_type = self._last_pivot_type
         
-        # Sinyal ve Trend (calculate metodundan alındı)
+        # Signal and Trend (taken from the calculate method)
         signal = SignalType.HOLD
         trend = TrendDirection.NEUTRAL
         
@@ -458,21 +458,21 @@ class ZigZag(BaseIndicator):
 
     def _find_pivots(self, high: np.ndarray, low: np.ndarray) -> list:
         """
-        Swing high ve low noktalarını bul
+        Find the swing high and low points.
 
         Args:
-            high: High fiyatları
-            low: Low fiyatları
+            high: High prices
+            low: Low prices
 
         Returns:
-            list: Pivot noktaları listesi
+            list: List of pivot points
         """
         pivots = []
         last_pivot_value = None
         last_pivot_type = None
         threshold = self.deviation / 100
 
-        # İlk pivot'u bul
+        # Find the first pivot
         start_idx = self.depth
         current_high = np.max(high[:start_idx])
         current_low = np.min(low[:start_idx])
@@ -486,7 +486,7 @@ class ZigZag(BaseIndicator):
                 'index': np.argmax(high[:start_idx])
             })
 
-        # Devam eden pivotları bul
+        # Find ongoing pivots
         for i in range(start_idx, len(high)):
             window_high = np.max(high[max(0, i - self.depth):i + 1])
             window_low = np.min(low[max(0, i - self.depth):i + 1])
@@ -524,30 +524,30 @@ class ZigZag(BaseIndicator):
 
     def get_signal(self, value: float) -> SignalType:
         """
-        ZigZag değerinden sinyal üret (calculate içinde yapılıyor)
+        Generate a signal from the ZigZag value (done within calculate).
 
         Args:
-            value: ZigZag değeri
+            value: ZigZag value
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
         return SignalType.HOLD
 
     def get_trend(self, value: float) -> TrendDirection:
         """
-        ZigZag değerinden trend belirle (calculate içinde yapılıyor)
+        Determine the trend based on the ZigZag value (done within the calculate function).
 
         Args:
-            value: ZigZag değeri
+            value: ZigZag value
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'deviation': 5.0,
             'depth': 12
@@ -566,28 +566,28 @@ __all__ = ['ZigZag']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """ZigZag indikatör testi"""
+    """ZigZag indicator test"""
 
     print("\n" + "="*60)
     print("ZIGZAG INDICATOR TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(100)]
 
-    # Trend değişimleriyle fiyat hareketi simüle et
+    # Simulate price movements with trend changes
     base_price = 100
     prices = [base_price]
-    trend = 1  # 1: yukarı, -1: aşağı
+    trend = 1  # 1: up, -1: down
 
     for i in range(99):
-        # Her 20 mumda trend değiştir
+        # Change trend every 20 candles
         if i % 20 == 0:
             trend *= -1
 
@@ -603,36 +603,36 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     zigzag = ZigZag(deviation=5.0, depth=12)
-    print(f"   [OK] Oluşturuldu: {zigzag}")
+    print(f"   [OK] Created: {zigzag}")
     print(f"   [OK] Kategori: {zigzag.category.value}")
     print(f"   [OK] Tip: {zigzag.indicator_type.value}")
-    print(f"   [OK] Gerekli periyot: {zigzag.get_required_periods()}")
+    print(f"   [OK] Required period: {zigzag.get_required_periods()}")
 
     result = zigzag(data)
     print(f"   [OK] Son Pivot: {result.value}")
-    print(f"   [OK] Pivot Tipi: {result.metadata['pivot_type']}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Pivot Type: {result.metadata['pivot_type']}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
-    print(f"   [OK] Toplam Pivot: {result.metadata['total_pivots']}")
-    print(f"   [OK] Fiyat Değişim %: {result.metadata['price_change_pct']}")
+    print(f"   [OK] Power: {result.strength:.2f}")
+    print(f"   [OK] Total Pivot: {result.metadata['total_pivots']}")
+    print(f"   [OK] Price Change %: {result.metadata['price_change_pct']}")
 
-    # Test 2: Farklı deviation değerleri
-    print("\n3. Farklı deviation testi...")
+    # Test 2: Different deviation values
+    print("\n3. Different deviation test...")
     for dev in [3.0, 5.0, 10.0]:
         zigzag_test = ZigZag(deviation=dev, depth=12)
         result = zigzag_test.calculate(data)
         print(f"   [OK] ZigZag(dev={dev}) - Pivots: {result.metadata['total_pivots']} | "
-              f"Sinyal: {result.signal.value}")
+              f"Signal: {result.signal.value}")
 
-    # Test 3: Farklı depth değerleri
-    print("\n4. Farklı depth testi...")
+    # Test 3: Different depth values
+    print("\n4. Different depth test...")
     for depth in [5, 12, 20]:
         zigzag_test = ZigZag(deviation=5.0, depth=depth)
         result = zigzag_test.calculate(data)
@@ -646,37 +646,37 @@ if __name__ == "__main__":
     pivot = result.value
     pivot_type = result.metadata['pivot_type']
 
-    print(f"   [OK] Güncel fiyat: {current}")
+    print(f"   [OK] Current price: {current}")
     print(f"   [OK] Son pivot: {pivot} ({pivot_type})")
 
     if pivot_type == 'high':
-        print(f"   [OK] Son swing high'dan sonra düşüş trendi")
+        print(f"   [OK] Downtrend after the last swing high")
         if current < pivot:
-            print(f"   [OK] Fiyat pivot altında, düşüş devam ediyor")
+            print(f"   [OK] Price is below the pivot, the decline continues")
         else:
-            print(f"   [OK] Fiyat pivot üstünde, toparlanma sinyali")
+            print(f"   [OK] Price is above the pivot, recovery signal")
     elif pivot_type == 'low':
-        print(f"   [OK] Son swing low'dan sonra yükseliş trendi")
+        print(f"   [OK] Uprising trend after the last swing low")
         if current > pivot:
-            print(f"   [OK] Fiyat pivot üstünde, yükseliş devam ediyor")
+            print(f"   [OK] Price is above the pivot, the uptrend continues")
         else:
-            print(f"   [OK] Fiyat pivot altında, zayıflama sinyali")
+            print(f"   [OK] Price is below the pivot, indicating a weakening signal")
 
-    # Test 5: İstatistikler
-    print("\n6. İstatistik testi...")
+    # Test 5: Statistics
+    print("\n6. Statistical test...")
     stats = zigzag.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 6: Metadata
     print("\n7. Metadata testi...")
     metadata = zigzag.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Tip: {metadata.indicator_type.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

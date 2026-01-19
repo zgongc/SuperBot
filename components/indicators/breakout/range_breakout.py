@@ -5,23 +5,23 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
+Description:
     Range Breakout - Konsolidasyon Range + Breakout Seviyeleri
-    Fiyatın dar bir range içinde konsolide olduğu dönemleri tespit eder
-    ve breakout seviyelerini belirler.
+    It detects periods where the price consolidates within a narrow range
+    and determines breakout levels.
 
-    Özellikler:
+    Features:
     - Range belirleme (High/Low)
     - Konsolidasyon tespiti (dar range)
-    - Breakout seviyeleri (üst/alt)
-    - Hedef fiyat hesaplama (range height kadar)
+    - Breakout levels (upper/lower)
+    - Target price calculation (up to the range height)
 
-    Kullanım Alanları:
+    Usage Areas:
     - Range trading stratejileri
-    - Breakout alım/satım sinyalleri
-    - Risk/reward hesaplamaları
+    - Breakout buy/sell signals
+    - Risk/reward calculations
 
-Formül:
+Formula:
     Range High = MAX(High, period)
     Range Low = MIN(Low, period)
     Range Height = Range High - Range Low
@@ -32,7 +32,7 @@ Formül:
     Breakout UP Target = Range High + Range Height
     Breakout DOWN Target = Range Low - Range Height
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -54,14 +54,14 @@ class RangeBreakout(BaseIndicator):
     """
     Range Breakout Indicator
 
-    Konsolidasyon range'lerini tespit eder ve breakout seviyelerini belirler.
-    Range yüksekliği, genişliği ve hedef fiyatları hesaplar.
+    Detects consolidation ranges and determines breakout levels.
+    Calculates range height, width, and target prices.
 
     Args:
-        period: Range hesaplama periyodu (varsayılan: 20)
-        consolidation_threshold: Konsolidasyon eşiği (%) (varsayılan: 3.0)
-        breakout_confirmation: Breakout doğrulama mum sayısı (varsayılan: 1)
-        use_body: Gövde kullan (True) veya wick kullan (False) (varsayılan: False)
+        period: Range calculation period (default: 20)
+        consolidation_threshold: Consolidation threshold (%) (default: 3.0)
+        breakout_confirmation: Breakout confirmation candle count (default: 1)
+        use_body: Use body (True) or wick (False) (default: False)
     """
 
     def __init__(
@@ -93,25 +93,25 @@ class RangeBreakout(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.period + self.breakout_confirmation + 2
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 5:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Periyot en az 5 olmalı"
+                "The period must be at least 5"
             )
         if self.consolidation_threshold <= 0:
             raise InvalidParameterError(
                 self.name, 'consolidation_threshold', self.consolidation_threshold,
-                "Konsolidasyon eşiği pozitif olmalı"
+                "Consolidation threshold must be positive"
             )
         if self.breakout_confirmation < 1:
             raise InvalidParameterError(
                 self.name, 'breakout_confirmation', self.breakout_confirmation,
-                "Breakout confirmation en az 1 olmalı"
+                "Breakout confirmation should be at least 1"
             )
         return True
 
@@ -129,11 +129,11 @@ class RangeBreakout(BaseIndicator):
             (range_high, range_low, range_height, range_pct)
         """
         if self.use_body:
-            # Gövde kullan (open/close)
+            # Use body (open/close)
             highs = np.maximum(open_[-self.period:], close[-self.period:])
             lows = np.minimum(open_[-self.period:], close[-self.period:])
         else:
-            # Wick kullan (high/low)
+            # Use wick (high/low)
             highs = high[-self.period:]
             lows = low[-self.period:]
 
@@ -145,7 +145,7 @@ class RangeBreakout(BaseIndicator):
         return range_high, range_low, range_height, range_pct
 
     def _is_consolidating(self, range_pct: float) -> bool:
-        """Konsolidasyon kontrolü"""
+        """Consolidation check"""
         return range_pct < self.consolidation_threshold
 
     def _detect_breakout(
@@ -157,28 +157,28 @@ class RangeBreakout(BaseIndicator):
         range_low: float
     ) -> tuple:
         """
-        Breakout tespit et
+        Detect breakout.
 
         Returns:
             (breakout_up, breakout_down, breakout_confirmed)
         """
-        # Son confirmation mumlarını kontrol et
+        # Check the last confirmation candles
         recent_highs = high[-self.breakout_confirmation:]
         recent_lows = low[-self.breakout_confirmation:]
         recent_closes = close[-self.breakout_confirmation:]
 
-        # Breakout kontrolü (tüm confirmation mumları range dışında olmalı)
+        # Breakout check (all confirmation candles must be outside the range)
         breakout_up = all(recent_closes > range_high)
         breakout_down = all(recent_closes < range_low)
 
-        # Breakout doğrulandı mı?
+        # Is the breakout confirmed?
         breakout_confirmed = breakout_up or breakout_down
 
         return breakout_up, breakout_down, breakout_confirmed
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        ⚡ VECTORIZED batch Range Breakout calculation - BACKTEST için
+        ⚡ VECTORIZED batch Range Breakout calculation - for BACKTEST
 
         Range Formula:
             Range High = MAX(High, period)
@@ -233,7 +233,7 @@ class RangeBreakout(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: Range seviyeleri ve breakout durumu
+            IndicatorResult: Range levels and breakout status.
         """
         high = data['high'].values
         low = data['low'].values
@@ -245,10 +245,10 @@ class RangeBreakout(BaseIndicator):
             high, low, open_, close
         )
 
-        # Konsolidasyon kontrolü
+        # Consolidation check
         is_consolidating = self._is_consolidating(range_pct)
 
-        # Breakout tespit et
+        # Detect breakout
         breakout_up, breakout_down, breakout_confirmed = self._detect_breakout(
             high, low, close, range_high, range_low
         )
@@ -260,7 +260,7 @@ class RangeBreakout(BaseIndicator):
         # Orta seviye (range middle)
         range_middle = (range_high + range_low) / 2
 
-        # Mevcut fiyatın range içindeki konumu
+        # The position of the current price within the range.
         if range_height > 0:
             position_pct = ((close[-1] - range_low) / range_height) * 100
         else:
@@ -268,13 +268,13 @@ class RangeBreakout(BaseIndicator):
 
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Sinyal belirle
+        # Define signal
         signal = self.get_signal(
             breakout_up, breakout_down, is_consolidating, position_pct
         )
         trend = self.get_trend(position_pct, breakout_up, breakout_down)
 
-        # Güç: Breakout mesafesi + konsolidasyon durumu
+        # Power: Breakout distance + consolidation status
         if breakout_up:
             strength = min(((close[-1] - range_high) / range_height) * 100, 100)
         elif breakout_down:
@@ -370,23 +370,23 @@ class RangeBreakout(BaseIndicator):
         position_pct: float
     ) -> SignalType:
         """
-        Range durumundan sinyal üret
+        Generate a signal from the range state.
 
         Args:
-            breakout_up: Yukarı breakout var mı?
-            breakout_down: Aşağı breakout var mı?
-            is_consolidating: Konsolidasyon var mı?
-            position_pct: Range içindeki konum (%)
+            breakout_up: Is there an upward breakout?
+            breakout_down: Is there a downward breakout?
+            is_consolidating: Is there consolidation?
+            position_pct: Position within the range (%)
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
         if breakout_up:
             return SignalType.STRONG_BUY
         elif breakout_down:
             return SignalType.STRONG_SELL
         elif is_consolidating:
-            # Konsolidasyon sırasında range alt/üstüne göre
+            # During consolidation, based on range lower/upper.
             if position_pct < 30:
                 return SignalType.BUY
             elif position_pct > 70:
@@ -404,12 +404,12 @@ class RangeBreakout(BaseIndicator):
         Range pozisyonundan trend belirle
 
         Args:
-            position_pct: Range içindeki konum (%)
-            breakout_up: Yukarı breakout
-            breakout_down: Aşağı breakout
+            position_pct: Position within the range (%).
+            breakout_up: Breakout upwards.
+            breakout_down: Breakout downwards.
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         if breakout_up or position_pct > 60:
             return TrendDirection.UP
@@ -418,7 +418,7 @@ class RangeBreakout(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'period': 20,
             'consolidation_threshold': 3.0,
@@ -443,26 +443,26 @@ __all__ = ['RangeBreakout']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """Range Breakout indikatör testi"""
+    """Range Breakout indicator test"""
 
     print("\n" + "="*60)
     print("RANGE BREAKOUT TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(100)]
 
-    # Konsolidasyon -> Breakout simüle et
+    # Consolidation -> Simulate breakout
     base_price = 100
     prices = [base_price]
 
-    # İlk 50 mum: Dar range (konsolidasyon)
+    # First 50 candles: Narrow range (consolidation)
     for i in range(49):
         change = np.random.randn() * 0.2
         prices.append(np.clip(prices[-1] + change, 99, 101))
@@ -486,15 +486,15 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     rb = RangeBreakout()
-    print(f"   [OK] Oluşturuldu: {rb}")
+    print(f"   [OK] Created: {rb}")
     print(f"   [OK] Kategori: {rb.category.value}")
-    print(f"   [OK] Gerekli periyot: {rb.get_required_periods()}")
+    print(f"   [OK] Required period: {rb.get_required_periods()}")
 
     result = rb(data)
     print(f"   [OK] Upper: {result.value['upper']}")
@@ -502,7 +502,7 @@ if __name__ == "__main__":
     print(f"   [OK] Lower: {result.value['lower']}")
     print(f"   [OK] Range %: {result.metadata['range_pct']:.2f}%")
     print(f"   [OK] Consolidating: {result.metadata['is_consolidating']}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
 
     # Test 2: Konsolidasyon testi
     print("\n3. Konsolidasyon testi (ilk 50 mum)...")
@@ -521,8 +521,8 @@ if __name__ == "__main__":
     print(f"   [OK] Breakout DOWN: {result.metadata['breakout_down']}")
     print(f"   [OK] Breakout Confirmed: {result.metadata['breakout_confirmed']}")
     print(f"   [OK] Target UP: {result.metadata['target_up']}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Signal: {result.signal.value}")
+    print(f"   [OK] Power: {result.strength:.2f}")
 
     # Test 4: Body vs Wick
     print("\n5. Body vs Wick testi...")
@@ -533,8 +533,8 @@ if __name__ == "__main__":
     print(f"   [OK] Body Range: {result_body.metadata['range_height']:.2f}")
     print(f"   [OK] Wick Range: {result_wick.metadata['range_height']:.2f}")
 
-    # Test 5: Farklı eşikler
-    print("\n6. Farklı eşik testi...")
+    # Test 5: Different thresholds
+    print("\n6. Different threshold test...")
     rb_tight = RangeBreakout(consolidation_threshold=2.0)
     result = rb_tight.calculate(consol_data)
     print(f"   [OK] Tight Threshold (2%): {result.metadata['is_consolidating']}")
@@ -557,24 +557,24 @@ if __name__ == "__main__":
         if result.metadata['breakout_confirmed']:
             breakout_periods.append(i)
 
-    print(f"   [OK] Toplam ölçüm: {(len(data) - 30) // 5}")
-    print(f"   [OK] Konsolidasyon sayısı: {len(consolidation_periods)}")
-    print(f"   [OK] Breakout sayısı: {len(breakout_periods)}")
+    print(f"   [OK] Total measurement: {(len(data) - 30) // 5}")
+    print(f"   [OK] Consolidation count: {len(consolidation_periods)}")
+    print(f"   [OK] Number of breakout periods: {len(breakout_periods)}")
 
-    # Test 7: İstatistikler
-    print("\n8. İstatistik testi...")
+    # Test 7: Statistics
+    print("\n8. Statistical test...")
     stats = rb.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 8: Metadata
     print("\n9. Metadata testi...")
     metadata = rb.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Tip: {metadata.indicator_type.value}")
     print(f"   [OK] Output names: {metadata.output_names}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

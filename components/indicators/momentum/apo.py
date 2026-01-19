@@ -2,21 +2,21 @@
 """
 indicators/momentum/apo.py - APO (Absolute Price Oscillator)
 
-Yazar: SuperBot Team
-Tarih: 2025-11-20
+Author: SuperBot Team
+Date: 2025-11-20
 Versiyon: 1.0.0
 
-APO (Absolute Price Oscillator) - Mutlak Fiyat Osilatörü.
-İki farklı periyotlu EMA arasındaki mutlak farkı hesaplar.
+APO (Absolute Price Oscillator) - Absolute Price Oscillator.
+Calculates the absolute difference between two EMA periods.
 
-Özellikler:
-- Hızlı ve yavaş EMA farkı
-- MACD'ye benzer ancak mutlak değer kullanır
-- Trend gücünü ve yönünü gösterir
-- Pozitif değer = Bullish momentum
-- Negatif değer = Bearish momentum
+Features:
+- Difference between fast and slow EMA
+- Similar to MACD but uses absolute value
+- Shows trend strength and direction
+- Positive value = Bullish momentum
+- Negative value = Bearish momentum
 
-Kullanım:
+Usage:
     from components.indicators import get_indicator_class
 
     APO = get_indicator_class('apo')
@@ -24,10 +24,10 @@ Kullanım:
     result = apo.calculate(data)
     print(result.value['apo'])
 
-Formül:
+Formula:
     APO = Fast EMA - Slow EMA
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -59,14 +59,14 @@ class APO(BaseIndicator):
     """
     APO - Absolute Price Oscillator
 
-    İki farklı periyotlu EMA arasındaki mutlak farkı hesaplar.
-    MACD'nin mutlak değer versiyonudur.
+    Calculates the absolute difference between two EMAs with different periods.
+    It is the absolute value version of MACD.
 
     Args:
-        fast_period: Hızlı EMA periyodu (varsayılan: 12)
-        slow_period: Yavaş EMA periyodu (varsayılan: 26)
-        logger: Logger instance (opsiyonel)
-        error_handler: Error handler (opsiyonel)
+        fast_period: Fast EMA period (default: 12)
+        slow_period: Slow EMA period (default: 26)
+        logger: Logger instance (optional)
+        error_handler: Error handler (optional)
     """
 
     def __init__(self, fast_period: int = 12, slow_period: int = 26, logger=None, error_handler=None):
@@ -83,34 +83,34 @@ class APO(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.slow_period * 2
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.fast_period >= self.slow_period:
             raise InvalidParameterError(
                 self.name, 'fast_period', self.fast_period,
-                "Hızlı periyot yavaş periyottan küçük olmalı"
+                "The fast period must be smaller than the slow period"
             )
         return True
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        Batch hesaplama (Backtest için)
+        Batch calculation (for backtesting)
 
-        Tüm veriyi vektörel olarak hesaplar.
-        TA-Lib uyumlu: SMA kullanır (varsayılan matype=0)
+        Calculates all data vectorially.
+        TA-Lib compatible: Uses SMA (default matype=0)
 
         Args:
             data: OHLCV DataFrame
 
         Returns:
-            pd.DataFrame: APO değerleri
+            pd.DataFrame: APO values
         """
         close = data['close']
 
-        # TA-Lib uyumlu: SMA kullan (EMA değil!)
+        # Compatible with TA-Lib: Use SMA (not EMA)!
         fast_ma = close.rolling(window=self.fast_period).mean()
         slow_ma = close.rolling(window=self.slow_period).mean()
 
@@ -121,11 +121,11 @@ class APO(BaseIndicator):
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
         """
-        Warmup buffer - state-based update için gerekli
+        Warmup buffer - required for state-based update.
 
         Args:
             data: OHLCV DataFrame (warmup verisi)
-            symbol: Sembol adı (opsiyonel, multi-symbol desteği için)
+            symbol: Symbol name (optional, for multi-symbol support)
         """
         super().warmup_buffer(data, symbol)
 
@@ -135,7 +135,7 @@ class APO(BaseIndicator):
 
         if len(data) >= self.slow_period:
             close = data['close'].values
-            # Son slow_period kadar veriyi tut
+            # Keep data until the end of the slow_period
             self._apo_state[buffer_key] = {
                 'close_buffer': list(close[-self.slow_period:]),
                 'last_close': close[-1]
@@ -147,10 +147,10 @@ class APO(BaseIndicator):
 
         Args:
             candle: Yeni mum verisi (dict)
-            symbol: Sembol adı (opsiyonel)
+            symbol: Symbol name (optional)
 
         Returns:
-            IndicatorResult: Güncel APO değeri
+            IndicatorResult: Current APO value
         """
         # Support both dict and list/tuple formats
         if isinstance(candle, dict):
@@ -180,13 +180,13 @@ class APO(BaseIndicator):
                 slow_ma = np.mean(close_buffer[-self.slow_period:])
                 apo_value = fast_ma - slow_ma
 
-                # State güncelle
+                # Update state
                 self._apo_state[buffer_key] = {
                     'close_buffer': close_buffer,
                     'last_close': close_val
                 }
 
-                # Sinyal ve trend belirleme
+                # Signal and trend determination
                 if apo_value > 0:
                     signal = SignalType.BUY
                     trend = TrendDirection.UP
@@ -206,7 +206,7 @@ class APO(BaseIndicator):
                     metadata={'fast': self.fast_period, 'slow': self.slow_period}
                 )
 
-        # State yoksa yetersiz veri
+        # If state does not exist, insufficient data
         return IndicatorResult(
             value=0.0,
             timestamp=timestamp_val,
@@ -218,13 +218,13 @@ class APO(BaseIndicator):
 
     def calculate(self, data: pd.DataFrame) -> IndicatorResult:
         """
-        APO hesapla (son değer)
+        Calculate APO (final value)
 
         Args:
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: APO değeri
+            IndicatorResult: APO value
         """
         # Batch hesapla
         batch_result = self.calculate_batch(data)
@@ -236,7 +236,7 @@ class APO(BaseIndicator):
         apo_value = valid_values[-1]
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Sinyal ve trend belirleme
+        # Signal and trend determination
         if apo_value > 0:
             signal = SignalType.BUY
             trend = TrendDirection.UP
@@ -260,7 +260,7 @@ class APO(BaseIndicator):
         )
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {'fast_period': 12, 'slow_period': 26}
 
     def _get_output_names(self) -> list:
@@ -284,9 +284,9 @@ __all__ = ['APO']
 # ============================================================================
 
 if __name__ == "__main__":
-    """APO indikatör testi"""
+    """APO indicator test"""
 
-    # Windows console UTF-8 desteği
+    # Windows console UTF-8 support
     import sys
     import io
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
@@ -295,8 +295,8 @@ if __name__ == "__main__":
     print("🧪 APO (ABSOLUTE PRICE OSCILLATOR) TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(150)]
 
@@ -315,31 +315,31 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in range(150)]
     })
 
-    print(f"   ✅ {len(data)} mum oluşturuldu")
-    print(f"   ✅ Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   ✅ {len(data)} candles created")
+    print(f"   ✅ Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     apo = APO(fast_period=12, slow_period=26)
-    print(f"   ✅ Oluşturuldu: {apo}")
+    print(f"   ✅ Created: {apo}")
     print(f"   ✅ Kategori: {apo.category.value}")
-    print(f"   ✅ Gerekli periyot: {apo.get_required_periods()}")
+    print(f"   ✅ Required period: {apo.get_required_periods()}")
 
     result = apo(data)
     print(f"   ✅ APO: {result.value['apo']}")
-    print(f"   ✅ Sinyal: {result.signal.value}")
+    print(f"   ✅ Signal: {result.signal.value}")
     print(f"   ✅ Trend: {result.trend.name}")
-    print(f"   ✅ Güç: {result.strength:.2f}")
+    print(f"   ✅ Power: {result.strength:.2f}")
 
     # Test 2: Batch Calculation
     print("\n3. Batch Calculation Testi...")
     batch_result = apo.calculate_batch(data)
     print(f"   ✅ Batch result shape: {batch_result.shape}")
-    print(f"   ✅ Son 5 APO değeri:")
+    print(f"   ✅ Last 5 APO values:")
     print(batch_result['apo'].tail())
 
-    # Test 3: Farklı periyot kombinasyonları
-    print("\n4. Farklı periyot testi...")
+    # Test 3: Different period combinations
+    print("\n4. Different period test...")
     configs = [(5, 10), (12, 26), (20, 50)]
     for fast, slow in configs:
         apo_test = APO(fast_period=fast, slow_period=slow)
@@ -351,16 +351,16 @@ if __name__ == "__main__":
     batch_result = apo.calculate_batch(data)
     apo_values = batch_result['apo'].dropna()
 
-    # Crossover sayısı
+    # Crossover count
     crossovers = 0
     for i in range(1, len(apo_values)):
         if (apo_values.iloc[i-1] < 0 and apo_values.iloc[i] > 0) or \
            (apo_values.iloc[i-1] > 0 and apo_values.iloc[i] < 0):
             crossovers += 1
 
-    print(f"   ✅ Toplam zero-line crossover: {crossovers}")
+    print(f"   ✅ Total zero-line crossover: {crossovers}")
     print(f"   ✅ Pozitif APO barlar: {sum(apo_values > 0)}")
-    print(f"   ✅ Negatif APO barlar: {sum(apo_values < 0)}")
+    print(f"   ✅ Negative APO bars: {sum(apo_values < 0)}")
     print(f"   ✅ Ortalama APO: {apo_values.mean():.4f}")
     print(f"   ✅ APO std sapma: {apo_values.std():.4f}")
 
@@ -368,10 +368,10 @@ if __name__ == "__main__":
     print("\n6. Validasyon testi...")
     try:
         invalid_apo = APO(fast_period=26, slow_period=12)
-        print("   ❌ Hata: Geçersiz periyot kombinasyonu kabul edildi!")
+        print("   ❌ Error: Invalid period combination accepted!")
     except InvalidParameterError as e:
-        print(f"   ✅ Period validasyonu başarılı: {e}")
+        print(f"   ✅ Period validation successful: {e}")
 
     print("\n" + "="*60)
-    print("✅ TÜM TESTLER BAŞARILI!")
+    print("✅ ALL TESTS PASSED!")
     print("="*60 + "\n")

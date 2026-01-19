@@ -33,14 +33,14 @@ def calculate_rsi_values(close: np.ndarray, period: int = 14) -> np.ndarray:
     """
     RSI hesapla - Wilder's smoothed method (TA-Lib uyumlu)
 
-    Bu fonksiyon StochasticRSI gibi diğer indikatörler tarafından kullanılabilir.
+    This function can be used by other indicators such as StochasticRSI.
 
     Args:
-        close: Kapanış fiyatları (numpy array)
-        period: RSI periyodu (varsayılan: 14)
+        close: Closing prices (numpy array)
+        period: RSI period (default: 14)
 
     Returns:
-        RSI değerleri (numpy array)
+        RSI values (numpy array)
     """
     if len(close) < period + 1:
         return np.full(len(close), np.nan)
@@ -301,7 +301,7 @@ class RSI(BaseIndicator):
             symbol: Symbol identifier (for multi-symbol support)
 
         Returns:
-            IndicatorResult: Güncel RSI değeri
+            IndicatorResult: Current RSI value
         """
         # Support both dict and list/tuple formats
         if isinstance(candle, dict):

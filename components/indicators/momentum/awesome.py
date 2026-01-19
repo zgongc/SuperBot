@@ -5,18 +5,18 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    Awesome Oscillator (AO) - Bill Williams tarafından geliştirildi
-    Aralık: Sınırsız (pozitif ve negatif değerler)
-    Pozitif değer: Bullish momentum
-    Negatif değer: Bearish momentum
-    Histogram renkleri: Yeşil (artıyor), Kırmızı (azalıyor)
+Description:
+    Awesome Oscillator (AO) - Developed by Bill Williams
+    Range: Unlimited (positive and negative values)
+    Positive value: Bullish momentum
+    Negative value: Bearish momentum
+    Histogram colors: Green (increasing), Red (decreasing)
 
-Formül:
+Formula:
     Median Price = (High + Low) / 2
     AO = SMA(Median Price, 5) - SMA(Median Price, 34)
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -38,11 +38,11 @@ class AwesomeOscillator(BaseIndicator):
     """
     Awesome Oscillator
 
-    Market momentum'unu ölçer. İki farklı periyotlu SMA arasındaki farkı kullanır.
-    Parametresiz indikatör (5 ve 34 periyot sabittir).
+    Measures market momentum. Uses the difference between two different period SMAs.
+    Indicator with no parameters (5 and 34 periods are fixed).
 
-    Sabit parametreler:
-        fast_period: 5 (SMA kısa)
+    Constant parameters:
+        fast_period: 5 (short SMA)
         slow_period: 34 (SMA uzun)
     """
 
@@ -53,7 +53,7 @@ class AwesomeOscillator(BaseIndicator):
         logger=None,
         error_handler=None
     ):
-        # Sabit periyotlar (Bill Williams'ın orijinal tanımı)
+        # Fixed periods (Bill Williams's original definition)
         self.fast_period = fast_period
         self.slow_period = slow_period
 
@@ -70,12 +70,12 @@ class AwesomeOscillator(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.slow_period
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula (sabit değerler)"""
-        # Sabit değerler olduğu için her zaman True
+        """Validate parameters (constant values)"""
+        # Since these are constant values, they are always True
         return True
 
     def calculate(self, data: pd.DataFrame) -> IndicatorResult:
@@ -86,7 +86,7 @@ class AwesomeOscillator(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: AO değeri
+            IndicatorResult: AO value
         """
         high = data['high'].values
         low = data['low'].values
@@ -94,14 +94,14 @@ class AwesomeOscillator(BaseIndicator):
         # Median Price hesapla
         median_price = (high + low) / 2
 
-        # SMA(5) ve SMA(34) hesapla
+        # Calculate SMA(5) and SMA(34)
         sma_fast = np.mean(median_price[-self.fast_period:])
         sma_slow = np.mean(median_price[-self.slow_period:])
 
         # Awesome Oscillator
         ao_value = sma_fast - sma_slow
 
-        # Önceki AO değeri (momentum değişimi için)
+        # Previous AO value (for momentum change)
         if len(median_price) > self.slow_period:
             prev_median = median_price[:-1]
             prev_sma_fast = np.mean(prev_median[-self.fast_period:])
@@ -120,7 +120,7 @@ class AwesomeOscillator(BaseIndicator):
             timestamp=timestamp,
             signal=self.get_signal(ao_value),
             trend=self.get_trend(ao_value),
-            strength=min(abs(ao_value) * 10, 100),  # 0-100 arası normalize et
+            strength=min(abs(ao_value) * 10, 100),  # Normalize to a range of 0-100
             metadata={
                 'fast_period': self.fast_period,
                 'slow_period': self.slow_period,
@@ -133,7 +133,7 @@ class AwesomeOscillator(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        ⚡ VECTORIZED batch Awesome Oscillator calculation - BACKTEST için
+        ⚡ VECTORIZED batch Awesome Oscillator calculation - for BACKTEST
 
         AO Formula:
             Median Price = (High + Low) / 2
@@ -175,7 +175,7 @@ class AwesomeOscillator(BaseIndicator):
             symbol: Symbol identifier (for multi-symbol support)
 
         Returns:
-            IndicatorResult: Güncel indicator değeri
+            IndicatorResult: The current indicator value.
         """
         from collections import deque
 
@@ -220,31 +220,31 @@ class AwesomeOscillator(BaseIndicator):
 
     def get_signal(self, value: float) -> SignalType:
         """
-        AO değerinden sinyal üret
+        Generate a signal from the AO value.
 
         Args:
-            value: AO değeri
+            value: AO value
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
         # Pozitif AO: Bullish
         if value > 0:
             return SignalType.BUY
-        # Negatif AO: Bearish
+        # Negative AO: Bearish
         elif value < 0:
             return SignalType.SELL
         return SignalType.NEUTRAL
 
     def get_trend(self, value: float) -> TrendDirection:
         """
-        AO değerinden trend belirle
+        Determine the trend based on the AO value.
 
         Args:
-            value: AO değeri
+            value: AO value
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         if value > 0:
             return TrendDirection.UP
@@ -253,7 +253,7 @@ class AwesomeOscillator(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'fast_period': 5,
             'slow_period': 34
@@ -272,22 +272,22 @@ __all__ = ['AwesomeOscillator']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """Awesome Oscillator indikatör testi"""
+    """Awesome Oscillator indicator test"""
 
     print("\n" + "="*60)
     print("AWESOME OSCILLATOR TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating example OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(50)]
 
-    # Fiyat hareketini simüle et
+    # Simulate price movement
     base_price = 100
     prices = [base_price]
     for i in range(49):
@@ -303,35 +303,35 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     ao = AwesomeOscillator()
-    print(f"   [OK] Oluşturuldu: {ao}")
+    print(f"   [OK] Created: {ao}")
     print(f"   [OK] Kategori: {ao.category.value}")
-    print(f"   [OK] Gerekli periyot: {ao.get_required_periods()}")
+    print(f"   [OK] Required period: {ao.get_required_periods()}")
     print(f"   [OK] Fast period: {ao.fast_period}, Slow period: {ao.slow_period}")
 
     result = ao(data)
-    print(f"   [OK] AO Değeri: {result.value}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] AO Value: {result.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
-    print(f"   [OK] Momentum yönü: {result.metadata['momentum_direction']}")
-    print(f"   [OK] Değişim: {result.metadata['change']}")
+    print(f"   [OK] Power: {result.strength:.2f}")
+    print(f"   [OK] Momentum direction: {result.metadata['momentum_direction']}")
+    print(f"   [OK] Change: {result.metadata['change']}")
 
-    # Test 2: Momentum değişimi
-    print("\n3. Momentum değişimi testi...")
+    # Test 2: Momentum change
+    print("\n3. Momentum change test...")
     for i in range(-5, 0):
         test_data = data.iloc[:len(data)+i]
         if len(test_data) >= ao.get_required_periods():
             result = ao.calculate(test_data)
-            print(f"   [OK] Index {i}: AO={result.value:.4f}, Yön={result.metadata['momentum_direction']}")
+            print(f"   [OK] Index {i}: AO={result.value:.4f}, Direction={result.metadata['momentum_direction']}")
 
-    # Test 3: Yükselen trend
-    print("\n4. Yükselen trend testi...")
+    # Test 3: Rising trend
+    print("\n4. Rising trend test...")
     up_data = data.copy()
     for i in range(20):
         idx = up_data.index[-(20-i)]
@@ -339,13 +339,13 @@ if __name__ == "__main__":
         up_data.loc[idx, 'low'] = up_data.loc[idx, 'low'] + i * 0.3
 
     result_up = ao.calculate(up_data)
-    print(f"   [OK] Yükselen trend AO: {result_up.value:.4f}")
-    print(f"   [OK] Sinyal: {result_up.signal.value}")
+    print(f"   [OK] Rising trend AO: {result_up.value:.4f}")
+    print(f"   [OK] Signal: {result_up.signal.value}")
     print(f"   [OK] Trend: {result_up.trend.name}")
-    print(f"   [OK] Momentum yönü: {result_up.metadata['momentum_direction']}")
+    print(f"   [OK] Momentum direction: {result_up.metadata['momentum_direction']}")
 
-    # Test 4: Düşen trend
-    print("\n5. Düşen trend testi...")
+    # Test 4: Declining trend
+    print("\n5. Downtrend test...")
     down_data = data.copy()
     for i in range(20):
         idx = down_data.index[-(20-i)]
@@ -353,27 +353,27 @@ if __name__ == "__main__":
         down_data.loc[idx, 'low'] = down_data.loc[idx, 'low'] - i * 0.3
 
     result_down = ao.calculate(down_data)
-    print(f"   [OK] Düşen trend AO: {result_down.value:.4f}")
-    print(f"   [OK] Sinyal: {result_down.signal.value}")
+    print(f"   [OK] Declining trend AO: {result_down.value:.4f}")
+    print(f"   [OK] Signal: {result_down.signal.value}")
     print(f"   [OK] Trend: {result_down.trend.name}")
-    print(f"   [OK] Momentum yönü: {result_down.metadata['momentum_direction']}")
+    print(f"   [OK] Momentum direction: {result_down.metadata['momentum_direction']}")
 
-    # Test 5: Sıfır geçişi (zero-line cross)
-    print("\n6. Sıfır geçişi testi...")
+    # Test 5: Zero-line cross
+    print("\n6. Zero crossing test...")
     neutral_data = data.copy()
-    # Median price'ı sabitle
+    # Fix the median price
     median = (neutral_data['high'] + neutral_data['low']) / 2
     avg_median = median.mean()
     neutral_data['high'] = avg_median + 0.1
     neutral_data['low'] = avg_median - 0.1
 
     result_neutral = ao.calculate(neutral_data)
-    print(f"   [OK] Nötr AO: {result_neutral.value:.4f}")
-    print(f"   [OK] Sinyal: {result_neutral.signal.value}")
+    print(f"   [OK] Neutral AO: {result_neutral.value:.4f}")
+    print(f"   [OK] Signal: {result_neutral.signal.value}")
 
-    # Test 6: Twin Peaks pattern (gelişmiş kullanım)
-    print("\n7. Pattern tanıma testi...")
-    # Son 10 AO değerini hesapla
+    # Test 6: Twin Peaks pattern (advanced usage)
+    print("\n7. Pattern recognition test...")
+    # Calculate the last 10 AO values
     ao_values = []
     for i in range(-10, 0):
         test_data = data.iloc[:len(data)+i]
@@ -382,24 +382,24 @@ if __name__ == "__main__":
             ao_values.append(result.value)
 
     if len(ao_values) >= 3:
-        print(f"   [OK] Son 10 AO değeri hesaplandı")
-        print(f"   [OK] İlk 3: {[round(v, 4) for v in ao_values[:3]]}")
+        print(f"   [OK] The last 10 AO values have been calculated")
+        print(f"   [OK] First 3: {[round(v, 4) for v in ao_values[:3]]}")
         print(f"   [OK] Son 3: {[round(v, 4) for v in ao_values[-3:]]}")
 
-    # Test 7: İstatistikler
-    print("\n8. İstatistik testi...")
+    # Test 7: Statistics
+    print("\n8. Statistical test...")
     stats = ao.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 8: Metadata
     print("\n9. Metadata testi...")
     metadata = ao.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

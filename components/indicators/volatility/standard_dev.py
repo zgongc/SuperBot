@@ -5,16 +5,16 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
+Description:
     Standard Deviation - Standart Sapma
-    Fiyat dağılımının ne kadar yayıldığını ölçer
-    Yüksek değer = Yüksek volatilite
-    Düşük değer = Düşük volatilite
+    Measures how spread out the price distribution is.
+    High value = High volatility
+    Low value = Low volatility
 
-Formül:
+Formula:
     StdDev = sqrt(sum((close - mean)^2) / period)
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -36,11 +36,11 @@ class StandardDeviation(BaseIndicator):
     """
     Standard Deviation
 
-    Fiyat hareketlerinin ortalamadan sapmasını ölçerek volatiliteyi belirler.
-    Risk yönetimi ve pozisyon büyüklüğü için kullanılır.
+    It determines volatility by measuring the deviation of price movements from the average.
+    It is used for risk management and position sizing.
 
     Args:
-        period: Hesaplama periyodu (varsayılan: 20)
+        period: Calculation period (default: 20)
     """
 
     def __init__(
@@ -63,15 +63,15 @@ class StandardDeviation(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.period
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 2:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Periyot en az 2 olmalı"
+                "The period must be at least 2"
             )
         return True
 
@@ -83,28 +83,28 @@ class StandardDeviation(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: Standard Deviation değeri
+            IndicatorResult: Standard Deviation value
         """
         close = data['close'].values
 
-        # Son period kadar veriyi al
+        # Get data up to the last period
         recent_close = close[-self.period:]
 
         # Standart sapma hesapla
         std_value = np.std(recent_close, ddof=0)
 
-        # Ortalama ve varyasyon katsayısı
+        # Average and variation coefficient
         mean_value = np.mean(recent_close)
         current_price = close[-1]
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Varyasyon katsayısı (Coefficient of Variation)
+        # Coefficient of Variation
         if mean_value != 0:
             cv = (std_value / mean_value) * 100
         else:
             cv = 0
 
-        # Volatilite seviyesi (z-score benzeri)
+        # Volatility level (similar to z-score)
         if std_value != 0:
             deviation_from_mean = abs(current_price - mean_value) / std_value
         else:
@@ -117,12 +117,12 @@ class StandardDeviation(BaseIndicator):
             value=round(std_value, 8),
             timestamp=timestamp,
             signal=self.get_signal(cv),
-            trend=TrendDirection.NEUTRAL,  # Standart sapma trend göstermez
-            strength=min(cv * 10, 100),  # 0-100 arası normalize et
+            trend=TrendDirection.NEUTRAL,  # Standard deviation does not indicate a trend
+            strength=min(cv * 10, 100),  # Normalize to the range of 0-100
             metadata={
                 'period': self.period,
                 'mean': round(mean_value, 8),
-                'cv': round(cv, 2),  # Varyasyon katsayısı (%)
+                'cv': round(cv, 2),  # Coefficient of variation (%)
                 'z_score': round(deviation_from_mean, 2),
                 'price': round(current_price, 8)
             }
@@ -130,7 +130,7 @@ class StandardDeviation(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.Series:
         """
-        ⚡ VECTORIZED batch Standard Deviation calculation - BACKTEST için
+        ⚡ VECTORIZED batch Standard Deviation calculation - for BACKTEST
 
         StdDev Formula:
             StdDev = sqrt(sum((close - mean)^2) / period)
@@ -157,11 +157,11 @@ class StandardDeviation(BaseIndicator):
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
         """
-        Warmup buffer - update() için gerekli
+        Warmup buffer - required for update().
 
         Args:
             data: OHLCV DataFrame (warmup verisi)
-            symbol: Sembol adı (opsiyonel)
+            symbol: Symbol name (optional)
         """
         super().warmup_buffer(data, symbol)
 
@@ -207,26 +207,26 @@ class StandardDeviation(BaseIndicator):
 
     def get_signal(self, cv: float) -> SignalType:
         """
-        Varyasyon katsayısından sinyal üret
+        Generate a signal from the variation coefficient.
 
         Args:
-            cv: Varyasyon katsayısı (%)
+            cv: Coefficient of variation (%)
 
         Returns:
-            SignalType: Volatilite seviyesine göre sinyal
+            SignalType: Signal based on volatility level.
         """
-        # Yüksek volatilite: dikkatli ol
+        # High volatility: be careful
         if cv > 5.0:
-            return SignalType.SELL  # Yüksek risk
+            return SignalType.SELL  # High risk
         # Normal volatilite
         elif cv > 2.0:
             return SignalType.HOLD
-        # Düşük volatilite: potansiyel fırsat
+        # Low volatility: potential opportunity
         else:
             return SignalType.BUY
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'period': 20
         }
@@ -244,22 +244,22 @@ __all__ = ['StandardDeviation']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """Standard Deviation indikatör testi"""
+    """Standard Deviation indicator test"""
 
     print("\n" + "="*60)
     print("STANDARD DEVIATION TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(30)]
 
-    # Fiyat hareketini simüle et
+    # Simulate price movement
     base_price = 100
     prices = [base_price]
     for i in range(29):
@@ -275,49 +275,49 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     std = StandardDeviation(period=20)
-    print(f"   [OK] Oluşturuldu: {std}")
+    print(f"   [OK] Created: {std}")
     print(f"   [OK] Kategori: {std.category.value}")
-    print(f"   [OK] Gerekli periyot: {std.get_required_periods()}")
+    print(f"   [OK] Required period: {std.get_required_periods()}")
 
     result = std(data)
-    print(f"   [OK] StdDev Değeri: {result.value}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Standard Deviation Value: {result.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
+    print(f"   [OK] Power: {result.strength:.2f}")
     print(f"   [OK] Metadata: {result.metadata}")
 
-    # Test 2: Farklı periyotlar
-    print("\n3. Farklı periyot testi...")
+    # Test 2: Different periods
+    print("\n3. Different period test...")
     for period in [10, 20, 30]:
         std_test = StandardDeviation(period=period)
         result = std_test.calculate(data)
         print(f"   [OK] StdDev({period}): {result.value:.4f} | CV: {result.metadata['cv']:.2f}% | Z-Score: {result.metadata['z_score']:.2f}")
 
-    # Test 3: Düşük volatilite testi
-    print("\n4. Düşük volatilite testi...")
+    # Test 3: Low volatility test
+    print("\n4. Low volatility test...")
     low_vol_data = pd.DataFrame({
         'timestamp': timestamps,
         'open': [100.0] * 30,
         'high': [100.1] * 30,
         'low': [99.9] * 30,
-        'close': [100.0 + i * 0.01 for i in range(30)],  # Çok düşük değişim
+        'close': [100.0 + i * 0.01 for i in range(30)],  # Very small change
         'volume': [1000] * 30
     })
     result = std.calculate(low_vol_data)
-    print(f"   [OK] Düşük Vol StdDev: {result.value:.6f}")
+    print(f"   [OK] Low Voltage Standard Deviation: {result.value:.6f}")
     print(f"   [OK] CV: {result.metadata['cv']:.4f}%")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
 
-    # Test 4: Yüksek volatilite testi
-    print("\n5. Yüksek volatilite testi...")
+    # Test 4: High volatility test
+    print("\n5. High volatility test...")
     high_vol_prices = [100]
     for i in range(29):
-        change = np.random.randn() * 10  # Yüksek volatilite
+        change = np.random.randn() * 10  # High volatility
         high_vol_prices.append(high_vol_prices[-1] + change)
 
     high_vol_data = pd.DataFrame({
@@ -329,25 +329,25 @@ if __name__ == "__main__":
         'volume': [1000] * 30
     })
     result = std.calculate(high_vol_data)
-    print(f"   [OK] Yüksek Vol StdDev: {result.value:.4f}")
+    print(f"   [OK] High Voltage Standard Deviation: {result.value:.4f}")
     print(f"   [OK] CV: {result.metadata['cv']:.2f}%")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
 
-    # Test 5: İstatistikler
-    print("\n6. İstatistik testi...")
+    # Test 5: Statistics
+    print("\n6. Statistical test...")
     stats = std.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 6: Metadata
     print("\n7. Metadata testi...")
     metadata = std.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Tip: {metadata.indicator_type.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

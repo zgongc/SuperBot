@@ -5,22 +5,22 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    WMA (Weighted Moving Average) - Ağırlıklı hareketli ortalama
-    Son fiyatlara daha fazla ağırlık veren trend indikatörü
+Description:
+    WMA (Weighted Moving Average) - A weighted moving average
+    A trend indicator that gives more weight to recent prices
     EMA'dan daha basit, SMA'dan daha responsive
 
-    Kullanım:
-    - Trend yönünü belirleme
-    - Son fiyat hareketlerine daha hızlı tepki
-    - Destek/direnç seviyeleri
+    Usage:
+    - Determining the trend direction
+    - Reacting faster to recent price movements
+    - Support/resistance levels
 
-Formül:
+Formula:
     WMA = (n*P1 + (n-1)*P2 + ... + 1*Pn) / (n + (n-1) + ... + 1)
     WMA = Sum(Price[i] * (n - i)) / Sum(n - i)
-    n: Periyot, P: Fiyat
+    n: Period, P: Price
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -42,11 +42,11 @@ class WMA(BaseIndicator):
     """
     Weighted Moving Average
 
-    Yakın geçmişteki fiyatlara doğrusal olarak artan ağırlık verir.
-    En son fiyat en yüksek ağırlığa sahiptir.
+    It assigns weights that increase linearly with recent prices.
+    The most recent price has the highest weight.
 
     Args:
-        period: WMA periyodu (varsayılan: 20)
+        period: WMA period (default: 20)
     """
 
     def __init__(
@@ -69,15 +69,15 @@ class WMA(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.period
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 1:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Periyot pozitif olmalı"
+                "The period must be positive"
             )
         return True
 
@@ -89,7 +89,7 @@ class WMA(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: WMA değeri
+            IndicatorResult: WMA value
         """
         close = data['close'].values
 
@@ -98,7 +98,7 @@ class WMA(BaseIndicator):
         weights = np.arange(1, self.period + 1)
         wma_value = np.sum(prices * weights) / np.sum(weights)
 
-        # Mevcut fiyat
+        # Current price
         current_price = close[-1]
 
         timestamp = int(data.iloc[-1]['timestamp'])
@@ -122,7 +122,7 @@ class WMA(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.Series:
         """
-        ⚡ VECTORIZED batch WMA calculation - BACKTEST için
+        ⚡ VECTORIZED batch WMA calculation - for BACKTEST
 
         WMA Formula:
             WMA = Sum(Price[i] * Weight[i]) / Sum(Weight[i])
@@ -157,11 +157,11 @@ class WMA(BaseIndicator):
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
         """
-        Warmup buffer - update() için gerekli
+        Warmup buffer - required for update().
 
         Args:
             data: OHLCV DataFrame (warmup verisi)
-            symbol: Sembol adı (opsiyonel)
+            symbol: Symbol name (optional)
         """
         super().warmup_buffer(data, symbol)
 
@@ -207,14 +207,14 @@ class WMA(BaseIndicator):
 
     def get_signal(self, price: float, wma: float) -> SignalType:
         """
-        WMA'dan sinyal üret
+        Generate a signal from WMA.
 
         Args:
-            price: Mevcut fiyat
-            wma: WMA değeri
+            price: Current price
+            wma: WMA value
 
         Returns:
-            SignalType: BUY (fiyat WMA üstüne çıkınca), SELL (altına ininse)
+            SignalType: BUY (when the price goes above the WMA), SELL (when it goes below)
         """
         if price > wma:
             return SignalType.BUY
@@ -227,11 +227,11 @@ class WMA(BaseIndicator):
         WMA'dan trend belirle
 
         Args:
-            price: Mevcut fiyat
-            wma: WMA değeri
+            price: Current price
+            wma: WMA value
 
         Returns:
-            TrendDirection: UP (fiyat > WMA), DOWN (fiyat < WMA)
+            TrendDirection: UP (price > WMA), DOWN (price < WMA)
         """
         if price > wma:
             return TrendDirection.UP
@@ -240,12 +240,12 @@ class WMA(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _calculate_strength(self, price: float, wma: float) -> float:
-        """Sinyal gücünü hesapla (0-100)"""
+        """Calculate signal strength (0-100)"""
         distance_pct = abs((price - wma) / wma * 100)
         return min(distance_pct * 20, 100)
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'period': 20
         }
@@ -263,22 +263,22 @@ __all__ = ['WMA']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """WMA indikatör testi"""
+    """WMA indicator test"""
 
     print("\n" + "="*60)
     print("WMA (WEIGHTED MOVING AVERAGE) TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating example OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(50)]
 
-    # Trend simülasyonu
+    # Trend simulation
     base_price = 100
     prices = [base_price]
     for i in range(49):
@@ -295,61 +295,61 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     wma = WMA(period=20)
-    print(f"   [OK] Oluşturuldu: {wma}")
+    print(f"   [OK] Created: {wma}")
     print(f"   [OK] Kategori: {wma.category.value}")
-    print(f"   [OK] Gerekli periyot: {wma.get_required_periods()}")
+    print(f"   [OK] Required period: {wma.get_required_periods()}")
 
     result = wma(data)
-    print(f"   [OK] WMA Değeri: {result.value}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] WMA Value: {result.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Power: {result.strength:.2f}")
     print(f"   [OK] Metadata: {result.metadata}")
 
-    # Test 2: SMA vs WMA karşılaştırması
-    print("\n3. WMA vs SMA karşılaştırma testi...")
+    # Test 2: SMA vs WMA comparison
+    print("\n3. WMA vs SMA comparison test...")
     sma_value = np.mean(data['close'].values[-20:])
     print(f"   [OK] SMA(20): {sma_value:.2f}")
     print(f"   [OK] WMA(20): {result.value:.2f}")
     print(f"   [OK] Fark: {abs(result.value - sma_value):.2f}")
-    print(f"   [OK] WMA son fiyatlara daha fazla ağırlık verir")
+    print(f"   [OK] WMA gives more weight to the latest prices")
 
-    # Test 3: Farklı periyotlar
-    print("\n4. Farklı periyot testi...")
+    # Test 3: Different periods
+    print("\n4. Different period test...")
     for period in [10, 20, 50]:
         wma_test = WMA(period=period)
         result = wma_test.calculate(data)
-        print(f"   [OK] WMA({period}): {result.value:.2f} | Sinyal: {result.signal.value}")
+        print(f"   [OK] WMA({period}): {result.value:.2f} | Signal: {result.signal.value}")
 
-    # Test 4: Ağırlık dağılımı
-    print("\n5. Ağırlık dağılımı testi...")
+    # Test 4: Weight distribution
+    print("\n5. Weight distribution test...")
     period = 10
     weights = np.arange(1, period + 1)
     print(f"   [OK] Period: {period}")
-    print(f"   [OK] Ağırlıklar: {weights.tolist()}")
-    print(f"   [OK] Toplam ağırlık: {np.sum(weights)}")
-    print(f"   [OK] Son fiyat ağırlığı: {weights[-1]} / {np.sum(weights)} = {weights[-1]/np.sum(weights):.2%}")
+    print(f"   [OK] Weights: {weights.tolist()}")
+    print(f"   [OK] Total weight: {np.sum(weights)}")
+    print(f"   [OK] Final price weight: {weights[-1]} / {np.sum(weights)} = {weights[-1]/np.sum(weights):.2%}")
 
-    # Test 5: İstatistikler
-    print("\n6. İstatistik testi...")
+    # Test 5: Statistics
+    print("\n6. Statistical test...")
     stats = wma.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 6: Metadata
     print("\n7. Metadata testi...")
     metadata = wma.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

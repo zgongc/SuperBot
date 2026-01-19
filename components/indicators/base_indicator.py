@@ -7,18 +7,18 @@ Author: SuperBot Team
 
 Description:
     Abstract base class for all technical indicators.
-    Tüm indikatörler bu sınıftan türeyecek.
+    All indicators will be derived from this class.
 
-    Görevleri:
+    Tasks:
     - Input validation (OHLCV data)
-    - Period checking (yeterli veri var mı?)
+    - Period checking (is there enough data?)
     - Error handling integration
     - Logger integration
     - Common utilities (type conversion, etc.)
-    - Abstract calculate() metodu (realtime için)
-    - Abstract calculate_batch() metodu (backtest için - ZORUNLU!)
+    - Abstract calculate() method (for realtime)
+    - Abstract calculate_batch() method (for backtest - MANDATORY!)
 
-    Kullanım:
+    Usage:
         class RSI(BaseIndicator):
             def __init__(self, period: int = 14):
                 super().__init__(
@@ -29,11 +29,11 @@ Description:
                 self.period = period
 
             def calculate(self, data: pd.DataFrame) -> IndicatorResult:
-                # Realtime - son bar için
+                # Realtime - for the last bar
                 pass
 
             def calculate_batch(self, data: pd.DataFrame) -> pd.Series:
-                # Backtest - TÜM barlar için (VECTORIZED!)
+                # Backtest - For ALL bars (VECTORIZED!)
                 pass
 
 Dependencies:
@@ -71,15 +71,15 @@ class BaseIndicator(ABC):
     """
     Abstract base class for all indicators
     
-    Her indikatör bu class'tan türemeli ve calculate() metodunu implement etmeli.
+    Each indicator should inherit from this class and implement the calculate() method.
     
     Attributes:
-        name: Indikatör adı (örn: 'rsi', 'ema')
+        name: Indicator name (e.g., 'rsi', 'ema')
         category: Kategori (momentum, trend, etc.)
-        indicator_type: Output tipi (single_value, bands, etc.)
-        params: Parametreler dict
-        logger: Logger instance (opsiyonel)
-        error_handler: ErrorHandler instance (opsiyonel)
+        indicator_type: Output type (single_value, bands, etc.)
+        params: Parameters dictionary
+        logger: Logger instance (optional)
+        error_handler: ErrorHandler instance (optional)
     """
     
     def __init__(
@@ -95,10 +95,10 @@ class BaseIndicator(ABC):
         Initialize base indicator
         
         Args:
-            name: Indikatör adı
+            name: Indicator name
             category: Kategori
-            indicator_type: Output tipi
-            params: Parametreler
+            indicator_type: Output type
+            params: Parameters
             logger: Logger instance
             error_handler: ErrorHandler instance
         """
@@ -121,15 +121,15 @@ class BaseIndicator(ABC):
         self._validate_params()
     
     # ========================================================================
-    # ABSTRACT METHODS (Her indikatör implement etmeli)
+    # ABSTRACT METHODS (Each indicator must implement)
     # ========================================================================
     
     @abstractmethod
     def calculate(self, data: pd.DataFrame) -> IndicatorResult:
         """
-        Indikatör hesaplama - REALTIME için (ZORUNLU)
+        Indicator calculation - for REALTIME (MANDATORY)
 
-        Son bar için hesaplama yapar. Live trading'de kullanılır.
+        Performs calculations for the last bar. Used in live trading.
 
         Important:
             Child classes SHOULD call self.warmup_buffer(data) at the end
@@ -149,32 +149,32 @@ class BaseIndicator(ABC):
             data: OHLCV DataFrame (columns: timestamp, open, high, low, close, volume)
 
         Returns:
-            IndicatorResult: Son bar'ın hesaplama sonucu
+            IndicatorResult: The calculation result of the last bar.
 
         Raises:
-            InsufficientDataError: Yetersiz data
-            CalculationError: Hesaplama hatası
+            InsufficientDataError: Insufficient data
+            CalculationError: Calculation error
         """
         pass
 
     @abstractmethod
     def calculate_batch(self, data: pd.DataFrame) -> Union[pd.Series, pd.DataFrame]:
         """
-        ⚡ Batch hesaplama - BACKTEST için (ZORUNLU)
+        ⚡ Batch calculation - REQUIRED for BACKTEST.
 
-        TÜM barlar için vectorized hesaplama yapar.
-        LOOP YASAK! Pandas/Numpy operations kullanılmalı.
+        Performs vectorized calculations for all bars.
+        LOOP is prohibited! Pandas/Numpy operations should be used.
 
         Args:
             data: OHLCV DataFrame (full history)
 
         Returns:
-            pd.Series: Single value indicators için (RSI, HMA, etc.)
-                Index: data.index ile aynı
-                Values: Her bar için indicator değeri
+            pd.Series: For single value indicators (RSI, HMA, etc.)
+                Index: Same as data.index
+                Values: Indicator value for each bar
 
-            pd.DataFrame: Multiple value indicators için (Bollinger, MACD, etc.)
-                Index: data.index ile aynı
+            pd.DataFrame: For multiple value indicators (Bollinger, MACD, etc.)
+                Index: Same as data.index
                 Columns: Indicator output keys (upper, middle, lower)
 
         Example - RSI (single value):
@@ -197,31 +197,31 @@ class BaseIndicator(ABC):
             - Target: 2000 bars in <0.1 seconds
 
         Raises:
-            InsufficientDataError: Yetersiz data
-            CalculationError: Hesaplama hatası
+            InsufficientDataError: Insufficient data
+            CalculationError: Calculation error
         """
         pass
 
     @abstractmethod
     def get_required_periods(self) -> int:
         """
-        Minimum gerekli period sayısı (ZORUNLU)
+        Minimum required number of periods (MANDATORY)
 
         Returns:
-            int: Minimum period (örn: RSI için 14)
+            int: Minimum period (e.g., 14 for RSI)
         """
         pass
     
     # ========================================================================
-    # OPTIONAL METHODS (İsteğe bağlı override)
+    # OPTIONAL METHODS (Optional overrides)
     # ========================================================================
     
     def update(self, new_candle: Dict[str, Any], symbol: Optional[str] = None) -> Optional[IndicatorResult]:
         """
         Real-time update (incremental calculation)
 
-        Yeni kline geldiğinde sadece son değeri güncelle.
-        Override etmezsen, None döner (full recalculation gerekir).
+        When a new kline arrives, update only the last value.
+        If you don't override it, it returns None (a full recalculation is required).
 
         Note:
             Buffer is automatically populated by calculate() during warmup.
@@ -314,22 +314,22 @@ class BaseIndicator(ABC):
     
     def validate_params(self) -> bool:
         """
-        Parametre validasyonu (opsiyonel override)
+        Parameter validation (optional override)
         
         Returns:
-            bool: Parametreler geçerli mi?
+            bool: Are the parameters valid?
         
         Raises:
-            InvalidParameterError: Geçersiz parametre
+            InvalidParameterError: Invalid parameter
         """
         return True
     
     def get_signal(self, value: Any) -> SignalType:
         """
-        Değerden sinyal üret (opsiyonel override)
+        Generate a signal from the value (optional override).
         
         Args:
-            value: Indikatör değeri
+            value: Indicator value
         
         Returns:
             SignalType: BUY, SELL, HOLD, etc.
@@ -338,10 +338,10 @@ class BaseIndicator(ABC):
     
     def get_trend(self, value: Any) -> TrendDirection:
         """
-        Değerden trend belirle (opsiyonel override)
+        Determine the trend from the value (optional override).
         
         Args:
-            value: Indikatör değeri
+            value: Indicator value
         
         Returns:
             TrendDirection: UP, DOWN, NEUTRAL
@@ -360,8 +360,8 @@ class BaseIndicator(ABC):
             data: OHLCV DataFrame
         
         Raises:
-            ValueError: Geçersiz data format
-            InsufficientDataError: Yetersiz data
+            ValueError: Invalid data format
+            InsufficientDataError: Insufficient data
         """
         # Check if DataFrame
         if not isinstance(data, pd.DataFrame):
@@ -391,7 +391,7 @@ class BaseIndicator(ABC):
         Parametre validasyonu (internal)
         
         Raises:
-            InvalidParameterError: Geçersiz parametre
+            InvalidParameterError: Invalid parameter
         """
         try:
             self.validate_params()
@@ -466,7 +466,7 @@ class BaseIndicator(ABC):
     
     def _build_metadata(self) -> IndicatorMetadata:
         """
-        Metadata oluştur
+        Create metadata.
         
         Returns:
             IndicatorMetadata
@@ -485,7 +485,7 @@ class BaseIndicator(ABC):
     
     def _get_default_params(self) -> Dict[str, Any]:
         """
-        Default parametreleri döndür (override edilebilir)
+        Returns the default parameters (can be overridden).
         
         Returns:
             Dict: Default params
@@ -494,7 +494,7 @@ class BaseIndicator(ABC):
     
     def _get_output_names(self) -> List[str]:
         """
-        Output isimlerini döndür (override edilebilir)
+        Returns the output names (can be overridden).
         
         Returns:
             List[str]: Output names
@@ -503,10 +503,10 @@ class BaseIndicator(ABC):
     
     def _requires_volume(self) -> bool:
         """
-        Volume gerekli mi? (override edilebilir)
+        Is volume required? (can be overridden)
         
         Returns:
-            bool: Volume gerekli mi?
+            bool: Is volume required?
         """
         return False
     
@@ -539,7 +539,7 @@ class BaseIndicator(ABC):
     @staticmethod
     def _df_to_ohlcv_list(data: pd.DataFrame) -> List[OHLCV]:
         """
-        DataFrame'i OHLCV list'e çevir
+        Convert DataFrame to OHLCV list.
         
         Args:
             data: OHLCV DataFrame
@@ -562,7 +562,7 @@ class BaseIndicator(ABC):
     @staticmethod
     def _ensure_numpy(series: Union[pd.Series, np.ndarray, List]) -> np.ndarray:
         """
-        Series/List'i numpy array'e çevir
+        Convert Series/List to a numpy array.
         
         Args:
             series: pandas Series, numpy array, or list
@@ -590,12 +590,12 @@ class BaseIndicator(ABC):
     
     @property
     def last_result(self) -> Optional[IndicatorResult]:
-        """Son hesaplama sonucu"""
+        """Last calculation result"""
         return self._last_result
     
     @property
     def statistics(self) -> Dict[str, Any]:
-        """İstatistikler"""
+        """Statistics"""
         return {
             'name': self.name,
             'category': self.category.value,

@@ -5,31 +5,31 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
+Description:
     Order Blocks - Smart Money Concepts
-    Kurumsal emirlerin bıraktığı izleri tespit eder
+    Detects the traces left by corporate orders.
 
     Order Block Nedir:
-    - Güçlü fiyat hareketinden önceki son zıt hareket mumunun bölgesi
-    - Smart Money'nin emir bıraktığı bölge
-    - Güçlü destek/direnç oluşturur
+    - The region of the last opposing candlestick before a strong price movement.
+    - The area where smart money places orders.
+    - Creates strong support/resistance.
 
-Formül:
+Formula:
     Bullish Order Block:
-    1. Güçlü yükseliş hareketi tespit et (threshold üzeri)
-    2. Bu hareketten önceki son düşüş mumunu bul
-    3. O mumun low-high aralığı = Order Block
+    1. Detect a strong upward movement (above the threshold)
+    2. Find the last downward candle before this movement
+    3. The low-high range of that candle = Order Block
 
     Bearish Order Block:
-    1. Güçlü düşüş hareketi tespit et
-    2. Bu hareketten önceki son yükseliş mumunu bul
-    3. O mumun high-low aralığı = Order Block
+    1. Detect a strong downward movement.
+    2. Find the last upward candle before this movement.
+    3. The high-low range of that candle = Order Block.
 
     Test & Validation:
-    - Fiyat OB'ye döndüğünde genellikle reaksiyon alır
-    - Break edilirse geçerliliğini kaybeder
+    - When the price returns to the OB, it usually reacts.
+    - If it is broken, it loses its validity.
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -52,13 +52,13 @@ class OrderBlocks(BaseIndicator):
     """
     Order Blocks (OB)
 
-    Kurumsal emirlerin bıraktığı bölgeleri tespit eder.
-    Güçlü destek/direnç seviyeleri olarak kullanılır.
+    It identifies the areas affected by institutional orders.
+    It is used as strong support/resistance levels.
 
     Args:
-        strength_threshold: Güçlü hareket eşiği (% değişim) (varsayılan: 1.0)
-        max_blocks: Maksimum aktif block sayısı (varsayılan: 5)
-        lookback: Geriye bakış periyodu (varsayılan: 20)
+        strength_threshold: Strength threshold for strong movements (% change) (default: 1.0)
+        max_blocks: Maximum number of active blocks (default: 5)
+        lookback: Lookback period (default: 20)
     """
 
     def __init__(
@@ -86,29 +86,29 @@ class OrderBlocks(BaseIndicator):
             error_handler=error_handler
         )
 
-        # State: Aktif Order Block'ları takip et
+        # State: Follow active Order Blocks
         self.active_blocks: List[Dict[str, Any]] = []
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.lookback + 5
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.strength_threshold <= 0:
             raise InvalidParameterError(
                 self.name, 'strength_threshold', self.strength_threshold,
-                "Strength threshold pozitif olmalı"
+                "Strength threshold must be positive"
             )
         if self.max_blocks < 1:
             raise InvalidParameterError(
                 self.name, 'max_blocks', self.max_blocks,
-                "Max blocks pozitif olmalı"
+                "Max blocks must be positive"
             )
         if self.lookback < 5:
             raise InvalidParameterError(
                 self.name, 'lookback', self.lookback,
-                "Lookback en az 5 olmalı"
+                "Lookback must be at least 5"
             )
         return True
 
@@ -121,7 +121,7 @@ class OrderBlocks(BaseIndicator):
         return close_price < open_price
 
     def _calculate_candle_change(self, open_price: float, close_price: float) -> float:
-        """Mum değişim yüzdesi"""
+        """Candle change percentage"""
         if open_price == 0:
             return 0.0
         return ((close_price - open_price) / open_price) * 100
@@ -134,26 +134,26 @@ class OrderBlocks(BaseIndicator):
         lows: np.ndarray
     ) -> List[Dict[str, Any]]:
         """
-        Güçlü fiyat hareketlerini tespit et
+        Detect strong price movements.
 
         Args:
-            opens: Open fiyat dizisi
-            closes: Close fiyat dizisi
-            highs: High fiyat dizisi
-            lows: Low fiyat dizisi
+            opens: Array of open prices
+            closes: Array of close prices
+            highs: Array of high prices
+            lows: Array of low prices
 
         Returns:
-            List[Dict]: Güçlü hareketler
+            List[Dict]: Powerful movements
         """
         strong_moves = []
 
-        # Son lookback period içinde tara
+        # Filter by users who have interacted within the last lookback period.
         start_idx = max(0, len(closes) - self.lookback)
 
         for i in range(start_idx, len(closes)):
             change_percent = self._calculate_candle_change(opens[i], closes[i])
 
-            # Güçlü yükseliş
+            # Strong upward trend
             if change_percent >= self.strength_threshold:
                 strong_moves.append({
                     'type': 'bullish',
@@ -163,7 +163,7 @@ class OrderBlocks(BaseIndicator):
                     'low': lows[i]
                 })
 
-            # Güçlü düşüş
+            # Strong decline
             elif change_percent <= -self.strength_threshold:
                 strong_moves.append({
                     'type': 'bearish',
@@ -184,11 +184,11 @@ class OrderBlocks(BaseIndicator):
         lows: np.ndarray
     ) -> Dict[str, Any]:
         """
-        Güçlü hareketten order block çıkar
+        Extracts the order block from a strong movement.
 
         Args:
-            move: Güçlü hareket bilgisi
-            opens, closes, highs, lows: Fiyat dizileri
+            move: Strong movement information
+            opens, closes, highs, lows: Price sequences
 
         Returns:
             Dict: Order block bilgisi
@@ -196,12 +196,12 @@ class OrderBlocks(BaseIndicator):
         move_index = move['index']
         move_type = move['type']
 
-        # Geriye doğru tara
+        # Go backward
         for i in range(move_index - 1, max(0, move_index - 10), -1):
             is_bullish = self._is_bullish_candle(opens[i], closes[i])
             is_bearish = self._is_bearish_candle(opens[i], closes[i])
 
-            # Bullish move için son bearish mum
+            # Last bearish candle for a bullish move
             if move_type == 'bullish' and is_bearish:
                 return {
                     'type': 'bullish',
@@ -214,7 +214,7 @@ class OrderBlocks(BaseIndicator):
                     'test_count': 0
                 }
 
-            # Bearish move için son bullish mum
+            # Last bullish candle for a bearish move
             if move_type == 'bearish' and is_bullish:
                 return {
                     'type': 'bearish',
@@ -237,28 +237,28 @@ class OrderBlocks(BaseIndicator):
         current_close: float
     ) -> Dict[str, Any]:
         """
-        Order block durumunu güncelle
+        Update the order block status.
 
         Args:
             block: Order block bilgisi
-            current_high, current_low, current_close: Güncel fiyatlar
+            current_high, current_low, current_close: Current prices
 
         Returns:
-            Dict: Güncellenmiş block
+            Dict: Updated block
         """
-        # Fiyat block içine girdi mi?
+        # Did it enter the price block?
         in_block = (current_low <= block['top'] and current_high >= block['bottom'])
 
         if in_block:
             block['test_count'] += 1
 
-        # Block kırıldı mı?
+        # Is the block broken?
         if block['type'] == 'bullish':
-            # Bullish OB altına kapanış -> broken
+            # Bullish OB below close -> broken
             if current_close < block['bottom']:
                 block['status'] = 'broken'
         else:
-            # Bearish OB üstüne kapanış -> broken
+            # Bearish closing above OB -> broken
             if current_close > block['top']:
                 block['status'] = 'broken'
 
@@ -279,15 +279,15 @@ class OrderBlocks(BaseIndicator):
         highs = data['high'].values
         lows = data['low'].values
 
-        # Güçlü hareketleri tespit et
+        # Detect strong movements
         strong_moves = self._detect_strong_moves(opens, closes, highs, lows)
 
-        # Her güçlü hareketten order block çıkar
+        # Extract order block from each strong movement
         new_blocks = []
         for move in strong_moves:
             ob = self._find_order_block(move, opens, closes, highs, lows)
             if ob:
-                # Duplicate kontrolü
+                # Duplicate check
                 is_duplicate = any(
                     existing['index'] == ob['index']
                     for existing in self.active_blocks
@@ -295,10 +295,10 @@ class OrderBlocks(BaseIndicator):
                 if not is_duplicate:
                     new_blocks.append(ob)
 
-        # Yeni block'ları ekle
+        # Add new blocks
         self.active_blocks.extend(new_blocks)
 
-        # Mevcut block'ların durumunu güncelle
+        # Update the status of existing blocks
         current_high = highs[-1]
         current_low = lows[-1]
         current_close = closes[-1]
@@ -306,20 +306,20 @@ class OrderBlocks(BaseIndicator):
         for block in self.active_blocks:
             self._update_block_status(block, current_high, current_low, current_close)
 
-        # Kırılmış block'ları kaldır
+        # Remove broken blocks
         self.active_blocks = [
             block for block in self.active_blocks
             if block['status'] == 'active'
         ]
 
-        # Maksimum block sayısını uygula (en güçlü olanları tut)
+        # Apply the maximum number of blocks (keep the most powerful ones)
         if len(self.active_blocks) > self.max_blocks:
             self.active_blocks.sort(key=lambda x: x['strength'], reverse=True)
             self.active_blocks = self.active_blocks[:self.max_blocks]
 
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Değer: Aktif order block'ların listesi
+        # Value: List of active order blocks
         zones = [
             {
                 'type': block['type'],
@@ -358,9 +358,9 @@ class OrderBlocks(BaseIndicator):
             candle: Yeni mum verisi (dict)
             
         Returns:
-            IndicatorResult: Güncel Order Blocks
+            IndicatorResult: Current Order Blocks
         """
-        # Buffer yönetimi
+        # Buffer management
         if not hasattr(self, '_open_buffer'):
             from collections import deque
             max_len = self.get_required_periods() + 50
@@ -402,21 +402,21 @@ class OrderBlocks(BaseIndicator):
                 metadata={'total_blocks': 0}
             )
             
-        # Hesaplama
+        # Calculation
         opens = np.array(self._open_buffer)
         closes = np.array(self._close_buffer)
         highs = np.array(self._high_buffer)
         lows = np.array(self._low_buffer)
         
-        # Güçlü hareketleri tespit et
+        # Detect strong movements
         strong_moves = self._detect_strong_moves(opens, closes, highs, lows)
         
-        # Her güçlü hareketten order block çıkar
+        # Extract order block from each strong movement
         new_blocks = []
         for move in strong_moves:
             ob = self._find_order_block(move, opens, closes, highs, lows)
             if ob:
-                # Duplicate kontrolü
+                # Duplicate check
                 is_duplicate = any(
                     existing['index'] == ob['index']
                     for existing in self.active_blocks
@@ -424,10 +424,10 @@ class OrderBlocks(BaseIndicator):
                 if not is_duplicate:
                     new_blocks.append(ob)
         
-        # Yeni block'ları ekle
+        # Add new blocks
         self.active_blocks.extend(new_blocks)
         
-        # Mevcut block'ların durumunu güncelle
+        # Update the status of existing blocks
         current_high = highs[-1]
         current_low = lows[-1]
         current_close = closes[-1]
@@ -435,18 +435,18 @@ class OrderBlocks(BaseIndicator):
         for block in self.active_blocks:
             self._update_block_status(block, current_high, current_low, current_close)
         
-        # Kırılmış block'ları kaldır
+        # Remove broken blocks
         self.active_blocks = [
             block for block in self.active_blocks
             if block['status'] == 'active'
         ]
         
-        # Maksimum block sayısını uygula
+        # Apply the maximum number of blocks
         if len(self.active_blocks) > self.max_blocks:
             self.active_blocks.sort(key=lambda x: x['strength'], reverse=True)
             self.active_blocks = self.active_blocks[:self.max_blocks]
         
-        # Değer: Aktif order block'lar
+        # Value: Active order blocks
         zones = [
             {
                 'type': block['type'],
@@ -506,31 +506,31 @@ class OrderBlocks(BaseIndicator):
 
     def get_signal(self, zones: List[Dict[str, Any]], current_price: float) -> SignalType:
         """
-        Order Block'lardan sinyal üret
+        Generate signals from Order Blocks.
 
         Args:
-            zones: Order block zone'ları
-            current_price: Güncel fiyat
+            zones: Order block zones
+            current_price: Current price
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
         if not zones:
             return SignalType.HOLD
 
-        # Fiyat bir OB zone'una yakın mı?
+        # Is the price close to an Order Block zone?
         for zone in zones:
-            # Zone ortası
+            # Zone center
             zone_mid = (zone['top'] + zone['bottom']) / 2
             distance = abs(current_price - zone_mid)
             zone_size = zone['top'] - zone['bottom']
 
-            # Zone içindeyse veya %2 yakınındaysa
+            # If it is within the zone or within 2%
             if distance <= zone_size * 0.5 or (distance / current_price) * 100 < 2.0:
                 if zone['type'] == 'bullish':
                     return SignalType.BUY  # Bullish OB'de destek bekle
                 elif zone['type'] == 'bearish':
-                    return SignalType.SELL  # Bearish OB'de direnç bekle
+                    return SignalType.SELL  # Expect resistance in a bearish Order Block
 
         return SignalType.HOLD
 
@@ -539,10 +539,10 @@ class OrderBlocks(BaseIndicator):
         Order Block'lardan trend belirle
 
         Args:
-            zones: Order block zone'ları
+            zones: Order block zones
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         if not zones:
             return TrendDirection.NEUTRAL
@@ -550,7 +550,7 @@ class OrderBlocks(BaseIndicator):
         bullish_count = len([z for z in zones if z['type'] == 'bullish'])
         bearish_count = len([z for z in zones if z['type'] == 'bearish'])
 
-        # Güçlü block'lar daha fazla ağırlık taşır
+        # Strong blocks carry more weight
         bullish_strength = sum(
             z['strength'] for z in zones if z['type'] == 'bullish'
         )
@@ -566,7 +566,7 @@ class OrderBlocks(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'strength_threshold': 1.0,
             'max_blocks': 5,
@@ -586,22 +586,22 @@ __all__ = ['OrderBlocks']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """Order Blocks indikatör testi"""
+    """Order Blocks indicator test"""
 
     print("\n" + "="*60)
     print("ORDER BLOCKS TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(50)]
 
-    # Güçlü hareketli fiyat simülasyonu
+    # Powerful moving price simulation
     base_price = 100
     prices = []
     opens = []
@@ -610,18 +610,18 @@ if __name__ == "__main__":
 
     for i in range(50):
         if i == 15:
-            # Güçlü yükseliş (Order Block oluşturur)
+            # Strong uptrend (creates an Order Block)
             open_p = base_price
-            close_p = base_price + 2.5  # %2.5 yükseliş
+            close_p = base_price + 2.5  # %2.5 increase
             opens.append(open_p)
             prices.append(close_p)
             highs.append(close_p + 0.2)
             lows.append(open_p - 0.1)
             base_price = close_p
         elif i == 35:
-            # Güçlü düşüş (Order Block oluşturur)
+            # Strong downtrend (creates an Order Block)
             open_p = base_price
-            close_p = base_price - 2.0  # %2 düşüş
+            close_p = base_price - 2.0  # %2 decrease
             opens.append(open_p)
             prices.append(close_p)
             highs.append(open_p + 0.1)
@@ -646,60 +646,60 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     ob = OrderBlocks(strength_threshold=1.0, max_blocks=5, lookback=20)
-    print(f"   [OK] Oluşturuldu: {ob}")
+    print(f"   [OK] Created: {ob}")
     print(f"   [OK] Kategori: {ob.category.value}")
-    print(f"   [OK] Gerekli periyot: {ob.get_required_periods()}")
+    print(f"   [OK] Required period: {ob.get_required_periods()}")
 
     result = ob(data)
-    print(f"   [OK] Toplam Block: {result.metadata['total_blocks']}")
+    print(f"   [OK] Total Blocks: {result.metadata['total_blocks']}")
     print(f"   [OK] Bullish Block: {result.metadata['bullish_blocks']}")
     print(f"   [OK] Bearish Block: {result.metadata['bearish_blocks']}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength}")
+    print(f"   [OK] Power: {result.strength}")
 
-    # Test 2: Block detayları
-    print("\n3. Block detayları...")
+    # Test 2: Block details
+    print("\n3. Block details...")
     if result.value:
         for i, block in enumerate(result.value[:3]):
             print(f"   [OK] Block #{i+1}:")
             print(f"       - Tip: {block['type']}")
             print(f"       - Top: {block['top']:.2f}")
             print(f"       - Bottom: {block['bottom']:.2f}")
-            print(f"       - Güç: {block['strength']:.2f}%")
+            print(f"       - Power: {block['strength']:.2f}%")
             print(f"       - Test: {block['test_count']} kez")
-            print(f"       - Durum: {block['status']}")
+            print(f"       - Status: {block['status']}")
     else:
-        print("   [OK] Aktif block bulunamadı")
+        print("   [OK] Active block not found")
 
-    # Test 3: Farklı parametreler
-    print("\n4. Farklı parametre testi...")
+    # Test 3: Different parameters
+    print("\n4. Different parameter test...")
     for threshold in [0.5, 1.0, 1.5]:
         ob_test = OrderBlocks(strength_threshold=threshold)
         result = ob_test.calculate(data)
         print(f"   [OK] OB(threshold={threshold}): {result.metadata['total_blocks']} blocks")
 
-    # Test 4: İstatistikler
-    print("\n5. İstatistik testi...")
+    # Test 4: Statistics
+    print("\n5. Statistical test...")
     stats = ob.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 5: Metadata
     print("\n6. Metadata testi...")
     metadata = ob.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Tip: {metadata.indicator_type.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

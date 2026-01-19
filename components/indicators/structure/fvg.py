@@ -5,16 +5,16 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
+Description:
     FVG (Fair Value Gap) - Smart Money Concepts
-    Fiyat boşluklarını (imbalance) tespit eder
+    Detects price imbalances.
 
     FVG Nedir:
-    - 3 mum arasında oluşan fiyat boşluğu
-    - Hızlı fiyat hareketi sonucu oluşur
-    - Genellikle bu boşluklar "fill" edilir (doldurulur)
+    - Price gap formed between 3 candles
+    - Occurs as a result of rapid price movement
+    - These gaps are generally "filled" (filled in)
 
-Formül:
+Formula:
     Bullish FVG:
     - Candle[0].high < Candle[2].low
     - Gap: [Candle[0].high, Candle[2].low]
@@ -24,11 +24,11 @@ Formül:
     - Gap: [Candle[2].high, Candle[0].low]
 
     Fill Status:
-    - Open: Boşluk henüz doldurulmadı
-    - Partial: Kısmen doldu
+    - Open: The field has not been filled yet
+    - Partial: Partially filled
     - Filled: Tamamen doldu
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -51,13 +51,13 @@ class FVG(BaseIndicator):
     """
     Fair Value Gap (FVG)
 
-    Fiyat boşluklarını tespit eder ve takip eder.
-    Potansiyel destek/direnç bölgeleri olarak kullanılır.
+    Detects and tracks price gaps.
+    Used as potential support/resistance levels.
 
     Args:
-        min_gap_percent: Minimum boşluk yüzdesi (varsayılan: 0.1)
-        max_zones: Maksimum açık zone sayısı (varsayılan: 5)
-        fill_threshold: Doldurulma eşiği (varsayılan: 0.5, %50)
+        min_gap_percent: Minimum gap percentage (default: 0.1)
+        max_zones: Maximum number of open zones (default: 5)
+        fill_threshold: Filling threshold (default: 0.5, 50%)
     """
 
     def __init__(
@@ -85,29 +85,29 @@ class FVG(BaseIndicator):
             error_handler=error_handler
         )
 
-        # State: Açık FVG'leri takip et
+        # State: Track open FVG (Fair Value Gaps)
         self.open_fvgs: List[Dict[str, Any]] = []
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return 5  # En az 3 mum + buffer
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.min_gap_percent < 0:
             raise InvalidParameterError(
                 self.name, 'min_gap_percent', self.min_gap_percent,
-                "Min gap percent negatif olamaz"
+                "Min gap percent cannot be negative"
             )
         if self.max_zones < 1:
             raise InvalidParameterError(
                 self.name, 'max_zones', self.max_zones,
-                "Max zones pozitif olmalı"
+                "Max zones must be positive"
             )
         if not 0 <= self.fill_threshold <= 1:
             raise InvalidParameterError(
                 self.name, 'fill_threshold', self.fill_threshold,
-                "Fill threshold 0-1 arası olmalı"
+                "The fill threshold must be between 0 and 1."
             )
         return True
 
@@ -121,12 +121,12 @@ class FVG(BaseIndicator):
         FVG tespiti
 
         Args:
-            highs: High fiyat dizisi
-            lows: Low fiyat dizisi
-            index: Kontrol edilecek index (i-2, i-1, i)
+            highs: Array of high prices
+            lows: Array of low prices
+            index: Index to check (i-2, i-1, i)
 
         Returns:
-            List[Dict]: Tespit edilen FVG'ler
+            List[Dict]: Detected FVG values.
         """
         fvgs = []
 
@@ -184,34 +184,34 @@ class FVG(BaseIndicator):
         current_low: float
     ) -> Dict[str, Any]:
         """
-        FVG dolum durumunu güncelle
+        Update the FVG filling status.
 
         Args:
             fvg: FVG bilgisi
-            current_high: Güncel high
-            current_low: Güncel low
+            current_high: Current high
+            current_low: Current low
 
         Returns:
-            Dict: Güncellenmiş FVG
+            Dict: Updated FVG
         """
         top = fvg['top']
         bottom = fvg['bottom']
         gap_size = fvg['size']
 
-        # Fiyat FVG içine girdi mi?
+        # Did the price enter the FVG zone?
         if current_low <= top and current_high >= bottom:
-            # Dolum miktarını hesapla
+            # Calculate the filling amount
             if fvg['type'] == 'bullish':
-                # Aşağıdan dolduruluyor
+                # Filled from below
                 filled_amount = max(0, min(current_low, top) - bottom)
             else:
-                # Yukarıdan dolduruluyor
+                # Filled from the top
                 filled_amount = max(0, top - max(current_high, bottom))
 
             fill_percent = (filled_amount / gap_size) * 100
             fvg['fill_percent'] = min(fill_percent, 100)
 
-            # Status güncelle
+            # Update status
             if fvg['fill_percent'] >= 100:
                 fvg['fill_status'] = 'filled'
             elif fvg['fill_percent'] >= self.fill_threshold * 100:
@@ -234,33 +234,33 @@ class FVG(BaseIndicator):
         highs = data['high'].values
         lows = data['low'].values
 
-        # Yeni FVG'leri tespit et (son 3 mumda)
+        # Detect new FVG (in the last 3 candles)
         latest_index = len(highs) - 1
         new_fvgs = self._detect_fvg(highs, lows, latest_index)
 
         # Yeni FVG'leri ekle
         self.open_fvgs.extend(new_fvgs)
 
-        # Mevcut FVG'lerin durumunu güncelle
+        # Update the status of existing FVG.
         current_high = highs[-1]
         current_low = lows[-1]
 
         for fvg in self.open_fvgs:
             self._update_fvg_status(fvg, current_high, current_low)
 
-        # Tamamen dolmuş FVG'leri kaldır
+        # Remove completely filled FVG (First Value Gap) values.
         self.open_fvgs = [
             fvg for fvg in self.open_fvgs
             if fvg['fill_status'] != 'filled'
         ]
 
-        # Maksimum zone sayısını uygula (en yeni olanları tut)
+        # Apply the maximum number of zones (keep the newest ones)
         if len(self.open_fvgs) > self.max_zones:
             self.open_fvgs = self.open_fvgs[-self.max_zones:]
 
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Değer: Açık FVG'lerin listesi
+        # Value: A list of open FVG (Fixed Volume Gaps).
         zones = [
             {
                 'type': fvg['type'],
@@ -432,19 +432,19 @@ class FVG(BaseIndicator):
 
     def get_signal(self, zones: List[Dict[str, Any]], current_price: float) -> SignalType:
         """
-        FVG'lerden sinyal üret
+        Generate signal from FVG values.
 
         Args:
-            zones: FVG zone'ları
-            current_price: Güncel fiyat
+            zones: FVG zones
+            current_price: Current price
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
         if not zones:
             return SignalType.HOLD
 
-        # Fiyat bir FVG zone'una yaklaştı mı?
+        # Did the price approach an FVG zone?
         for zone in zones:
             distance_to_zone = min(
                 abs(current_price - zone['top']),
@@ -453,12 +453,12 @@ class FVG(BaseIndicator):
 
             distance_percent = (distance_to_zone / current_price) * 100
 
-            # %1 içindeyse sinyal ver
+            # Signal if it's inside %1
             if distance_percent < 1.0:
                 if zone['type'] == 'bullish':
-                    return SignalType.BUY  # Bullish FVG'ye yakın
+                    return SignalType.BUY  # Close to a bullish FVG
                 elif zone['type'] == 'bearish':
-                    return SignalType.SELL  # Bearish FVG'ye yakın
+                    return SignalType.SELL  # Close to a bearish FVG
 
         return SignalType.HOLD
 
@@ -467,10 +467,10 @@ class FVG(BaseIndicator):
         FVG'lerden trend belirle
 
         Args:
-            zones: FVG zone'ları
+            zones: FVG zones
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         if not zones:
             return TrendDirection.NEUTRAL
@@ -486,7 +486,7 @@ class FVG(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'min_gap_percent': 0.1,
             'max_zones': 5,
@@ -506,22 +506,22 @@ __all__ = ['FVG']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """FVG indikatör testi"""
+    """FVG indicator test"""
 
     print("\n" + "="*60)
     print("FVG (FAIR VALUE GAP) TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(40)]
 
-    # FVG oluşturacak fiyat hareketi
+    # Create a price movement that will form an FVG.
     base_price = 100
     prices = []
     highs = []
@@ -529,12 +529,12 @@ if __name__ == "__main__":
 
     for i in range(40):
         if i == 10:
-            # Bullish FVG oluştur (hızlı yükseliş)
+            # Create a bullish FVG (fast upward movement)
             prices.append(base_price + 10)
             highs.append(base_price + 11)
             lows.append(base_price + 9)
         elif i == 25:
-            # Bearish FVG oluştur (hızlı düşüş)
+            # Create a bearish FVG (fast downward movement)
             prices.append(base_price - 5)
             highs.append(base_price - 4)
             lows.append(base_price - 6)
@@ -553,26 +553,26 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     fvg = FVG(min_gap_percent=0.1, max_zones=5, fill_threshold=0.5)
-    print(f"   [OK] Oluşturuldu: {fvg}")
+    print(f"   [OK] Created: {fvg}")
     print(f"   [OK] Kategori: {fvg.category.value}")
-    print(f"   [OK] Gerekli periyot: {fvg.get_required_periods()}")
+    print(f"   [OK] Required period: {fvg.get_required_periods()}")
 
     result = fvg(data)
-    print(f"   [OK] Toplam Zone: {result.metadata['total_zones']}")
+    print(f"   [OK] Total Zone: {result.metadata['total_zones']}")
     print(f"   [OK] Bullish Zone: {result.metadata['bullish_zones']}")
     print(f"   [OK] Bearish Zone: {result.metadata['bearish_zones']}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength}")
+    print(f"   [OK] Power: {result.strength}")
 
-    # Test 2: Zone detayları
-    print("\n3. Zone detayları...")
+    # Test 2: Zone details
+    print("\n3. Zone details...")
     if result.value:
         for i, zone in enumerate(result.value[:3]):
             print(f"   [OK] Zone #{i+1}:")
@@ -582,30 +582,30 @@ if __name__ == "__main__":
             print(f"       - Size: {zone['size']:.2f}")
             print(f"       - Fill: {zone['fill_status']} ({zone['fill_percent']:.1f}%)")
     else:
-        print("   [OK] Açık zone bulunamadı")
+        print("   [OK] Open zone not found")
 
-    # Test 3: Farklı parametreler
-    print("\n4. Farklı parametre testi...")
+    # Test 3: Different parameters
+    print("\n4. Different parameter test...")
     for min_gap in [0.05, 0.1, 0.2]:
         fvg_test = FVG(min_gap_percent=min_gap)
         result = fvg_test.calculate(data)
         print(f"   [OK] FVG(gap={min_gap}): {result.metadata['total_zones']} zones")
 
-    # Test 4: İstatistikler
-    print("\n5. İstatistik testi...")
+    # Test 4: Statistics
+    print("\n5. Statistical test...")
     stats = fvg.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 5: Metadata
     print("\n6. Metadata testi...")
     metadata = fvg.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Tip: {metadata.indicator_type.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

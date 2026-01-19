@@ -5,20 +5,20 @@ Version: 1.0.0
 Date: 2025-10-27
 Author: SuperBot Team
 
-Açıklama:
+Description:
     LV Void (Liquidity Void) - Smart Money Concepts
-    FVG + düşük volume kombinasyonu
-    Likiditenin az olduğu boşluk bölgelerini tespit eder
+    FVG + low volume combination
+    Detects areas with low liquidity
 
     LV Void Nedir:
-    - Fair Value Gap (FVG) + Düşük volume
-    - Likidite eksikliği olan bölgeler
-    - Fiyat hızla geçer (slippage riski yüksek)
-    - Genellikle "fill" edilmek için geri dönülür
+    - Fair Value Gap (FVG) + Low volume
+    - Areas with insufficient liquidity
+    - Price moves quickly (high slippage risk)
+    - Usually returns to be "filled"
 
-Formül:
+Formula:
     1. FVG tespiti (3 mum gap)
-    2. Gap içindeki volume < Average Volume * threshold
+    2. The volume within the gap is less than Average Volume * threshold.
     3. LV Void = FVG + Low Volume
 
     Bullish LV Void:
@@ -29,7 +29,7 @@ Formül:
     - Candle[0].low > Candle[2].high
     - Volume[1] < Avg Volume * threshold
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -53,13 +53,13 @@ class LVVoid(BaseIndicator):
     Liquidity Void (LV Void)
 
     FVG + Low Volume kombinasyonu.
-    Likidite eksikliği olan boşluk bölgelerini tespit eder.
+    Detects areas with liquidity shortages.
 
     Args:
-        min_gap_percent: Minimum boşluk yüzdesi (varsayılan: 0.1)
-        volume_threshold: Volume eşiği (varsayılan: 0.5, avg volume'un %50'si)
-        volume_period: Volume ortalaması periyodu (varsayılan: 20)
-        max_zones: Maksimum açık zone sayısı (varsayılan: 5)
+        min_gap_percent: Minimum gap percentage (default: 0.1)
+        volume_threshold: Volume threshold (default: 0.5, 50% of avg volume)
+        volume_period: Volume average period (default: 20)
+        max_zones: Maximum number of open zones (default: 5)
     """
 
     def __init__(
@@ -90,34 +90,34 @@ class LVVoid(BaseIndicator):
             error_handler=error_handler
         )
 
-        # State: Açık LV Void'leri takip et
+        # State: Track open LV voids
         self.open_voids: List[Dict[str, Any]] = []
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return max(self.volume_period + 5, 10)
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.min_gap_percent < 0:
             raise InvalidParameterError(
                 self.name, 'min_gap_percent', self.min_gap_percent,
-                "Min gap percent negatif olamaz"
+                "Min gap percent cannot be negative"
             )
         if not 0 < self.volume_threshold <= 1:
             raise InvalidParameterError(
                 self.name, 'volume_threshold', self.volume_threshold,
-                "Volume threshold 0-1 arası olmalı"
+                "Volume threshold must be between 0 and 1"
             )
         if self.volume_period < 1:
             raise InvalidParameterError(
                 self.name, 'volume_period', self.volume_period,
-                "Volume period pozitif olmalı"
+                "Volume period must be positive"
             )
         if self.max_zones < 1:
             raise InvalidParameterError(
                 self.name, 'max_zones', self.max_zones,
-                "Max zones pozitif olmalı"
+                "Max zones must be positive"
             )
         return True
 
@@ -132,13 +132,13 @@ class LVVoid(BaseIndicator):
         LV Void tespiti
 
         Args:
-            highs: High fiyat dizisi
-            lows: Low fiyat dizisi
+            highs: Array of high prices
+            lows: Array of low prices
             volumes: Volume dizisi
-            index: Kontrol edilecek index (i-2, i-1, i)
+            index: The index to check (i-2, i-1, i)
 
         Returns:
-            List[Dict]: Tespit edilen LV Void'ler
+            List[Dict]: Detected LV Voids
         """
         voids = []
 
@@ -158,7 +158,7 @@ class LVVoid(BaseIndicator):
         avg_volume = np.mean(volumes[max(0, index - self.volume_period):index])
         volume_threshold_value = avg_volume * self.volume_threshold
 
-        # Volume düşük mü?
+        # Is the volume low?
         is_low_volume = candle_1_volume < volume_threshold_value
 
         if not is_low_volume:
@@ -213,34 +213,34 @@ class LVVoid(BaseIndicator):
         current_low: float
     ) -> Dict[str, Any]:
         """
-        LV Void dolum durumunu güncelle
+        Update the LV Void filling status.
 
         Args:
             void: LV Void bilgisi
-            current_high: Güncel high
-            current_low: Güncel low
+            current_high: Current high
+            current_low: Current low
 
         Returns:
-            Dict: Güncellenmiş void
+            Dict: Updated void
         """
         top = void['top']
         bottom = void['bottom']
         gap_size = void['size']
 
-        # Fiyat void içine girdi mi?
+        # Did the price enter the void?
         if current_low <= top and current_high >= bottom:
-            # Dolum miktarını hesapla
+            # Calculate the filling amount
             if void['type'] == 'bullish':
-                # Aşağıdan dolduruluyor
+                # Filled from below
                 filled_amount = max(0, min(current_low, top) - bottom)
             else:
-                # Yukarıdan dolduruluyor
+                # Filled from the top
                 filled_amount = max(0, top - max(current_high, bottom))
 
             fill_percent = (filled_amount / gap_size) * 100
             void['fill_percent'] = min(fill_percent, 100)
 
-            # Status güncelle
+            # Update status
             if void['fill_percent'] >= 100:
                 void['fill_status'] = 'filled'
             elif void['fill_percent'] >= 50:
@@ -264,33 +264,33 @@ class LVVoid(BaseIndicator):
         lows = data['low'].values
         volumes = data['volume'].values
 
-        # Yeni LV Void'leri tespit et (son 3 mumda)
+        # Detect new LV Void values (in the last 3 candles)
         latest_index = len(highs) - 1
         new_voids = self._detect_lvvoid(highs, lows, volumes, latest_index)
 
         # Yeni void'leri ekle
         self.open_voids.extend(new_voids)
 
-        # Mevcut void'lerin durumunu güncelle
+        # Update the status of existing voids
         current_high = highs[-1]
         current_low = lows[-1]
 
         for void in self.open_voids:
             self._update_void_status(void, current_high, current_low)
 
-        # Tamamen dolmuş void'leri kaldır
+        # Remove completely filled void arrays
         self.open_voids = [
             void for void in self.open_voids
             if void['fill_status'] != 'filled'
         ]
 
-        # Maksimum zone sayısını uygula
+        # Apply the maximum number of zones
         if len(self.open_voids) > self.max_zones:
             self.open_voids = self.open_voids[-self.max_zones:]
 
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Değer: Açık LV Void'lerin listesi
+        # Value: List of open LV Void objects
         zones = [
             {
                 'type': void['type'],
@@ -312,7 +312,7 @@ class LVVoid(BaseIndicator):
             timestamp=timestamp,
             signal=self.get_signal(zones, data['close'].values[-1]),
             trend=self.get_trend(zones),
-            strength=len(zones) * 25,  # Her zone 25 puan (FVG'den daha güçlü)
+            strength=len(zones) * 25,  # Each zone is 25 points (stronger than FVG)
             metadata={
                 'zones': zones,  # Full zones data in metadata
                 'total_zones': len(zones),
@@ -423,19 +423,19 @@ class LVVoid(BaseIndicator):
 
     def get_signal(self, zones: List[Dict[str, Any]], current_price: float) -> SignalType:
         """
-        LV Void'lerden sinyal üret
+        Generate signal from LV Void values.
 
         Args:
-            zones: LV Void zone'ları
-            current_price: Güncel fiyat
+            zones: LV Void zones
+            current_price: Current price
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
         if not zones:
             return SignalType.HOLD
 
-        # Fiyat bir void zone'una yaklaştı mı?
+        # Did the price approach a void zone?
         for zone in zones:
             distance_to_zone = min(
                 abs(current_price - zone['top']),
@@ -444,7 +444,7 @@ class LVVoid(BaseIndicator):
 
             distance_percent = (distance_to_zone / current_price) * 100
 
-            # %0.5 içindeyse sinyal ver (FVG'den daha hassas)
+            # Send a signal if it's within %0.5 (more sensitive than FVG)
             if distance_percent < 0.5:
                 if zone['type'] == 'bullish':
                     return SignalType.BUY
@@ -458,10 +458,10 @@ class LVVoid(BaseIndicator):
         LV Void'lerden trend belirle
 
         Args:
-            zones: LV Void zone'ları
+            zones: LV Void zones
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         if not zones:
             return TrendDirection.NEUTRAL
@@ -477,7 +477,7 @@ class LVVoid(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'min_gap_percent': 0.1,
             'volume_threshold': 0.5,
@@ -498,22 +498,22 @@ __all__ = ['LVVoid']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """LV Void indikatör testi"""
+    """LV Void indicator test"""
 
     print("\n" + "="*60)
     print("LV VOID (LIQUIDITY VOID) TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(50)]
 
-    # FVG + düşük volume simülasyonu
+    # FVG + low volume simulation
     base_price = 100
     prices = []
     volumes = []
@@ -522,15 +522,15 @@ if __name__ == "__main__":
 
     for i in range(50):
         if i == 15:
-            # Bullish LV Void oluştur (hızlı yükseliş + düşük volume)
+            # Create a Bullish LV Void (fast increase + low volume)
             prices.append(base_price + 10)
-            volumes.append(500)  # Düşük volume
+            volumes.append(500)  # Low volume
             highs.append(base_price + 11)
             lows.append(base_price + 9)
         elif i == 35:
-            # Bearish LV Void oluştur (hızlı düşüş + düşük volume)
+            # Create a Bearish LV Void (fast decline + low volume)
             prices.append(base_price - 5)
-            volumes.append(600)  # Düşük volume
+            volumes.append(600)  # Low volume
             highs.append(base_price - 4)
             lows.append(base_price - 6)
         else:
@@ -549,28 +549,28 @@ if __name__ == "__main__":
         'volume': volumes
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
-    print(f"   [OK] Volume aralığı: {min(volumes)} -> {max(volumes)}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] Volume range: {min(volumes)} -> {max(volumes)}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     lvvoid = LVVoid(min_gap_percent=0.1, volume_threshold=0.5, volume_period=20)
-    print(f"   [OK] Oluşturuldu: {lvvoid}")
+    print(f"   [OK] Created: {lvvoid}")
     print(f"   [OK] Kategori: {lvvoid.category.value}")
-    print(f"   [OK] Gerekli periyot: {lvvoid.get_required_periods()}")
+    print(f"   [OK] Required period: {lvvoid.get_required_periods()}")
 
     result = lvvoid(data)
-    print(f"   [OK] Toplam Zone: {result.metadata['total_zones']}")
+    print(f"   [OK] Total Zone: {result.metadata['total_zones']}")
     print(f"   [OK] Bullish Zone: {result.metadata['bullish_zones']}")
     print(f"   [OK] Bearish Zone: {result.metadata['bearish_zones']}")
     print(f"   [OK] Avg Volume Ratio: {result.metadata['avg_volume_ratio']}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength}")
+    print(f"   [OK] Power: {result.strength}")
 
-    # Test 2: Zone detayları
-    print("\n3. Zone detayları...")
+    # Test 2: Zone details
+    print("\n3. Zone details...")
     if result.value:
         for i, zone in enumerate(result.value[:3]):
             print(f"   [OK] Zone #{i+1}:")
@@ -581,15 +581,15 @@ if __name__ == "__main__":
             print(f"       - Volume Ratio: {zone['volume_ratio']:.3f}")
             print(f"       - Fill: {zone['fill_status']} ({zone['fill_percent']:.1f}%)")
     else:
-        print("   [OK] Açık zone bulunamadı")
+        print("   [OK] Open zone not found")
 
-    # Test 3: Batch hesaplama
-    print("\n4. Batch hesaplama testi...")
+    # Test 3: Batch calculation
+    print("\n4. Batch calculation test...")
     batch_result = lvvoid.calculate_batch(data)
-    print(f"   [OK] Batch sonuç uzunluğu: {len(batch_result)}")
-    print(f"   [OK] Max aktif zone sayısı: {int(batch_result.max())}")
-    print(f"   [OK] Toplam zone tespit: {int(batch_result.sum())}")
+    print(f"   [OK] Batch result length: {len(batch_result)}")
+    print(f"   [OK] Maximum number of active zones: {int(batch_result.max())}")
+    print(f"   [OK] Total zone detected: {int(batch_result.sum())}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

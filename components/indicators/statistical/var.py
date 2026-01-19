@@ -2,21 +2,21 @@
 """
 indicators/statistical/var.py - VAR (Variance)
 
-Yazar: SuperBot Team
-Tarih: 2025-11-20
+Author: SuperBot Team
+Date: 2025-11-20
 Versiyon: 1.0.0
 
-VAR (Variance) - Varyans İndikatörü.
-Fiyat dağılımının standart sapmasının karesi.
+VAR (Variance) - Variance Indicator.
+The square of the standard deviation of the price distribution.
 
-Özellikler:
-- Volatilite ölçümü
-- Fiyat dağılımının genişliği
-- Yüksek VAR = Yüksek volatilite
-- Düşük VAR = Düşük volatilite
-- Risk yönetimi için kullanılır
+Features:
+- Volatility measurement
+- Width of price distribution
+- High VAR = High volatility
+- Low VAR = Low volatility
+- Used for risk management
 
-Kullanım:
+Usage:
     from components.indicators import get_indicator_class
 
     VAR = get_indicator_class('var')
@@ -24,10 +24,10 @@ Kullanım:
     result = var.calculate(data)
     print(result.value['var'])
 
-Formül:
+Formula:
     VAR = Σ(Close - Mean)² / N
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -60,13 +60,13 @@ class VAR(BaseIndicator):
     """
     VAR - Variance
 
-    Fiyat dağılımının standart sapmasının karesi.
-    Volatilite ve risk ölçümü için kullanılır.
+    The square of the standard deviation of the price distribution.
+    Used for volatility and risk measurement.
 
     Args:
-        period: VAR periyodu (varsayılan: 20)
-        logger: Logger instance (opsiyonel)
-        error_handler: Error handler (opsiyonel)
+        period: VAR period (default: 20)
+        logger: Logger instance (optional)
+        error_handler: Error handler (optional)
     """
 
     def __init__(self, period: int = 20, logger=None, error_handler=None):
@@ -83,30 +83,30 @@ class VAR(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.period
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 2:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Period en az 2 olmalı"
+                "Period must be at least 2"
             )
         return True
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        Batch hesaplama (Backtest için)
+        Batch calculation (for backtesting)
 
-        Tüm veriyi vektörel olarak hesaplar.
-        TA-Lib uyumlu: population variance (ddof=0) kullanır
+        Calculates all data vectorially.
+        TA-Lib compatible: uses population variance (ddof=0).
 
         Args:
             data: OHLCV DataFrame
 
         Returns:
-            pd.DataFrame: VAR değerleri
+            pd.DataFrame: VAR values
         """
         # TA-Lib uyumlu: ddof=0 (population variance)
         var = data['close'].rolling(window=self.period).var(ddof=0)
@@ -114,11 +114,11 @@ class VAR(BaseIndicator):
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
         """
-        Warmup buffer - update() için gerekli
+        Warmup buffer - required for update().
 
         Args:
             data: OHLCV DataFrame (warmup verisi)
-            symbol: Sembol adı (opsiyonel)
+            symbol: Symbol name (optional)
         """
         super().warmup_buffer(data, symbol)
 
@@ -134,7 +134,7 @@ class VAR(BaseIndicator):
             candle: Yeni mum verisi (dict)
 
         Returns:
-            IndicatorResult: Güncel VAR değeri
+            IndicatorResult: Current VAR value
         """
         # Support both dict and list/tuple formats
         if isinstance(candle, dict):
@@ -159,7 +159,7 @@ class VAR(BaseIndicator):
         # TA-Lib uyumlu: population variance (ddof=0)
         var_val = np.var(list(self.prices), ddof=0)
 
-        # VAR kendisi sinyal üretmez ama yüksek volatiliteyi gösterir
+        # VAR does not generate a signal itself, but it indicates high volatility.
         return IndicatorResult(
             value={'var': round(var_val, 4)},
             timestamp=timestamp_val,
@@ -171,13 +171,13 @@ class VAR(BaseIndicator):
 
     def calculate(self, data: pd.DataFrame) -> IndicatorResult:
         """
-        VAR hesapla (son değer)
+        Calculate the variable (final value)
 
         Args:
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: VAR değeri
+            IndicatorResult: VAR value
         """
         # Batch hesapla
         batch_result = self.calculate_batch(data)
@@ -202,7 +202,7 @@ class VAR(BaseIndicator):
         )
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {'period': 20}
 
     def _get_output_names(self) -> list:
@@ -210,7 +210,7 @@ class VAR(BaseIndicator):
         return ['var']
 
     def _requires_volume(self) -> bool:
-        """VAR volume gerektirmez"""
+        """Does not require VAR volume"""
         return False
 
 
@@ -226,9 +226,9 @@ __all__ = ['VAR']
 # ============================================================================
 
 if __name__ == "__main__":
-    """VAR indikatör testi"""
+    """VAR indicator test"""
 
-    # Windows console UTF-8 desteği
+    # Windows console UTF-8 support
     import sys
     import io
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
@@ -237,14 +237,14 @@ if __name__ == "__main__":
     print("🧪 VAR (VARIANCE) TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(150)]
 
-    # İki farklı volatilite dönemi
-    low_vol = np.random.randn(75) * 1  # Düşük volatilite
-    high_vol = np.random.randn(75) * 5  # Yüksek volatilite
+    # Two different volatility periods
+    low_vol = np.random.randn(75) * 1  # Low volatility
+    high_vol = np.random.randn(75) * 5  # High volatility
     noise = np.concatenate([low_vol, high_vol])
 
     base_price = 100
@@ -260,29 +260,29 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in range(150)]
     })
 
-    print(f"   ✅ {len(data)} mum oluşturuldu")
-    print(f"   ✅ Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   ✅ {len(data)} candles created")
+    print(f"   ✅ Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     var = VAR(period=20)
-    print(f"   ✅ Oluşturuldu: {var}")
-    print(f"   ✅ Kategori: {var.category.value}")
-    print(f"   ✅ Gerekli periyot: {var.get_required_periods()}")
+    print(f"   ✅ Created: {var}")
+    print(f"   ✅ Category: {var.category.value}")
+    print(f"   ✅ Required period: {var.get_required_periods()}")
 
     result = var(data)
     print(f"   ✅ VAR: {result.value['var']}")
-    print(f"   ✅ Güç: {result.strength:.2f}")
+    print(f"   ✅ Power: {result.strength:.2f}")
 
     # Test 2: Batch Calculation
     print("\n3. Batch Calculation Testi...")
     batch_result = var.calculate_batch(data)
     print(f"   ✅ Batch result shape: {batch_result.shape}")
-    print(f"   ✅ Son 5 VAR değeri:")
+    print(f"   ✅ Last 5 VAR values:")
     print(batch_result['var'].tail())
 
-    # Test 3: Update metodu
-    print("\n4. Update metodu testi...")
+    # Test 3: Update method
+    print("\n4. Update method test...")
     var2 = VAR(period=20)
     init_data = data.head(50)
     var2.calculate(init_data)
@@ -297,29 +297,29 @@ if __name__ == "__main__":
         if update_result:
             print(f"   ✅ Bar {i}: VAR={update_result.value['var']:.4f}")
 
-    # Test 4: Volatilite dönemleri analizi
-    print("\n5. Volatilite dönemleri analizi...")
+    # Test 4: Analysis of volatility periods
+    print("\n5. Volatility period analysis...")
     batch_result = var.calculate_batch(data)
     var_values = batch_result['var'].dropna()
 
-    # İlk ve ikinci yarı
+    # First and second half
     mid_point = len(var_values) // 2
     first_half = var_values.iloc[:mid_point]
     second_half = var_values.iloc[mid_point:]
 
-    print(f"   ✅ İlk yarı ortalama VAR: {first_half.mean():.4f}")
-    print(f"   ✅ İkinci yarı ortalama VAR: {second_half.mean():.4f}")
-    print(f"   ✅ Volatilite artışı: {(second_half.mean() / first_half.mean()):.2f}x")
+    print(f"   ✅ First half average VAR: {first_half.mean():.4f}")
+    print(f"   ✅ Second half average VAR: {second_half.mean():.4f}")
+    print(f"   ✅ Volatility increase: {(second_half.mean() / first_half.mean()):.2f}x")
 
-    # Test 5: Farklı periyotlar
-    print("\n6. Farklı periyot testi...")
+    # Test 5: Different periods
+    print("\n6. Different period test...")
     for period in [10, 20, 30]:
         var_test = VAR(period=period)
         result = var_test.calculate(data)
         print(f"   ✅ VAR({period}): {result.value['var']:.4f}")
 
-    # Test 6: Std sapma ile ilişki
-    print("\n7. Standart sapma ile ilişki...")
+    # Test 6: Relationship with standard deviation
+    print("\n7. Relationship with standard deviation...")
     batch_result = var.calculate_batch(data)
     var_values = batch_result['var'].dropna()
     std_values = data['close'].rolling(window=20).std().dropna()
@@ -330,7 +330,7 @@ if __name__ == "__main__":
     std_valid = std_values[valid_indices]
 
     if len(var_valid) > 0:
-        # Son değerleri karşılaştır
+        # Compare the last values
         last_var = var_valid.iloc[-1]
         last_std = std_valid.iloc[-1]
         expected_var = last_std ** 2
@@ -343,10 +343,10 @@ if __name__ == "__main__":
     print("\n8. Validasyon testi...")
     try:
         invalid_var = VAR(period=1)
-        print("   ❌ Hata: Geçersiz period kabul edildi!")
+        print("   ❌ Error: Invalid period accepted!")
     except InvalidParameterError as e:
-        print(f"   ✅ Period validasyonu başarılı: {e}")
+        print(f"   ✅ Period validation successful: {e}")
 
     print("\n" + "="*60)
-    print("✅ TÜM TESTLER BAŞARILI!")
+    print("✅ ALL TESTS PASSED!")
     print("="*60 + "\n")

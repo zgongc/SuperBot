@@ -6,20 +6,20 @@ Date: 2025-10-14
 Author: SuperBot Team
 
 Description:
-    Merkezi indikatör yöneticisi. Strategy'lerde kullanılır.
+    Central indicator manager. Used in strategies.
     
-    Görevleri:
-    1. Strategy'de kullanılacak indikatörleri yükler (lazy loading)
-    2. Birden fazla sembol için aynı indikatörleri yönetir
-    3. Indikatör state'lerini tutar (history)
-    4. Multi-timeframe desteği (1m'de RSI, 15m'de MACD)
-    5. Cache integration (son hesaplanan değerler)
-    6. Indikatör dependency yönetimi (MACD → EMA'ya bağımlı)
+    Tasks:
+    1. Loads indicators to be used in the Strategy (lazy loading)
+    2. Manages the same indicators for multiple symbols
+    3. Stores indicator states (history)
+    4. Multi-timeframe support (RSI on 1m, MACD on 15m)
+    5. Cache integration (last calculated values)
+    6. Indicator dependency management (MACD depends on EMA)
     
-    Kullanım:
+    Usage:
         manager = IndicatorManager(config, cache, logger)
         
-        # Config'ten yükle
+        # Load from config
         manager.load_from_config(strategy_config['indicators'])
         
         # Calculate all
@@ -64,15 +64,15 @@ from components.indicators.indicator_types import (
 
 class IndicatorManager:
     """
-    Merkezi indikatör yöneticisi
+    Central indicator manager
     
-    Strategy'lerde kullanılır. Multi-symbol, multi-timeframe desteği.
+    Used in Strategies. Supports multi-symbol and multi-timeframe.
     
-    Örnek:
+    Example:
         # Strategy'de
         manager = IndicatorManager(config, cache, logger)
         
-        # Config'ten yükle
+        # Load from config
         manager.load_from_config({
             'rsi': {'period': 14, 'timeframe': '1m'},
             'ema': {'period': 20, 'timeframe': '5m'},
@@ -154,7 +154,7 @@ class IndicatorManager:
         }
 
         if self.verbose:
-            self.logger.info("📊 IndicatorManager başlatıldı")
+            self.logger.info("📊 IndicatorManager started")
     
     # ========================================================================
     # LOADING
@@ -173,14 +173,14 @@ class IndicatorManager:
                 }
         """
         if self.verbose:
-            self.logger.info(f"📦 {len(indicators_config)} indikatör config'den yükleniyor...")
+            self.logger.info(f"📦 Loading {len(indicators_config)} indicators from the configuration...")
 
         for name, params in indicators_config.items():
             try:
                 self.load_indicator(name, params)
             except Exception as e:
                 if self.logger:
-                    self.logger.error(f"❌ İndikatör '{name}' yüklenemedi: {e}")
+                    self.logger.error(f"❌ Indicator '{name}' could not be loaded: {e}")
                 if self.error_handler:
                     self.error_handler.handle_exception(
                         e,
@@ -188,7 +188,7 @@ class IndicatorManager:
                     )
 
         if self.verbose:
-            self.logger.info(f"✅ {len(self.indicators)} indikatör başarıyla yüklendi")
+            self.logger.info(f"✅ {len(self.indicators)} indicator successfully loaded")
     
     def load_indicator(self, name: str, params: Dict[str, Any] = None) -> BaseIndicator:
         """
@@ -255,9 +255,9 @@ class IndicatorManager:
         # Log with both names if different (only in verbose mode)
         if self.verbose:
             if name != base_name:
-                self.logger.info(f"📈 İndikatör '{name}' yüklendi (temel: '{base_name}'), parametreler: {merged_params}")
+                self.logger.info(f"📈 Indicator '{name}' loaded (base: '{base_name}'), parameters: {merged_params}")
             else:
-                self.logger.info(f"📈 İndikatör '{name}' yüklendi, parametreler: {merged_params}")
+                self.logger.info(f"📈 Indicator '{name}' loaded, parameters: {merged_params}")
         
         return indicator
     
@@ -485,7 +485,7 @@ class IndicatorManager:
         """
         Setup realtime calculators for symbol
 
-        V2: Her timeframe için ayrı calculator'lar oluşturur.
+        V2: Creates separate calculators for each timeframe.
         Calculator key format: "ema_50_5m", "ema_50_15m" (HER ZAMAN suffix)
 
         IMPORTANT: Creates NEW indicator instances per symbol to avoid buffer contamination!
@@ -503,7 +503,7 @@ class IndicatorManager:
             self.last_results[symbol] = {}
 
         for name, indicator in self.indicators.items():
-            # V2: Calculator key HER ZAMAN suffix alır: "ema_50_5m", "ema_50_15m"
+            # V2: Calculator key always takes a suffix: "ema_50_5m", "ema_50_15m"
             calc_key = f"{name}_{timeframe}" if timeframe else name
 
             # V4: Create NEW indicator instance for this symbol (avoid buffer contamination!)
@@ -546,7 +546,7 @@ class IndicatorManager:
         """
         Update indicators with new candle (incremental)
 
-        V2: Timeframe-aware güncelleme. Sadece ilgili timeframe'in calculator'larını günceller.
+        V2: Timeframe-aware update. Only updates the calculators for the relevant timeframe.
         Calculator key format: "ema_50_5m", "ema_50_15m"
 
         Args:
@@ -564,19 +564,19 @@ class IndicatorManager:
 
         results = {}
 
-        # V2: Sadece bu timeframe'in calculator'larını güncelle
+        # V2: Update only the calculators for this timeframe.
         # calc_key format: "ema_50_5m", "rsi_14_15m"
         target_suffix = f"_{timeframe}" if timeframe else None
 
         for calc_key, calculator in self.calculators[symbol].items():
             # V2: Timeframe filtresi
-            # Eğer timeframe belirtilmişse, sadece o timeframe'in calculator'larını güncelle
+            # If a timeframe is specified, only update the calculators for that timeframe.
             if target_suffix:
                 if not calc_key.endswith(target_suffix):
                     continue
             else:
-                # timeframe=None ise suffix'siz olanları güncelle (eski davranış)
-                # Bu durumda timeframe suffix'i olan calculator'ları atla
+                # If timeframe is None, update the ones without a suffix (old behavior)
+                # In this case, skip the calculators that have a timeframe suffix.
                 known_suffixes = ["_1m", "_3m", "_5m", "_15m", "_30m", "_1h", "_2h", "_4h", "_6h", "_12h", "_1d"]
                 has_tf_suffix = any(calc_key.endswith(s) for s in known_suffixes)
                 if has_tf_suffix:
@@ -771,8 +771,8 @@ class IndicatorManager:
         """
         Parse indicator name to extract base name and parameters (REGISTRY-BASED v2)
 
-        Yeni indicator eklendiğinde otomatik çalışır - manuel kod gerekmez!
-        Registry'deki default_params'tan parameter sıralamasını öğrenir.
+        Automatically runs when a new indicator is added - no manual coding required!
+        Learns the parameter order from the default_params in the registry.
 
         Supports formats:
         - "ema_20" → ("ema", {"period": 20})
@@ -819,20 +819,20 @@ class IndicatorManager:
             # No numeric suffixes, return base name only
             return base_name, {}
 
-        # REGISTRY-BASED PARAMETER MAPPING (otomatik!)
+        # REGISTRY-BASED PARAMETER MAPPING (automatic!)
         try:
             indicator_info = get_indicator_info(base_name)
             default_params = indicator_info.get('default_params', {})
 
             if default_params:
-                # Registry'den parameter sıralamasını al
+                # Get parameter order from the registry
                 param_names = list(default_params.keys())
 
                 # Numeric suffixes'i parameter names'e map et
                 for i, value in enumerate(numeric_suffixes):
                     if i < len(param_names):
                         param_name = param_names[i]
-                        # Integer veya float olarak kaydet
+                        # Save as integer or float
                         if isinstance(default_params[param_name], int):
                             auto_params[param_name] = int(value)
                         else:
@@ -843,7 +843,7 @@ class IndicatorManager:
             # Registry'de yoksa fallback to default behavior
             pass
 
-        # FALLBACK: Default behavior (sadece registry'de olmayan indicator'lar için)
+        # FALLBACK: Default behavior (only for indicators that are not in the registry)
         if len(numeric_suffixes) >= 1:
             auto_params['period'] = int(numeric_suffixes[0])
 

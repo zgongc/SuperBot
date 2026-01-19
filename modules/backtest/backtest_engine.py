@@ -2303,7 +2303,7 @@ async def run_backtest_cli(
         logger.info(f"   Name: {strategy.strategy_name} v{strategy.strategy_version}")
         logger.info(f"   Timeframe: {strategy.primary_timeframe}")
         logger.info(f"   Starting Balance: ${strategy.initial_balance:,.0f}")
-        logger.info(f"   Semboller: {getattr(strategy, 'symbols', 'N/A')}")
+        logger.info(f"   Symbols: {getattr(strategy, 'symbols', 'N/A')}")
 
     # Apply CLI overrides if provided
     if symbol or timeframe or start_date or end_date or initial_balance:

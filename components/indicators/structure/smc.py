@@ -5,33 +5,33 @@ Version: 1.0.0
 Date: 2025-12-08
 Author: SuperBot Team
 
-Açıklama:
-    Smart Money Concepts (SMC) - Tüm bileşenler tek indicator'de
+Description:
+    Smart Money Concepts (SMC) - All components in a single indicator.
 
-    Bileşenler:
-    1. Swing Points - Internal hesaplama (left/right bar analizi)
-    2. BOS (Break of Structure) - Yapı kırılması
-    3. CHoCH (Change of Character) - Trend değişimi
-    4. FVG (Fair Value Gap) - Boşluk bölgeleri
-    5. Order Blocks - Kurumsal emir bölgeleri (opsiyonel)
+    Components:
+    1. Swing Points - Internal calculation (left/right bar analysis)
+    2. BOS (Break of Structure) - Break of structure
+    3. CHoCH (Change of Character) - Trend change
+    4. FVG (Fair Value Gap) - Gap zones
+    5. Order Blocks - Institutional order zones (optional)
 
     Output:
     - smc_signal: 1=bullish, -1=bearish, 0=neutral
     - bos: 1=bullish BOS, -1=bearish BOS, 0=none
     - choch: 1=bullish CHoCH, -1=bearish CHoCH, 0=none
     - fvg: >0 bullish dominance, <0 bearish dominance
-    - swing_high: En son swing high seviyesi
-    - swing_low: En son swing low seviyesi
-    - ob_bullish: Aktif bullish order block (top, bottom)
-    - ob_bearish: Aktif bearish order block (top, bottom)
+    - swing_high: The most recent swing high level
+    - swing_low: The most recent swing low level
+    - ob_bullish: Active bullish order block (top, bottom)
+    - ob_bearish: Active bearish order block (top, bottom)
 
 Avantajlar:
-    - Tek indicator ekleme ile tüm SMC analizi
-    - calculate_batch() ile optimize backtest
-    - Internal hesaplamalar - ayrı indicator dependency yok
+    - Complete SMC analysis with a single indicator.
+    - Optimized backtesting with `calculate_batch()`.
+    - Internal calculations - no separate indicator dependencies.
     - custom_parameters entegrasyonu
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -56,19 +56,19 @@ class SMC(BaseIndicator):
     """
     Smart Money Concepts (SMC) Indicator
 
-    Tüm SMC bileşenlerini tek bir indicator'de birleştirir.
-    Backtest için optimize edilmiş calculate_batch() methodu ile.
+    Combines all SMC components into a single indicator.
+    With the calculate_batch() method optimized for backtesting.
 
     Args:
-        left_bars: Swing point için sol bar sayısı (varsayılan: 5)
-        right_bars: Swing point için sağ bar sayısı (varsayılan: 5)
-        max_levels: Takip edilecek maksimum swing seviyesi (varsayılan: 5)
-        trend_strength: Trend tespiti için minimum swing sayısı (varsayılan: 2)
-        fvg_min_size_pct: Minimum FVG boyutu % (varsayılan: 0.1)
-        fvg_max_age: FVG maksimum yaşı (bar) (varsayılan: 50)
-        ob_strength_threshold: Order Block güç eşiği % (varsayılan: 1.0)
-        ob_max_blocks: Maksimum aktif OB sayısı (varsayılan: 3)
-        ob_enabled: Order Block tespiti aktif mi (varsayılan: True)
+        left_bars: Number of bars to the left of the swing point (default: 5)
+        right_bars: Number of bars to the right of the swing point (default: 5)
+        max_levels: Maximum swing level to track (default: 5)
+        trend_strength: Minimum number of swings for trend detection (default: 2)
+        fvg_min_size_pct: Minimum FVG size percentage (default: 0.1)
+        fvg_max_age: Maximum age of FVG (in bars) (default: 50)
+        ob_strength_threshold: Order Block strength threshold percentage (default: 1.0)
+        ob_max_blocks: Maximum number of active OBs (default: 3)
+        ob_enabled: Is Order Block detection enabled? (default: True)
     """
 
     def __init__(
@@ -125,7 +125,7 @@ class SMC(BaseIndicator):
         self._buffers_init = False
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return max(
             self.left_bars + self.right_bars + 5,
             self.trend_strength * 3,
@@ -133,21 +133,21 @@ class SMC(BaseIndicator):
         )
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.left_bars < 1:
             raise InvalidParameterError(
                 self.name, 'left_bars', self.left_bars,
-                "Left bars en az 1 olmalı"
+                "Left bars must be at least 1"
             )
         if self.right_bars < 1:
             raise InvalidParameterError(
                 self.name, 'right_bars', self.right_bars,
-                "Right bars en az 1 olmalı"
+                "Right bars must be at least 1"
             )
         if self.max_levels < 1:
             raise InvalidParameterError(
                 self.name, 'max_levels', self.max_levels,
-                "Max levels en az 1 olmalı"
+                "Max levels must be at least 1"
             )
         return True
 
@@ -161,7 +161,7 @@ class SMC(BaseIndicator):
         lows: np.ndarray
     ) -> Tuple[List[Dict], List[Dict]]:
         """
-        Swing high ve swing low noktalarını tespit et
+        Detect swing high and swing low points.
 
         Returns:
             Tuple[List[Dict], List[Dict]]: (swing_highs, swing_lows)
@@ -172,7 +172,7 @@ class SMC(BaseIndicator):
         n = len(highs)
 
         for i in range(self.left_bars, n - self.right_bars):
-            # Swing High kontrolü
+            # Swing High check
             is_swing_high = True
             for j in range(1, self.left_bars + 1):
                 if highs[i] <= highs[i - j]:
@@ -190,7 +190,7 @@ class SMC(BaseIndicator):
                     'value': highs[i]
                 })
 
-            # Swing Low kontrolü
+            # Swing Low check
             is_swing_low = True
             for j in range(1, self.left_bars + 1):
                 if lows[i] >= lows[i - j]:
@@ -220,7 +220,7 @@ class SMC(BaseIndicator):
         recent_lows: List[Dict]
     ) -> str:
         """
-        Mevcut trendi tespit et (swing yapısına göre)
+        Detect the current trend (based on swing structure).
 
         Returns:
             str: 'uptrend', 'downtrend', 'ranging'
@@ -228,15 +228,15 @@ class SMC(BaseIndicator):
         if len(recent_highs) < self.trend_strength or len(recent_lows) < self.trend_strength:
             return 'ranging'
 
-        # Son swing high'ları karşılaştır (Higher Highs?)
+        # Compare the latest swing highs (Higher Highs?)
         last_highs = [h['value'] for h in recent_highs[-self.trend_strength:]]
         higher_highs = all(last_highs[i] > last_highs[i-1] for i in range(1, len(last_highs)))
 
-        # Son swing low'ları karşılaştır (Higher Lows?)
+        # Compare the last swing lows (Higher Lows?)
         last_lows = [l['value'] for l in recent_lows[-self.trend_strength:]]
         higher_lows = all(last_lows[i] > last_lows[i-1] for i in range(1, len(last_lows)))
 
-        # Lower Lows ve Lower Highs?
+        # Lower Lows and Lower Highs?
         lower_highs = all(last_highs[i] < last_highs[i-1] for i in range(1, len(last_highs)))
         lower_lows = all(last_lows[i] < last_lows[i-1] for i in range(1, len(last_lows)))
 
@@ -258,7 +258,7 @@ class SMC(BaseIndicator):
         swing_lows: List[Dict]
     ) -> np.ndarray:
         """
-        Break of Structure batch hesaplama (ONLY NEW BREAKS)
+        Structure break batch calculation (ONLY NEW BREAKS)
 
         Returns:
             np.ndarray: BOS sinyali (1=bullish, -1=bearish, 0=none)
@@ -335,10 +335,10 @@ class SMC(BaseIndicator):
         swing_lows: List[Dict]
     ) -> np.ndarray:
         """
-        Change of Character batch hesaplama (ONLY NEW BREAKS)
+        Character batch calculation (ONLY NEW BREAKS)
 
-        CHoCH: Trend değişimi - uptrend'de swing low kırılması veya
-               downtrend'de swing high kırılması
+        CHoCH: Trend change - a swing low breakout in an uptrend or
+               a swing high breakout in a downtrend
 
         Returns:
             np.ndarray: CHoCH sinyali (1=bullish, -1=bearish, 0=none)
@@ -419,11 +419,11 @@ class SMC(BaseIndicator):
         closes: np.ndarray
     ) -> np.ndarray:
         """
-        Fair Value Gap batch hesaplama
+        Fair Value Gap batch calculation
 
-        FVG: 3 mum arasındaki boşluk
-        - Bullish FVG: Mum 1'in high'ı < Mum 3'ün low'u
-        - Bearish FVG: Mum 1'in low'u > Mum 3'ün high'ı
+        FVG: The space between 3 candles
+        - Bullish FVG: Candle 1's high < Candle 3's low
+        - Bearish FVG: Candle 1's low > Candle 3's high
 
         Returns:
             np.ndarray: FVG count (positive=bullish dominance, negative=bearish)
@@ -510,7 +510,7 @@ class SMC(BaseIndicator):
         closes: np.ndarray
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
-        Order Block batch hesaplama
+        Calculate Order Block batch.
 
         Returns:
             Tuple: (ob_bullish_top, ob_bullish_bottom, ob_bearish_top, ob_bearish_bottom)
@@ -597,11 +597,11 @@ class SMC(BaseIndicator):
         fvg: np.ndarray
     ) -> np.ndarray:
         """
-        Kombine SMC sinyal üret
+        Generate combined SMC signal.
 
         Signal Logic:
-        - Bullish BOS veya Bullish CHoCH + FVG >= 0 -> 1 (bullish)
-        - Bearish BOS veya Bearish CHoCH + FVG <= 0 -> -1 (bearish)
+        - Bullish BOS or Bullish CHoCH + FVG >= 0 -> 1 (bullish)
+        - Bearish BOS or Bearish CHoCH + FVG <= 0 -> -1 (bearish)
         - Aksi halde -> 0 (neutral)
 
         Returns:
@@ -626,7 +626,7 @@ class SMC(BaseIndicator):
 
     def calculate(self, data: pd.DataFrame) -> IndicatorResult:
         """
-        Real-time hesaplama (son bar için)
+        Real-time calculation (for the last bar)
 
         Args:
             data: OHLCV DataFrame
@@ -634,12 +634,12 @@ class SMC(BaseIndicator):
         Returns:
             IndicatorResult: SMC analizi
         """
-        # Batch hesapla ve son değerleri döndür
+        # Calculate the batch and return the final values
         batch_result = self.calculate_batch(data)
 
         timestamp = int(data.iloc[-1].get('timestamp', 0))
 
-        # Son değerleri al
+        # Get the last values
         last_idx = len(batch_result) - 1
 
         smc_signal = batch_result['smc_signal'].iloc[last_idx]
@@ -695,13 +695,13 @@ class SMC(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        Batch hesaplama (Backtest için optimize edilmiş)
+        Batch calculation (optimized for backtesting)
 
         Args:
             data: OHLCV DataFrame
 
         Returns:
-            pd.DataFrame: Tüm SMC değerleri
+            pd.DataFrame: All SMC values
         """
         opens = data['open'].values
         highs = data['high'].values
@@ -728,7 +728,7 @@ class SMC(BaseIndicator):
         # 6. SMC Signal
         smc_signal = self._generate_smc_signal(bos, choch, fvg)
 
-        # 7. Current swing levels (son aktif swing high/low)
+        # 7. Current swing levels (most recent active swing high/low)
         swing_high_values = np.full(n, np.nan)
         swing_low_values = np.full(n, np.nan)
 
@@ -803,7 +803,7 @@ class SMC(BaseIndicator):
             symbol: Symbol identifier
 
         Returns:
-            IndicatorResult: Güncel SMC değeri
+            IndicatorResult: Current SMC value
         """
         # Initialize buffers if needed
         if not self._buffers_init:
@@ -873,7 +873,7 @@ class SMC(BaseIndicator):
     # =========================================================================
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'left_bars': 5,
             'right_bars': 5,
@@ -909,12 +909,12 @@ if __name__ == "__main__":
     print("SMC INDICATOR TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     n = 200
 
-    # Trend simülasyonu
+    # Trend simulation
     base_price = 100
     prices = [base_price]
 
@@ -944,22 +944,22 @@ if __name__ == "__main__":
         'volume': np.random.randint(1000, 10000, n)
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
+    print(f"   [OK] {len(data)} candles created")
 
-    # Test 1: Indicator oluşturma
-    print("\n2. Indicator oluşturma testi...")
+    # Test 1: Creating an indicator
+    print("\n2. Indicator creation test...")
     smc = SMC()
-    print(f"   [OK] {smc.name} oluşturuldu")
+    print(f"   [OK] {smc.name} created")
     print(f"   [OK] Kategori: {smc.category.value}")
-    print(f"   [OK] Gerekli periyot: {smc.get_required_periods()}")
+    print(f"   [OK] Required period: {smc.get_required_periods()}")
 
-    # Test 2: Batch hesaplama
-    print("\n3. Batch hesaplama testi...")
+    # Test 2: Batch calculation
+    print("\n3. Batch calculation test...")
     result_df = smc.calculate_batch(data)
     print(f"   [OK] Result shape: {result_df.shape}")
     print(f"   [OK] Columns: {list(result_df.columns)}")
 
-    # BOS/CHoCH sayıları
+    # BOS/CHoCH numbers
     bullish_bos = (result_df['bos'] == 1).sum()
     bearish_bos = (result_df['bos'] == -1).sum()
     bullish_choch = (result_df['choch'] == 1).sum()
@@ -970,8 +970,8 @@ if __name__ == "__main__":
     print(f"   [OK] Bullish CHoCH: {bullish_choch}")
     print(f"   [OK] Bearish CHoCH: {bearish_choch}")
 
-    # Test 3: Real-time hesaplama
-    print("\n4. Real-time hesaplama testi...")
+    # Test 3: Real-time calculation
+    print("\n4. Real-time calculation test...")
     result = smc.calculate(data)
     print(f"   [OK] SMC Signal: {result.value['smc_signal']}")
     print(f"   [OK] BOS: {result.value['bos']}")
@@ -1005,10 +1005,10 @@ if __name__ == "__main__":
     # Test 5: Metadata
     print("\n6. Metadata testi...")
     metadata = smc.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

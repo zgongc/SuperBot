@@ -5,20 +5,20 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    Volume Profile - Hacim profili
-    Fiyat seviyelerindeki hacim dağılımını gösterir
-    POC (Point of Control) - En yüksek hacimli fiyat seviyesi
-    VAH (Value Area High) - Değer alanı üst sınırı (%70 hacim)
-    VAL (Value Area Low) - Değer alanı alt sınırı (%70 hacim)
+Description:
+    Volume Profile - Volume profile
+    Shows the volume distribution at price levels
+    POC (Point of Control) - The price level with the highest volume
+    VAH (Value Area High) - Upper limit of the value area (70% volume)
+    VAL (Value Area Low) - Lower limit of the value area (70% volume)
 
-Formül:
-    1. Fiyat aralığını bins'e böl
+Formula:
+    1. Divide the price range into bins.
     2. Her bin'deki hacmi topla
-    3. POC = Maksimum hacimli bin
-    4. VAH/VAL = %70 hacim içeren alan sınırları
+    3. POC = Maximum volume bin
+    4. VAH/VAL = Area limits containing 70% volume
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -40,13 +40,13 @@ class VolumeProfile(BaseIndicator):
     """
     Volume Profile
 
-    Fiyat seviyelerindeki hacim dağılımını analiz eder.
-    POC, VAH, VAL değerlerini hesaplar.
+    Analyzes the volume distribution at different price levels.
+    Calculates POC, VAH, and VAL values.
 
     Args:
-        period: Analiz periyodu (varsayılan: 50)
-        bins: Fiyat seviyesi sayısı (varsayılan: 24)
-        value_area: Değer alanı yüzdesi (varsayılan: 70)
+        period: Analysis period (default: 50)
+        bins: Number of price levels (default: 24)
+        value_area: Value area percentage (default: 70)
     """
 
     def __init__(
@@ -75,25 +75,25 @@ class VolumeProfile(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return max(self.period, self.bins)
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 1:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Periyot pozitif olmalı"
+                "The period must be positive"
             )
         if self.bins < 5:
             raise InvalidParameterError(
                 self.name, 'bins', self.bins,
-                "Bins en az 5 olmalı"
+                "Bins must be at least 5"
             )
         if not (50 <= self.value_area <= 90):
             raise InvalidParameterError(
                 self.name, 'value_area', self.value_area,
-                "Value area %50-%90 arası olmalı"
+                "Value must be between 50% and 90%"
             )
         return True
 
@@ -105,9 +105,9 @@ class VolumeProfile(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: POC, VAH, VAL değerleri
+            IndicatorResult: POC, VAH, VAL values
         """
-        # Period seçimi
+        # Period selection
         if len(data) > self.period:
             period_data = data.tail(self.period)
         else:
@@ -118,7 +118,7 @@ class VolumeProfile(BaseIndicator):
         close = period_data['close'].values
         volume = period_data['volume'].values
 
-        # Fiyat aralığını belirle
+        # Define the price range
         price_min = np.min(low)
         price_max = np.max(high)
         price_range = price_max - price_min
@@ -126,17 +126,17 @@ class VolumeProfile(BaseIndicator):
         if price_range == 0:
             price_range = price_min * 0.01  # %1 minimum range
 
-        # Bins oluştur
+        # Create bins
         bin_edges = np.linspace(price_min, price_max, self.bins + 1)
         bin_volumes = np.zeros(self.bins)
 
-        # Her mumun hacmini ilgili bins'lere dağıt
+        # Distribute the volume of each candle to the corresponding bins.
         for i in range(len(period_data)):
             candle_low = low[i]
             candle_high = high[i]
             candle_volume = volume[i]
 
-            # Bu mumun hangi bins'leri kapsadığını bul
+            # Find which bins this candle covers.
             for j in range(self.bins):
                 bin_low = bin_edges[j]
                 bin_high = bin_edges[j + 1]
@@ -146,27 +146,27 @@ class VolumeProfile(BaseIndicator):
                 overlap_high = min(candle_high, bin_high)
 
                 if overlap_high > overlap_low:
-                    # Overlap oranı
+                    # Overlap ratio
                     candle_range = candle_high - candle_low
                     if candle_range > 0:
                         overlap_ratio = (overlap_high - overlap_low) / candle_range
                         bin_volumes[j] += candle_volume * overlap_ratio
 
-        # POC (Point of Control) - En yüksek hacimli fiyat seviyesi
+        # POC (Point of Control) - The price level with the highest volume.
         poc_index = np.argmax(bin_volumes)
         poc_price = (bin_edges[poc_index] + bin_edges[poc_index + 1]) / 2
 
-        # Value Area hesapla (POC etrafında genişle)
+        # Calculate Value Area (expand around POC)
         total_volume = np.sum(bin_volumes)
         value_area_volume = total_volume * (self.value_area / 100)
 
-        # POC'tan başlayarak her iki yöne genişle
+        # Starting from the POC, expand in both directions.
         va_low_index = poc_index
         va_high_index = poc_index
         current_volume = bin_volumes[poc_index]
 
         while current_volume < value_area_volume:
-            # Hangi yöne genişleyeceğine karar ver
+            # Decide which direction to expand to.
             can_expand_low = va_low_index > 0
             can_expand_high = va_high_index < self.bins - 1
 
@@ -188,7 +188,7 @@ class VolumeProfile(BaseIndicator):
             else:
                 break
 
-        # VAH ve VAL
+        # VAH and VAL
         vah_price = bin_edges[va_high_index + 1]
         val_price = bin_edges[va_low_index]
 
@@ -221,26 +221,26 @@ class VolumeProfile(BaseIndicator):
 
     def _calculate_strength(self, price: float, poc: float, vah: float, val: float) -> float:
         """
-        Fiyatın value area'ya göre gücünü hesapla
+        Calculate the strength of the price based on the value area.
 
         Args:
-            price: Güncel fiyat
-            poc: POC fiyatı
-            vah: VAH fiyatı
-            val: VAL fiyatı
+            price: Current price
+            poc: POC price
+            vah: VAH price
+            val: VAL price
 
         Returns:
-            float: Güç değeri (0-100)
+            float: Power value (0-100)
         """
         if val <= price <= vah:
-            # Value area içinde - düşük güç
+            # Inside the value range - low power
             distance_from_poc = abs(price - poc)
             va_range = vah - val
             if va_range > 0:
                 return (distance_from_poc / va_range) * 50  # 0-50
             return 0
         else:
-            # Value area dışında - yüksek güç
+            # Outside the value range - high power
             if price > vah:
                 distance = price - vah
                 reference = vah - poc
@@ -342,36 +342,36 @@ class VolumeProfile(BaseIndicator):
 
     def get_signal(self, price: float, poc: float, vah: float, val: float) -> SignalType:
         """
-        Volume Profile'a göre sinyal üret
+        Generate a signal based on the Volume Profile.
 
         Args:
-            price: Güncel fiyat
-            poc: POC fiyatı
-            vah: VAH fiyatı
-            val: VAL fiyatı
+            price: Current price
+            poc: POC price
+            vah: VAH price
+            val: VAL price
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
         if price < val:
-            return SignalType.BUY  # Value area altında - potansiyel destek
+            return SignalType.BUY  # Below value area - potential support
         elif price > vah:
-            return SignalType.SELL  # Value area üstünde - potansiyel direnç
+            return SignalType.SELL  # Above the value area - potential resistance
         elif price < poc:
-            return SignalType.HOLD  # POC altında
+            return SignalType.HOLD  # Below the price of change (POC)
         else:
-            return SignalType.HOLD  # POC üstünde
+            return SignalType.HOLD  # Above the POC
 
     def get_trend(self, price: float, poc: float) -> TrendDirection:
         """
-        POC'a göre trend belirle
+        Determine the trend according to the POC.
 
         Args:
-            price: Güncel fiyat
-            poc: POC fiyatı
+            price: Current price
+            poc: POC price
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         distance_pct = abs(((price - poc) / poc) * 100)
 
@@ -382,7 +382,7 @@ class VolumeProfile(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'period': 50,
             'bins': 24,
@@ -406,18 +406,18 @@ __all__ = ['VolumeProfile']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """Volume Profile indikatör testi"""
+    """Volume Profile indicator test"""
 
     print("\n" + "="*60)
     print("VOLUME PROFILE TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(60)]
 
@@ -439,13 +439,13 @@ if __name__ == "__main__":
         'volume': volumes
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     vp = VolumeProfile(period=50, bins=24)
-    print(f"   [OK] Oluşturuldu: {vp}")
+    print(f"   [OK] Created: {vp}")
     print(f"   [OK] Kategori: {vp.category.value}")
     print(f"   [OK] Tip: {vp.indicator_type.value}")
 
@@ -453,12 +453,12 @@ if __name__ == "__main__":
     print(f"   [OK] POC (Point of Control): {result.value['poc']:.8f}")
     print(f"   [OK] VAH (Value Area High): {result.value['vah']:.8f}")
     print(f"   [OK] VAL (Value Area Low): {result.value['val']:.8f}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Power: {result.strength:.2f}")
 
-    # Test 2: Farklı bin sayıları
-    print("\n3. Farklı bin sayısı testi...")
+    # Test 2: Different binary numbers
+    print("\n3. Different bin number test...")
     for bins in [12, 24, 48]:
         vp_test = VolumeProfile(period=50, bins=bins)
         result = vp_test.calculate(data)
@@ -470,40 +470,40 @@ if __name__ == "__main__":
     outputs = vp._get_output_names()
     print(f"   [OK] Output sayısı: {len(outputs)}")
     print(f"   [OK] Outputs: {outputs}")
-    assert len(outputs) == 3, "3 output olmalı!"
+    assert len(outputs) == 3, "There should be 3 outputs!"
 
     # Test 4: Volume gereksinimi
     print("\n5. Volume gereksinimi testi...")
     metadata = vp.metadata
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
     assert metadata.requires_volume == True, "Volume Profile volume gerektirmeli!"
 
-    # Test 5: Fiyat pozisyonu analizi
-    print("\n6. Fiyat pozisyonu analizi...")
+    # Test 5: Price position analysis
+    print("\n6. Price position analysis...")
     result = vp.calculate(data)
     current = result.metadata['current_price']
     poc = result.value['poc']
     vah = result.value['vah']
     val = result.value['val']
 
-    print(f"   [OK] Güncel fiyat: {current:.8f}")
+    print(f"   [OK] Current price: {current:.8f}")
     print(f"   [OK] POC: {poc:.8f}")
     print(f"   [OK] VAH: {vah:.8f}")
     print(f"   [OK] VAL: {val:.8f}")
 
     if current > vah:
-        print("   [OK] Fiyat value area üstünde (potansiyel direnç)")
+        print("   [OK] Price is above the value area (potential resistance)")
     elif current < val:
-        print("   [OK] Fiyat value area altında (potansiyel destek)")
+        print("   [OK] Price is below the value area (potential support)")
     else:
-        print("   [OK] Fiyat value area içinde")
+        print("   [OK] Price value is within the specified range")
 
-    # Test 6: İstatistikler
-    print("\n7. İstatistik testi...")
+    # Test 6: Statistics
+    print("\n7. Statistical test...")
     stats = vp.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

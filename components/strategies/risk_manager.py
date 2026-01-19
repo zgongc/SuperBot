@@ -2,9 +2,9 @@
 """
 engines/risk_manager.py
 SuperBot - Risk Manager
-Yazar: SuperBot Team
-Tarih: 2025-10-16
-Versiyon: 1.0.0
+Author: SuperBot Team
+Date: 2025-10-16
+Version: 1.0.0
 
 Risk Manager - Risk control and validation
 

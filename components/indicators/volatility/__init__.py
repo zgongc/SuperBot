@@ -5,21 +5,21 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    Volatilite indikatörleri paketi
-    Fiyat hareketlerinin genişliğini ve dalgalanmasını ölçen indikatörler
+Description:
+    Volatility indicators package
+    Indicators that measure the magnitude and fluctuation of price movements
 
-İndikatörler:
-    - ATR: Average True Range - Ortalama gerçek aralık
-    - BollingerBands: Bollinger Bands - Volatilite bantları (SMA + StdDev)
-    - KeltnerChannel: Keltner Channel - ATR tabanlı volatilite bantları
+Indicators:
+    - ATR: Average True Range - Average true range
+    - BollingerBands: Bollinger Bands - Volatility bands (SMA + StdDev)
+    - KeltnerChannel: Keltner Channel - Volatility bands based on ATR
     - StandardDeviation: Standard Deviation - Standart sapma
-    - TrueRange: True Range - Gerçek fiyat aralığı
-    - NATR: Normalized ATR - Normalleştirilmiş ATR (yüzde)
-    - ChandelierExit: Chandelier Exit - ATR tabanlı trailing stop
-    - TTMSqueeze: TTM Squeeze - Volatilite sıkışması göstergesi
+    - TrueRange: True Range - Actual price range
+    - NATR: Normalized ATR - Normalized ATR (percentage)
+    - ChandelierExit: Chandelier Exit - ATR-based trailing stop
+    - TTMSqueeze: TTM Squeeze - Volatility squeeze indicator
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """

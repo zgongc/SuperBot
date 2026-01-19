@@ -5,25 +5,25 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    Parabolic SAR (Stop and Reverse) - Parabolik dur ve dön
-    J. Welles Wilder tarafından geliştirilmiş trend takip indikatörü
-    Fiyatın altında veya üstünde parabolik noktalar oluşturur
+Description:
+    Parabolic SAR (Stop and Reverse) - Parabolic stop and reverse
+    A trend-following indicator developed by J. Welles Wilder
+    Creates parabolic points below or above the price
 
-    Kullanım:
-    - Trend yönünü belirleme
+    Usage:
+    - Determining the trend direction
     - Stop-loss seviyeleri
-    - Entry/Exit sinyalleri (SAR pozisyon değiştirince)
+    - Entry/Exit signals (when the SAR position changes)
 
-Formül:
+Formula:
     SAR(t+1) = SAR(t) + AF × (EP - SAR(t))
 
-    EP (Extreme Point): Mevcut trenddeki en yüksek/düşük
-    AF (Acceleration Factor): 0.02 başlangıç, her yeni EP'de 0.02 artar, max 0.20
-    Uptrend: SAR fiyatın altında, EP = En yüksek
-    Downtrend: SAR fiyatın üstünde, EP = En düşük
+    EP (Extreme Point): The highest/lowest point in the current trend.
+    AF (Acceleration Factor): Starts at 0.02, increases by 0.02 for each new EP, max 0.20.
+    Uptrend: SAR price is below, EP = Highest.
+    Downtrend: SAR price is above, EP = Lowest.
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -46,12 +46,12 @@ class ParabolicSAR(BaseIndicator):
     """
     Parabolic SAR Indicator
 
-    Fiyatın altında veya üstünde parabolik noktalarla trend takibi yapar.
+    Tracks trends using parabolic points below or above the price.
 
     Args:
-        af_start: Başlangıç acceleration factor (varsayılan: 0.02)
-        af_increment: AF artış miktarı (varsayılan: 0.02)
-        af_max: Maksimum AF (varsayılan: 0.20)
+        af_start: Initial acceleration factor (default: 0.02)
+        af_increment: AF increment amount (default: 0.02)
+        af_max: Maximum AF (default: 0.20)
     """
 
     def __init__(
@@ -90,37 +90,37 @@ class ParabolicSAR(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
-        return 5  # En az 5 mum gerekli
+        """Minimum required number of periods"""
+        return 5  # At least 5 candles are required
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.af_start <= 0 or self.af_start > 1:
             raise InvalidParameterError(
                 self.name, 'af_start', self.af_start,
-                "AF start 0-1 arasında olmalı"
+                "AF must be between 0 and 1"
             )
         if self.af_increment <= 0 or self.af_increment > 1:
             raise InvalidParameterError(
                 self.name, 'af_increment', self.af_increment,
-                "AF increment 0-1 arasında olmalı"
+                "AF increment should be between 0 and 1"
             )
         if self.af_max <= self.af_start or self.af_max > 1:
             raise InvalidParameterError(
                 self.name, 'af_max', self.af_max,
-                "AF max, AF start'tan büyük ve 1'den küçük olmalı"
+                "AF max must be greater than AF start and less than 1"
             )
         return True
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        Batch hesaplama (Backtest için)
+        Batch calculation (for backtesting)
         
         Args:
             data: OHLCV DataFrame
             
         Returns:
-            pd.DataFrame: SAR, Trend, AF, EP değerleri
+            pd.DataFrame: SAR, Trend, AF, EP values
         """
         high = data['high'].values
         low = data['low'].values
@@ -136,27 +136,27 @@ class ParabolicSAR(BaseIndicator):
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
         """
-        Warmup buffer - update() için gerekli
+        Warmup buffer - required for update().
 
-        Parabolic SAR state-based çalışır. Bu fonksiyon geçmiş veriden
+        Parabolic SAR operates on a state-based system. This function uses historical data.
         son durumu (SAR, trend, AF, EP) hesaplar.
 
         Args:
             data: OHLCV DataFrame (warmup verisi)
-            symbol: Sembol adı (opsiyonel)
+            symbol: Symbol name (optional)
         """
         super().warmup_buffer(data, symbol)
 
-        # Batch calculate ile son durumu al
+        # Get the final state using batch calculation
         batch_result = self.calculate_batch(data)
 
-        # Son değerleri al
+        # Get the last values
         self._prev_sar = batch_result['sar'].iloc[-1]
         self._prev_trend = int(batch_result['trend'].iloc[-1])
         self._prev_af = batch_result['af'].iloc[-1]
         self._prev_ep = batch_result['ep'].iloc[-1]
 
-        # Son 2 bar'ın high/low değerleri
+        # The high/low values of the last 2 bars
         self._prev_high = data['high'].iloc[-1]
         self._prev_low = data['low'].iloc[-1]
         self._prev_prev_high = data['high'].iloc[-2] if len(data) > 1 else None
@@ -170,7 +170,7 @@ class ParabolicSAR(BaseIndicator):
             candle: Yeni mum verisi (dict)
             
         Returns:
-            IndicatorResult: Güncel SAR değerleri
+            IndicatorResult: Current SAR values
         """
             
         # Support both dict and list/tuple formats
@@ -185,9 +185,9 @@ class ParabolicSAR(BaseIndicator):
             low = candle[3] if len(candle) > 3 else 0
             close = candle[4] if len(candle) > 4 else 0        
         
-        # Eğer state yoksa (ilk mum), başlatamayız
+        # If the state doesn't exist (first candle), we cannot start.
         if self._prev_sar is None:
-            # Yeterli veri yoksa None dön
+            # Return None if there is not enough data
             return IndicatorResult(
                 value=0.0,
                 timestamp=timestamp_val,
@@ -198,7 +198,7 @@ class ParabolicSAR(BaseIndicator):
             )
 
         
-        # Önceki değerler
+        # Previous values
         prev_sar = self._prev_sar
         prev_trend = self._prev_trend
         prev_af = self._prev_af
@@ -207,19 +207,19 @@ class ParabolicSAR(BaseIndicator):
         # Yeni SAR hesapla
         new_sar = prev_sar + prev_af * (prev_ep - prev_sar)
         
-        # Trend kontrolü ve güncelleme
+        # Trend control and update
         new_trend = prev_trend
         new_af = prev_af
         new_ep = prev_ep
         
         if prev_trend == 1:  # Uptrend
-            # SAR low'un altında kalmalı (önceki 2 barın low'u)
+            # SAR should be below the low (the low of the previous 2 bars)
             if self._prev_low is not None:
                 new_sar = min(new_sar, self._prev_low)
             if self._prev_prev_low is not None:
                 new_sar = min(new_sar, self._prev_prev_low)
             
-            # Trend değişimi kontrolü (Mevcut mumun low'u SAR'ı kırarsa)
+            # Check for trend reversal (if the current candle's low breaks the SAR)
             if low <= new_sar:
                 new_trend = -1
                 new_sar = prev_ep
@@ -232,13 +232,13 @@ class ParabolicSAR(BaseIndicator):
                     new_af = min(prev_af + self.af_increment, self.af_max)
                     
         else:  # Downtrend
-            # SAR high'ın üstünde kalmalı
+            # It should stay above the SAR high.
             if self._prev_high is not None:
                 new_sar = max(new_sar, self._prev_high)
             if self._prev_prev_high is not None:
                 new_sar = max(new_sar, self._prev_prev_high)
                 
-            # Trend değişimi kontrolü
+            # Check for trend change
             if high >= new_sar:
                 new_trend = 1
                 new_sar = prev_ep
@@ -250,7 +250,7 @@ class ParabolicSAR(BaseIndicator):
                     new_ep = low
                     new_af = min(prev_af + self.af_increment, self.af_max)
         
-        # State güncelle
+        # Update state
         self._prev_sar = new_sar
         self._prev_trend = new_trend
         self._prev_af = new_af
@@ -262,7 +262,7 @@ class ParabolicSAR(BaseIndicator):
         self._prev_high = high
         self._prev_low = low
         
-        # Sonuç
+        # Result
         current_trend = TrendDirection.UP if new_trend == 1 else TrendDirection.DOWN
         signal = self.get_signal(current_trend)
         
@@ -288,22 +288,22 @@ class ParabolicSAR(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: SAR değeri ve trend
+            IndicatorResult: SAR value and trend
         """
         high = data['high'].values
         low = data['low'].values
         close = data['close'].values
 
-        # SAR hesaplama
+        # SAR calculation
         sar, trend, af, ep = self._calculate_sar_series(high, low)
 
-        # Son değerler
+        # Last values
         current_sar = sar[-1]
         current_trend = TrendDirection.UP if trend[-1] == 1 else TrendDirection.DOWN
         current_af = af[-1]
         current_ep = ep[-1]
         
-        # State güncelle (Incremental update için)
+        # Update state (for incremental update)
         self._prev_sar = current_sar
         self._prev_trend = trend[-1]
         self._prev_af = current_af
@@ -320,7 +320,7 @@ class ParabolicSAR(BaseIndicator):
 
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Sinyal belirleme
+        # Signal determination
         signal = self.get_signal(current_trend)
 
         # Warmup buffer for update() method
@@ -356,8 +356,8 @@ class ParabolicSAR(BaseIndicator):
         af = np.zeros(n)
         ep = np.zeros(n)
 
-        # İlk değerler
-        # İlk 5 mumun yüksek/düşüklerine göre trend belirle
+        # Initial values
+        # Determine the trend based on the high/low of the first 5 candles
         if high[1] > high[0]:
             trend[0] = 1  # Uptrend
             sar[0] = low[0]
@@ -369,9 +369,9 @@ class ParabolicSAR(BaseIndicator):
 
         af[0] = self.af_start
 
-        # SAR hesaplama loop
+        # SAR calculation loop
         for i in range(1, n):
-            # Önceki değerler
+            # Previous values
             prev_sar = sar[i-1]
             prev_trend = trend[i-1]
             prev_af = af[i-1]
@@ -380,16 +380,16 @@ class ParabolicSAR(BaseIndicator):
             # Yeni SAR hesapla
             new_sar = prev_sar + prev_af * (prev_ep - prev_sar)
 
-            # Trend devam ediyor mu kontrol et
+            # Check if the trend is continuing
             if prev_trend == 1:  # Uptrend
-                # SAR low'un altında kalmalı
+                # The SAR value should remain below the lower bound.
                 new_sar = min(new_sar, low[i-1])
                 if i > 1:
                     new_sar = min(new_sar, low[i-2])
 
-                # Trend değişimi kontrolü
+                # Check for trend change
                 if low[i] <= new_sar:
-                    # Downtrend'e geçiş
+                    # Transition to downtrend
                     trend[i] = -1
                     new_sar = prev_ep  # EP olur yeni SAR
                     ep[i] = low[i]
@@ -399,7 +399,7 @@ class ParabolicSAR(BaseIndicator):
                     trend[i] = 1
                     sar[i] = new_sar
 
-                    # EP ve AF güncelle
+                    # Update EP and AF
                     if high[i] > prev_ep:
                         ep[i] = high[i]
                         af[i] = min(prev_af + self.af_increment, self.af_max)
@@ -408,14 +408,14 @@ class ParabolicSAR(BaseIndicator):
                         af[i] = prev_af
 
             else:  # Downtrend (prev_trend == -1)
-                # SAR high'ın üstünde kalmalı
+                # It should stay above the SAR high.
                 new_sar = max(new_sar, high[i-1])
                 if i > 1:
                     new_sar = max(new_sar, high[i-2])
 
-                # Trend değişimi kontrolü
+                # Check for trend change
                 if high[i] >= new_sar:
-                    # Uptrend'e geçiş
+                    # Transition to uptrend
                     trend[i] = 1
                     new_sar = prev_ep
                     ep[i] = high[i]
@@ -425,7 +425,7 @@ class ParabolicSAR(BaseIndicator):
                     trend[i] = -1
                     sar[i] = new_sar
 
-                    # EP ve AF güncelle
+                    # Update EP and AF
                     if low[i] < prev_ep:
                         ep[i] = low[i]
                         af[i] = min(prev_af + self.af_increment, self.af_max)
@@ -439,10 +439,10 @@ class ParabolicSAR(BaseIndicator):
 
     def get_signal(self, trend: TrendDirection) -> SignalType:
         """
-        SAR'dan sinyal üret
+        Generate a signal from SAR.
 
         Args:
-            trend: Mevcut trend
+            trend: Current trend
 
         Returns:
             SignalType: BUY (uptrend), SELL (downtrend)
@@ -454,16 +454,16 @@ class ParabolicSAR(BaseIndicator):
         return SignalType.HOLD
 
     def get_trend(self, value: Any) -> TrendDirection:
-        """Trend zaten hesaplanmış"""
+        """Trend has already been calculated"""
         return TrendDirection.NEUTRAL
 
     def _calculate_strength(self, price: float, sar: float) -> float:
-        """Sinyal gücünü hesapla (0-100)"""
+        """Calculate signal strength (0-100)"""
         distance_pct = abs((price - sar) / sar * 100)
         return min(distance_pct * 20, 100)
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'af_start': 0.02,
             'af_increment': 0.02,
@@ -483,29 +483,29 @@ __all__ = ['ParabolicSAR']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """Parabolic SAR indikatör testi"""
+    """Parabolic SAR indicator test"""
 
     print("\n" + "="*60)
     print("PARABOLIC SAR TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(50)]
 
-    # Trend değişimi simülasyonu
+    # Trend change simulation
     base_price = 100
     prices = [base_price]
     for i in range(49):
         if i < 25:
-            trend = 0.8  # Yükseliş
+            trend = 0.8  # Increase
         else:
-            trend = -0.6  # Düşüş
+            trend = -0.6  # Decrease
         noise = np.random.randn() * 1.0
         prices.append(prices[-1] + trend + noise)
 
@@ -518,56 +518,56 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     psar = ParabolicSAR()
-    print(f"   [OK] Oluşturuldu: {psar}")
+    print(f"   [OK] Created: {psar}")
     print(f"   [OK] Kategori: {psar.category.value}")
-    print(f"   [OK] Gerekli periyot: {psar.get_required_periods()}")
+    print(f"   [OK] Required period: {psar.get_required_periods()}")
 
     result = psar(data)
-    print(f"   [OK] SAR Değeri: {result.value}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] SAR Value: {result.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Power: {result.strength:.2f}")
     print(f"   [OK] Metadata: {result.metadata}")
 
-    # Test 2: AF ve EP analizi
-    print("\n3. AF ve EP analizi...")
+    # Test 2: AF and EP analysis
+    print("\n3. AF and EP analysis...")
     print(f"   [OK] Current AF: {result.metadata['af']}")
     print(f"   [OK] Extreme Point: {result.metadata['ep']}")
     print(f"   [OK] Current Price: {result.metadata['current_price']}")
     print(f"   [OK] Distance: {result.metadata['distance_pct']:.2f}%")
 
-    # Test 3: Trend değişimi testi
-    print("\n4. Trend değişimi testi...")
+    # Test 3: Trend change test
+    print("\n4. Trend change test...")
     for i in [15, 25, 35, 45]:
         data_slice = data.iloc[:i+1]
         result = psar.calculate(data_slice)
         print(f"   [OK] Mum {i}: SAR={result.value:.2f}, Trend={result.trend.name}")
 
-    # Test 4: Farklı parametreler
-    print("\n5. Farklı parametre testi...")
+    # Test 4: Different parameters
+    print("\n5. Different parameter test...")
     for af_max in [0.10, 0.20, 0.30]:
         psar_test = ParabolicSAR(af_max=af_max)
         result = psar_test.calculate(data)
         print(f"   [OK] AF_max={af_max}: SAR={result.value:.2f}")
 
-    # Test 5: İstatistikler
-    print("\n6. İstatistik testi...")
+    # Test 5: Statistics
+    print("\n6. Statistical test...")
     stats = psar.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 6: Metadata
     print("\n7. Metadata testi...")
     metadata = psar.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

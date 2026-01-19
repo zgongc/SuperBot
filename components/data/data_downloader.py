@@ -2,15 +2,15 @@
 """
 managers/data_downloader.py
 SuperBot - Data Downloader
-Yazar: SuperBot Team
-Tarih: 2025-10-17
+Author: SuperBot Team
+Date: 2025-10-17
 Versiyon: 1.0.0
 
-Açıklama:
+Description:
     Binance'den historical data indirir.
-    Smart incremental update (duplicate yok).
+    Smart incremental update (no duplicates).
 
-Özellikler:
+Features:
     1. Binance API integration
     2. All timeframes support
     3. Smart incremental update (son timestamp'ten devam)
@@ -18,7 +18,7 @@ Açıklama:
     5. Parquet save
     6. Progress tracking
 
-Kullanım:
+Usage:
     downloader = DataDownloader()
 
     # Download
@@ -36,7 +36,7 @@ Kullanım:
         output_dir='data/parquets'
     )
 
-Bağımlılıklar:
+Dependencies:
     - python-binance
     - pandas
     - pyarrow
@@ -104,7 +104,7 @@ class DataDownloader:
     Data Downloader
 
     Binance'den historical data indirir.
-    Smart incremental update ile duplicate'leri önler.
+    Prevents duplicates with smart incremental updates.
 
     Attributes:
         client: Binance client
@@ -116,7 +116,7 @@ class DataDownloader:
         Initialize Data Downloader
 
         Args:
-            api_key: Binance API key (optional, public data için gerekli değil)
+            api_key: Binance API key (optional, not required for public data)
             api_secret: Binance API secret (optional)
             debug: Enable debug logging (default: False)
         """
@@ -132,7 +132,7 @@ class DataDownloader:
         self.debug = debug  # Debug mode
 
     def _get_timeframe_delta(self, timeframe: str) -> timedelta:
-        """Timeframe'e göre zaman deltası döndür"""
+        """Returns the time delta based on the timeframe."""
         if timeframe.endswith('m'):
             return timedelta(minutes=int(timeframe[:-1]))
         elif timeframe.endswith('h'):
@@ -335,7 +335,7 @@ class DataDownloader:
         """
         Download historical data (full) - Multi-year support
 
-        Eğer start_date ve end_date farklı yıllarda ise, her yıl için ayrı dosya oluşturur:
+        If start_date and end_date are in different years, it creates a separate file for each year:
         - 2024-01-01 to 2025-12-31 -> BTCUSDT_1m_2024.parquet + BTCUSDT_1m_2025.parquet
 
         Args:
@@ -394,7 +394,7 @@ class DataDownloader:
                 print(f"File exists: {output_path.name}")
 
                 # Read full file for gap detection + duplicate removal
-                # Kolon adı 'timestamp' veya 'open_time' olabilir
+                # The column name can be 'timestamp' or 'open_time'
                 try:
                     existing_df = pd.read_parquet(output_path)
                     time_col = 'open_time' if 'open_time' in existing_df.columns else 'timestamp'
@@ -407,8 +407,8 @@ class DataDownloader:
 
                 # Check if file is empty from the start
                 if initial_rows == 0:
-                    print(f"   ⚠️  Dosya boş, sıfırdan indiriliyor...")
-                    output_path.unlink(missing_ok=True)  # Boş dosyayı sil
+                    print(f"   ⚠️  File is empty, downloading from scratch...")
+                    output_path.unlink(missing_ok=True)  # Delete the empty file
                     total_rows = await self._download_klines_streaming(
                         symbol, timeframe, year_start_str, year_end_str, output_path
                     )
@@ -470,8 +470,8 @@ class DataDownloader:
 
                 # Check if file became empty after cleaning (all rows were outside year)
                 if len(existing_df) == 0 or pd.isna(last_timestamp):
-                    print(f"   ⚠️  Dosya temizlendikten sonra boş kaldı, sıfırdan indiriliyor...")
-                    output_path.unlink(missing_ok=True)  # Boş dosyayı sil
+                    print(f"   ⚠️  The file was cleared and is now empty, downloading from scratch...")
+                    output_path.unlink(missing_ok=True)  # Delete the empty file
                     total_rows = await self._download_klines_streaming(
                         symbol, timeframe, year_start_str, year_end_str, output_path
                     )
@@ -618,16 +618,16 @@ class DataDownloader:
             # Return empty df since data is already on disk
             return pd.DataFrame({'total_rows': [total_rows_all]})
         else:
-            # Bilgilendirici hata mesajı
+            # Informative error message
             tf_info = {
-                '1w': 'Haftalık (1w) mumlar Pazartesi günü açılır',
-                '1M': 'Aylık (1M) mumlar ayın 1\'inde açılır',
+                '1w': 'Weekly (1w) candles open on Monday',
+                '1M': 'Monthly (1M) candles open on the 1st of the month',
             }
             hint = tf_info.get(timeframe, '')
             print(f"\n⚠️  No data downloaded for {timeframe}!")
             if hint:
                 print(f"   💡 {hint}")
-                print(f"   💡 Tarih aralığını genişletmeyi deneyin (örn: --start ile daha eski tarih)")
+                print(f"   💡 Try expanding the date range (e.g., use --start with an earlier date)")
             return pd.DataFrame()
 
     # ========================================================================
@@ -644,11 +644,11 @@ class DataDownloader:
         """
         Update data (smart incremental) - Memory efficient
 
-        Mantık:
-        1. Mevcut dosyayı oku (metadata only - son timestamp)
-        2. Son timestamp'ten bugüne kadar indir
+        Logic:
+        1. Read the existing file (metadata only - last timestamp)
+        2. Download from the last timestamp to today
         3. Chunk chunk append (memory efficient)
-        4. Duplicate'leri temizle (final pass)
+        4. Remove duplicates (final pass)
 
         Args:
             symbol: Trading pair
@@ -1212,7 +1212,7 @@ class DataDownloader:
             Path to parquet file (e.g., data/parquets/BTCUSDT/BTCUSDT_1m_2024.parquet)
         """
         base_dir = Path(output_dir)
-        # Yeni format: sembol bazlı alt klasör
+        # New format: subfolder based on symbol
         symbol_dir = base_dir / symbol
         symbol_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1359,9 +1359,9 @@ if __name__ == "__main__":
     CLI Interface for Data Downloader
 
     SMART DOWNLOAD:
-    - Dosya yoksa -> Fresh download
-    - Dosya varsa -> Gap detection + fill missing data
-    - Son timestamp bugünden eskiyse -> Update to today
+    - If the file does not exist -> Fresh download
+    - If the file exists -> Gap detection + fill missing data
+    - If the last timestamp is older than today -> Update to today
 
     Usage:
         # Single symbol/timeframe

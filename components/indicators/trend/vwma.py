@@ -5,22 +5,22 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    VWMA (Volume Weighted Moving Average) - Hacim ağırlıklı hareketli ortalama
-    Fiyatları işlem hacmine göre ağırlıklandırarak hesaplanan trend indikatörü
-    Yüksek hacimli fiyat hareketlerine daha fazla önem verir
+Description:
+    VWMA (Volume Weighted Moving Average) - Volume weighted moving average
+    A trend indicator calculated by weighting prices according to trading volume
+    Gives more importance to price movements with high volume
 
-    Kullanım:
-    - Hacimli fiyat hareketlerini vurgulama
-    - Gerçek piyasa gücünü ölçme
-    - Destek/direnç seviyeleri
+    Usage:
+    - Highlighting significant price movements
+    - Measuring real market strength
+    - Support/resistance levels
 
-Formül:
+Formula:
     VWMA = Sum(Close * Volume) / Sum(Volume)
-    n periyot için:
+    For n periods:
     VWMA = (C1*V1 + C2*V2 + ... + Cn*Vn) / (V1 + V2 + ... + Vn)
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -42,11 +42,11 @@ class VWMA(BaseIndicator):
     """
     Volume Weighted Moving Average
 
-    İşlem hacmine göre ağırlıklandırılmış hareketli ortalama.
-    Yüksek hacimli mumlar daha fazla ağırlığa sahiptir.
+    Weighted moving average based on transaction volume.
+    Candles with high volume have more weight.
 
     Args:
-        period: VWMA periyodu (varsayılan: 20)
+        period: VWMA period (default: 20)
     """
 
     def __init__(
@@ -69,15 +69,15 @@ class VWMA(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.period
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 1:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Periyot pozitif olmalı"
+                "The period must be positive"
             )
         return True
 
@@ -89,7 +89,7 @@ class VWMA(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: VWMA değeri
+            IndicatorResult: VWMA value
         """
         close = data['close'].values
         volume = data['volume'].values
@@ -101,10 +101,10 @@ class VWMA(BaseIndicator):
         # Sum(Close * Volume) / Sum(Volume)
         vwma_value = np.sum(close_slice * volume_slice) / np.sum(volume_slice)
 
-        # Mevcut fiyat
+        # Current price
         current_price = close[-1]
 
-        # SMA ile karşılaştırma için
+        # For comparison with SMA
         sma_value = np.mean(close_slice)
 
         timestamp = int(data.iloc[-1]['timestamp'])
@@ -130,7 +130,7 @@ class VWMA(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.Series:
         """
-        ⚡ VECTORIZED batch VWMA calculation - BACKTEST için
+        ⚡ VECTORIZED batch VWMA calculation - for BACKTEST
 
         VWMA Formula:
             VWMA = Sum(Close × Volume) / Sum(Volume)
@@ -161,11 +161,11 @@ class VWMA(BaseIndicator):
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
         """
-        Warmup buffer - update() için gerekli state'i hazırlar
+        Warmup buffer - prepares the necessary state for update().
 
         Args:
             data: OHLCV DataFrame (warmup verisi)
-            symbol: Sembol adı (opsiyonel)
+            symbol: Symbol name (optional)
         """
         super().warmup_buffer(data, symbol)
 
@@ -233,14 +233,14 @@ class VWMA(BaseIndicator):
 
     def get_signal(self, price: float, vwma: float) -> SignalType:
         """
-        VWMA'dan sinyal üret
+        Generate signal from VWMA.
 
         Args:
-            price: Mevcut fiyat
-            vwma: VWMA değeri
+            price: Current price
+            vwma: VWMA value
 
         Returns:
-            SignalType: BUY (fiyat VWMA üstüne çıkınca), SELL (altına ininse)
+            SignalType: BUY (when the price goes above the VWMA), SELL (when it goes below)
         """
         if price > vwma:
             return SignalType.BUY
@@ -253,11 +253,11 @@ class VWMA(BaseIndicator):
         VWMA'dan trend belirle
 
         Args:
-            price: Mevcut fiyat
-            vwma: VWMA değeri
+            price: Current price
+            vwma: VWMA value
 
         Returns:
-            TrendDirection: UP (fiyat > VWMA), DOWN (fiyat < VWMA)
+            TrendDirection: UP (price > VWMA), DOWN (price < VWMA)
         """
         if price > vwma:
             return TrendDirection.UP
@@ -266,12 +266,12 @@ class VWMA(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _calculate_strength(self, price: float, vwma: float) -> float:
-        """Sinyal gücünü hesapla (0-100)"""
+        """Calculate signal strength (0-100)"""
         distance_pct = abs((price - vwma) / vwma * 100)
         return min(distance_pct * 20, 100)
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'period': 20
         }
@@ -289,22 +289,22 @@ __all__ = ['VWMA']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """VWMA indikatör testi"""
+    """VWMA indicator test"""
 
     print("\n" + "="*60)
     print("VWMA (VOLUME WEIGHTED MOVING AVERAGE) TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(50)]
 
-    # Trend ve hacim simülasyonu
+    # Trend and volume simulation
     base_price = 100
     prices = [base_price]
     volumes = [1000]
@@ -314,7 +314,7 @@ if __name__ == "__main__":
         noise = np.random.randn() * 1.5
         prices.append(prices[-1] + trend + noise)
 
-        # Yüksek fiyat değişiminde yüksek hacim
+        # High volume in case of high price change
         price_change = abs(prices[-1] - prices[-2])
         volume = 1000 + price_change * 100 + np.random.randint(0, 500)
         volumes.append(volume)
@@ -328,65 +328,65 @@ if __name__ == "__main__":
         'volume': volumes
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
-    print(f"   [OK] Hacim aralığı: {min(volumes):.0f} -> {max(volumes):.0f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] Volume range: {min(volumes):.0f} -> {max(volumes):.0f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     vwma = VWMA(period=20)
-    print(f"   [OK] Oluşturuldu: {vwma}")
+    print(f"   [OK] Created: {vwma}")
     print(f"   [OK] Kategori: {vwma.category.value}")
-    print(f"   [OK] Gerekli periyot: {vwma.get_required_periods()}")
-    print(f"   [OK] Volume gerekli: {vwma._requires_volume()}")
+    print(f"   [OK] Required period: {vwma.get_required_periods()}")
+    print(f"   [OK] Volume required: {vwma._requires_volume()}")
 
     result = vwma(data)
-    print(f"   [OK] VWMA Değeri: {result.value}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] VWMA Value: {result.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Power: {result.strength:.2f}")
     print(f"   [OK] Metadata: {result.metadata}")
 
-    # Test 2: VWMA vs SMA karşılaştırması
-    print("\n3. VWMA vs SMA karşılaştırma testi...")
+    # Test 2: Comparison of VWMA vs SMA
+    print("\n3. VWMA vs SMA comparison test...")
     print(f"   [OK] SMA(20): {result.metadata['sma']}")
     print(f"   [OK] VWMA(20): {result.value}")
     print(f"   [OK] Fark: {result.metadata['vwma_sma_diff']}")
-    print(f"   [OK] VWMA hacimli hareketlere daha fazla ağırlık verir")
+    print(f"   [OK] VWMA gives more weight to high-volume movements")
 
-    # Test 3: Farklı periyotlar
-    print("\n4. Farklı periyot testi...")
+    # Test 3: Different periods
+    print("\n4. Different period test...")
     for period in [10, 20, 30]:
         vwma_test = VWMA(period=period)
         result = vwma_test.calculate(data)
-        print(f"   [OK] VWMA({period}): {result.value:.2f} | Sinyal: {result.signal.value}")
+        print(f"   [OK] VWMA({period}): {result.value:.2f} | Signal: {result.signal.value}")
 
-    # Test 4: Hacim etkisi
-    print("\n5. Hacim etkisi testi...")
-    print(f"   [OK] Ortalama hacim: {result.metadata['avg_volume']:.0f}")
+    # Test 4: Volume effect
+    print("\n5. Volume effect test...")
+    print(f"   [OK] Average volume: {result.metadata['avg_volume']:.0f}")
     print(f"   [OK] Son mum hacmi: {volumes[-1]:.0f}")
 
-    # Yüksek hacimli senaryo
+    # High-volume scenario
     high_volume_data = data.copy()
     high_volume_data.loc[high_volume_data.index[-1], 'volume'] = 10000
     result_high = vwma.calculate(high_volume_data)
     print(f"   [OK] Normal VWMA: {result.value}")
-    print(f"   [OK] Yüksek hacimli VWMA: {result_high.value}")
+    print(f"   [OK] High volume VWMA: {result_high.value}")
 
-    # Test 5: İstatistikler
-    print("\n6. İstatistik testi...")
+    # Test 5: Statistics
+    print("\n6. Statistical test...")
     stats = vwma.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 6: Metadata
     print("\n7. Metadata testi...")
     metadata = vwma.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

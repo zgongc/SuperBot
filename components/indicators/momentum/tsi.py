@@ -5,20 +5,20 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    TSI (True Strength Index) - Çift smooth momentum osilatörü
-    Aralık: -100 ile +100 arası
-    Pozitif değer: Yükseliş momentum
-    Negatif değer: Düşüş momentum
-    0 geçişleri: Trend değişimi sinyali
+Description:
+    TSI (True Strength Index) - A double smoothed momentum oscillator
+    Range: Between -100 and +100
+    Positive value: Uprising momentum
+    Negative value: Falling momentum
+    Crossings of 0: Trend change signal
 
-Formül:
+Formula:
     PC = Close - Close[1] (Price Change)
     Double Smoothed PC = EMA(EMA(PC, long), short)
     Double Smoothed |PC| = EMA(EMA(|PC|, long), short)
     TSI = 100 × (Double Smoothed PC / Double Smoothed |PC|)
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -40,13 +40,13 @@ class TSI(BaseIndicator):
     """
     True Strength Index
 
-    Çift exponential smoothing kullanarak momentum gücünü ölçer.
-    Gürültüyü azaltır ve güvenilir sinyaller üretir.
+    Measures momentum strength using double exponential smoothing.
+    Reduces noise and generates reliable signals.
 
     Args:
-        long_period: Uzun EMA periyodu (varsayılan: 25)
-        short_period: Kısa EMA periyodu (varsayılan: 13)
-        signal_period: Sinyal line periyodu (varsayılan: 7)
+        long_period: Long EMA period (default: 25)
+        short_period: Short EMA period (default: 13)
+        signal_period: Signal line period (default: 7)
     """
 
     def __init__(
@@ -75,32 +75,32 @@ class TSI(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
-        # Çift smoothing için yeterli veri gerekir
+        """Minimum required number of periods"""
+        # Sufficient data is required for double smoothing.
         return self.long_period + self.short_period + self.signal_period
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.long_period < 1:
             raise InvalidParameterError(
                 self.name, 'long_period', self.long_period,
-                "Long period pozitif olmalı"
+                "Long period must be positive"
             )
         if self.short_period < 1:
             raise InvalidParameterError(
                 self.name, 'short_period', self.short_period,
-                "Short period pozitif olmalı"
+                "Short period must be positive"
             )
         if self.signal_period < 1:
             raise InvalidParameterError(
                 self.name, 'signal_period', self.signal_period,
-                "Signal period pozitif olmalı"
+                "Signal period must be positive"
             )
         if self.short_period >= self.long_period:
             raise InvalidParameterError(
                 self.name, 'periods',
                 f"short={self.short_period}, long={self.long_period}",
-                "Short period, long period'tan küçük olmalı"
+                "Short period must be smaller than long period"
             )
         return True
 
@@ -113,15 +113,15 @@ class TSI(BaseIndicator):
             period: EMA periyodu
 
         Returns:
-            EMA değerleri
+            EMA values
         """
         ema = np.zeros_like(data)
         multiplier = 2 / (period + 1)
 
-        # İlk değer basit ortalama
+        # Initial value is simple average
         ema[period-1] = np.mean(data[:period])
 
-        # Sonraki değerler EMA formülü ile
+        # Subsequent values are calculated using the EMA formula.
         for i in range(period, len(data)):
             ema[i] = (data[i] - ema[i-1]) * multiplier + ema[i-1]
 
@@ -135,13 +135,13 @@ class TSI(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: TSI değeri ve sinyal line
+            IndicatorResult: TSI value and signal line
         """
         close = data['close'].values
 
         # Price Change hesapla
         price_change = np.diff(close)
-        price_change = np.insert(price_change, 0, 0)  # İlk değer 0
+        price_change = np.insert(price_change, 0, 0)  # The first value is 0
 
         # Absolute Price Change
         abs_price_change = np.abs(price_change)
@@ -160,8 +160,8 @@ class TSI(BaseIndicator):
         else:
             tsi_value = 100 * (double_smooth_pc[-1] / double_smooth_abs[-1])
 
-        # Signal line (TSI'nin EMA'sı)
-        # TSI değerlerini hesapla (son signal_period kadar)
+        # Signal line (EMA of TSI)
+        # Calculate TSI values (for the last signal_period)
         tsi_array = np.zeros(len(close))
         for i in range(len(close)):
             if double_smooth_abs[i] != 0:
@@ -171,7 +171,7 @@ class TSI(BaseIndicator):
 
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # TSI ve signal line farkından sinyal üret
+        # Generate signal from TSI and signal line difference
         histogram = tsi_value - signal_line
 
         # Warmup buffer for update() method
@@ -197,7 +197,7 @@ class TSI(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        ⚡ VECTORIZED batch TSI calculation - BACKTEST için
+        ⚡ VECTORIZED batch TSI calculation - for BACKTEST
 
         TSI Formula:
             PC = Close - Close[1]
@@ -258,11 +258,11 @@ class TSI(BaseIndicator):
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
         """
-        Warmup buffer - update() için gerekli state'i hazırlar
+        Warmup buffer - prepares the necessary state for update().
 
         Args:
             data: OHLCV DataFrame (warmup verisi)
-            symbol: Sembol adı (opsiyonel)
+            symbol: Symbol name (optional)
         """
         super().warmup_buffer(data, symbol)
 
@@ -313,15 +313,15 @@ class TSI(BaseIndicator):
 
     def get_signal(self, value: float) -> SignalType:
         """
-        TSI değerinden sinyal üret
+        Generate a signal from the TSI value.
 
         Args:
-            value: TSI değeri veya dict
+            value: TSI value or dict
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
-        # value dict ise tsi değerini al
+        # If value is a dictionary, get the tsi value.
         if isinstance(value, dict):
             tsi_val = value['tsi']
             hist = value['histogram']
@@ -329,40 +329,40 @@ class TSI(BaseIndicator):
             tsi_val = value
             hist = 0
 
-        # Histogram pozitif ve TSI pozitif: güçlü alım
+        # Histogram positive and TSI positive: strong buy
         if hist > 0 and tsi_val > 0:
             return SignalType.BUY
-        # Histogram negatif ve TSI negatif: güçlü satım
+        # Histogram is negative and TSI is negative: strong sell signal
         elif hist < 0 and tsi_val < 0:
             return SignalType.SELL
-        # TSI sıfırdan yukarı: alım
+        # TSI from zero upwards: buy
         elif tsi_val > 0:
             return SignalType.BUY
-        # TSI sıfırdan aşağı: satım
+        # TSI below zero: sell
         elif tsi_val < 0:
             return SignalType.SELL
         return SignalType.HOLD
 
     def get_trend(self, value: float) -> TrendDirection:
         """
-        TSI değerinden trend belirle
+        Determine the trend from the TSI value.
 
         Args:
-            value: Histogram değeri
+            value: Histogram value
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
-        # Histogram pozitif: yükseliş
+        # Histogram positive: upward trend
         if value > 0:
             return TrendDirection.UP
-        # Histogram negatif: düşüş
+        # Histogram negative: decrease
         elif value < 0:
             return TrendDirection.DOWN
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'long_period': 25,
             'short_period': 13,
@@ -382,26 +382,26 @@ __all__ = ['TSI']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """TSI indikatör testi"""
+    """TSI indicator test"""
 
     print("\n" + "="*60)
     print("TSI (TRUE STRENGTH INDEX) TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(100)]
 
-    # Fiyat hareketini simüle et (trend oluşturmak için)
+    # Simulate price movement (to create a trend)
     base_price = 100
     prices = [base_price]
     for i in range(99):
-        # Trend + gürültü
+        # Trend + noise
         trend = 0.1 if i < 50 else -0.1
         change = trend + np.random.randn() * 0.5
         prices.append(prices[-1] + change)
@@ -415,26 +415,26 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     tsi = TSI(long_period=25, short_period=13, signal_period=7)
-    print(f"   [OK] Oluşturuldu: {tsi}")
+    print(f"   [OK] Created: {tsi}")
     print(f"   [OK] Kategori: {tsi.category.value}")
-    print(f"   [OK] Gerekli periyot: {tsi.get_required_periods()}")
+    print(f"   [OK] Required period: {tsi.get_required_periods()}")
 
     result = tsi(data)
-    print(f"   [OK] TSI Değeri: {result.value['tsi']}")
+    print(f"   [OK] TSI Value: {result.value['tsi']}")
     print(f"   [OK] Signal Line: {result.value['signal']}")
     print(f"   [OK] Histogram: {result.value['histogram']}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Power: {result.strength:.2f}")
 
-    # Test 2: Farklı periyotlar
-    print("\n3. Farklı periyot testi...")
+    # Test 2: Different periods
+    print("\n3. Different period test...")
     configs = [
         (13, 7, 5),
         (25, 13, 7),
@@ -447,7 +447,7 @@ if __name__ == "__main__":
 
     # Test 3: Crossover tespiti
     print("\n4. Crossover testi...")
-    # Son birkaç değeri kontrol et
+    # Check the last few values
     for i in [-5, -4, -3, -2, -1]:
         test_data = data.iloc[:len(data)+i]
         if len(test_data) >= tsi.get_required_periods():
@@ -456,45 +456,45 @@ if __name__ == "__main__":
             cross_type = result.metadata['crossover']
             print(f"   [OK] Index {i}: Histogram={hist:.2f}, Crossover={cross_type}")
 
-    # Test 4: Yükselen trend
-    print("\n5. Yükselen trend testi...")
+    # Test 4: Rising trend
+    print("\n5. Rising trend test...")
     up_data = data.copy()
     for i in range(20):
         idx = up_data.index[-(20-i)]
         up_data.loc[idx, 'close'] = prices[-(20-i)] + i * 0.5
 
     result_up = tsi.calculate(up_data)
-    print(f"   [OK] Yükselen trend TSI: {result_up.value['tsi']}")
-    print(f"   [OK] Sinyal: {result_up.signal.value}")
+    print(f"   [OK] Rising trend TSI: {result_up.value['tsi']}")
+    print(f"   [OK] Signal: {result_up.signal.value}")
     print(f"   [OK] Trend: {result_up.trend.name}")
 
-    # Test 5: Düşen trend
-    print("\n6. Düşen trend testi...")
+    # Test 5: Declining trend
+    print("\n6. Downtrend test...")
     down_data = data.copy()
     for i in range(20):
         idx = down_data.index[-(20-i)]
         down_data.loc[idx, 'close'] = prices[-(20-i)] - i * 0.5
 
     result_down = tsi.calculate(down_data)
-    print(f"   [OK] Düşen trend TSI: {result_down.value['tsi']}")
-    print(f"   [OK] Sinyal: {result_down.signal.value}")
+    print(f"   [OK] Declining trend TSI: {result_down.value['tsi']}")
+    print(f"   [OK] Signal: {result_down.signal.value}")
     print(f"   [OK] Trend: {result_down.trend.name}")
 
-    # Test 6: İstatistikler
-    print("\n7. İstatistik testi...")
+    # Test 6: Statistics
+    print("\n7. Statistical test...")
     stats = tsi.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 7: Metadata
     print("\n8. Metadata testi...")
     metadata = tsi.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Tip: {metadata.indicator_type.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

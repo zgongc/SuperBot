@@ -5,12 +5,12 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
+Description:
     Pivot Points - Classic pivot seviyeleri
-    Destek ve direnç seviyelerini belirlemek için kullanılır.
-    Pivot (P), Resistance (R1, R2, R3) ve Support (S1, S2, S3) seviyeleri hesaplanır.
+    It is used to determine support and resistance levels.
+    Pivot (P), Resistance (R1, R2, R3) and Support (S1, S2, S3) levels are calculated.
 
-Formül:
+Formula:
     P = (High + Low + Close) / 3
     R1 = (2 * P) - Low
     R2 = P + (High - Low)
@@ -19,7 +19,7 @@ Formül:
     S2 = P - (High - Low)
     S3 = Low - 2 * (High - P)
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -41,11 +41,11 @@ class PivotPoints(BaseIndicator):
     """
     Classic Pivot Points
 
-    Önceki periyodun High, Low ve Close değerlerini kullanarak
+    Using the High, Low, and Close values from the previous period.
     pivot seviyeleri (P, R1-R3, S1-S3) hesaplar.
 
     Args:
-        period: Pivot hesaplama periyodu (varsayılan: 1 - günlük)
+        period: Pivot calculation period (default: 1 - day)
     """
 
     def __init__(
@@ -68,15 +68,15 @@ class PivotPoints(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.period + 1
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 1:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Periyot pozitif olmalı"
+                "The period must be positive"
             )
         return True
 
@@ -90,7 +90,7 @@ class PivotPoints(BaseIndicator):
         Returns:
             IndicatorResult: Pivot seviyeleri (P, R1-R3, S1-S3)
         """
-        # Önceki periyodun H, L, C değerlerini al
+        # Get the H, L, C values from the previous period.
         high = data['high'].iloc[-self.period - 1:-1].max()
         low = data['low'].iloc[-self.period - 1:-1].min()
         close = data['close'].iloc[-self.period - 1]
@@ -111,7 +111,7 @@ class PivotPoints(BaseIndicator):
         current_price = data['close'].iloc[-1]
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Seviyeleri sözlük olarak oluştur (lowercase keys for consistency)
+        # Create levels as a dictionary (lowercase keys for consistency)
         levels = {
             'r3': round(r3, 2),
             'r2': round(r2, 2),
@@ -142,7 +142,7 @@ class PivotPoints(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        ⚡ VECTORIZED batch Pivot Points calculation - BACKTEST için
+        ⚡ VECTORIZED batch Pivot Points calculation - for BACKTEST
 
         Pivot Points Formula:
             P = (High + Low + Close) / 3
@@ -279,14 +279,14 @@ class PivotPoints(BaseIndicator):
 
     def get_signal(self, price: float, levels: dict) -> SignalType:
         """
-        Fiyatın pivot seviyelerine göre sinyal üret
+        Generate a signal based on the price's position relative to pivot levels.
 
         Args:
-            price: Güncel fiyat
+            price: Current price
             levels: Pivot seviyeleri
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
         if price < levels['s2']:
             return SignalType.BUY
@@ -296,14 +296,14 @@ class PivotPoints(BaseIndicator):
 
     def get_trend(self, price: float, pivot: float) -> TrendDirection:
         """
-        Fiyatın pivot'a göre trend belirle
+        Determine the trend based on the pivot price.
 
         Args:
-            price: Güncel fiyat
-            pivot: Pivot seviyesi
+            price: Current price
+            pivot: Pivot level
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         if price > pivot:
             return TrendDirection.UP
@@ -313,14 +313,14 @@ class PivotPoints(BaseIndicator):
 
     def calculate_strength(self, price: float, levels: dict) -> float:
         """
-        Fiyatın seviyelere göre güç hesapla
+        Calculate the strength of the price based on levels.
 
         Args:
-            price: Güncel fiyat
+            price: Current price
             levels: Pivot seviyeleri
 
         Returns:
-            float: Güç değeri (0-100)
+            float: Power value (0-100)
         """
         pivot = levels['p']
         r3 = levels['r3']
@@ -328,13 +328,13 @@ class PivotPoints(BaseIndicator):
 
         try:
             if price > pivot:
-                # Yukarı yönde güç
+                # Upward force
                 divisor = r3 - pivot
                 if divisor <= 0:
                     return 50.0
                 strength = ((price - pivot) / divisor) * 100
             else:
-                # Aşağı yönde güç
+                # Downward force
                 divisor = pivot - s3
                 if divisor <= 0:
                     return 50.0
@@ -345,7 +345,7 @@ class PivotPoints(BaseIndicator):
             return 50.0
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'period': 1
         }
@@ -363,22 +363,22 @@ __all__ = ['PivotPoints']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """Pivot Points indikatör testi"""
+    """Pivot Points indicator test"""
 
     print("\n" + "="*60)
     print("PIVOT POINTS TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating example OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(50)]
 
-    # Fiyat hareketini simüle et
+    # Simulate price movement
     base_price = 100
     prices = [base_price]
     for i in range(49):
@@ -394,61 +394,61 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     pivot = PivotPoints(period=1)
-    print(f"   [OK] Oluşturuldu: {pivot}")
+    print(f"   [OK] Created: {pivot}")
     print(f"   [OK] Kategori: {pivot.category.value}")
     print(f"   [OK] Tip: {pivot.indicator_type.value}")
-    print(f"   [OK] Gerekli periyot: {pivot.get_required_periods()}")
+    print(f"   [OK] Required period: {pivot.get_required_periods()}")
 
     result = pivot(data)
     print(f"   [OK] Pivot Seviyeleri:")
     for level, value in result.value.items():
         print(f"        {level}: {value}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Power: {result.strength:.2f}")
     print(f"   [OK] Metadata: {result.metadata}")
 
-    # Test 2: Farklı periyotlar
-    print("\n3. Farklı periyot testi...")
+    # Test 2: Different periods
+    print("\n3. Different period test...")
     for period in [1, 5, 10]:
         pivot_test = PivotPoints(period=period)
         result = pivot_test.calculate(data)
-        print(f"   [OK] Pivot({period}) - P: {result.value['p']} | Sinyal: {result.signal.value}")
+        print(f"   [OK] Pivot({period}) - P: {result.value['p']} | Signal: {result.signal.value}")
 
     # Test 3: Seviye analizi
     print("\n4. Seviye analizi...")
     result = pivot.calculate(data)
     current = result.metadata['current_price']
-    print(f"   [OK] Güncel fiyat: {current}")
+    print(f"   [OK] Current price: {current}")
     print(f"   [OK] Pivot: {result.value['p']}")
     if current > result.value['p']:
-        print(f"   [OK] Fiyat pivot üstünde (Bullish)")
-        print(f"   [OK] İlk direnç (R1): {result.value['r1']}")
+        print(f"   [OK] Price is above the pivot (Bullish)")
+        print(f"   [OK] First resistance (R1): {result.value['r1']}")
     else:
-        print(f"   [OK] Fiyat pivot altında (Bearish)")
-        print(f"   [OK] İlk destek (S1): {result.value['s1']}")
+        print(f"   [OK] Price is below the pivot (Bearish)")
+        print(f"   [OK] First support (S1): {result.value['s1']}")
 
-    # Test 4: İstatistikler
-    print("\n5. İstatistik testi...")
+    # Test 4: Statistics
+    print("\n5. Statistical test...")
     stats = pivot.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 5: Metadata
     print("\n6. Metadata testi...")
     metadata = pivot.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Tip: {metadata.indicator_type.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

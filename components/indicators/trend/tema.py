@@ -5,24 +5,24 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    TEMA (Triple Exponential Moving Average) - Üçlü üssel hareketli ortalama
-    Patrick Mulloy tarafından geliştirilmiş, lag'ı azaltan trend indikatörü
-    Üç EMA kombinasyonu kullanarak çok smooth ve responsive sinyal üretir
+Description:
+    TEMA (Triple Exponential Moving Average) - Triple exponential moving average
+    A trend indicator developed by Patrick Mulloy, which reduces lag
+    Generates a very smooth and responsive signal using a combination of three EMAs
 
-    Kullanım:
-    - Minimum lag ile trend takibi
-    - Hızlı ve smooth trend değişimleri
+    Usage:
+    - Trend tracking with minimal lag
+    - Fast and smooth trend changes
     - Crossover stratejileri
 
-Formül:
+Formula:
     TEMA = 3*EMA - 3*EMA(EMA) + EMA(EMA(EMA))
     EMA1 = EMA(Close, period)
     EMA2 = EMA(EMA1, period)
     EMA3 = EMA(EMA2, period)
     TEMA = 3*EMA1 - 3*EMA2 + EMA3
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -45,10 +45,10 @@ class TEMA(BaseIndicator):
     """
     Triple Exponential Moving Average
 
-    Üç katlı EMA ile lag'ı minimize eden ve çok smooth olan trend indikatörü.
+    A trend indicator with a triple Exponential Moving Average (EMA) that minimizes lag and is very smooth.
 
     Args:
-        period: TEMA periyodu (varsayılan: 20)
+        period: TEMA period (default: 20)
     """
 
     def __init__(
@@ -59,7 +59,7 @@ class TEMA(BaseIndicator):
     ):
         self.period = period
 
-        # EMA indikatörünü kullan (code reuse)
+        # Use the EMA indicator (code reuse)
         self._ema = EMA(period=period)
 
         super().__init__(
@@ -74,16 +74,16 @@ class TEMA(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
-        # TEMA için 3x EMA hesabı yapılacağı için daha fazla veri gerekli
+        """Minimum required number of periods"""
+        # Since the EMA calculation for the THEME requires 3 x EMA, more data is needed.
         return self.period * 3
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 1:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Periyot pozitif olmalı"
+                "The period must be positive"
             )
         return True
 
@@ -95,7 +95,7 @@ class TEMA(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: TEMA değeri
+            IndicatorResult: TEMA value
         """
         # EMA1 = EMA(Close) - use EMA.calculate_batch (code reuse)
         ema1 = self._ema.calculate_batch(data)
@@ -186,11 +186,11 @@ class TEMA(BaseIndicator):
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
         """
-        Warmup buffer - update() için gerekli
+        Warmup buffer - required for update().
 
         Args:
             data: OHLCV DataFrame (warmup verisi)
-            symbol: Sembol adı (opsiyonel)
+            symbol: Symbol name (optional)
         """
         super().warmup_buffer(data, symbol)
 
@@ -236,14 +236,14 @@ class TEMA(BaseIndicator):
 
     def get_signal(self, price: float, tema: float) -> SignalType:
         """
-        TEMA'dan sinyal üret
+        Generate a signal from TEMA.
 
         Args:
-            price: Mevcut fiyat
-            tema: TEMA değeri
+            price: Current price
+            tema: TEMA value
 
         Returns:
-            SignalType: BUY (fiyat TEMA üstüne çıkınca), SELL (altına ininse)
+            SignalType: BUY (when the price goes above the TEMA), SELL (when it goes below)
         """
         if price > tema:
             return SignalType.BUY
@@ -256,11 +256,11 @@ class TEMA(BaseIndicator):
         TEMA'dan trend belirle
 
         Args:
-            price: Mevcut fiyat
-            tema: TEMA değeri
+            price: Current price
+            theme: THEME value
 
         Returns:
-            TrendDirection: UP (fiyat > TEMA), DOWN (fiyat < TEMA)
+            TrendDirection: UP (price > TEMA), DOWN (price < TEMA)
         """
         if price > tema:
             return TrendDirection.UP
@@ -269,12 +269,12 @@ class TEMA(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _calculate_strength(self, price: float, tema: float) -> float:
-        """Sinyal gücünü hesapla (0-100)"""
+        """Calculate signal strength (0-100)"""
         distance_pct = abs((price - tema) / tema * 100)
         return min(distance_pct * 20, 100)
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'period': 20
         }
@@ -292,22 +292,22 @@ __all__ = ['TEMA']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """TEMA indikatör testi"""
+    """TEMA indicator test"""
 
     print("\n" + "="*60)
     print("TEMA (TRIPLE EXPONENTIAL MOVING AVERAGE) TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating example OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(100)]
 
-    # Trend simülasyonu
+    # Trend simulation
     base_price = 100
     prices = [base_price]
     for i in range(99):
@@ -324,40 +324,40 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     tema = TEMA(period=20)
-    print(f"   [OK] Oluşturuldu: {tema}")
+    print(f"   [OK] Created: {tema}")
     print(f"   [OK] Kategori: {tema.category.value}")
-    print(f"   [OK] Gerekli periyot: {tema.get_required_periods()}")
+    print(f"   [OK] Required period: {tema.get_required_periods()}")
 
     result = tema(data)
-    print(f"   [OK] TEMA Değeri: {result.value}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] THEME Value: {result.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Power: {result.strength:.2f}")
     print(f"   [OK] Metadata: {result.metadata}")
 
-    # Test 2: EMA bileşenleri
-    print("\n3. EMA bileşenleri testi...")
+    # Test 2: EMA components
+    print("\n3. EMA component test...")
     print(f"   [OK] EMA1 (Close): {result.metadata['ema1']}")
     print(f"   [OK] EMA2 (EMA1): {result.metadata['ema2']}")
     print(f"   [OK] EMA3 (EMA2): {result.metadata['ema3']}")
     print(f"   [OK] TEMA = 3*{result.metadata['ema1']:.2f} - 3*{result.metadata['ema2']:.2f} + {result.metadata['ema3']:.2f}")
 
-    # Test 3: Farklı periyotlar
-    print("\n4. Farklı periyot testi...")
+    # Test 3: Different periods
+    print("\n4. Different period test...")
     for period in [10, 20, 30]:
         tema_test = TEMA(period=period)
         result = tema_test.calculate(data)
-        print(f"   [OK] TEMA({period}): {result.value:.2f} | Sinyal: {result.signal.value}")
+        print(f"   [OK] TEMA({period}): {result.value:.2f} | Signal: {result.signal.value}")
 
-    # Test 4: TEMA vs EMA karşılaştırması
-    print("\n5. TEMA vs EMA karşılaştırma testi...")
-    # Basit EMA hesaplama
+    # Test 4: Comparison of TEMA vs EMA
+    print("\n5. Comparison test of TEMA vs EMA...")
+    # Simple EMA calculation
     multiplier = 2 / (20 + 1)
     ema = np.mean(data['close'].values[:20])
     for price in data['close'].values[20:]:
@@ -365,22 +365,22 @@ if __name__ == "__main__":
 
     print(f"   [OK] EMA(20): {ema:.2f}")
     print(f"   [OK] TEMA(20): {result.value:.2f}")
-    print(f"   [OK] TEMA daha smooth ve responsive")
+    print(f"   [OK] THEME is smoother and more responsive")
 
-    # Test 5: İstatistikler
-    print("\n6. İstatistik testi...")
+    # Test 5: Statistics
+    print("\n6. Statistical test...")
     stats = tema.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 6: Metadata
     print("\n7. Metadata testi...")
     metadata = tema.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

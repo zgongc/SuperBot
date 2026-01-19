@@ -5,19 +5,19 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    EOM (Ease of Movement) - Hareket kolaylığı indikatörü
-    Fiyat değişimini hacimle ilişkilendirerek hareket kolaylığını ölçer
-    Yüksek EOM = Az hacimle büyük fiyat hareketi (kolay hareket)
-    Düşük EOM = Çok hacimle az fiyat hareketi (zor hareket)
+Description:
+    EOM (Ease of Movement) - Movement ease indicator
+    Measures the ease of movement by correlating price changes with volume
+    High EOM = Large price movement with low volume (easy movement)
+    Low EOM = Small price movement with high volume (difficult movement)
 
-Formül:
+Formula:
     Distance Moved = ((High + Low) / 2) - ((High_prev + Low_prev) / 2)
     Box Ratio = (Volume / 100000000) / (High - Low)
     EMV = Distance Moved / Box Ratio
     EOM = SMA(EMV, period)
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -39,12 +39,12 @@ class EOM(BaseIndicator):
     """
     Ease of Movement
 
-    Richard Arms tarafından geliştirilen indikatör.
-    Fiyat değişimini hacimle ilişkilendirerek trend gücünü ölçer.
+    Indicator developed by Richard Arms.
+    Measures trend strength by relating price changes to volume.
 
     Args:
-        period: EOM smoothing periyodu (varsayılan: 14)
-        divisor: Hacim ölçeklendirme divisor (varsayılan: 100000000)
+        period: EOM smoothing period (default: 14)
+        divisor: Volume scaling divisor (default: 100000000)
     """
 
     def __init__(
@@ -70,20 +70,20 @@ class EOM(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.period + 1
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 1:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Periyot pozitif olmalı"
+                "The period must be positive"
             )
         if self.divisor <= 0:
             raise InvalidParameterError(
                 self.name, 'divisor', self.divisor,
-                "Divisor pozitif olmalı"
+                "Divisor must be positive"
             )
         return True
 
@@ -95,7 +95,7 @@ class EOM(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: EOM değeri
+            IndicatorResult: End of month value
         """
         high = data['high'].values
         low = data['low'].values
@@ -121,7 +121,7 @@ class EOM(BaseIndicator):
                 else:
                     emv[i] = distance_moved / box_ratio
 
-        # EOM = EMV'nin SMA'sı
+        # EOM = EMV's SMA
         eom_value = np.mean(emv[-self.period:])
 
         timestamp = int(data.iloc[-1]['timestamp'])
@@ -145,7 +145,7 @@ class EOM(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.Series:
         """
-        ⚡ VECTORIZED batch EOM calculation - BACKTEST için
+        ⚡ VECTORIZED batch EOM calculation - for BACKTEST
 
         EOM Formula:
             Distance Moved = MidPoint - MidPoint_prev
@@ -191,7 +191,7 @@ class EOM(BaseIndicator):
         return pd.Series(eom.values, index=data.index, name='eom')
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
-        """Warmup buffer - update() için gerekli state'i hazırlar"""
+        """Warmup buffer - prepares the necessary state for update()"""
         super().warmup_buffer(data, symbol)
         from collections import deque
         max_len = self.get_required_periods() + 50
@@ -251,17 +251,17 @@ class EOM(BaseIndicator):
 
     def get_signal(self, value: float) -> SignalType:
         """
-        EOM değerinden sinyal üret
+        Generate a signal from the EOM value.
 
         Args:
-            value: EOM değeri
+            value: EOM value
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
-        if value > 0.0001:  # Pozitif ve anlamlı
+        if value > 0.0001:  # Positive and meaningful
             return SignalType.BUY
-        elif value < -0.0001:  # Negatif ve anlamlı
+        elif value < -0.0001:  # Negative and significant
             return SignalType.SELL
         return SignalType.HOLD
 
@@ -270,15 +270,15 @@ class EOM(BaseIndicator):
         EOM trendini belirle
 
         Args:
-            emv_array: Son EMV değerleri
+            emv_array: Last EMV values
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         if len(emv_array) < 2:
             return TrendDirection.NEUTRAL
 
-        # Lineer regresyon ile trend
+        # Linear regression for trend
         slope = np.polyfit(range(len(emv_array)), emv_array, 1)[0]
 
         if slope > 0.00001:
@@ -288,7 +288,7 @@ class EOM(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'period': 14,
             'divisor': 100000000
@@ -307,18 +307,18 @@ __all__ = ['EOM']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """EOM indikatör testi"""
+    """EOM indicator test"""
 
     print("\n" + "="*60)
     print("EOM (EASE OF MOVEMENT) TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(30)]
 
@@ -340,33 +340,33 @@ if __name__ == "__main__":
         'volume': volumes
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
-    print(f"   [OK] Hacim aralığı: {min(volumes):,.0f} -> {max(volumes):,.0f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] Volume range: {min(volumes):,.0f} -> {max(volumes):,.0f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     eom = EOM(period=14)
-    print(f"   [OK] Oluşturuldu: {eom}")
+    print(f"   [OK] Created: {eom}")
     print(f"   [OK] Kategori: {eom.category.value}")
-    print(f"   [OK] Gerekli periyot: {eom.get_required_periods()}")
+    print(f"   [OK] Required period: {eom.get_required_periods()}")
 
     result = eom(data)
-    print(f"   [OK] EOM Değeri: {result.value:.6f}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] EOM Value: {result.value:.6f}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Power: {result.strength:.2f}")
     print(f"   [OK] Metadata: {result.metadata}")
 
-    # Test 2: Farklı periyotlar
-    print("\n3. Farklı periyot testi...")
+    # Test 2: Different periods
+    print("\n3. Different period test...")
     for period in [7, 14, 21]:
         eom_test = EOM(period=period)
         result = eom_test.calculate(data)
-        print(f"   [OK] EOM({period}): {result.value:.6f} | Sinyal: {result.signal.value}")
+        print(f"   [OK] EOM({period}): {result.value:.6f} | Signal: {result.signal.value}")
 
-    # Test 3: Farklı divisor'lar
-    print("\n4. Farklı divisor testi...")
+    # Test 3: Different divisors
+    print("\n4. Different divisor test...")
     for div in [10000000, 100000000, 1000000000]:
         eom_test = EOM(period=14, divisor=div)
         result = eom_test.calculate(data)
@@ -375,27 +375,27 @@ if __name__ == "__main__":
     # Test 4: Volume gereksinimi
     print("\n5. Volume gereksinimi testi...")
     metadata = eom.metadata
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
     assert metadata.requires_volume == True, "EOM volume gerektirmeli!"
 
-    # Test 5: Hareket kolaylığı yorumlama
-    print("\n6. Hareket kolaylığı yorumlama testi...")
+    # Test 5: Movement ease interpretation
+    print("\n6. Movement ease interpretation test...")
     result = eom.calculate(data)
     eom_val = result.value
     print(f"   [OK] EOM: {eom_val:.6f}")
     if eom_val > 0:
-        print("   [OK] Pozitif EOM - Az hacimle yukarı hareket (kolay yükseliş)")
+        print("   [OK] Positive EOM - Upward movement with low volume (easy rise)")
     elif eom_val < 0:
-        print("   [OK] Negatif EOM - Az hacimle aşağı hareket (kolay düşüş)")
+        print("   [OK] Negative EOM - Downward movement with low volume (easy decline)")
     else:
-        print("   [OK] Nötr - Hareket yok veya yüksek hacimli konsolidasyon")
+        print("   [OK] Neutral - No movement or high-volume consolidation")
 
-    # Test 6: İstatistikler
-    print("\n7. İstatistik testi...")
+    # Test 6: Statistics
+    print("\n7. Statistical test...")
     stats = eom.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

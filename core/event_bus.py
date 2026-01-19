@@ -111,7 +111,8 @@ class EventBus:
         
         # Dead letter queue
         self.dead_letter_enabled = self.config.get("dead_letter_enabled", True)
-        self.dead_letter_queue: deque = deque(maxlen=1000)
+        self.dead_letter_max_size = int(self.config.get("dead_letter_max_size", 1000))
+        self.dead_letter_queue: deque = deque(maxlen=self.dead_letter_max_size)
         
         # Stats
         self.stats = {
@@ -122,23 +123,33 @@ class EventBus:
         
         # Redis backend (optional)
         self.redis_client = None
+        self.channel_prefix = ""
+        
         if self.backend == "redis":
             try:
                 import redis
                 redis_config = self.config.get("redis", {})
+                self.channel_prefix = redis_config.get("channel_prefix", "superbot:")
+                
                 self.redis_client = redis.Redis(
                     host=redis_config.get("host", "localhost"),
                     port=redis_config.get("port", 6379),
                     db=redis_config.get("db", 0),
+                    password=redis_config.get("password"),
                     decode_responses=True
                 )
-                self.logger.info("✅ EventBus initialized with Redis backend")
+                self.logger.info(f"✅ EventBus initialized with Redis backend (Prefix: {self.channel_prefix})")
             except Exception as e:
                 self.logger.warning(f"❌ Redis connection error, using Memory backend: {e}")
                 self.backend = "memory"
         
         if self.backend == "memory":
-            self.logger.info("✅ EventBus initialized with Memory backend")
+            memory_cfg = self.config.get("memory", {})
+            self.max_subscribers = int(memory_cfg.get("max_subscribers", 100))
+            self.buffer_size = int(memory_cfg.get("buffer_size", 1000))
+            self.logger.info(f"✅ EventBus initialized with Memory backend (Max subs: {self.max_subscribers})")
+        else:
+            self.max_subscribers = 1000 # Higher default for Redis or other backends
     
     def subscribe(self, topic: str, callback: Callable) -> bool:
         """
@@ -154,6 +165,12 @@ class EventBus:
         try:
             with self.lock:
                 if callback not in self.subscribers[topic]:
+                    # Check max subscribers limit if applicable
+                    current_subs = sum(len(cb_list) for cb_list in self.subscribers.values())
+                    if hasattr(self, 'max_subscribers') and current_subs >= self.max_subscribers:
+                        self.logger.warning(f"❌ Max subscribers limit reached ({self.max_subscribers})")
+                        return False
+
                     self.subscribers[topic].append(callback)
                     self.logger.debug(f"✅ Subscribed to topic: {topic}")
                     return True
@@ -220,7 +237,8 @@ class EventBus:
             
             if self.redis_client:
                 try:
-                    self.redis_client.publish(topic, json.dumps(event.to_dict()))
+                    full_topic = f"{self.channel_prefix}{topic}"
+                    self.redis_client.publish(full_topic, json.dumps(event.to_dict()))
                 except Exception as exc:  # noqa: BLE001
                     self.logger.error(f"❌ Redis publish error {topic}: {exc}")
             

@@ -5,36 +5,36 @@ Version: 1.0.0
 Date: 2025-10-27
 Author: SuperBot Team
 
-Açıklama:
+Description:
     iFVG (Inverse Fair Value Gap) - Smart Money Concepts
-    Ters yönlü FVG tespiti - potansiyel reversal sinyali
+    Reverse FVG detection - potential reversal signal
 
     iFVG Nedir:
-    - FVG oluştuktan sonra ters yönde oluşan FVG
-    - Trend zayıflama/reversal sinyali
-    - Stop loss avı veya trend değişimi gösterebilir
+    - FVG that forms in the opposite direction after the initial FVG.
+    - Indicates a weakening/reversal of the trend.
+    - May indicate a stop loss hunt or a change in trend.
 
-    Örnek:
-    1. Bullish FVG oluşur (yükseliş)
-    2. Ardından Bearish FVG oluşur (iFVG) -> Yükseliş zayıflıyor
+    Example:
+    1. A bullish FVG is formed (uptrend)
+    2. Then a bearish FVG is formed (iFVG) -> The uptrend weakens
 
-    3. Bearish FVG oluşur (düşüş)
-    4. Ardından Bullish FVG oluşur (iFVG) -> Düşüş zayıflıyor
+    3. A bearish FVG forms (decline).
+    4. Then a bullish FVG forms (iFVG) -> The decline weakens.
 
-Formül:
-    1. Son N bar içinde FVG tespiti
-    2. Ters yönde FVG oluşumu -> iFVG
+Formula:
+    1. FVG detection within the last N bars
+    2. Formation of FVG in the opposite direction -> iFVG
     3. iFVG = Reversal warning
 
     Bullish iFVG:
-    - Son N barda Bearish FVG vardı
-    - Şimdi Bullish FVG oluştu -> Reversal up
+    - There were N bearish FVG formations recently.
+    - A bullish FVG has now formed -> Reversal upwards.
 
     Bearish iFVG:
-    - Son N barda Bullish FVG vardı
-    - Şimdi Bearish FVG oluştu -> Reversal down
+    - There were N consecutive Bullish FVG formations.
+    - A Bearish FVG has now formed -> Reversal downwards.
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -57,13 +57,13 @@ class iFVG(BaseIndicator):
     """
     Inverse Fair Value Gap (iFVG)
 
-    Ters yönlü FVG tespiti ile reversal sinyali verir.
-    Trend zayıflama noktalarını tespit eder.
+    It provides a reversal signal with reverse FVG detection.
+    It detects trend weakening points.
 
     Args:
-        min_gap_percent: Minimum boşluk yüzdesi (varsayılan: 0.1)
-        lookback_bars: Kaç bar geriye bakılacak (varsayılan: 10)
-        min_distance: FVG'ler arası minimum mesafe (bar) (varsayılan: 3)
+        min_gap_percent: Minimum gap percentage (default: 0.1)
+        lookback_bars: Number of bars to look back (default: 10)
+        min_distance: Minimum distance between FVG's (bars) (default: 3)
     """
 
     def __init__(
@@ -95,25 +95,25 @@ class iFVG(BaseIndicator):
         self.recent_fvgs: List[Dict[str, Any]] = []
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.lookback_bars + 10
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.min_gap_percent < 0:
             raise InvalidParameterError(
                 self.name, 'min_gap_percent', self.min_gap_percent,
-                "Min gap percent negatif olamaz"
+                "Min gap percent cannot be negative"
             )
         if self.lookback_bars < 1:
             raise InvalidParameterError(
                 self.name, 'lookback_bars', self.lookback_bars,
-                "Lookback bars pozitif olmalı"
+                "Lookback bars must be positive"
             )
         if self.min_distance < 1:
             raise InvalidParameterError(
                 self.name, 'min_distance', self.min_distance,
-                "Min distance pozitif olmalı"
+                "Minimum distance must be positive"
             )
         return True
 
@@ -124,15 +124,15 @@ class iFVG(BaseIndicator):
         index: int
     ) -> Optional[Dict[str, Any]]:
         """
-        FVG tespiti (tek FVG döndürür)
+        FVG detection (returns a single FVG)
 
         Args:
-            highs: High fiyat dizisi
-            lows: Low fiyat dizisi
-            index: Kontrol edilecek index
+            highs: Array of high prices
+            lows: Array of low prices
+            index: Index to be checked
 
         Returns:
-            Dict: Tespit edilen FVG veya None
+            Dict: Detected FVG or None
         """
         if index < 2:
             return None
@@ -186,11 +186,11 @@ class iFVG(BaseIndicator):
         iFVG tespiti
 
         Args:
-            current_fvg: Güncel FVG
+            current_fvg: Current FVG
             recent_fvgs: Son N bardaki FVG'ler
 
         Returns:
-            Dict: iFVG bilgisi veya None
+            Dict: iFVG information or None
         """
         if not current_fvg or not recent_fvgs:
             return None
@@ -198,18 +198,18 @@ class iFVG(BaseIndicator):
         current_type = current_fvg['type']
         current_index = current_fvg['index']
 
-        # Ters yönlü FVG ara (lookback period içinde)
+        # Search for reverse FVG (within the lookback period)
         for fvg in reversed(recent_fvgs):
-            # Minimum mesafe kontrolü
+            # Minimum distance check
             distance = current_index - fvg['index']
             if distance < self.min_distance:
                 continue
 
-            # Lookback period içinde mi?
+            # Is it within the lookback period?
             if distance > self.lookback_bars:
                 break
 
-            # Ters yön kontrolü
+            # Reverse direction check
             if current_type == 'bullish' and fvg['type'] == 'bearish':
                 # Bearish -> Bullish (Reversal up)
                 return {
@@ -242,7 +242,7 @@ class iFVG(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: iFVG değeri
+            IndicatorResult: iFVG value
         """
         highs = data['high'].values
         lows = data['low'].values
@@ -255,7 +255,7 @@ class iFVG(BaseIndicator):
         if new_fvg:
             self.recent_fvgs.append(new_fvg)
 
-        # Eski FVG'leri temizle (lookback period dışı)
+        # Clean up old FVG (outside the lookback period)
         cutoff_index = latest_index - self.lookback_bars
         self.recent_fvgs = [
             fvg for fvg in self.recent_fvgs
@@ -269,7 +269,7 @@ class iFVG(BaseIndicator):
 
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Değer: iFVG tipi (dict format)
+        # Value: iFVG type (dict format)
         value_str = ifvg_data['type'] if ifvg_data else 'none'
 
         # Metadata
@@ -403,22 +403,22 @@ class iFVG(BaseIndicator):
 
     def get_signal(self, ifvg_data: Optional[Dict[str, Any]]) -> SignalType:
         """
-        iFVG'den sinyal üret
+        Generate a signal from iFVG.
 
         Args:
             ifvg_data: iFVG bilgisi
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
         if not ifvg_data:
             return SignalType.HOLD
 
         # iFVG reversal sinyali
         if ifvg_data['reversal'] == 'up':
-            return SignalType.BUY  # Düşüş -> Yükseliş
+            return SignalType.BUY  # Decrease -> Increase
         elif ifvg_data['reversal'] == 'down':
-            return SignalType.SELL  # Yükseliş -> Düşüş
+            return SignalType.SELL  # Increase -> Decrease
 
         return SignalType.HOLD
 
@@ -430,12 +430,12 @@ class iFVG(BaseIndicator):
             ifvg_data: iFVG bilgisi
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         if not ifvg_data:
             return TrendDirection.NEUTRAL
 
-        # iFVG yeni trend yönünü gösterir
+        # iFVG indicates the new trend direction
         if ifvg_data['reversal'] == 'up':
             return TrendDirection.UP
         elif ifvg_data['reversal'] == 'down':
@@ -444,7 +444,7 @@ class iFVG(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'min_gap_percent': 0.1,
             'lookback_bars': 10,
@@ -464,22 +464,22 @@ __all__ = ['iFVG']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """iFVG indikatör testi"""
+    """iFVG indicator test"""
 
     print("\n" + "="*60)
     print("iFVG (INVERSE FAIR VALUE GAP) TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating example OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(60)]
 
-    # iFVG simülasyonu (Yükseliş -> Düşüş -> iFVG)
+    # iFVG simulation (Ascent -> Descent -> iFVG)
     base_price = 100
     prices = []
     highs = []
@@ -487,7 +487,7 @@ if __name__ == "__main__":
 
     for i in range(60):
         if i == 15:
-            # Bullish FVG (hızlı yükseliş)
+            # Bullish FVG (rapid upward movement)
             prices.append(base_price + 10)
             highs.append(base_price + 11)
             lows.append(base_price + 9)
@@ -497,7 +497,7 @@ if __name__ == "__main__":
             highs.append(base_price + 6)
             lows.append(base_price + 4)
         elif i == 40:
-            # Bearish FVG (hızlı düşüş)
+            # Bearish FVG (fast decline)
             prices.append(base_price - 8)
             highs.append(base_price - 7)
             lows.append(base_price - 9)
@@ -521,46 +521,46 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     ifvg = iFVG(min_gap_percent=0.1, lookback_bars=10, min_distance=3)
-    print(f"   [OK] Oluşturuldu: {ifvg}")
+    print(f"   [OK] Created: {ifvg}")
     print(f"   [OK] Kategori: {ifvg.category.value}")
-    print(f"   [OK] Gerekli periyot: {ifvg.get_required_periods()}")
+    print(f"   [OK] Required period: {ifvg.get_required_periods()}")
 
     result = ifvg(data)
-    print(f"   [OK] iFVG Değeri: {result.value}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] iFVG Value: {result.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength}")
-    print(f"   [OK] iFVG Tipi: {result.metadata['ifvg_type']}")
+    print(f"   [OK] Power: {result.strength}")
+    print(f"   [OK] iFVG Type: {result.metadata['ifvg_type']}")
     print(f"   [OK] Reversal: {result.metadata['reversal_direction']}")
     print(f"   [OK] Distance: {result.metadata['distance']}")
     print(f"   [OK] Recent FVG Count: {result.metadata['recent_fvg_count']}")
 
-    # Test 2: Batch hesaplama
-    print("\n3. Batch hesaplama testi...")
+    # Test 2: Batch calculation
+    print("\n3. Batch calculation test...")
     batch_result = ifvg.calculate_batch(data)
-    print(f"   [OK] Batch sonuç uzunluğu: {len(batch_result)}")
-    print(f"   [OK] Bullish iFVG sayısı: {int((batch_result == 1).sum())}")
-    print(f"   [OK] Bearish iFVG sayısı: {int((batch_result == -1).sum())}")
+    print(f"   [OK] Batch result length: {len(batch_result)}")
+    print(f"   [OK] Bullish iFVG count: {int((batch_result == 1).sum())}")
+    print(f"   [OK] Number of bearish iFVG: {int((batch_result == -1).sum())}")
 
-    # iFVG tespit edilen indexleri göster
+    # Shows the indices where iFVG was detected.
     bullish_ifvg_indices = batch_result[batch_result == 1].index.tolist()
     bearish_ifvg_indices = batch_result[batch_result == -1].index.tolist()
     print(f"   [OK] Bullish iFVG indices: {bullish_ifvg_indices}")
     print(f"   [OK] Bearish iFVG indices: {bearish_ifvg_indices}")
 
-    # Test 3: Farklı parametreler
-    print("\n4. Farklı parametre testi...")
+    # Test 3: Different parameters
+    print("\n4. Different parameter test...")
     for lookback in [5, 10, 15]:
         ifvg_test = iFVG(lookback_bars=lookback)
         result = ifvg_test.calculate(data)
         print(f"   [OK] iFVG(lookback={lookback}): {result.metadata['ifvg_type']}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

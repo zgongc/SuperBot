@@ -5,17 +5,17 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    Force Index - Güç endeksi
-    Fiyat değişimi ve hacmi birleştirerek alım/satım gücünü ölçer
-    Pozitif = Alıcı gücü dominant
-    Negatif = Satıcı gücü dominant
+Description:
+    Force Index - Force index
+    Measures buying/selling power by combining price change and volume
+    Positive = Buyer power is dominant
+    Negative = Seller power is dominant
 
-Formül:
+Formula:
     Force Index = (Close - Close_prev) × Volume
     Smoothed FI = EMA(Force Index, period)
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -37,11 +37,11 @@ class ForceIndex(BaseIndicator):
     """
     Force Index
 
-    Alexander Elder tarafından geliştirilen indikatör.
-    Fiyat değişimini hacimle çarparak alım/satım gücünü ölçer.
+    Indicator developed by Alexander Elder.
+    Measures buying/selling power by multiplying price changes by volume.
 
     Args:
-        period: Force Index smoothing periyodu (varsayılan: 13)
+        period: Force Index smoothing period (default: 13)
     """
 
     def __init__(
@@ -64,15 +64,15 @@ class ForceIndex(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.period + 1
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 1:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Periyot pozitif olmalı"
+                "The period must be positive"
             )
         return True
 
@@ -84,7 +84,7 @@ class ForceIndex(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: Force Index değeri
+            IndicatorResult: Force Index value
         """
         close = data['close'].values
         volume = data['volume'].values
@@ -96,13 +96,13 @@ class ForceIndex(BaseIndicator):
             price_change = close[i] - close[i-1]
             force_index_raw[i] = price_change * volume[i]
 
-        # EMA ile smooth et
+        # Smooth with EMA
         force_index_ema = self._calculate_ema(force_index_raw, self.period)
         fi_value = force_index_ema[-1]
 
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Normalize edilmiş güç (hacme göre)
+        # Normalized power (relative to volume)
         avg_volume = np.mean(volume[-self.period:])
         normalized_strength = abs(fi_value) / avg_volume if avg_volume > 0 else 0
 
@@ -125,7 +125,7 @@ class ForceIndex(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.Series:
         """
-        ⚡ VECTORIZED batch Force Index calculation - BACKTEST için
+        ⚡ VECTORIZED batch Force Index calculation - for BACKTEST
 
         Force Index Formula:
             Raw FI = (Close - Close_prev) × Volume
@@ -165,12 +165,12 @@ class ForceIndex(BaseIndicator):
             period: EMA periyodu
 
         Returns:
-            np.ndarray: EMA değerleri
+            np.ndarray: EMA values
         """
         ema = np.zeros(len(data))
         multiplier = 2 / (period + 1)
 
-        # İlk değer SMA
+        # Initial value is SMA
         ema[period-1] = np.mean(data[:period])
 
         # EMA hesapla
@@ -180,7 +180,7 @@ class ForceIndex(BaseIndicator):
         return ema
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
-        """Warmup buffer - update() için gerekli state'i hazırlar"""
+        """Warmup buffer - prepares the necessary state for update()"""
         super().warmup_buffer(data, symbol)
         from collections import deque
         max_len = self.get_required_periods() + 50
@@ -233,18 +233,18 @@ class ForceIndex(BaseIndicator):
 
     def get_signal(self, value: float) -> SignalType:
         """
-        Force Index değerinden sinyal üret
+        Generate a signal from the Force Index value.
 
         Args:
-            value: Force Index değeri
+            value: Force Index value
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
         if value > 0:
-            return SignalType.BUY  # Alıcı gücü
+            return SignalType.BUY  # Buy signal
         elif value < 0:
-            return SignalType.SELL  # Satıcı gücü
+            return SignalType.SELL  # Seller strength
         return SignalType.HOLD
 
     def get_trend(self, fi_array: np.ndarray) -> TrendDirection:
@@ -252,15 +252,15 @@ class ForceIndex(BaseIndicator):
         Force Index trendini belirle
 
         Args:
-            fi_array: Son Force Index değerleri
+            fi_array: Last Force Index values
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         if len(fi_array) < 2:
             return TrendDirection.NEUTRAL
 
-        # Son değerlerin ortalaması
+        # Average of the last values
         recent_avg = np.mean(fi_array[-3:]) if len(fi_array) >= 3 else fi_array[-1]
 
         if recent_avg > 0:
@@ -270,7 +270,7 @@ class ForceIndex(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'period': 13
         }
@@ -288,18 +288,18 @@ __all__ = ['ForceIndex']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """Force Index indikatör testi"""
+    """Force Index indicator test"""
 
     print("\n" + "="*60)
     print("FORCE INDEX TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating example OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(30)]
 
@@ -321,38 +321,38 @@ if __name__ == "__main__":
         'volume': volumes
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     fi = ForceIndex(period=13)
-    print(f"   [OK] Oluşturuldu: {fi}")
+    print(f"   [OK] Created: {fi}")
     print(f"   [OK] Kategori: {fi.category.value}")
-    print(f"   [OK] Gerekli periyot: {fi.get_required_periods()}")
+    print(f"   [OK] Required period: {fi.get_required_periods()}")
 
     result = fi(data)
     print(f"   [OK] Force Index: {result.value:,.2f}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Power: {result.strength:.2f}")
     print(f"   [OK] Metadata: {result.metadata}")
 
-    # Test 2: Farklı periyotlar
-    print("\n3. Farklı periyot testi...")
+    # Test 2: Different periods
+    print("\n3. Different period test...")
     for period in [2, 13, 50]:
         fi_test = ForceIndex(period=period)
         result = fi_test.calculate(data)
-        print(f"   [OK] FI({period}): {result.value:,.2f} | Sinyal: {result.signal.value}")
+        print(f"   [OK] FI({period}): {result.value:,.2f} | Signal: {result.signal.value}")
 
     # Test 3: Volume gereksinimi
     print("\n4. Volume gereksinimi testi...")
     metadata = fi.metadata
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
     assert metadata.requires_volume == True, "Force Index volume gerektirmeli!"
 
-    # Test 4: Güç yorumlama
-    print("\n5. Güç yorumlama testi...")
+    # Test 4: Power interpretation
+    print("\n5. Power interpretation test...")
     result = fi.calculate(data)
     fi_val = result.value
     raw_fi = result.metadata['raw_fi']
@@ -361,28 +361,28 @@ if __name__ == "__main__":
     print(f"   [OK] Smoothed FI: {fi_val:,.2f}")
 
     if fi_val > 1000:
-        print("   [OK] Güçlü alıcı baskısı")
+        print("   [OK] Strong receiver pressure")
     elif fi_val > 0:
-        print("   [OK] Zayıf alıcı baskısı")
+        print("   [OK] Weak receiver pressure")
     elif fi_val > -1000:
-        print("   [OK] Zayıf satıcı baskısı")
+        print("   [OK] Weak vendor pressure")
     else:
-        print("   [OK] Güçlü satıcı baskısı")
+        print("   [OK] Strong seller pressure")
 
-    # Test 5: Fiyat-Hacim ilişkisi
-    print("\n6. Fiyat-Hacim ilişkisi testi...")
+    # Test 5: Price-Volume relationship
+    print("\n6. Price-Volume Relationship Test...")
     price_change = result.metadata['price_change']
     volume = result.metadata['volume']
-    print(f"   [OK] Fiyat değişimi: {price_change:.8f}")
-    print(f"   [OK] Hacim: {volume:,}")
+    print(f"   [OK] Price change: {price_change:.8f}")
+    print(f"   [OK] Volume: {volume:,}")
     print(f"   [OK] Force Index = Price Change × Volume")
 
-    # Test 6: İstatistikler
-    print("\n7. İstatistik testi...")
+    # Test 6: Statistics
+    print("\n7. Statistical test...")
     stats = fi.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

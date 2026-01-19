@@ -3,33 +3,33 @@
 components/indicators/structure/gap.py
 SuperBot - Price Gap Detector
 
-Yazar: SuperBot Team
-Tarih: 2025-01-09
+Author: SuperBot Team
+Date: 2025-01-09
 Versiyon: 1.0.0
 
-Açıklama:
-    İki mum arasındaki fiyat boşluklarını (gap) tespit eder.
-    FVG'den farklı olarak 3 mum pattern gerektirmez, sadece 2 mum arası boşluk.
+Description:
+    Detects price gaps between two candles.
+    Unlike FVG, it does not require a 3-candle pattern, only a gap between 2 candles.
 
     Gap Nedir:
-    - İki ardışık mum arasında oluşan fiyat boşluğu
-    - Hızlı fiyat hareketi sonucu oluşur
-    - Genellikle bu boşluklar "fill" edilir (doldurulur)
+    - The price gap formed between two consecutive candles.
+    - It is formed as a result of rapid price movement.
+    - These gaps are generally "filled" (filled in).
 
-Formül:
-    Bullish Gap (Yukarı Boşluk):
+Formula:
+    Bullish Gap (Upward Gap):
     - Candle[1].low > Candle[0].high
     - Gap: [Candle[0].high, Candle[1].low]
 
-    Bearish Gap (Aşağı Boşluk):
+    Bearish Gap (Downward Gap):
     - Candle[0].low > Candle[1].high
     - Gap: [Candle[1].high, Candle[0].low]
 
     Fill Status:
-    - open: Boşluk henüz doldurulmadı (dolu kutu)
-    - filled: Tamamen doldu (sadece çerçeve)
+    - open: The space has not been filled yet (empty box)
+    - filled: Completely filled (only the frame)
 
-Kullanım:
+Usage:
     from components.indicators.structure.gap import Gap
 
     gap = Gap(min_gap_percent=0.05)
@@ -38,7 +38,7 @@ Kullanım:
     # Zones in metadata
     zones = result.metadata['zones']
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -71,17 +71,17 @@ from components.indicators.indicator_types import (
 @dataclass
 class GapZone:
     """
-    Gap Zone veri yapısı
+    Gap Zone data structure
 
     Attributes:
-        type: 'bullish' veya 'bearish'
-        top: Üst fiyat seviyesi
-        bottom: Alt fiyat seviyesi
-        created_index: Oluşturulduğu bar index
-        created_time: Oluşturulduğu timestamp
+        type: 'bullish' or 'bearish'
+        top: Upper price level
+        bottom: Lower price level
+        created_index: Index of the bar it was created on
+        created_time: Timestamp when it was created
         filled: Dolduruldu mu
-        filled_index: Doldurulduğu bar index (varsa)
-        filled_time: Doldurulduğu timestamp (varsa)
+        filled_index: The bar index where it was filled (if applicable)
+        filled_time: The timestamp when it was filled (if applicable)
     """
     type: str
     top: float
@@ -94,16 +94,16 @@ class GapZone:
 
     @property
     def size(self) -> float:
-        """Gap boyutu"""
+        """Gap size"""
         return self.top - self.bottom
 
     @property
     def midpoint(self) -> float:
-        """Gap orta noktası"""
+        """Gap midpoint"""
         return (self.top + self.bottom) / 2
 
     def to_dict(self) -> Dict[str, Any]:
-        """Dict'e çevir"""
+        """Convert to dictionary"""
         return {
             'type': self.type,
             'top': round(self.top, 8),
@@ -122,12 +122,12 @@ class Gap(BaseIndicator):
     """
     Price Gap Detector
 
-    İki mum arasındaki fiyat boşluklarını tespit eder ve takip eder.
+    Detects and tracks price gaps between two candles.
 
     Args:
-        min_gap_percent: Minimum boşluk yüzdesi (varsayılan: 0.05 = %0.05)
-        max_zones: Maksimum takip edilecek zone sayısı (varsayılan: 50)
-        max_age: Maksimum yaş (bar sayısı, varsayılan: 500)
+        min_gap_percent: Minimum gap percentage (default: 0.05 = %0.05)
+        max_zones: Maximum number of zones to track (default: 50)
+        max_age: Maximum age (bar count, default: 500)
     """
 
     def __init__(
@@ -155,30 +155,30 @@ class Gap(BaseIndicator):
             error_handler=error_handler
         )
 
-        # State: Tüm gap'leri takip et (filled dahil)
+        # State: Track all gaps (including filled ones)
         self._all_gaps: List[GapZone] = []
-        self._active_gaps: List[GapZone] = []  # Henüz doldurulmamış
+        self._active_gaps: List[GapZone] = []  # Not yet filled
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return 2
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.min_gap_percent < 0:
             raise InvalidParameterError(
                 self.name, 'min_gap_percent', self.min_gap_percent,
-                "Min gap percent negatif olamaz"
+                "Min gap percent cannot be negative"
             )
         if self.max_zones < 1:
             raise InvalidParameterError(
                 self.name, 'max_zones', self.max_zones,
-                "Max zones pozitif olmalı"
+                "Max zones must be positive"
             )
         if self.max_age < 1:
             raise InvalidParameterError(
                 self.name, 'max_age', self.max_age,
-                "Max age pozitif olmalı"
+                "Max age must be positive"
             )
         return True
 
@@ -192,22 +192,22 @@ class Gap(BaseIndicator):
         curr_time: int
     ) -> Optional[GapZone]:
         """
-        İki mum arasında gap tespit et
+        Detect a gap between two candles.
 
         Args:
-            prev_high: Önceki mumun high'ı
-            prev_low: Önceki mumun low'u
-            curr_high: Şimdiki mumun high'ı
-            curr_low: Şimdiki mumun low'u
-            curr_index: Şimdiki bar index
-            curr_time: Şimdiki timestamp
+            prev_high: The high of the previous candle
+            prev_low: The low of the previous candle
+            curr_high: The high of the current candle
+            curr_low: The low of the current candle
+            curr_index: The index of the current bar
+            curr_time: The timestamp of the current bar
 
         Returns:
-            GapZone veya None
+            GapZone or None
         """
         mid_price = (prev_high + prev_low + curr_high + curr_low) / 4
 
-        # Bullish Gap: Şimdiki mumun low'u > Önceki mumun high'ı
+        # Bullish Gap: The low of the current candle is greater than the high of the previous candle.
         if curr_low > prev_high:
             gap_size = curr_low - prev_high
             gap_percent = (gap_size / mid_price) * 100 if mid_price > 0 else 0
@@ -222,7 +222,7 @@ class Gap(BaseIndicator):
                     filled=False
                 )
 
-        # Bearish Gap: Önceki mumun low'u > Şimdiki mumun high'ı
+        # Bearish Gap: The low of the previous candle is greater than the high of the current candle.
         if prev_low > curr_high:
             gap_size = prev_low - curr_high
             gap_percent = (gap_size / mid_price) * 100 if mid_price > 0 else 0
@@ -248,23 +248,23 @@ class Gap(BaseIndicator):
         current_time: int
     ) -> None:
         """
-        Gap dolum durumunu güncelle
+        Update the gap filling status.
 
-        Gap doldurulma koşulu:
-        - Bullish gap: Fiyat gap'in bottom'una (veya altına) inerse
-        - Bearish gap: Fiyat gap'in top'una (veya üstüne) çıkarsa
+        Gap filling condition:
+        - Bullish gap: If the price goes down to the bottom (or below) of the gap.
+        - Bearish gap: If the price goes up to the top (or above) of the gap.
         """
         if gap.filled:
             return
 
         if gap.type == 'bullish':
-            # Bullish gap: Fiyat aşağı inip gap'i doldurmalı
+            # Bullish gap: The price should go down and fill the gap.
             if current_low <= gap.bottom:
                 gap.filled = True
                 gap.filled_index = current_index
                 gap.filled_time = current_time
         else:
-            # Bearish gap: Fiyat yukarı çıkıp gap'i doldurmalı
+            # Bearish gap: The price should rise and fill the gap.
             if current_high >= gap.top:
                 gap.filled = True
                 gap.filled_index = current_index
@@ -272,7 +272,7 @@ class Gap(BaseIndicator):
 
     def calculate(self, data: pd.DataFrame) -> IndicatorResult:
         """
-        Tüm veri üzerinde gap hesapla
+        Calculate the gap across all data.
 
         Args:
             data: OHLCV DataFrame
@@ -288,9 +288,9 @@ class Gap(BaseIndicator):
 
         n = len(data)
 
-        # Her bar için gap tespit et ve güncelle
+        # Detect and update the gap for each bar.
         for i in range(1, n):
-            # Yeni gap tespit et
+            # Detect a new gap
             new_gap = self._detect_gap(
                 prev_high=highs[i - 1],
                 prev_low=lows[i - 1],
@@ -304,9 +304,9 @@ class Gap(BaseIndicator):
                 self._all_gaps.append(new_gap)
                 self._active_gaps.append(new_gap)
 
-            # Mevcut gap'lerin durumunu güncelle
+            # Update the status of existing gaps
             for gap in self._active_gaps:
-                if gap.created_index < i:  # Oluşturulduğu bar'da güncelleme yapma
+                if gap.created_index < i:  # Do not update if created in a different bar
                     self._update_gap_status(
                         gap,
                         current_high=highs[i],
@@ -315,22 +315,22 @@ class Gap(BaseIndicator):
                         current_time=int(times[i])
                     )
 
-            # Doldurulmuş gap'leri active listesinden çıkar
+            # Remove filled gaps from the active list
             self._active_gaps = [g for g in self._active_gaps if not g.filled]
 
-            # Çok eski gap'leri active listesinden çıkar (ama all'da kalsın)
+            # Remove very old gaps from the active list (but keep them in the all list)
             self._active_gaps = [
                 g for g in self._active_gaps
                 if (i - g.created_index) < self.max_age
             ]
 
-        # Max zones limiti (en yeni olanları tut)
+        # Maximum zones limit (keep the newest ones)
         if len(self._all_gaps) > self.max_zones * 2:
             self._all_gaps = self._all_gaps[-self.max_zones * 2:]
 
         timestamp = int(data.iloc[-1]['timestamp']) if 'timestamp' in data.columns else n - 1
 
-        # Tüm zone'ları döndür (filled dahil - WebUI'da farklı gösterilecek)
+        # Returns all zones (including filled ones - will be displayed differently in the WebUI)
         zones = [gap.to_dict() for gap in self._all_gaps[-self.max_zones:]]
         active_zones = [gap.to_dict() for gap in self._active_gaps]
 
@@ -344,8 +344,8 @@ class Gap(BaseIndicator):
             trend=self._get_trend(active_zones),
             strength=min(len(active_zones) * 10, 100),
             metadata={
-                'zones': zones,  # Tüm gap'ler (filled dahil)
-                'active_zones': active_zones,  # Sadece aktif (unfilled)
+                'zones': zones,  # All gaps (including filled)
+                'active_zones': active_zones,  # Only active (unfilled)
                 'total_gaps': len(self._all_gaps),
                 'active_gaps': len(self._active_gaps),
                 'bullish_active': len([z for z in active_zones if z['type'] == 'bullish']),
@@ -359,7 +359,7 @@ class Gap(BaseIndicator):
         Batch calculation for backtest
 
         Returns:
-            pd.Series: Net gap değeri (bullish - bearish aktif gap sayısı)
+            pd.Series: Net gap value (number of bullish gaps minus the number of bearish gaps)
         """
         highs = data['high'].values
         lows = data['low'].values
@@ -372,7 +372,7 @@ class Gap(BaseIndicator):
         active_gaps: List[GapZone] = []
 
         for i in range(1, n):
-            # Yeni gap tespit et
+            # Detect a new gap
             new_gap = self._detect_gap(
                 prev_high=highs[i - 1],
                 prev_low=lows[i - 1],
@@ -386,7 +386,7 @@ class Gap(BaseIndicator):
                 all_gaps.append(new_gap)
                 active_gaps.append(new_gap)
 
-            # Mevcut gap'lerin durumunu güncelle
+            # Update the status of existing gaps
             for gap in active_gaps:
                 if gap.created_index < i:
                     self._update_gap_status(
@@ -397,13 +397,13 @@ class Gap(BaseIndicator):
                         current_time=int(times[i])
                     )
 
-            # Doldurulmuş ve eski gap'leri çıkar
+            # Fill in and remove old gaps
             active_gaps = [
                 g for g in active_gaps
                 if not g.filled and (i - g.created_index) < self.max_age
             ]
 
-            # Net gap değeri
+            # Net gap value
             bullish_count = len([g for g in active_gaps if g.type == 'bullish'])
             bearish_count = len([g for g in active_gaps if g.type == 'bearish'])
             gap_values[i] = bullish_count - bearish_count
@@ -470,7 +470,7 @@ class Gap(BaseIndicator):
                 metadata={'warmup': True, 'zones': [], 'active_zones': []}
             )
 
-        # Yeni gap tespit et
+        # Detect a new gap
         new_gap = self._detect_gap(
             prev_high=self._high_buffer[-2],
             prev_low=self._low_buffer[-2],
@@ -484,7 +484,7 @@ class Gap(BaseIndicator):
             self._all_gaps.append(new_gap)
             self._active_gaps.append(new_gap)
 
-        # Mevcut gap'leri güncelle
+        # Update existing gaps
         for gap in self._active_gaps:
             if gap.created_index < self._current_update_index:
                 self._update_gap_status(
@@ -516,11 +516,11 @@ class Gap(BaseIndicator):
         )
 
     def _get_signal(self, active_zones: List[Dict], current_price: float) -> SignalType:
-        """Gap'lerden sinyal üret"""
+        """Generate signal from gaps"""
         if not active_zones:
             return SignalType.HOLD
 
-        # Fiyata en yakın gap'i bul
+        # Find the gap closest to the price.
         nearest = None
         min_distance = float('inf')
 
@@ -535,7 +535,7 @@ class Gap(BaseIndicator):
 
         if nearest:
             distance_percent = (min_distance / current_price) * 100
-            # %0.5 içindeyse sinyal ver
+            # Send a signal if it's within %0.5
             if distance_percent < 0.5:
                 if nearest['type'] == 'bullish':
                     return SignalType.BUY
@@ -560,11 +560,11 @@ class Gap(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def get_active_gaps(self) -> List[GapZone]:
-        """Aktif (doldurulmamış) gap'ler"""
+        """Active (unfilled) gaps"""
         return self._active_gaps.copy()
 
     def get_all_gaps(self) -> List[GapZone]:
-        """Tüm gap'ler (filled dahil)"""
+        """All gaps (including filled ones)"""
         return self._all_gaps.copy()
 
     def get_bullish_gaps(self, active_only: bool = True) -> List[GapZone]:
@@ -578,7 +578,7 @@ class Gap(BaseIndicator):
         return [g for g in source if g.type == 'bearish']
 
     def reset(self) -> None:
-        """State temizle"""
+        """Clear state"""
         self._all_gaps = []
         self._active_gaps = []
         if hasattr(self, '_high_buffer'):
@@ -589,7 +589,7 @@ class Gap(BaseIndicator):
         self._current_update_index = 0
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'min_gap_percent': 0.05,
             'max_zones': 50,
@@ -617,8 +617,8 @@ if __name__ == "__main__":
     print("🧪 Gap (Price Gap) Test")
     print("=" * 60)
 
-    # Test verisi oluştur - gap'ler içeren
-    print("\n1. Test verisi oluşturuluyor...")
+    # Create test data - containing gaps
+    print("\n1. Creating test data...")
     np.random.seed(42)
 
     n = 100
@@ -631,7 +631,7 @@ if __name__ == "__main__":
         change = np.random.randn() * 0.3
         prices.append(prices[-1] + change)
 
-    # Gap oluştur (belirli noktalarda)
+    # Create a gap (at specific points)
     highs = []
     lows = []
     opens = []
@@ -639,13 +639,13 @@ if __name__ == "__main__":
 
     for i, price in enumerate(prices):
         if i == 20:
-            # Bullish gap oluştur
+            # Create a bullish gap
             opens.append(price + 2)  # Gap up
             closes.append(price + 2.5)
             lows.append(price + 1.8)  # Low > previous high
             highs.append(price + 3)
         elif i == 50:
-            # Bearish gap oluştur
+            # Create a bearish gap
             opens.append(price - 2)  # Gap down
             closes.append(price - 2.5)
             highs.append(price - 1.8)  # High < previous low
@@ -665,22 +665,22 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in range(n)]
     })
 
-    print(f"   ✅ {len(data)} bar oluşturuldu")
+    print(f"   ✅ {len(data)} bar created")
 
-    # Test 2: Gap hesaplama
-    print("\n2. Gap hesaplama testi...")
+    # Test 2: Gap calculation
+    print("\n2. Gap calculation test...")
     gap = Gap(min_gap_percent=0.05, max_zones=50, max_age=500)
     result = gap.calculate(data)
 
-    print(f"   ✅ Toplam gap: {result.metadata['total_gaps']}")
-    print(f"   ✅ Aktif gap: {result.metadata['active_gaps']}")
-    print(f"   ✅ Bullish aktif: {result.metadata['bullish_active']}")
-    print(f"   ✅ Bearish aktif: {result.metadata['bearish_active']}")
-    print(f"   ✅ Sinyal: {result.signal.value}")
+    print(f"   ✅ Total gaps: {result.metadata['total_gaps']}")
+    print(f"   ✅ Active gap: {result.metadata['active_gaps']}")
+    print(f"   ✅ Bullish active: {result.metadata['bullish_active']}")
+    print(f"   ✅ Bearish active: {result.metadata['bearish_active']}")
+    print(f"   ✅ Signal: {result.signal.value}")
     print(f"   ✅ Trend: {result.trend.name}")
 
-    # Test 3: Zone detayları
-    print("\n3. Zone detayları...")
+    # Test 3: Zone details
+    print("\n3. Zone details...")
     zones = result.metadata['zones']
     for i, zone in enumerate(zones[:5]):
         status = "FILLED" if zone['filled'] else "OPEN"
@@ -689,14 +689,14 @@ if __name__ == "__main__":
     # Test 4: Batch calculation
     print("\n4. Batch calculation testi...")
     batch_result = gap.calculate_batch(data)
-    print(f"   ✅ Series uzunluğu: {len(batch_result)}")
-    print(f"   ✅ Son değer: {batch_result.iloc[-1]}")
+    print(f"   ✅ Series length: {len(batch_result)}")
+    print(f"   ✅ Final value: {batch_result.iloc[-1]}")
 
     # Test 5: Incremental update
     print("\n5. Incremental update testi...")
     gap2 = Gap(min_gap_percent=0.05)
 
-    # İlk birkaç mumu ekle
+    # Add the first few candles
     for i in range(10):
         candle = {
             'timestamp': timestamps[i],
@@ -708,8 +708,8 @@ if __name__ == "__main__":
         }
         res = gap2.update(candle)
 
-    print(f"   ✅ Update sonrası aktif gap: {res.metadata.get('active_gaps', 0)}")
+    print(f"   ✅ Active gap after update: {res.metadata.get('active_gaps', 0)}")
 
     print("\n" + "=" * 60)
-    print("✅ TÜM TESTLER BAŞARILI!")
+    print("✅ ALL TESTS PASSED!")
     print("=" * 60)

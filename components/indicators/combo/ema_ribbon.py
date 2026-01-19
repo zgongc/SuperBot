@@ -1,29 +1,29 @@
 """
-indicators/combo/ema_ribbon.py - EMA Ribbon (Çoklu EMA Bantları)
+indicators/combo/ema_ribbon.py - EMA Ribbon (Multiple EMA Bands)
 
 Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    EMA Ribbon - Çoklu EMA bantları sistemi
-    Birden fazla EMA'yı (5, 10, 20, 50, 100, 200) aynı anda analiz ederek
-    trend gücünü, yönünü ve potansiyel giriş/çıkış noktalarını belirler
+Description:
+    EMA Ribbon - A system with multiple EMA bands
+    Analyzes multiple EMAs (5, 10, 20, 50, 100, 200) simultaneously to
+    determine trend strength, direction, and potential entry/exit points.
 
-    Özellikler:
-    - 6 farklı EMA (5, 10, 20, 50, 100, 200)
-    - EMA sıralaması ile trend gücü ölçümü
+    Features:
+    - 6 different EMAs (5, 10, 20, 50, 100, 200)
+    - Trend strength measurement using EMA ranking
     - EMA crossover analizi
-    - Destek/direnç seviyeleri
+    - Support/resistance levels
 
-Strateji:
-    GÜÇLÜ YÜKSELIŞ: Tüm EMA'lar sıralı (5>10>20>50>100>200) + Fiyat en üstte
-    YÜKSELIŞ: Çoğu EMA sıralı + Fiyat kısa vadeli EMA'ların üstünde
-    GÜÇLÜ DÜŞÜŞ: Tüm EMA'lar ters sıralı (5<10<20<50<100<200) + Fiyat en altta
-    DÜŞÜŞ: Çoğu EMA ters sıralı + Fiyat kısa vadeli EMA'ların altında
-    YATAY: EMA'lar karışık, net trend yok
+Strategy:
+    STRONG ASCENT: All EMAs are in ascending order (5>10>20>50>100>200) + Price is at the highest point
+    ASCENT: Most EMAs are in ascending order + Price is above the short-term EMAs
+    STRONG DESCENT: All EMAs are in descending order (5<10<20<50<100<200) + Price is at the lowest point
+    DESCENT: Most EMAs are in descending order + Price is below the short-term EMAs
+    HORIZONTAL: EMAs are mixed, no clear trend
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
     - indicators.trend.ema
@@ -45,13 +45,13 @@ from indicators.indicator_types import (
 
 class EMARibbon(BaseIndicator):
     """
-    EMA Ribbon - Çoklu EMA Bantları
+    EMA Ribbon - Multiple EMA Bands
 
-    Birden fazla EMA'yı aynı anda kullanarak trend analizi yapar.
-    EMA'ların sıralaması trend gücünü gösterir.
+    Performs trend analysis by using multiple EMAs simultaneously.
+    The ranking of EMAs indicates the strength of the trend.
 
     Args:
-        ema_periods: EMA periyotları listesi (varsayılan: [5, 10, 20, 50, 100, 200])
+        ema_periods: List of EMA periods (default: [5, 10, 20, 50, 100, 200])
     """
 
     def __init__(
@@ -60,13 +60,13 @@ class EMARibbon(BaseIndicator):
         logger=None,
         error_handler=None
     ):
-        # Varsayılan periyotlar
+        # Default periods
         if ema_periods is None:
             ema_periods = [5, 10, 20, 50, 100, 200]
 
-        self.ema_periods = sorted(ema_periods)  # Küçükten büyüğe sırala
+        self.ema_periods = sorted(ema_periods)  # Sort from smallest to largest
 
-        # Her periyot için EMA indikatörü oluştur
+        # Create EMA indicator for each period
         self.emas = {}
         for period in self.ema_periods:
             self.emas[period] = EMA(
@@ -87,29 +87,29 @@ class EMARibbon(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı (en uzun EMA)"""
+        """Minimum required number of periods (longest EMA)"""
         return max(self.ema_periods)
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if not self.ema_periods:
             raise InvalidParameterError(
                 self.name, 'ema_periods', self.ema_periods,
-                "En az bir EMA periyodu gerekli"
+                "At least one EMA period is required"
             )
         for period in self.ema_periods:
             if period < 1:
                 raise InvalidParameterError(
                     self.name, 'ema_period', period,
-                    "EMA periyotları pozitif olmalı"
+                    "EMA periods must be positive"
                 )
         return True
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        ⚡ VECTORIZED batch EMA Ribbon calculation - BACKTEST için
+        ⚡ VECTORIZED batch EMA Ribbon calculation - for BACKTEST
 
-        Calculates multiple EMAs at once using vectorized operations
+        Calculates multiple EMAs at once using vectorized operations.
 
         Args:
             data: OHLCV DataFrame (full history)
@@ -132,33 +132,33 @@ class EMARibbon(BaseIndicator):
 
     def calculate(self, data: pd.DataFrame) -> IndicatorResult:
         """
-        EMA Ribbon hesaplama
+        EMA Ribbon calculation
 
         Args:
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: Tüm EMA değerleri ve analizleri
+            IndicatorResult: All EMA values and analyses.
         """
-        # Tüm EMA'ları hesapla
+        # Calculate all EMAs
         ema_values = {}
         for period in self.ema_periods:
             result = self.emas[period].calculate(data)
             ema_values[f'ema_{period}'] = round(result.value, 2)
 
-        # Mevcut fiyat
+        # Current price
         current_price = data['close'].values[-1]
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # EMA sıralamasını analiz et
+        # Analyze the EMA ranking
         alignment = self._analyze_alignment(ema_values, current_price)
 
-        # Trend ve sinyal belirleme
+        # Trend and signal determination
         trend = self.get_trend(alignment)
         signal = self.get_signal(alignment, current_price, ema_values)
         strength = self._calculate_strength(alignment)
 
-        # Destek ve direnç seviyeleri
+        # Support and resistance levels
         support_resistance = self._find_support_resistance(ema_values, current_price)
 
         # Warmup buffer for update() method
@@ -184,15 +184,15 @@ class EMARibbon(BaseIndicator):
 
     def _analyze_alignment(self, ema_values: dict, price: float) -> str:
         """
-        EMA sıralamasını analiz et
+        Analyze the EMA ranking.
 
         Returns:
-            str: 'bullish', 'bearish', 'mixed' veya 'neutral'
+            str: 'bullish', 'bearish', 'mixed' or 'neutral'
         """
-        # EMA değerlerini liste olarak al (küçükten büyüğe)
+        # Get EMA values as a list (from smallest to largest)
         emas = [ema_values[f'ema_{p}'] for p in self.ema_periods]
 
-        # Yükseliş sıralaması kontrolü (her EMA bir öncekinden büyük mü?)
+        # Check for ascending order (is each EMA greater than the previous one?)
         bullish_count = 0
         bearish_count = 0
 
@@ -204,11 +204,11 @@ class EMARibbon(BaseIndicator):
 
         total_comparisons = len(emas) - 1
 
-        # Fiyatın pozisyonu
+        # Price position
         price_above_all = all(price > ema for ema in emas)
         price_below_all = all(price < ema for ema in emas)
 
-        # Sınıflandırma
+        # Classification
         if bullish_count == total_comparisons and price_above_all:
             return 'strong_bullish'
         elif bullish_count >= total_comparisons * 0.7:
@@ -224,11 +224,11 @@ class EMARibbon(BaseIndicator):
 
     def _calculate_alignment_score(self, ema_values: dict) -> float:
         """
-        EMA sıralama skorunu hesapla (0-100)
+        Calculate the EMA ranking score (0-100).
 
-        100: Mükemmel yükseliş sıralaması
-        0: Mükemmel düşüş sıralaması
-        50: Karışık/nötr
+        100: Perfect ascending order
+        0: Perfect descending order
+        50: Mixed/neutral
         """
         emas = [ema_values[f'ema_{p}'] for p in self.ema_periods]
 
@@ -244,21 +244,21 @@ class EMARibbon(BaseIndicator):
 
     def _find_support_resistance(self, ema_values: dict, price: float) -> dict:
         """
-        Destek ve direnç seviyelerini bul
+        Find support and resistance levels.
 
         Returns:
             dict: nearest, support, resistance
         """
         emas = [(p, ema_values[f'ema_{p}']) for p in self.ema_periods]
 
-        # Fiyata en yakın EMA
+        # EMA closest to the price
         nearest = min(emas, key=lambda x: abs(x[1] - price))
 
-        # Fiyatın altındaki en yakın EMA (destek)
+        # The closest EMA below the price (support)
         supports = [ema for ema in emas if ema[1] < price]
         support = max(supports, key=lambda x: x[1]) if supports else None
 
-        # Fiyatın üstündeki en yakın EMA (direnç)
+        # The closest EMA above the price (resistance)
         resistances = [ema for ema in emas if ema[1] > price]
         resistance = min(resistances, key=lambda x: x[1]) if resistances else None
 
@@ -270,7 +270,7 @@ class EMARibbon(BaseIndicator):
 
     def _assess_trend_quality(self, alignment: str) -> str:
         """
-        Trend kalitesini değerlendir
+        Evaluate trend quality.
 
         Returns:
             str: 'excellent', 'good', 'fair', 'poor'
@@ -317,21 +317,21 @@ class EMARibbon(BaseIndicator):
 
     def get_signal(self, alignment: str, price: float, ema_values: dict) -> SignalType:
         """
-        EMA Ribbon'dan sinyal üret
+        Generate signal from EMA Ribbon.
 
         Args:
-            alignment: EMA sıralama durumu
-            price: Güncel fiyat
-            ema_values: EMA değerleri
+            alignment: EMA ranking status
+            price: Current price
+            ema_values: EMA values
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
-        # Kısa ve uzun vadeli EMA'lar
-        ema_short = ema_values[f'ema_{self.ema_periods[0]}']  # En kısa
+        # Short and long-term EMAs
+        ema_short = ema_values[f'ema_{self.ema_periods[0]}']  # Shortest
         ema_long = ema_values[f'ema_{self.ema_periods[-1]}']  # En uzun
 
-        # Güçlü sinyaller
+        # Strong signals
         if alignment == 'strong_bullish' and price > ema_short:
             return SignalType.BUY
 
@@ -349,13 +349,13 @@ class EMARibbon(BaseIndicator):
 
     def get_trend(self, alignment: str) -> TrendDirection:
         """
-        Trend yönünü belirle
+        Determine the trend direction.
 
         Args:
-            alignment: EMA sıralama durumu
+            alignment: EMA ranking status
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         if 'bullish' in alignment:
             return TrendDirection.UP
@@ -365,7 +365,7 @@ class EMARibbon(BaseIndicator):
 
     def _calculate_strength(self, alignment: str) -> float:
         """
-        Trend gücünü hesapla (0-100)
+        Calculate trend strength (0-100)
         """
         strength_map = {
             'strong_bullish': 100,
@@ -378,7 +378,7 @@ class EMARibbon(BaseIndicator):
         return strength_map.get(alignment, 50)
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'ema_periods': [5, 10, 20, 50, 100, 200]
         }
@@ -396,31 +396,31 @@ __all__ = ['EMARibbon']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """EMA Ribbon indikatör testi"""
+    """EMA Ribbon indicator test"""
 
     print("\n" + "="*60)
     print("EMA RIBBON (MULTI-EMA) TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(250)]
 
-    # Güçlü trend simülasyonu
+    # Powerful trend simulation
     base_price = 100
     prices = [base_price]
     for i in range(249):
         if i < 80:
-            trend = 0.5  # Yükseliş
+            trend = 0.5  # Increase
         elif i < 160:
-            trend = -0.3  # Düşüş
+            trend = -0.3  # Decrease
         else:
-            trend = 0.7  # Güçlü yükseliş
+            trend = 0.7  # Strong upward trend
         noise = np.random.randn() * 1.5
         prices.append(prices[-1] + trend + noise)
 
@@ -433,44 +433,44 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     ribbon = EMARibbon()
-    print(f"   [OK] Oluşturuldu: {ribbon}")
+    print(f"   [OK] Created: {ribbon}")
     print(f"   [OK] Kategori: {ribbon.category.value}")
     print(f"   [OK] Tip: {ribbon.indicator_type.value}")
-    print(f"   [OK] Gerekli periyot: {ribbon.get_required_periods()}")
-    print(f"   [OK] EMA periyotları: {ribbon.ema_periods}")
+    print(f"   [OK] Required period: {ribbon.get_required_periods()}")
+    print(f"   [OK] EMA periods: {ribbon.ema_periods}")
 
     result = ribbon(data)
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Power: {result.strength:.2f}")
 
-    # Test 2: EMA değerleri
-    print("\n3. EMA değerleri...")
+    # Test 2: EMA values
+    print("\n3. EMA values...")
     for period in ribbon.ema_periods:
         ema_key = f'ema_{period}'
         print(f"   [OK] EMA({period}): {result.value[ema_key]:.2f}")
 
-    # Test 3: Sıralama analizi
-    print("\n4. Sıralama analizi...")
+    # Test 3: Sorting analysis
+    print("\n4. Ranking analysis...")
     print(f"   [OK] Alignment: {result.metadata['alignment']}")
     print(f"   [OK] Alignment Score: {result.metadata['alignment_score']}/100")
     print(f"   [OK] Trend Quality: {result.metadata['trend_quality']}")
     print(f"   [OK] Current Price: {result.metadata['current_price']:.2f}")
 
-    # Test 4: Destek/Direnç
-    print("\n5. Destek/Direnç analizi...")
+    # Test 4: Support/Resistance
+    print("\n5. Support/Resistance analysis...")
     print(f"   [OK] Nearest EMA: {result.metadata['nearest_ema']}")
     print(f"   [OK] Support: {result.metadata['support']}")
     print(f"   [OK] Resistance: {result.metadata['resistance']}")
 
-    # Test 5: Trend değişimi analizi
-    print("\n6. Trend değişimi analizi...")
+    # Test 5: Trend change analysis
+    print("\n6. Trend change analysis...")
     test_points = [100, 150, 200, 240]
     for idx in test_points:
         data_slice = data.iloc[:idx+1]
@@ -481,38 +481,38 @@ if __name__ == "__main__":
               f"Trend={result.trend.name}, "
               f"Quality={result.metadata['trend_quality']}")
 
-    # Test 6: Özel periyotlar
-    print("\n7. Özel periyot testi...")
+    # Test 6: Custom periods
+    print("\n7. Special period test...")
     ribbon_custom = EMARibbon(ema_periods=[9, 21, 55, 89])
     result = ribbon_custom.calculate(data)
-    print(f"   [OK] Özel periyotlar: {ribbon_custom.ema_periods}")
-    print(f"   [OK] EMA değerleri:")
+    print(f"   [OK] Custom periods: {ribbon_custom.ema_periods}")
+    print(f"   [OK] EMA values:")
     for period in ribbon_custom.ema_periods:
         print(f"       EMA({period}): {result.value[f'ema_{period}']:.2f}")
     print(f"   [OK] Alignment: {result.metadata['alignment']}")
 
-    # Test 7: Kısa vadeli ribbon (hızlı trade için)
-    print("\n8. Kısa vadeli ribbon testi...")
+    # Test 7: Short-term ribbon (for fast trading)
+    print("\n8. Short-term ribbon test...")
     ribbon_short = EMARibbon(ema_periods=[5, 10, 20, 50])
     result = ribbon_short.calculate(data)
-    print(f"   [OK] Kısa vadeli periyotlar: {ribbon_short.ema_periods}")
+    print(f"   [OK] Short-term periods: {ribbon_short.ema_periods}")
     print(f"   [OK] Alignment: {result.metadata['alignment']}")
     print(f"   [OK] Alignment Score: {result.metadata['alignment_score']:.1f}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
 
-    # Test 8: İstatistikler
-    print("\n9. İstatistik testi...")
+    # Test 8: Statistics
+    print("\n9. Statistical test...")
     stats = ribbon.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 9: Metadata
     print("\n10. Metadata testi...")
     metadata = ribbon.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

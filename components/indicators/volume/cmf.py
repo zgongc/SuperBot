@@ -5,19 +5,19 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    CMF (Chaikin Money Flow) - Para akışı osilatörü
-    Belirli periyot içindeki alım/satım baskısını ölçer
-    Aralık: -1.00 ile +1.00 arası
-    CMF > 0 = Alım baskısı
-    CMF < 0 = Satım baskısı
+Description:
+    CMF (Chaikin Money Flow) - Money flow oscillator
+    Measures buying/selling pressure within a specific period
+    Range: between -1.00 and +1.00
+    CMF > 0 = Buying pressure
+    CMF < 0 = Selling pressure
 
-Formül:
+Formula:
     MFM = ((Close - Low) - (High - Close)) / (High - Low)
     MF Volume = MFM × Volume
     CMF = Σ(MF Volume) / Σ(Volume)
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -39,13 +39,13 @@ class CMF(BaseIndicator):
     """
     Chaikin Money Flow
 
-    Marc Chaikin tarafından geliştirilen para akışı indikatörü.
-    Hacim ve fiyat konumunu birleştirerek alım/satım baskısını gösterir.
+    Money flow indicator developed by Marc Chaikin.
+    Combines volume and price position to show buying/selling pressure.
 
     Args:
-        period: CMF periyodu (varsayılan: 20)
-        buy_threshold: Alım eşiği (varsayılan: 0.05)
-        sell_threshold: Satım eşiği (varsayılan: -0.05)
+        period: CMF period (default: 20)
+        buy_threshold: Buy threshold (default: 0.05)
+        sell_threshold: Sell threshold (default: -0.05)
     """
 
     def __init__(
@@ -74,21 +74,21 @@ class CMF(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.period
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 1:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Periyot pozitif olmalı"
+                "The period must be positive"
             )
         if self.sell_threshold >= self.buy_threshold:
             raise InvalidParameterError(
                 self.name, 'thresholds',
                 f"sell={self.sell_threshold}, buy={self.buy_threshold}",
-                "Sell threshold, buy threshold'dan küçük olmalı"
+                "Sell threshold must be smaller than the buy threshold"
             )
         return True
 
@@ -100,7 +100,7 @@ class CMF(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: CMF değeri
+            IndicatorResult: CMF value
         """
         high = data['high'].values
         low = data['low'].values
@@ -113,7 +113,7 @@ class CMF(BaseIndicator):
         close_period = close[-self.period:]
         volume_period = volume[-self.period:]
 
-        # Money Flow Multiplier ve Money Flow Volume hesapla
+        # Calculate Money Flow Multiplier and Money Flow Volume
         mf_volumes = np.zeros(self.period)
 
         for i in range(self.period):
@@ -158,7 +158,7 @@ class CMF(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.Series:
         """
-        ⚡ VECTORIZED batch CMF calculation - BACKTEST için
+        ⚡ VECTORIZED batch CMF calculation - for BACKTEST
 
         CMF Formula:
             MFM = ((Close - Low) - (High - Close)) / (High - Low)
@@ -207,11 +207,11 @@ class CMF(BaseIndicator):
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
         """
-        Warmup buffer - update() için gerekli state'i hazırlar
+        Warmup buffer - prepares the necessary state for update().
 
         Args:
             data: OHLCV DataFrame (warmup verisi)
-            symbol: Sembol adı (opsiyonel)
+            symbol: Symbol name (optional)
         """
         super().warmup_buffer(data, symbol)
 
@@ -285,13 +285,13 @@ class CMF(BaseIndicator):
 
     def get_signal(self, value: float) -> SignalType:
         """
-        CMF değerinden sinyal üret
+        Generate a signal from the CMF value.
 
         Args:
-            value: CMF değeri
+            value: CMF value
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
         if value > self.buy_threshold:
             return SignalType.BUY
@@ -301,13 +301,13 @@ class CMF(BaseIndicator):
 
     def get_trend(self, value: float) -> TrendDirection:
         """
-        CMF değerinden trend belirle
+        Determine the trend based on the CMF value.
 
         Args:
-            value: CMF değeri
+            value: CMF value
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         if value > 0:
             return TrendDirection.UP
@@ -316,7 +316,7 @@ class CMF(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'period': 20,
             'buy_threshold': 0.05,
@@ -336,18 +336,18 @@ __all__ = ['CMF']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """CMF indikatör testi"""
+    """CMF indicator test"""
 
     print("\n" + "="*60)
     print("CMF (CHAIKIN MONEY FLOW) TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(30)]
 
@@ -369,65 +369,65 @@ if __name__ == "__main__":
         'volume': volumes
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     cmf = CMF(period=20)
-    print(f"   [OK] Oluşturuldu: {cmf}")
+    print(f"   [OK] Created: {cmf}")
     print(f"   [OK] Kategori: {cmf.category.value}")
-    print(f"   [OK] Gerekli periyot: {cmf.get_required_periods()}")
+    print(f"   [OK] Required period: {cmf.get_required_periods()}")
 
     result = cmf(data)
-    print(f"   [OK] CMF Değeri: {result.value:.4f}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] CMF Value: {result.value:.4f}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Power: {result.strength:.2f}")
     print(f"   [OK] Metadata: {result.metadata}")
 
-    # Test 2: Farklı periyotlar
-    print("\n3. Farklı periyot testi...")
+    # Test 2: Different periods
+    print("\n3. Different period test...")
     for period in [10, 20, 30]:
         cmf_test = CMF(period=period)
         result = cmf_test.calculate(data)
-        print(f"   [OK] CMF({period}): {result.value:.4f} | Sinyal: {result.signal.value}")
+        print(f"   [OK] CMF({period}): {result.value:.4f} | Signal: {result.signal.value}")
 
-    # Test 3: Özel eşikler
-    print("\n4. Özel eşik testi...")
+    # Test 3: Custom thresholds
+    print("\n4. Special threshold test...")
     cmf_custom = CMF(period=20, buy_threshold=0.1, sell_threshold=-0.1)
     result = cmf_custom.calculate(data)
-    print(f"   [OK] CMF (özel eşikler): {result.value:.4f}")
+    print(f"   [OK] CMF (custom thresholds): {result.value:.4f}")
     print(f"   [OK] Buy threshold: {cmf_custom.buy_threshold}")
     print(f"   [OK] Sell threshold: {cmf_custom.sell_threshold}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
 
     # Test 4: Volume gereksinimi
     print("\n5. Volume gereksinimi testi...")
     metadata = cmf.metadata
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
     assert metadata.requires_volume == True, "CMF volume gerektirmeli!"
 
-    # Test 5: Para akışı yorumlama
-    print("\n6. Para akışı yorumlama testi...")
+    # Test 5: Money flow interpretation
+    print("\n6. Currency flow interpretation test...")
     result = cmf.calculate(data)
     cmf_val = result.value
     print(f"   [OK] CMF: {cmf_val:.4f}")
     if cmf_val > 0.1:
-        print("   [OK] Güçlü alım baskısı")
+        print("   [OK] Strong buying pressure")
     elif cmf_val > 0:
-        print("   [OK] Zayıf alım baskısı")
+        print("   [OK] Weak buying pressure")
     elif cmf_val > -0.1:
-        print("   [OK] Zayıf satım baskısı")
+        print("   [OK] Weak put pressure")
     else:
-        print("   [OK] Güçlü satım baskısı")
+        print("   [OK] Strong selling pressure")
 
-    # Test 6: İstatistikler
-    print("\n7. İstatistik testi...")
+    # Test 6: Statistics
+    print("\n7. Statistical test...")
     stats = cmf.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

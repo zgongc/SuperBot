@@ -2,9 +2,9 @@
 """
 components/strategies/position_manager.py
 SuperBot - Position Manager (NEW DESIGN)
-Yazar: SuperBot Team
-Tarih: 2025-12-07
-Versiyon: 2.0.0
+Author: SuperBot Team
+Date: 2025-12-07
+Version: 2.0.0
 
 Position Manager - Manages position management and processes strategy template parameters.
 

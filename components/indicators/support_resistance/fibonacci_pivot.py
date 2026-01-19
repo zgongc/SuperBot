@@ -5,11 +5,11 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    Fibonacci Pivot Points - Fibonacci oranlarını kullanarak pivot seviyeleri
-    Fibonacci ratios (0.382, 0.618, 1.000) ile destek ve direnç seviyeleri hesaplanır.
+Description:
+    Fibonacci Pivot Points - Pivot levels using Fibonacci ratios
+    Support and resistance levels are calculated using Fibonacci ratios (0.382, 0.618, 1.000).
 
-Formül:
+Formula:
     P = (High + Low + Close) / 3
     R1 = P + 0.382 * (High - Low)
     R2 = P + 0.618 * (High - Low)
@@ -18,7 +18,7 @@ Formül:
     S2 = P - 0.618 * (High - Low)
     S3 = P - 1.000 * (High - Low)
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -40,11 +40,11 @@ class FibonacciPivot(BaseIndicator):
     """
     Fibonacci Pivot Points
 
-    Önceki periyodun High, Low ve Close değerlerini kullanarak
-    Fibonacci oranlarıyla pivot seviyeleri (P, R1-R3, S1-S3) hesaplar.
+    Using the High, Low, and Close values of the previous period.
+    Calculates pivot levels (P, R1-R3, S1-S3) using Fibonacci ratios.
 
     Args:
-        period: Pivot hesaplama periyodu (varsayılan: 1 - günlük)
+        period: Pivot calculation period (default: 1 - day)
     """
 
     def __init__(
@@ -67,15 +67,15 @@ class FibonacciPivot(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.period + 1
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 1:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Periyot pozitif olmalı"
+                "The period must be positive"
             )
         return True
 
@@ -89,7 +89,7 @@ class FibonacciPivot(BaseIndicator):
         Returns:
             IndicatorResult: Fibonacci pivot seviyeleri (P, R1-R3, S1-S3)
         """
-        # Önceki periyodun H, L, C değerlerini al
+        # Get the H, L, C values from the previous period
         high = data['high'].iloc[-self.period - 1:-1].max()
         low = data['low'].iloc[-self.period - 1:-1].min()
         close = data['close'].iloc[-self.period - 1]
@@ -111,7 +111,7 @@ class FibonacciPivot(BaseIndicator):
         current_price = data['close'].iloc[-1]
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Seviyeleri sözlük olarak oluştur
+        # Create levels as a dictionary
         levels = {
             'R3': round(r3, 2),
             'R2': round(r2, 2),
@@ -140,7 +140,7 @@ class FibonacciPivot(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        ⚡ VECTORIZED batch Fibonacci Pivot Points calculation - BACKTEST için
+        ⚡ VECTORIZED batch Fibonacci Pivot Points calculation - for BACKTEST
 
         Fibonacci Pivot Formula:
             P = (High + Low + Close) / 3
@@ -213,7 +213,7 @@ class FibonacciPivot(BaseIndicator):
             symbol: Symbol identifier (for multi-symbol support)
 
         Returns:
-            IndicatorResult: Güncel indicator değeri
+            IndicatorResult: The current indicator value.
         """
         from collections import deque
 
@@ -258,14 +258,14 @@ class FibonacciPivot(BaseIndicator):
 
     def get_signal(self, price: float, levels: dict) -> SignalType:
         """
-        Fiyatın fibonacci pivot seviyelerine göre sinyal üret
+        Generate a signal based on the price's Fibonacci pivot levels.
 
         Args:
-            price: Güncel fiyat
+            price: Current price
             levels: Fibonacci pivot seviyeleri
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
         if price < levels['S2']:
             return SignalType.BUY
@@ -275,14 +275,14 @@ class FibonacciPivot(BaseIndicator):
 
     def get_trend(self, price: float, pivot: float) -> TrendDirection:
         """
-        Fiyatın pivot'a göre trend belirle
+        Determine the trend based on the pivot price.
 
         Args:
-            price: Güncel fiyat
-            pivot: Pivot seviyesi
+            price: Current price
+            pivot: Pivot level
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         if price > pivot:
             return TrendDirection.UP
@@ -292,30 +292,30 @@ class FibonacciPivot(BaseIndicator):
 
     def calculate_strength(self, price: float, levels: dict) -> float:
         """
-        Fiyatın seviyelere göre güç hesapla
+        Calculate the strength of the price based on the levels.
 
         Args:
-            price: Güncel fiyat
+            price: Current price
             levels: Fibonacci pivot seviyeleri
 
         Returns:
-            float: Güç değeri (0-100)
+            float: Power value (0-100)
         """
         pivot = levels['P']
         r3 = levels['R3']
         s3 = levels['S3']
 
         if price > pivot:
-            # Yukarı yönde güç
+            # Upward force
             strength = ((price - pivot) / (r3 - pivot)) * 100
         else:
-            # Aşağı yönde güç
+            # Downward force
             strength = ((pivot - price) / (pivot - s3)) * 100
 
         return min(max(strength, 0), 100)
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'period': 1
         }
@@ -333,22 +333,22 @@ __all__ = ['FibonacciPivot']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """Fibonacci Pivot Points indikatör testi"""
+    """Fibonacci Pivot Points indicator test"""
 
     print("\n" + "="*60)
     print("FIBONACCI PIVOT POINTS TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(50)]
 
-    # Fiyat hareketini simüle et
+    # Simulate price movement
     base_price = 100
     prices = [base_price]
     for i in range(49):
@@ -364,66 +364,66 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     fib_pivot = FibonacciPivot(period=1)
-    print(f"   [OK] Oluşturuldu: {fib_pivot}")
+    print(f"   [OK] Created: {fib_pivot}")
     print(f"   [OK] Kategori: {fib_pivot.category.value}")
     print(f"   [OK] Tip: {fib_pivot.indicator_type.value}")
-    print(f"   [OK] Gerekli periyot: {fib_pivot.get_required_periods()}")
+    print(f"   [OK] Required period: {fib_pivot.get_required_periods()}")
 
     result = fib_pivot(data)
     print(f"   [OK] Fibonacci Pivot Seviyeleri:")
     for level, value in result.value.items():
         print(f"        {level}: {value}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Power: {result.strength:.2f}")
     print(f"   [OK] Metadata: {result.metadata}")
 
-    # Test 2: Farklı periyotlar
-    print("\n3. Farklı periyot testi...")
+    # Test 2: Different periods
+    print("\n3. Different period test...")
     for period in [1, 5, 10]:
         fib_test = FibonacciPivot(period=period)
         result = fib_test.calculate(data)
-        print(f"   [OK] FibPivot({period}) - P: {result.value['P']} | Sinyal: {result.signal.value}")
+        print(f"   [OK] FibPivot({period}) - P: {result.value['P']} | Signal: {result.signal.value}")
 
     # Test 3: Fibonacci seviyelerinin analizi
     print("\n4. Fibonacci seviye analizi...")
     result = fib_pivot.calculate(data)
     current = result.metadata['current_price']
-    print(f"   [OK] Güncel fiyat: {current}")
+    print(f"   [OK] Current price: {current}")
     print(f"   [OK] Pivot: {result.value['P']}")
     print(f"   [OK] Range: {result.metadata['range']}")
     if current > result.value['P']:
-        print(f"   [OK] Fiyat pivot üstünde (Bullish)")
+        print(f"   [OK] Price is above the pivot (Bullish)")
         print(f"   [OK] R1 (38.2%): {result.value['R1']}")
         print(f"   [OK] R2 (61.8%): {result.value['R2']}")
         print(f"   [OK] R3 (100%): {result.value['R3']}")
     else:
-        print(f"   [OK] Fiyat pivot altında (Bearish)")
+        print(f"   [OK] Price is below the pivot (Bearish)")
         print(f"   [OK] S1 (38.2%): {result.value['S1']}")
         print(f"   [OK] S2 (61.8%): {result.value['S2']}")
         print(f"   [OK] S3 (100%): {result.value['S3']}")
 
-    # Test 4: İstatistikler
-    print("\n5. İstatistik testi...")
+    # Test 4: Statistics
+    print("\n5. Statistical test...")
     stats = fib_pivot.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 5: Metadata
     print("\n6. Metadata testi...")
     metadata = fib_pivot.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Tip: {metadata.indicator_type.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

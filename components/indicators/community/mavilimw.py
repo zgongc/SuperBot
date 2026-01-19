@@ -13,18 +13,18 @@ Original PineScript:
     study("MavilimW", overlay=true)
 
 Description:
-    MavilimW - 6 kademeli WMA zincirleme hesaplaması ile
-    trend takibi yapan indikatör.
+    MavilimW - Performs a 6-stage WMA chaining calculation.
+    An indicator that tracks trends.
 
-    Fibonacci dizisine benzer periyot artışı:
+    Similar periodic increase like the Fibonacci sequence:
     fmal=3, smal=5 -> tmal=8 -> Fmal=13 -> Ftmal=21 -> Smal=34
 
-    Sinyal:
-    - MAVW > MAVW[1] = Yükseliş (Mavi)
-    - MAVW < MAVW[1] = Düşüş (Kırmızı)
-    - Crossover/Crossunder = Alım/Satım sinyali
+    Signal:
+    - MAVW > MAVW[1] = Increase (Blue)
+    - MAVW < MAVW[1] = Decrease (Red)
+    - Crossover/Crossunder = Buy/Sell signal
 
-Formül:
+Formula:
     M1 = WMA(close, fmal)       # 3
     M2 = WMA(M1, smal)          # 5
     M3 = WMA(M2, tmal)          # 8
@@ -57,14 +57,14 @@ from indicators.indicator_types import (
 
 class MavilimW(BaseIndicator):
     """
-    MavilimW - Kivanc Ozbilgic'in WMA Trend Indikatörü
+    MavilimW - WMA Trend Indicator by Kivanc Ozbilgic
 
-    6 kademeli WMA zincirleme hesaplaması yaparak
-    gürültüyü filtreler ve temiz trend sinyalleri üretir.
+    It filters noise by performing a 6-stage WMA chaining calculation
+    and generates clean trend signals.
 
     Args:
-        fmal: First Moving Average length (varsayılan: 3)
-        smal: Second Moving Average length (varsayılan: 5)
+        fmal: First Moving Average length (default: 3)
+        smal: Second Moving Average length (default: 5)
 
     Outputs:
         value: Dict with 'mavw' (current MAVW value)
@@ -72,12 +72,12 @@ class MavilimW(BaseIndicator):
         trend: UP (mavw rising), DOWN (mavw falling)
 
     Periods:
-        fmal=3, smal=5 kullanıldığında:
+        When fmal=3, smal=5 is used:
         - tmal = 3 + 5 = 8
         - Fmal = 5 + 8 = 13
         - Ftmal = 8 + 13 = 21
         - Smal = 13 + 21 = 34
-        - Total required: ~89 bars (tüm WMA'ların ısınması için)
+        - Total required: ~89 bars (to heat up all WMAs)
     """
 
     def __init__(
@@ -108,7 +108,7 @@ class MavilimW(BaseIndicator):
             error_handler=error_handler
         )
 
-        # WMA instances - kendi WMA indikatörümüzü kullan
+        # WMA instances - use our own WMA indicator
         self._wma1 = WMA(period=self.fmal)
         self._wma2 = WMA(period=self.smal)
         self._wma3 = WMA(period=self.tmal)
@@ -122,17 +122,17 @@ class MavilimW(BaseIndicator):
 
     def get_required_periods(self) -> int:
         """
-        Minimum gerekli periyot sayısı
+        Minimum required number of periods.
 
-        6 kademeli WMA zinciri için:
+        For a 6-stage WMA chain:
         fmal + smal + tmal + Fmal + Ftmal + Smal = 3+5+8+13+21+34 = 84
         +5 buffer = 89
         """
         total = self.fmal + self.smal + self.tmal + self.Fmal + self.Ftmal + self.Smal
-        return total + 5  # Buffer için +5
+        return total + 5  # +5 for buffer
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.fmal < 1:
             raise InvalidParameterError(
                 self.name, 'fmal', self.fmal,
@@ -147,7 +147,7 @@ class MavilimW(BaseIndicator):
 
     def _apply_wma_chain(self, close: pd.Series) -> pd.Series:
         """
-        6 kademeli WMA zinciri uygula (WMA sınıfını kullanarak)
+        Apply a 6-stage WMA chain (using the WMA class).
 
         Args:
             close: Close price Series
@@ -155,7 +155,7 @@ class MavilimW(BaseIndicator):
         Returns:
             pd.Series: Final MAVW values
         """
-        # Helper: Series'i WMA'ya uygun DataFrame'e çevir
+        # Helper: Convert Series to a DataFrame suitable for WMA.
         def series_to_df(series: pd.Series) -> pd.DataFrame:
             return pd.DataFrame({
                 'timestamp': range(len(series)),
@@ -195,20 +195,20 @@ class MavilimW(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: MAVW değeri ve sinyal
+            IndicatorResult: MAVW value and signal
         """
         close = data['close']
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # 6 kademeli WMA zinciri (WMA sınıfını kullanarak)
+        # 6-stage WMA chain (using the WMA class)
         mavw_series = self._apply_wma_chain(close)
         mavw = mavw_series.values
 
-        # Son değerler
+        # Last values
         current_mavw = mavw[-1] if not np.isnan(mavw[-1]) else 0.0
         prev_mavw = mavw[-2] if len(mavw) > 1 and not np.isnan(mavw[-2]) else current_mavw
 
-        # Trend direction: 1 = up (mavi), -1 = down (kırmızı), 0 = neutral
+        # Trend direction: 1 = up (blue), -1 = down (red), 0 = neutral
         trend_direction = 1 if current_mavw > prev_mavw else -1 if current_mavw < prev_mavw else 0
         trend = self._get_trend(current_mavw, prev_mavw)
 
@@ -254,10 +254,10 @@ class MavilimW(BaseIndicator):
 
         close = data['close']
 
-        # 6 kademeli WMA zinciri (WMA sınıfını kullanarak)
+        # 6-stage WMA chain (using the WMA class)
         mavw = self._apply_wma_chain(close)
 
-        # Trend direction: 1 = up (mavi), -1 = down (kırmızı), 0 = neutral
+        # Trend direction: 1 = up (blue), -1 = down (red), 0 = neutral
         mavw_prev = mavw.shift(1)
         trend_direction = pd.Series(0, index=data.index, dtype='int')
         trend_direction[mavw > mavw_prev] = 1
@@ -273,11 +273,11 @@ class MavilimW(BaseIndicator):
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
         """
-        Warmup buffer - update() için
+        Warmup buffer - for update()
 
         Args:
             data: OHLCV DataFrame
-            symbol: Sembol (opsiyonel)
+            symbol: Symbol (optional)
         """
         super().warmup_buffer(data, symbol)
 
@@ -299,11 +299,11 @@ class MavilimW(BaseIndicator):
         Incremental update - REALTIME
 
         Args:
-            candle: Yeni kline data (dict veya tuple)
-            symbol: Sembol (opsiyonel)
+            candle: New kline data (dict or tuple)
+            symbol: Symbol (optional)
 
         Returns:
-            IndicatorResult: Güncellenmiş MAVW
+            IndicatorResult: Updated MAVW
         """
         if self._close_buffer is None:
             self._close_buffer = deque(maxlen=self.get_required_periods() + 50)
@@ -400,7 +400,7 @@ class MavilimW(BaseIndicator):
         return distance_strength + momentum_strength
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'fmal': 3,
             'smal': 5

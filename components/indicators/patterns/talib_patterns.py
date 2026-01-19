@@ -2,14 +2,14 @@
 """
 components/indicators/patterns/talib_patterns.py
 SuperBot - TA-Lib Candlestick Pattern Detector (All 61 Patterns)
-Yazar: SuperBot Team
-Tarih: 2025-10-26
+Author: SuperBot Team
+Date: 2025-10-26
 Versiyon: 2.0.0
 
-🎯 Görev:
-    TA-Lib'in tüm 61 candlestick pattern'ini tespit eder
+🎯 Task:
+    Detects all 61 candlestick patterns of TA-Lib.
 
-📊 Pattern'ler (61 adet):
+📊 Patterns (61 items):
     - CDL2CROWS, CDL3BLACKCROWS, CDL3INSIDE, CDL3LINESTRIKE
     - CDL3OUTSIDE, CDL3STARSINSOUTH, CDL3WHITESOLDIERS
     - CDLABANDONEDBABY, CDLADVANCEBLOCK, CDLBELTHOLD
@@ -31,14 +31,14 @@ Versiyon: 2.0.0
     - CDLTASUKIGAP, CDLTHRUSTING, CDLTRISTAR
     - CDLUNIQUE3RIVER, CDLUPSIDEGAP2CROWS, CDLXSIDEGAP3METHODS
 
-🔧 Kullanım:
+🔧 Usage:
     # Strategy template'de
     technical_parameters:
       indicators:
         talib_patterns:
           enabled: true
 
-    # Entry condition - Pattern adı lowercase, CDL prefix yok
+    # Entry condition - Pattern name must be lowercase, no CDL prefix.
     entry_conditions:
       buy:
         - ["hammer", "==", 100, "1m"]          # Bullish pattern
@@ -52,7 +52,7 @@ Pattern Return Values:
     - -100 = Bearish pattern
     - 0    = No pattern
 
-Bağımlılıklar:
+Dependencies:
     - TA-Lib>=0.4.0 (pip install TA-Lib)
     - pandas>=2.0.0
     - numpy>=1.24.0
@@ -197,14 +197,14 @@ class TALibPatterns(BaseIndicator):
         )
 
     def _requires_volume(self) -> bool:
-        """Volume gerekli mi?"""
+        """Is volume required?"""
         return False
 
     def get_required_periods(self) -> int:
         """
-        Minimum kaç bar gerekli?
+        What is the minimum number of bars required?
 
-        Multi-candle pattern'ler için 5 bar güvenli
+        Safe for 5 bars in multi-candle patterns.
 
         Returns:
             5
@@ -213,10 +213,10 @@ class TALibPatterns(BaseIndicator):
 
     def calculate(self, data: pd.DataFrame) -> Optional[IndicatorResult]:
         """
-        Son bar için pattern tespit et (single bar mode)
+        Detect the pattern for the last bar (single bar mode)
 
-        NOTE: Pattern detection için calculate_batch() kullanılmalı (daha hızlı)
-        Bu metod sadece geriye dönük uyumluluk için mevcut.
+        NOTE: calculate_batch() should be used for pattern detection (faster).
+        This method is only available for backward compatibility.
 
         Args:
             data: OHLCV DataFrame
@@ -227,16 +227,16 @@ class TALibPatterns(BaseIndicator):
         if len(data) < 5:
             return None
 
-        # Son 5 bar'a bak (multi-candle pattern'ler için)
+        # Look at the last 5 bars (for multi-candle patterns)
         patterns_df = self.calculate_batch(data.tail(5))
 
         if patterns_df is None or len(patterns_df) == 0:
             return None
 
-        # Son bar'ın pattern'lerini al
+        # Get the patterns of the last bar
         last_patterns = patterns_df.iloc[-1].to_dict()
 
-        # Detected pattern'leri bul (100 veya -100)
+        # Find detected patterns (100 or -100)
         detected = {k: v for k, v in last_patterns.items() if v != 0}
 
         return IndicatorResult(
@@ -252,7 +252,7 @@ class TALibPatterns(BaseIndicator):
         """
         Incremental update (Real-time) - Symbol-aware
 
-        Buffer'a yeni mum ekler ve yeterli veri varsa pattern hesaplar.
+        Adds a new candle to the buffer and calculates the pattern if there is enough data.
 
         Args:
             candle: New candle data (dict with open, high, low, close, timestamp)
@@ -300,7 +300,7 @@ class TALibPatterns(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        Tüm data için pattern tespit et (vectorized via TA-Lib)
+        Detect the pattern for all data (vectorized via TA-Lib)
 
         Args:
             data: OHLCV DataFrame
@@ -309,7 +309,7 @@ class TALibPatterns(BaseIndicator):
             DataFrame with 61 pattern columns (values: 100, -100, or 0)
         """
         if len(data) < 5:
-            self._log('warning', "En az 5 bar gerekli (multi-candle pattern'ler için)")
+            self._log('warning', "At least 5 bars are required (for multi-candle patterns)")
             return pd.DataFrame(index=data.index)
 
         result = pd.DataFrame(index=data.index)
@@ -336,7 +336,7 @@ class TALibPatterns(BaseIndicator):
                 result[friendly_name] = pattern_result
 
             except Exception as e:
-                self._log('warning', f"Pattern {friendly_name} hesaplanamadı: {e}")
+                self._log('warning', f"Pattern {friendly_name} could not be calculated: {e}")
                 result[friendly_name] = 0
 
         return result
@@ -348,7 +348,7 @@ class TALibPatterns(BaseIndicator):
 
 def get_pattern_list():
     """
-    Tüm 61 pattern ismini döndür (lowercase)
+    Returns all 61 pattern names (lowercase).
 
     Returns:
         List of 61 pattern names
@@ -358,7 +358,7 @@ def get_pattern_list():
 
 def get_bullish_patterns(data: pd.DataFrame) -> pd.DataFrame:
     """
-    Sadece bullish pattern'leri filtrele (value == 100)
+    Filter only bullish patterns (value == 100)
 
     Args:
         data: Pattern DataFrame from calculate_batch()
@@ -371,7 +371,7 @@ def get_bullish_patterns(data: pd.DataFrame) -> pd.DataFrame:
 
 def get_bearish_patterns(data: pd.DataFrame) -> pd.DataFrame:
     """
-    Sadece bearish pattern'leri filtrele (value == -100)
+    Filter only bearish patterns (value == -100)
 
     Args:
         data: Pattern DataFrame from calculate_batch()
@@ -384,7 +384,7 @@ def get_bearish_patterns(data: pd.DataFrame) -> pd.DataFrame:
 
 def count_patterns_per_bar(data: pd.DataFrame) -> pd.Series:
     """
-    Her bar'da kaç pattern tespit edildiğini say
+    Count how many patterns were detected in each bar.
 
     Args:
         data: Pattern DataFrame from calculate_batch()

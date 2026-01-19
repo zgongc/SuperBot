@@ -2,21 +2,21 @@
 """
 components/managers/parquets_engine.py
 SuperBot - Parquet Historical Data Manager
-Yazar: SuperBot Team
-Tarih: 2025-11-11
+Author: SuperBot Team
+Date: 2025-11-11
 Versiyon: 1.0.0
 
-Parquet dosyalarından historical data yönetimi
+Management of historical data from Parquet files.
 
-Özellikler:
-- Multi-year support (2023, 2024, 2025 dosyalarını otomatik birleştir)
+Features:
+- Multi-year support (automatically merges files for 2023, 2024, 2025).
 - Timezone conversion (UTC ↔ Local)
-- Warmup period desteği (başlangıçtan önce N mum)
-- Akıllı dosya bulma (eksik yılları atla)
+- Support for warmup period (N candles before the start)
+- Smart file finding (skip missing years)
 - Memory efficient (lazy loading)
-- TODO: MTF resample (1m → 5m, 15m, 1h...) Volume için sum, OHLC için resample
+- TODO: MTF resample (1m -> 5m, 15m, 1h...) Sum for volume, resample for OHLC.
 
-Kullanım:
+Usage:
     from components.managers.parquets_engine import ParquetsEngine
 
     engine = ParquetsEngine(data_path='data/parquets', logger_engine=logger)
@@ -31,10 +31,10 @@ Kullanım:
         utc_offset=3
     )
 
-Bağımlılıklar:
+Dependencies:
     - python>=3.10
     - pandas
-    - pyarrow (parquet okuma için)
+    - pyarrow (for parquet reading)
 """
 
 import pandas as pd
@@ -45,9 +45,9 @@ from datetime import datetime
 
 class ParquetsEngine:
     """
-    Parquet dosyalarından historical data yönetimi
+    Management of historical data from Parquet files.
 
-    Multi-year desteği, timezone conversion, warmup period
+    Multi-year support, timezone conversion, warmup period
     """
 
     def __init__(
@@ -60,15 +60,15 @@ class ParquetsEngine:
         Initialize ParquetsEngine
 
         Args:
-            data_path: Parquet dosyalarının bulunduğu klasör (opsiyonel - config'den okunur)
-            config_engine: ConfigEngine instance (opsiyonel - config'den path okur)
-            logger_engine: LoggerEngine instance (opsiyonel)
+            data_path: The folder containing the Parquet files (optional - read from config)
+            config_engine: ConfigEngine instance (optional - reads the path from the config)
+            logger_engine: LoggerEngine instance (optional)
         """
         self.config_engine = config_engine
         self.logger_engine = logger_engine
         self.logger = logger_engine.get_logger(__name__) if logger_engine else None
 
-        # Data path - config'den oku veya fallback
+        # Data path - read from config or use fallback
         if data_path:
             self.data_path = Path(data_path)
         elif config_engine:
@@ -77,14 +77,14 @@ class ParquetsEngine:
             path = parquet_config.get('path', 'data/parquets')
             self.data_path = Path(path)
             if self.logger:
-                self.logger.info(f"📂 ParquetsEngine: Config'den path okundu: {self.data_path}")
+                self.logger.info(f"📂 ParquetsEngine: Path read from config: {self.data_path}")
         else:
             # Fallback
             self.data_path = Path('data/parquets')
             if self.logger:
-                self.logger.warning(f"⚠️  ParquetsEngine: Config yok, default path kullanılıyor: {self.data_path}")
+                self.logger.warning(f"⚠️ ParquetsEngine: Config not found, using default path: {self.data_path}")
 
-        # Cache için (aynı dosya tekrar okunmasın)
+        # For caching (to avoid reading the same file repeatedly)
         self._file_cache: Dict[str, pd.DataFrame] = {}
 
     async def get_historical_data(
@@ -97,32 +97,32 @@ class ParquetsEngine:
         utc_offset: int = 0
     ) -> pd.DataFrame:
         """
-        Tarih aralığındaki historical data'yı getir
+        Retrieves historical data within the specified date range.
 
         Args:
-            symbol: Trading pair (örn: BTCUSDT)
-            timeframe: Timeframe (örn: 1m, 5m, 15m, 1h)
-            start_date: Başlangıç tarihi (local time, ISO format)
-            end_date: Bitiş tarihi (local time, ISO format)
-            warmup_candles: Başlangıçtan önce kaç mum lazım (warmup için)
-            utc_offset: UTC offset (saat) - örn: 3 = UTC+3
+            symbol: Trading pair (e.g., BTCUSDT)
+            timeframe: Timeframe (e.g., 1m, 5m, 15m, 1h)
+            start_date: Start date (local time, ISO format)
+            end_date: End date (local time, ISO format)
+            warmup_candles: How many candles are needed before the start (for warmup)
+            utc_offset: UTC offset (hours) - e.g., 3 = UTC+3
 
         Returns:
             DataFrame with columns: open_time, open, high, low, close, volume, timestamp
 
         Raises:
-            FileNotFoundError: Gerekli dosya bulunamadı
-            RuntimeError: Yetersiz data
+            FileNotFoundError: The required file was not found.
+            RuntimeError: Insufficient data
         """
         if self.logger:
-            self.logger.info(f"📂 ParquetsEngine: Historical data yükleniyor")
+            self.logger.info(f"📂 ParquetsEngine: Loading historical data")
             self.logger.info(f"   Symbol: {symbol}, Timeframe: {timeframe}")
-            self.logger.info(f"   Başlangıç (local): {start_date}")
-            self.logger.info(f"   Bitiş (local): {end_date}")
+            self.logger.info(f"   Start (local): {start_date}")
+            self.logger.info(f"   End (local): {end_date}")
             self.logger.info(f"   Warmup: {warmup_candles} mum")
             self.logger.info(f"   Timezone: UTC{utc_offset:+d}")
 
-        # Local time'ı UTC'ye çevir
+        # Convert local time to UTC
         dt_start = pd.to_datetime(start_date)
         dt_end = pd.to_datetime(end_date)
 
@@ -130,17 +130,17 @@ class ParquetsEngine:
         end_utc = (dt_end - pd.Timedelta(hours=utc_offset)).tz_localize('UTC')
 
         if self.logger:
-            self.logger.info(f"   Başlangıç (UTC): {start_utc}")
-            self.logger.info(f"   Bitiş (UTC): {end_utc}")
+            self.logger.info(f"   Start (UTC): {start_utc}")
+            self.logger.info(f"   End (UTC): {end_utc}")
 
-        # Hangi yıl dosyaları lazım? (start_utc - warmup'dan end_utc'ye kadar)
-        # Warmup için başlangıçtan önce de data lazım
+        # Which year files are needed? (from start_utc - warmup to end_utc)
+        # Data is also needed before the beginning for warmup.
         years = self._get_required_years(start_utc, end_utc, warmup_candles, timeframe)
 
         if self.logger:
-            self.logger.info(f"   Gerekli yıllar: {years}")
+            self.logger.info(f"   Required years: {years}")
 
-        # Multi-year dosyaları oku ve birleştir
+        # Read and merge multi-year files
         df_list = []
         for year in years:
             df_year = self._read_parquet_file(symbol, timeframe, year)
@@ -148,9 +148,9 @@ class ParquetsEngine:
                 df_list.append(df_year)
 
         if len(df_list) == 0:
-            raise FileNotFoundError(f"Hiç parquet dosya bulunamadı: {symbol}_{timeframe}")
+            raise FileNotFoundError(f"No parquet file found: {symbol}_{timeframe}")
 
-        # Birleştir
+        # Merge
         df = pd.concat(df_list, ignore_index=True)
 
         # CRITICAL: Normalize open_time to UTC-aware for consistent comparison
@@ -171,49 +171,49 @@ class ParquetsEngine:
             df['timestamp'] = df['open_time'].dt.tz_localize(None).astype('int64') // 10**6
 
         if self.logger:
-            self.logger.info(f"   ✅ Toplam {len(df)} satır yüklendi (birleştirilmiş)")
+            self.logger.info(f"   ✅ Total {len(df)} rows loaded (merged)")
 
-        # Warmup için başlangıçtan ÖNCE warmup_candles kadar data lazım
+        # warmup for initialization, requires warmup_candles amount of data BEFORE the start.
         if warmup_candles > 0:
             df_before_start = df[df['open_time'] < start_utc]
 
             if len(df_before_start) < warmup_candles:
-                # UYARI: Yetersiz warmup, ama devam et
+                # WARNING: Insufficient warmup, but continue
                 if self.logger:
                     self.logger.warning(
-                        f"⚠️  Yetersiz warmup data! "
-                        f"Başlangıçtan ({start_utc}) önce {warmup_candles} mum gerekli, "
-                        f"ancak sadece {len(df_before_start)} mum var. "
-                        f"İlk {warmup_candles - len(df_before_start)} mum için indicator değerleri eksik olabilir."
+                        f"⚠️ Insufficient warmup data!"
+                        f"A total of {warmup_candles} candles are required before the start time ({start_utc}), "
+                        f"but there are only {len(df_before_start)} candles."
+                        f"Indicator values may be missing for the first {warmup_candles - len(df_before_start)} candles."
                     )
 
-                # Var olanı kullan
+                # Use what exists
                 if len(df_before_start) > 0:
                     warmup_start = df_before_start.iloc[0]['open_time']
                     if self.logger:
-                        self.logger.info(f"   📊 Kısmi warmup başlangıcı: {warmup_start} ({len(df_before_start)} mum)")
+                        self.logger.info(f"   📊 Partial warmup starting: {warmup_start} ({len(df_before_start)} samples)")
                     df = df[(df['open_time'] >= warmup_start) & (df['open_time'] <= end_utc)].copy()
                 else:
-                    # Hiç warmup yok, start_utc'den başla
+                    # No warmup, start from start_utc
                     if self.logger:
-                        self.logger.warning(f"⚠️  Hiç warmup data yok, başlangıçtan ({start_utc}) başlıyor")
+                        self.logger.warning(f"⚠️ No warmup data available, starting from scratch ({start_utc})")
                     df = df[(df['open_time'] >= start_utc) & (df['open_time'] <= end_utc)].copy()
             else:
-                # Yeterli warmup var
+                # There is enough warmup.
                 warmup_start = df_before_start.iloc[-warmup_candles]['open_time']
 
                 if self.logger:
-                    self.logger.info(f"   📊 Warmup başlangıcı: {warmup_start}")
+                    self.logger.info(f"   📊 Warmup start: {warmup_start}")
 
-                # Warmup başlangıcından end_utc'ye kadar filtrele
+                # Filter from the warmup start to end_utc
                 df = df[(df['open_time'] >= warmup_start) & (df['open_time'] <= end_utc)].copy()
         else:
-            # Warmup yok, sadece start_utc - end_utc aralığı
+            # No warmup, only the start_utc - end_utc range.
             df = df[(df['open_time'] >= start_utc) & (df['open_time'] <= end_utc)].copy()
 
         if self.logger:
-            self.logger.info(f"   ✅ Filtre sonrası: {len(df)} satır")
-            self.logger.info(f"   📅 Tarih aralığı: {df.iloc[0]['open_time']} - {df.iloc[-1]['open_time']}")
+            self.logger.info(f"   ✅ After filtering: {len(df)} rows")
+            self.logger.info(f"   📅 Date range: {df.iloc[0]['open_time']} - {df.iloc[-1]['open_time']}")
 
         # Reset index
         df = df.reset_index(drop=True)
@@ -228,45 +228,45 @@ class ParquetsEngine:
         timeframe: str
     ) -> List[int]:
         """
-        Gerekli yıl dosyalarını belirle
+        Determine the required year files.
 
-        Warmup için başlangıçtan önce de data lazım, o yüzden daha eski yıllar da gerekebilir.
+        Data is also needed before the start of the warmup, so data from previous years may be necessary.
         """
-        # Başlangıç ve bitiş yılları
+        # Start and end years
         start_year = start_utc.year
         end_year = end_utc.year
 
-        # Warmup için kaç gün geriye gitmek lazım?
+        # How many days should we go back for the warmup?
         if warmup_candles > 0:
-            # Timeframe'i dakikaya çevir
+            # Convert the timeframe to minutes
             tf_minutes = self._parse_timeframe_to_minutes(timeframe)
 
-            # Warmup için gereken toplam süre (dakika)
+            # Total duration required for warmup (minutes)
             warmup_minutes = warmup_candles * tf_minutes
 
-            # Dakikayı güne çevir
+            # Convert minutes to days
             warmup_days = warmup_minutes / (60 * 24)
 
-            # Warmup başlangıç tarihi
+            # Warmup start date
             warmup_start = start_utc - pd.Timedelta(days=warmup_days)
 
-            # Warmup başlangıç yılı
+            # Warmup start year
             warmup_start_year = warmup_start.year
 
             if self.logger:
-                self.logger.debug(f"   Warmup hesaplama: {warmup_candles} × {tf_minutes}min = {warmup_days:.1f} gün")
-                self.logger.debug(f"   Warmup başlangıç yılı: {warmup_start_year}")
+                self.logger.debug(f"   Warmup calculation: {warmup_candles} x {tf_minutes}min = {warmup_days:.1f} days")
+                self.logger.debug(f"   Warmup start year: {warmup_start_year}")
 
-            # start_year'ı güncelle
+            # Update start_year
             start_year = min(start_year, warmup_start_year)
 
-        # Yıl listesi oluştur
+        # Create a list of years
         years = list(range(start_year, end_year + 1))
 
         return years
 
     def _parse_timeframe_to_minutes(self, timeframe: str) -> int:
-        """Timeframe string'ini dakikaya çevir (örn: '15m' -> 15, '1h' -> 60)"""
+        """Convert the timeframe string to minutes (e.g., '15m' -> 15, '1h' -> 60)"""
         if timeframe.endswith('m'):
             return int(timeframe[:-1])
         elif timeframe.endswith('h'):
@@ -284,30 +284,30 @@ class ParquetsEngine:
         year: int
     ) -> Optional[pd.DataFrame]:
         """
-        Tek bir parquet dosyayı oku
+        Reads a single parquet file.
 
-        Cache kullanır, dosya yoksa None döner (hata vermez)
+        Uses a cache; returns None if the file does not exist (does not raise an error).
         """
         # Windows case-insensitive fix: 1M (month) → 1MO
-        # (1m minute ile karışmasın diye)
+        # (To avoid confusion with 'm' for minute)
         file_timeframe = "1MO" if timeframe == "1M" else timeframe
 
-        # Yeni format: data/parquets/{symbol}/{symbol}_{timeframe}_{year}.parquet
+        # New format: data/parquets/{symbol}/{symbol}_{timeframe}_{year}.parquet
         filename = f"{symbol}_{file_timeframe}_{year}.parquet"
         symbol_dir = self.data_path / symbol
         filepath = symbol_dir / filename
 
-        # Cache'de var mı?
+        # Is it in the cache?
         cache_key = str(filepath)
         if cache_key in self._file_cache:
             if self.logger:
-                self.logger.debug(f"   📦 Cache'den okundu: {filename}")
+                self.logger.debug(f"   📦 Read from cache: {filename}")
             return self._file_cache[cache_key]
 
-        # Dosya var mı?
+        # Does the file exist?
         if not filepath.exists():
             if self.logger:
-                self.logger.warning(f"   ⚠️  Dosya bulunamadı (atlanıyor): {filename}")
+                self.logger.warning(f"   ⚠️  File not found (skipping): {filename}")
             return None
 
         # Oku
@@ -315,7 +315,7 @@ class ParquetsEngine:
             df = pd.read_parquet(filepath)
 
             if self.logger:
-                self.logger.info(f"   ✅ Okundu: {filename} ({len(df)} satır)")
+                self.logger.info(f"   ✅ Read: {filename} ({len(df)} rows)")
 
             # Cache'e ekle
             self._file_cache[cache_key] = df
@@ -324,14 +324,14 @@ class ParquetsEngine:
 
         except Exception as e:
             if self.logger:
-                self.logger.error(f"   ❌ Okuma hatası: {filename} - {e}")
+                self.logger.error(f"   ❌ Read error: {filename} - {e}")
             return None
 
     def clear_cache(self):
-        """Cache'i temizle"""
+        """Clear the cache"""
         self._file_cache.clear()
         if self.logger:
-            self.logger.info("🧹 ParquetsEngine cache temizlendi")
+            self.logger.info("🧹 ParquetsEngine cache cleaned")
 
     # ========================================================================
     # TODO: MTF RESAMPLE SUPPORT
@@ -344,9 +344,9 @@ class ParquetsEngine:
         target_tf: str
     ) -> pd.DataFrame:
         """
-        TODO: Bir timeframe'den diğerine resample
+        TODO: Resample from one timeframe to another.
 
-        Örnek: 1m → 5m, 15m, 1h
+        Example: 1m -> 5m, 15m, 1h
 
         Rules:
         - OHLC: first, max, min, last
@@ -355,13 +355,13 @@ class ParquetsEngine:
 
         Args:
             df: Source DataFrame
-            source_tf: Kaynak timeframe (örn: 1m)
-            target_tf: Hedef timeframe (örn: 5m)
+            source_tf: Source timeframe (e.g., 1m)
+            target_tf: Target timeframe (e.g., 5m)
 
         Returns:
             Resampled DataFrame
         """
-        raise NotImplementedError("MTF resample henüz implement edilmedi - TODO")
+        raise NotImplementedError("MTF resample is not yet implemented - TODO")
 
 
 # ============================================================================
@@ -403,16 +403,16 @@ if __name__ == "__main__":
                 utc_offset=3
             )
 
-            logger.info(f"\n✅ Test 1 BAŞARILI!")
-            logger.info(f"   Toplam satır: {len(df)}")
-            logger.info(f"   İlk mum: {df.iloc[0]['open_time']}")
+            logger.info(f"\n✅ Test 1 SUCCESSFUL!")
+            logger.info(f"   Total rows: {len(df)}")
+            logger.info(f"   First candle: {df.iloc[0]['open_time']}")
             logger.info(f"   Son mum: {df.iloc[-1]['open_time']}")
 
         except Exception as e:
-            logger.error(f"❌ Test 1 BAŞARISIZ: {e}")
+            logger.error(f"❌ Test 1 FAILED: {e}")
 
         logger.info("\n" + "=" * 80)
-        logger.info("✅ TEST TAMAMLANDI!")
+        logger.info("✅ TEST COMPLETED!")
         logger.info("=" * 80)
 
     asyncio.run(test_parquets_engine())

@@ -3,17 +3,17 @@
 components/indicators/discovery_indicators.py
 SuperBot - Indicator Discovery & Registry Generator
 
-Görev:
-    Indicator dosyalarını tara ve components/indicators/__init__.py oluştur
+Task:
+    Scan the indicator files and create components/indicators/__init__.py.
 
 Auto-detect:
     1. Class name
     2. __init__ params → default_params
-    3. calculate_batch() var mı → has_calculate_batch
+    3. calculate_batch() var mı -> has_calculate_batch
     4. calculate() return → output_type, output_keys
     5. requires_volume
 
-Kullanım:
+Usage:
     python components/indicators/discovery_indicators.py
 
 Output:
@@ -46,18 +46,18 @@ CATEGORY_TO_ENUM = {
 
 def detect_output_keys(content: str) -> list:
     """
-    Output keys'leri detect et (return value içindeki dict keys)
+    Detect the output keys (the dict keys within the return value).
 
     Strategy:
     1. calculate_batch() return DataFrame'deki column names (PRIMARY)
     2. calculate() return IndicatorResult value dict keys (FALLBACK)
 
     Returns:
-        List of output key names (örn: ['upper', 'middle', 'lower'])
+        List of output key names (e.g., ['upper', 'middle', 'lower'])
     """
     keys = []
 
-    # ÖNCE calculate_batch() return DataFrame/Series column names'i al (EN DOĞRU)
+    # First, get the DataFrame/Series column names returned by calculate_batch() (MOST ACCURATE)
     if 'calculate_batch' in content:
         # Simple but robust: Split by function definitions, find calculate_batch section
         # Split by 'def ' to get function blocks
@@ -126,7 +126,7 @@ def detect_output_keys(content: str) -> list:
 
     # FALLBACK: calculate() return IndicatorResult(value={...})
     if not keys:
-        # return IndicatorResult(value={...}) içindeki keys'leri bul
+        # find the keys inside IndicatorResult(value={...})
         value_dict_matches = re.finditer(r'value=\s*\{([^}]+)\}', content, re.DOTALL)
         for value_match in value_dict_matches:
             value_content = value_match.group(1)
@@ -134,16 +134,16 @@ def detect_output_keys(content: str) -> list:
             key_matches = re.findall(r"['\"]([A-Za-z0-9_.]+)['\"]:\s*", value_content)
             keys.extend(key_matches)
 
-    # Duplicate'leri kaldır, sırala
+    # Remove duplicates, sort
     return sorted(list(set(keys))) if keys else []
 
 
 def detect_indicator_type(class_name: str, content: str) -> str:
     """
-    Indicator type'ını otomatik detect et
+    Automatically detect the indicator type.
 
     Returns:
-        IndicatorType enum string (örn: 'IndicatorType.BANDS')
+        IndicatorType enum string (e.g., 'IndicatorType.BANDS')
     """
     name_lower = class_name.lower()
 
@@ -163,12 +163,12 @@ def detect_indicator_type(class_name: str, content: str) -> str:
     if any(x in name_lower for x in ['fvg', 'orderblock', 'liquidity', 'zone']):
         return 'IndicatorType.ZONES'
 
-    # MULTIPLE_VALUES: MACD, Stochastic, gibi birden fazla output
+    # MULTIPLE_VALUES: MACD, Stochastic, and other multiple outputs.
     # Check if indicator returns dict with multiple keys
     if any(x in name_lower for x in ['macd', 'stochastic', 'stoch', 'adx', 'aroon', 'ppo', 'cci_dvg']):
         return 'IndicatorType.MULTIPLE_VALUES'
 
-    # Check return statement içinde dict var mı
+    # Check if there is a dictionary inside the return statement.
     if 'values={' in content or 'values = {' in content:
         return 'IndicatorType.MULTIPLE_VALUES'
 
@@ -178,7 +178,7 @@ def detect_indicator_type(class_name: str, content: str) -> str:
 
 def parse_indicator_file(file_path: Path) -> Optional[Dict[str, Any]]:
     """
-    Indicator dosyasını parse et ve metadata çıkar
+    Parse the indicator file and extract metadata.
 
     Returns:
         {
@@ -213,7 +213,7 @@ def parse_indicator_file(file_path: Path) -> Optional[Dict[str, Any]]:
         desc_match = re.search(r'"""(.*?)"""', content, re.DOTALL)
         if desc_match:
             desc_lines = desc_match.group(1).strip().split('\n')
-            # İlk satır veya ikinci satırı al (genelde açıklama)
+            # Get the first line or the second line (usually a comment)
             if desc_lines:
                 first_line = desc_lines[0].strip()
 
@@ -221,19 +221,19 @@ def parse_indicator_file(file_path: Path) -> Optional[Dict[str, Any]]:
                 if ' - ' in first_line and first_line.startswith('indicators/'):
                     desc = first_line.split(' - ', 1)[1].strip()
 
-                # Format 2: Çok satırlı header (yeni format)
-                # Satır 1: indicators/path/file.py
-                # Satır 2: SuperBot - X (Full Name)
+                # Format 2: Multi-line header (new format)
+                # Line 1: indicators/path/file.py
+                # Line 2: SuperBot - X (Full Name)
                 elif first_line.startswith('indicators/') and len(desc_lines) > 1:
                     second_line = desc_lines[1].strip()
                     # "SuperBot - APO (Absolute Price Oscillator)" -> "APO (Absolute Price Oscillator)"
                     if second_line.startswith('SuperBot -'):
                         desc = second_line.replace('SuperBot - ', '').strip()
                     else:
-                        # Fallback: ilk satırdan çıkar
+                        # Fallback: extract from the first line
                         desc = first_line.split('/')[-1].replace('.py', '').replace('_', ' ').title()
 
-                # Format 3: Direkt açıklama (standart format)
+                # Format 3: Direct explanation (standard format)
                 else:
                     desc = first_line
 
@@ -271,34 +271,34 @@ def parse_indicator_file(file_path: Path) -> Optional[Dict[str, Any]]:
                         # String fallback
                         metadata['default_params'][param_name] = param_value.strip("'\"")
 
-        # 4. calculate_batch() var mı?
+        # 4. Does the calculate_batch() function exist?
         metadata['has_calculate_batch'] = 'def calculate_batch(' in content
 
         # 5. requires_volume check
-        # İlk olarak _requires_volume() methodunu kontrol et
+        # First, check the _requires_volume() method.
         requires_match = re.search(r'def\s+_requires_volume\(.*?\).*?return\s+(True|False)', content, re.DOTALL)
         if requires_match:
             metadata['requires_volume'] = requires_match.group(1) == 'True'
         else:
-            # Fallback: volume keyword'ü var mı? (data['volume'] gibi)
+            # Fallback: Does the 'volume' keyword exist? (like data['volume'])
             metadata['requires_volume'] = "data['volume']" in content or 'data["volume"]' in content
 
         # 6. Indicator type detect et
         metadata['indicator_type'] = detect_indicator_type(metadata['class_name'], content)
 
-        # 7. Output keys detect et (return value içindeki dict keys)
+        # 7. Detect output keys (dict keys inside the return value)
         metadata['output_keys'] = detect_output_keys(content)
 
         return metadata
 
     except Exception as e:
-        print(f"   HATA {file_path.name}: {e}")
+        print(f"   ERROR {file_path.name}: {e}")
         return None
 
 
 def discover_all_indicators(indicators_path: Path) -> Dict[str, Dict[str, Any]]:
     """
-    Tüm indicator'ları tara
+    Scan all indicators.
 
     Returns:
         {
@@ -324,7 +324,7 @@ def discover_all_indicators(indicators_path: Path) -> Dict[str, Dict[str, Any]]:
 
     for category_path in sorted(categories):
         category = category_path.name
-        print(f"\n[{category}] taranıyor...")
+        print(f"\n[{category}] being scanned...")
 
         count = 0
         for file_path in sorted(category_path.glob('*.py')):
@@ -336,7 +336,7 @@ def discover_all_indicators(indicators_path: Path) -> Dict[str, Dict[str, Any]]:
             # Parse file
             metadata = parse_indicator_file(file_path)
             if not metadata or not metadata['class_name']:
-                print(f"   [!] {name}: Class bulunamadı")
+                print(f"   [!] {name}: Class not found")
                 continue
 
             # Registry'ye ekle (enum format)
@@ -363,9 +363,9 @@ def discover_all_indicators(indicators_path: Path) -> Dict[str, Dict[str, Any]]:
 
 
 def generate_init_file(registry: Dict[str, Dict[str, Any]], output_path: Path):
-    """components/indicators/__init__.py oluştur"""
+    """create components/indicators/__init__.py"""
 
-    # Kategoriye göre grupla
+    # Group by category
     by_category = {}
     for name, info in registry.items():
         cat = info['category']
@@ -385,7 +385,7 @@ def generate_init_file(registry: Dict[str, Dict[str, Any]], output_path: Path):
         f'Total Indicators: {len(registry)}',
         f'Categories: {len(by_category)}',
         '',
-        'Kullanım:',
+        'Usage:'
         '    from components.indicators import INDICATOR_REGISTRY, get_indicator_class',
         '    ',
         '    # Get indicator class',
@@ -447,10 +447,10 @@ def generate_init_file(registry: Dict[str, Dict[str, Any]], output_path: Path):
         '',
         'def get_indicator_class(name: str) -> Type:',
         '    """',
-        '    Indicator class\'ını import et',
+        'Import the Indicator class',
         '    ',
         '    Args:',
-        '        name: Indicator adı (örn: \'rsi\', \'bollinger\')',
+        '        name: Indicator name (e.g., \'rsi\', \'bollinger\')',
         '    ',
         '    Returns:',
         '        Indicator class',
@@ -458,8 +458,8 @@ def generate_init_file(registry: Dict[str, Dict[str, Any]], output_path: Path):
         '    if name not in INDICATOR_REGISTRY:',
         '        available = list(INDICATOR_REGISTRY.keys())',
         '        raise ValueError(',
-        '            f"Indicator \'{name}\' bulunamadı!\\n"',
-        '            f"Mevcut: {len(available)} indicator"',
+        '            Indicator \'{name}\' not found!\\n"',
+        '            f"Available: {len(available)} indicator"',
         '        )',
         '    ',
         '    info = INDICATOR_REGISTRY[name]',
@@ -481,7 +481,7 @@ def generate_init_file(registry: Dict[str, Dict[str, Any]], output_path: Path):
         '',
         '',
         'def list_indicators(category: str = None) -> List[str]:',
-        '    """Indicator listesi"""',
+        '    """Indicator list"""',
         '    if category:',
         '        return [',
         '            name for name, info in INDICATOR_REGISTRY.items()',
@@ -491,7 +491,7 @@ def generate_init_file(registry: Dict[str, Dict[str, Any]], output_path: Path):
         '',
         '',
         'def get_batch_capable_indicators() -> List[str]:',
-        '    """calculate_batch() olan indicator\'lar"""',
+        '    """indicators that are part of the calculate_batch() function"""',
         '    return [',
         '        name for name, info in INDICATOR_REGISTRY.items()',
         '        if info[\'has_calculate_batch\']',
@@ -573,7 +573,7 @@ def generate_init_file(registry: Dict[str, Dict[str, Any]], output_path: Path):
     with open(output_path, 'w', encoding='utf-8') as f:
         f.write(content)
 
-    print(f"\n[OK] {output_path} oluşturuldu!")
+    print(f"\n[OK] {output_path} created!")
     print(f"   [*] {len(registry)} indicator")
     print(f"   [*] {len(by_category)} kategori")
 
@@ -582,7 +582,7 @@ def generate_init_file(registry: Dict[str, Dict[str, Any]], output_path: Path):
     volume_count = sum(1 for info in registry.values() if info['requires_volume'])
 
     print(f"   [BATCH] {batch_count} calculate_batch() var")
-    print(f"   [VOL] {volume_count} volume gerekli")
+    print(f"   [VOL] {volume_count} volume required")
 
 
 # ============================================================================
@@ -613,9 +613,9 @@ if __name__ == "__main__":
     generate_init_file(registry, output_path)
 
     print("\n" + "=" * 70)
-    print("[OK] TAMAMLANDI!")
+    print("[OK] COMPLETED!")
     print("=" * 70)
-    print("\n[INFO] Kullanım:")
+    print("\n[INFO] Usage:")
     print("   from components.indicators import INDICATOR_REGISTRY")
     print("   from components.indicators import get_indicator_class")
     print("   ")

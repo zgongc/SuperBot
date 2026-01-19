@@ -5,18 +5,18 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    Volume Oscillator - Hacim osilatörü
-    İki farklı periyotlu hacim hareketli ortalaması arasındaki farkı ölçer
-    Pozitif = Kısa vadeli hacim artışı
-    Negatif = Kısa vadeli hacim düşüşü
+Description:
+    Volume Oscillator - Volume oscillator
+    Measures the difference between two volume moving averages with different periods.
+    Positive = Short-term volume increase
+    Negative = Short-term volume decrease
 
-Formül:
+Formula:
     VO = ((Fast_MA - Slow_MA) / Slow_MA) × 100
     Fast_MA = SMA(Volume, fast_period)
     Slow_MA = SMA(Volume, slow_period)
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -38,13 +38,13 @@ class VolumeOscillator(BaseIndicator):
     """
     Volume Oscillator
 
-    Kısa ve uzun vadeli hacim hareketli ortalamalarını karşılaştırır.
-    Hacim trendlerini ve değişimlerini tespit eder.
+    Compares short-term and long-term volume moving averages.
+    Detects volume trends and changes.
 
     Args:
-        fast_period: Hızlı MA periyodu (varsayılan: 5)
-        slow_period: Yavaş MA periyodu (varsayılan: 10)
-        signal_period: Sinyal hattı SMA periyodu (varsayılan: 10)
+        fast_period: Fast MA period (default: 5)
+        slow_period: Slow MA period (default: 10)
+        signal_period: Signal line SMA period (default: 10)
     """
 
     def __init__(
@@ -73,31 +73,31 @@ class VolumeOscillator(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return max(self.slow_period, self.signal_period)
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.fast_period < 1:
             raise InvalidParameterError(
                 self.name, 'fast_period', self.fast_period,
-                "Fast periyot pozitif olmalı"
+                "Fast period must be positive"
             )
         if self.slow_period < 1:
             raise InvalidParameterError(
                 self.name, 'slow_period', self.slow_period,
-                "Slow periyot pozitif olmalı"
+                "Slow period must be positive"
             )
         if self.fast_period >= self.slow_period:
             raise InvalidParameterError(
                 self.name, 'periods',
                 f"fast={self.fast_period}, slow={self.slow_period}",
-                "Fast periyot, slow periyottan küçük olmalı"
+                "The fast period must be smaller than the slow period"
             )
         if self.signal_period < 1:
             raise InvalidParameterError(
                 self.name, 'signal_period', self.signal_period,
-                "Signal periyot pozitif olmalı"
+                "Signal period must be positive"
             )
         return True
 
@@ -109,21 +109,21 @@ class VolumeOscillator(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: VO değeri
+            IndicatorResult: VO value
         """
         volume = data['volume'].values
 
-        # Fast ve Slow MA hesapla
+        # Calculate Fast and Slow Moving Average.
         fast_ma = np.mean(volume[-self.fast_period:])
         slow_ma = np.mean(volume[-self.slow_period:])
 
-        # Volume Oscillator hesapla (yüzde olarak)
+        # Calculate Volume Oscillator (as a percentage)
         if slow_ma == 0:
             vo_value = 0.0
         else:
             vo_value = ((fast_ma - slow_ma) / slow_ma) * 100
 
-        # Tüm VO değerlerini hesapla (signal line için)
+        # Calculate all VO values (for the signal line)
         vo_array = np.zeros(len(volume))
         for i in range(self.slow_period - 1, len(volume)):
             fast_avg = np.mean(volume[max(0, i - self.fast_period + 1):i + 1])
@@ -132,7 +132,7 @@ class VolumeOscillator(BaseIndicator):
             if slow_avg != 0:
                 vo_array[i] = ((fast_avg - slow_avg) / slow_avg) * 100
 
-        # Sinyal hattı (VO'nun SMA'sı)
+        # Signal line (VO's SMA)
         vo_signal = np.mean(vo_array[-self.signal_period:])
 
         timestamp = int(data.iloc[-1]['timestamp'])
@@ -159,7 +159,7 @@ class VolumeOscillator(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.Series:
         """
-        ⚡ VECTORIZED batch Volume Oscillator calculation - BACKTEST için
+        ⚡ Vectorized batch Volume Oscillator calculation - for BACKTEST.
 
         VO Formula:
             VO = ((Fast_MA - Slow_MA) / Slow_MA) × 100
@@ -196,7 +196,7 @@ class VolumeOscillator(BaseIndicator):
         return pd.Series(vo.values, index=data.index, name='vo')
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
-        """Warmup buffer - update() için gerekli state'i hazırlar"""
+        """Warmup buffer - prepares the necessary state for update()"""
         super().warmup_buffer(data, symbol)
         from collections import deque
         max_len = self.get_required_periods() + 50
@@ -242,40 +242,40 @@ class VolumeOscillator(BaseIndicator):
 
     def get_signal(self, vo_value: float, vo_signal: float) -> SignalType:
         """
-        VO değerinden sinyal üret
+        Generate a signal from the VO value.
 
         Args:
-            vo_value: VO değeri
-            vo_signal: VO sinyal hattı
+            vo_value: VO value
+            vo_signal: VO signal line
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
-        # VO sinyal hattını geçerse
+        # If it passes the VO signal line
         if vo_value > vo_signal and vo_value > 0:
-            return SignalType.BUY  # Hacim artıyor ve pozitif
+            return SignalType.BUY  # Volume is increasing and positive
         elif vo_value < vo_signal and vo_value < 0:
-            return SignalType.SELL  # Hacim azalıyor ve negatif
+            return SignalType.SELL  # Volume is decreasing and negative
         return SignalType.HOLD
 
     def get_trend(self, value: float) -> TrendDirection:
         """
-        VO değerinden trend belirle
+        Determine the trend based on the VO value.
 
         Args:
-            value: VO değeri
+            value: VO value
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
-        if value > 5:  # %5'den fazla artış
+        if value > 5:  # More than a 5% increase
             return TrendDirection.UP
-        elif value < -5:  # %5'den fazla azalış
+        elif value < -5:  # More than a 5% decrease
             return TrendDirection.DOWN
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'fast_period': 5,
             'slow_period': 10,
@@ -295,25 +295,25 @@ __all__ = ['VolumeOscillator']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """Volume Oscillator indikatör testi"""
+    """Volume Oscillator indicator test"""
 
     print("\n" + "="*60)
     print("VOLUME OSCILLATOR TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating example OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(30)]
 
     base_price = 100
     prices = [base_price]
 
-    # Hacim trendi oluştur (önce düşük, sonra yüksek)
+    # Create volume trend (initially low, then high)
     volumes = []
     for i in range(30):
         if i < 15:
@@ -334,39 +334,39 @@ if __name__ == "__main__":
         'volume': volumes
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
-    print(f"   [OK] Hacim aralığı: {min(volumes):,.0f} -> {max(volumes):,.0f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] Volume range: {min(volumes):,.0f} -> {max(volumes):,.0f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     vo = VolumeOscillator(fast_period=5, slow_period=10)
-    print(f"   [OK] Oluşturuldu: {vo}")
+    print(f"   [OK] Created: {vo}")
     print(f"   [OK] Kategori: {vo.category.value}")
-    print(f"   [OK] Gerekli periyot: {vo.get_required_periods()}")
+    print(f"   [OK] Required period: {vo.get_required_periods()}")
 
     result = vo(data)
-    print(f"   [OK] VO Değeri: {result.value:.2f}%")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] VO Value: {result.value:.2f}%")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Power: {result.strength:.2f}")
     print(f"   [OK] Metadata: {result.metadata}")
 
-    # Test 2: Farklı periyotlar
-    print("\n3. Farklı periyot testi...")
+    # Test 2: Different periods
+    print("\n3. Different period test...")
     for fast, slow in [(3, 10), (5, 10), (5, 20)]:
         vo_test = VolumeOscillator(fast_period=fast, slow_period=slow)
         result = vo_test.calculate(data)
-        print(f"   [OK] VO({fast},{slow}): {result.value:.2f}% | Sinyal: {result.signal.value}")
+        print(f"   [OK] VO({fast},{slow}): {result.value:.2f}% | Signal: {result.signal.value}")
 
     # Test 3: Volume gereksinimi
     print("\n4. Volume gereksinimi testi...")
     metadata = vo.metadata
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
     assert metadata.requires_volume == True, "Volume Oscillator volume gerektirmeli!"
 
-    # Test 4: Hacim trend analizi
-    print("\n5. Hacim trend analizi...")
+    # Test 4: Volume trend analysis
+    print("\n5. Volume trend analysis...")
     result = vo.calculate(data)
     vo_val = result.value
     fast_ma = result.metadata['fast_ma']
@@ -377,30 +377,30 @@ if __name__ == "__main__":
     print(f"   [OK] VO: {vo_val:.2f}%")
 
     if vo_val > 10:
-        print("   [OK] Güçlü hacim artışı")
+        print("   [OK] Significant volume increase")
     elif vo_val > 0:
-        print("   [OK] Zayıf hacim artışı")
+        print("   [OK] Weak volume increase")
     elif vo_val > -10:
-        print("   [OK] Zayıf hacim azalışı")
+        print("   [OK] Weak volume decrease")
     else:
-        print("   [OK] Güçlü hacim azalışı")
+        print("   [OK] Significant volume decrease")
 
-    # Test 5: Sinyal hattı crossover
-    print("\n6. Sinyal hattı testi...")
+    # Test 5: Signal line crossover
+    print("\n6. Signal line test...")
     vo_signal = result.metadata['vo_signal']
     print(f"   [OK] VO: {vo_val:.2f}%")
     print(f"   [OK] VO Signal: {vo_signal:.2f}%")
     if vo_val > vo_signal:
-        print("   [OK] VO sinyal hattı üstünde (güçleniyor)")
+        print("   [OK] VO signal line is active (powering up)")
     else:
-        print("   [OK] VO sinyal hattı altında (zayıflıyor)")
+        print("   [OK] VO signal line is present (attenuating)")
 
-    # Test 6: İstatistikler
-    print("\n7. İstatistik testi...")
+    # Test 6: Statistics
+    print("\n7. Statistical test...")
     stats = vo.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

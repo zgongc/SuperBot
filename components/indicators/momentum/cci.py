@@ -5,17 +5,17 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    CCI (Commodity Channel Index) - Momentum osilatörü
-    Aralık: Genellikle -100 ile +100 arası (dışına çıkabilir)
-    Aşırı Alım: > +100
-    Aşırı Satım: < -100
+Description:
+    CCI (Commodity Channel Index) - Momentum oscillator
+    Range: Generally between -100 and +100 (can go outside this range)
+    Overbought: > +100
+    Oversold: < -100
 
-Formül:
+Formula:
     CCI = (Typical Price - SMA) / (0.015 × Mean Deviation)
     Typical Price = (High + Low + Close) / 3
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -38,13 +38,13 @@ class CCI(BaseIndicator):
     """
     Commodity Channel Index
 
-    Fiyatın istatistiksel ortalamasından sapmasını ölçer.
-    Aşırı alım/satım koşullarını ve trend gücünü belirlemek için kullanılır.
+    Measures the deviation from the statistical average of the price.
+    It is used to determine overbought/oversold conditions and trend strength.
 
     Args:
-        period: CCI periyodu (varsayılan: 20)
-        overbought: Aşırı alım seviyesi (varsayılan: 100)
-        oversold: Aşırı satım seviyesi (varsayılan: -100)
+        period: CCI period (default: 20)
+        overbought: Overbought level (default: 100)
+        oversold: Oversold level (default: -100)
     """
 
     def __init__(
@@ -73,21 +73,21 @@ class CCI(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.period
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 1:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Periyot pozitif olmalı"
+                "The period must be positive"
             )
         if self.oversold >= self.overbought:
             raise InvalidParameterError(
                 self.name, 'levels',
                 f"oversold={self.oversold}, overbought={self.overbought}",
-                "Oversold, overbought'tan küçük olmalı"
+                "Oversold should be smaller than overbought"
             )
         return True
 
@@ -99,7 +99,7 @@ class CCI(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: CCI değeri
+            IndicatorResult: CCI value
         """
         high = data['high'].values
         low = data['low'].values
@@ -108,7 +108,7 @@ class CCI(BaseIndicator):
         # Typical Price hesapla
         typical_price = (high + low + close) / 3
 
-        # Typical Price'ın SMA'sını hesapla
+        # Calculate the SMA of Typical Price
         sma_tp = np.mean(typical_price[-self.period:])
 
         # Mean Deviation hesapla
@@ -130,7 +130,7 @@ class CCI(BaseIndicator):
             timestamp=timestamp,
             signal=self.get_signal(cci_value),
             trend=self.get_trend(cci_value),
-            strength=min(abs(cci_value), 100),  # 0-100 arası normalize et
+            strength=min(abs(cci_value), 100),  # Normalize to a range of 0-100
             metadata={
                 'period': self.period,
                 'typical_price': round(typical_price[-1], 2),
@@ -140,7 +140,7 @@ class CCI(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.Series:
         """
-        ⚡ VECTORIZED batch CCI calculation - BACKTEST için
+        ⚡ VECTORIZED batch CCI calculation - for BACKTEST
 
         CCI Formula:
             CCI = (Typical Price - SMA) / (0.015 × Mean Deviation)
@@ -181,18 +181,18 @@ class CCI(BaseIndicator):
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
         """
-        Warmup buffer - update() için gerekli
+        Warmup buffer - required for update().
 
         Args:
             data: OHLCV DataFrame (warmup verisi)
-            symbol: Sembol adı (opsiyonel)
+            symbol: Symbol name (optional)
         """
         super().warmup_buffer(data, symbol)
 
         from collections import deque
         max_len = self.get_required_periods() + 50
 
-        # Buffer'ları oluştur ve doldur
+        # Create and fill the buffers
         self._high_buffer = deque(maxlen=max_len)
         self._low_buffer = deque(maxlen=max_len)
         self._close_buffer = deque(maxlen=max_len)
@@ -257,13 +257,13 @@ class CCI(BaseIndicator):
 
     def get_signal(self, value: float) -> SignalType:
         """
-        CCI değerinden sinyal üret
+        Generate a signal from the CCI value.
 
         Args:
-            value: CCI değeri
+            value: CCI value
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
         if value < self.oversold:
             return SignalType.BUY
@@ -273,13 +273,13 @@ class CCI(BaseIndicator):
 
     def get_trend(self, value: float) -> TrendDirection:
         """
-        CCI değerinden trend belirle
+        Determine the trend based on the CCI value.
 
         Args:
-            value: CCI değeri
+            value: CCI value
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         if value > 0:
             return TrendDirection.UP
@@ -288,7 +288,7 @@ class CCI(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'period': 20,
             'overbought': 100,
@@ -308,18 +308,18 @@ __all__ = ['CCI']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """CCI indikatör testi - cache_manager.py tarzı"""
+    """CCI indicator test - similar to cache_manager.py"""
 
     print("=" * 70)
     print("📊 CCI (Commodity Channel Index) Test")
     print("=" * 70)
 
-    # Test data oluştur
-    print("\n1️⃣  Test Verisi Oluştur")
+    # Create test data
+    print("\n1️⃣ Create Test Data")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(30)]
 
@@ -338,21 +338,21 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"  ✅ {len(data)} mum oluşturuldu")
-    print(f"  ✅ Fiyat: {min(prices):.2f} -> {max(prices):.2f}")
-    print(f"  ✅ Değişim: {((max(prices) - min(prices)) / min(prices) * 100):.2f}%")
+    print(f"  ✅ {len(data)} candles created")
+    print(f"  ✅ Price: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"  ✅ Change: {((max(prices) - min(prices)) / min(prices) * 100):.2f}%")
 
-    # Test 1: Temel Hesaplama
-    print("\n2️⃣  Temel Hesaplama")
+    # Test 1: Basic Calculation
+    print("\n2️⃣ Basic Calculations")
     cci = CCI(period=20)
-    print(f"  ✅ İndikatör: {cci}")
+    print(f"  ✅ Indicator: {cci}")
     print(f"  ✅ Kategori: {cci.category.value}")
     print(f"  ✅ Tip: {cci.indicator_type.value}")
     print(f"  ✅ Min periyot: {cci.get_required_periods()}")
 
     result = cci(data)
 
-    # Sinyal emoji
+    # Signal emoji
     signal_emoji = {
         'buy': '🟢',
         'sell': '🔴',
@@ -366,60 +366,60 @@ if __name__ == "__main__":
         'NEUTRAL': '➡️'
     }.get(result.trend.name, '❓')
 
-    print(f"\n  📈 CCI Sonuçları:")
-    print(f"  ✅ Değer: {result.value}")
-    print(f"  ✅ Sinyal: {signal_emoji} {result.signal.value.upper()}")
+    print(f"\n  📈 CCI Results:")
+    print(f"  ✅ Value: {result.value}")
+    print(f"  ✅ Signal: {signal_emoji} {result.signal.value.upper()}")
     print(f"  ✅ Trend: {trend_emoji} {result.trend.name}")
-    print(f"  ✅ Güç: {result.strength:.2f}/100")
+    print(f"  ✅ Power: {result.strength:.2f}/100")
     print(f"  ✅ Metadata: period={result.metadata['period']}, tp={result.metadata['typical_price']}")
 
-    # Test 2: Farklı Periyotlar
-    print("\n3️⃣  Farklı Periyot Karşılaştırması")
+    # Test 2: Different Periods
+    print("\n3️⃣ Different Period Comparison")
     for period in [10, 20, 30]:
         cci_test = CCI(period=period)
         res = cci_test.calculate(data)
         sig_emoji = {'buy': '🟢', 'sell': '🔴', 'hold': '🟡'}.get(res.signal.value, '⚪')
         print(f"  {sig_emoji} CCI({period:2d}): {res.value:7.2f} | {res.signal.value:4s}")
 
-    # Test 3: Özel Seviyeler
-    print("\n4️⃣  Özel Seviyeler")
+    # Test 3: Custom Levels
+    print("\n4️⃣  Special Levels")
     cci_custom = CCI(period=20, overbought=150, oversold=-150)
     result = cci_custom.calculate(data)
     print(f"  ✅ OB/OS: ±{cci_custom.overbought}")
     print(f"  ✅ CCI: {result.value}")
-    print(f"  ✅ Sinyal: {result.signal.value}")
+    print(f"  ✅ Signal: {result.signal.value}")
 
-    # Test 4: İstatistikler
-    print("\n5️⃣  İstatistikler")
+    # Test 4: Statistics
+    print("\n5️⃣  Statistics")
     stats = cci.statistics
-    print(f"  📊 Hesaplama: {stats['calculation_count']}")
-    print(f"  ❌ Hata: {stats['error_count']}")
+    print(f"  📊 Calculation: {stats['calculation_count']}")
+    print(f"  ❌ Error: {stats['error_count']}")
     print(f"  🕐 Son: {stats['last_calculation']}")
 
     # Test 5: Metadata
     print("\n6️⃣  Metadata")
     metadata = cci.metadata
-    print(f"  ✅ İsim: {metadata.name}")
+    print(f"  ✅ Name: {metadata.name}")
     print(f"  ✅ Kategori: {metadata.category.value}")
-    print(f"  ✅ Açıklama: {metadata.description[:50]}...")
-    print(f"  ✅ Volume gerekli: {metadata.requires_volume}")
+    print(f"  ✅ Description: {metadata.description[:50]}...")
+    print(f"  ✅ Volume required: {metadata.requires_volume}")
     print(f"  ✅ Default params: {metadata.default_params}")
 
-    # Test 6: Sinyal Analizi
-    print("\n7️⃣  Sinyal Analizi")
+    # Test 6: Signal Analysis
+    print("\n7️⃣ Signal Analysis")
     if result.signal == SignalType.BUY:
-        print("  🟢 ALIŞ SİNYALİ - CCI aşırı satım bölgesinde")
+        print("  🟢 BUY SIGNAL - CCI is in the oversold region")
     elif result.signal == SignalType.SELL:
-        print("  🔴 SATIŞ SİNYALİ - CCI aşırı alım bölgesinde")
+        print("  🔴 SALES SIGNAL - CCI is in the overbought zone")
     else:
-        print("  🟡 BEKLETİN - CCI normal aralıkta")
+        print("  🟡 WAIT - CCI is within the normal range")
 
     print(f"\n  📋 Detay:")
-    print(f"  ✅ Mevcut: {result.value}")
-    print(f"  ✅ Aşırı alım: {cci.overbought}")
-    print(f"  ✅ Aşırı satım: {cci.oversold}")
+    print(f"  ✅ Available: {result.value}")
+    print(f"  ✅ Overbought: {cci.overbought}")
+    print(f"  ✅ Oversold: {cci.oversold}")
     print(f"  ✅ Tavsiye: {'AL' if result.value < cci.oversold else 'SAT' if result.value > cci.overbought else 'BEKLE'}")
 
     print("\n" + "=" * 70)
-    print("✅ Tüm testler başarıyla tamamlandı!")
+    print("✅ All tests completed successfully!")
     print("=" * 70 + "\n")

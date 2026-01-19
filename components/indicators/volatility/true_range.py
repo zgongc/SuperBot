@@ -5,16 +5,16 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    True Range - Gerçek Fiyat Aralığı
-    Bir mumun gerçek volatilitesini ölçer
-    ATR'nin temel bileşenidir
+Description:
+    True Range - Actual Price Range
+    Measures the actual volatility of a candlestick
+    It is a fundamental component of ATR
     Gap'leri de hesaba katar
 
-Formül:
+Formula:
     TR = max[(High - Low), abs(High - PrevClose), abs(Low - PrevClose)]
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -36,11 +36,11 @@ class TrueRange(BaseIndicator):
     """
     True Range
 
-    Fiyatın gerçek hareket aralığını ölçer. Gap'leri de hesaba katarak
-    doğru volatilite ölçümü sağlar.
+    Measures the actual price movement range. It also takes gaps into account,
+    providing an accurate volatility measurement.
 
     Args:
-        Parametre gerektirmez (tek mum hesabı)
+        Does not require any parameters (single candle calculation).
     """
 
     def __init__(
@@ -58,11 +58,11 @@ class TrueRange(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
-        return 2  # Güncel ve önceki mum
+        """Minimum required number of periods"""
+        return 2  # Current and previous candle
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         return True
 
     def calculate(self, data: pd.DataFrame) -> IndicatorResult:
@@ -73,7 +73,7 @@ class TrueRange(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: True Range değeri
+            IndicatorResult: True Range value
         """
         high = data['high'].values
         low = data['low'].values
@@ -84,18 +84,18 @@ class TrueRange(BaseIndicator):
         current_low = low[-1]
         prev_close = close[-2]
 
-        # Üç değeri hesapla
+        # Calculate three values
         hl = current_high - current_low  # High - Low
         hc = abs(current_high - prev_close)  # High - Previous Close
         lc = abs(current_low - prev_close)  # Low - Previous Close
 
-        # Maximum değer True Range'dir
+        # Maximum value is the True Range
         tr_value = max(hl, hc, lc)
 
         current_price = close[-1]
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # True Range'in fiyata oranı (volatilite yüzdesi)
+        # True Range's ratio to the price (volatility percentage)
         if current_price > 0:
             tr_percent = (tr_value / current_price) * 100
         else:
@@ -106,7 +106,7 @@ class TrueRange(BaseIndicator):
         gap_down = current_high < prev_close
         has_gap = gap_up or gap_down
 
-        # Hangi bileşen maksimum?
+        # Which component is maximum?
         if tr_value == hl:
             max_component = 'high_low'
         elif tr_value == hc:
@@ -121,8 +121,8 @@ class TrueRange(BaseIndicator):
             value=round(tr_value, 8),
             timestamp=timestamp,
             signal=self.get_signal(tr_percent),
-            trend=TrendDirection.NEUTRAL,  # True Range trend göstermez
-            strength=min(tr_percent * 10, 100),  # 0-100 arası normalize et
+            trend=TrendDirection.NEUTRAL,  # True Range does not indicate a trend
+            strength=min(tr_percent * 10, 100),  # Normalize to a range of 0-100
             metadata={
                 'high_low': round(hl, 8),
                 'high_prev_close': round(hc, 8),
@@ -137,7 +137,7 @@ class TrueRange(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.Series:
         """
-        ⚡ VECTORIZED batch True Range calculation - BACKTEST için
+        ⚡ VECTORIZED batch True Range calculation - for BACKTEST
 
         True Range Formula:
             TR = max[(High - Low), abs(High - PrevClose), abs(Low - PrevClose)]
@@ -171,18 +171,18 @@ class TrueRange(BaseIndicator):
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
         """
-        Warmup buffer - update() için gerekli
+        Warmup buffer - required for update().
 
         Args:
             data: OHLCV DataFrame (warmup verisi)
-            symbol: Sembol adı (opsiyonel)
+            symbol: Symbol name (optional)
         """
         super().warmup_buffer(data, symbol)
 
         from collections import deque
         max_len = self.get_required_periods() + 50
 
-        # Buffer'ları oluştur ve doldur
+        # Create and fill the buffers
         self._high_buffer = deque(maxlen=max_len)
         self._low_buffer = deque(maxlen=max_len)
         self._close_buffer = deque(maxlen=max_len)
@@ -248,26 +248,26 @@ class TrueRange(BaseIndicator):
 
     def get_signal(self, tr_percent: float) -> SignalType:
         """
-        True Range yüzdesinden sinyal üret
+        Generate a signal from the True Range percentage.
 
         Args:
-            tr_percent: True Range'in fiyata oranı (%)
+            tr_percent: Percentage of True Range relative to the price (%).
 
         Returns:
-            SignalType: Volatilite seviyesine göre sinyal
+            SignalType: Signal based on volatility level.
         """
-        # Çok yüksek volatilite: dikkatli ol
+        # Very high volatility: be careful
         if tr_percent > 5.0:
-            return SignalType.SELL  # Yüksek risk
+            return SignalType.SELL  # High risk
         # Normal volatilite
         elif tr_percent > 2.0:
             return SignalType.HOLD
-        # Düşük volatilite
+        # Low volatility
         else:
             return SignalType.BUY
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {}
 
     def _requires_volume(self) -> bool:
@@ -283,22 +283,22 @@ __all__ = ['TrueRange']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """True Range indikatör testi"""
+    """True Range indicator test"""
 
     print("\n" + "="*60)
     print("TRUE RANGE TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(10)]
 
-    # Fiyat hareketini simüle et
+    # Simulate price movement
     base_price = 100
     prices = [base_price]
     for i in range(9):
@@ -314,22 +314,22 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     tr = TrueRange()
-    print(f"   [OK] Oluşturuldu: {tr}")
+    print(f"   [OK] Created: {tr}")
     print(f"   [OK] Kategori: {tr.category.value}")
-    print(f"   [OK] Gerekli periyot: {tr.get_required_periods()}")
+    print(f"   [OK] Required period: {tr.get_required_periods()}")
 
     result = tr(data)
     print(f"   [OK] True Range: {result.value}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] TR %: {result.metadata['tr_percent']:.2f}%")
     print(f"   [OK] Max Component: {result.metadata['max_component']}")
-    print(f"   [OK] Gap var mı: {result.metadata['has_gap']}")
+    print(f"   [OK] Does a gap exist: {result.metadata['has_gap']}")
     print(f"   [OK] Metadata: {result.metadata}")
 
     # Test 2: Gap durumu testi (Gap Up)
@@ -338,7 +338,7 @@ if __name__ == "__main__":
         'timestamp': [1697000000000, 1697000060000],
         'open': [100.0, 105.0],
         'high': [102.0, 107.0],
-        'low': [99.0, 104.0],  # Low > önceki Close
+        'low': [99.0, 104.0],  # Low > previous Close
         'close': [101.0, 106.0],
         'volume': [1000, 1000]
     })
@@ -354,7 +354,7 @@ if __name__ == "__main__":
     gap_down_data = pd.DataFrame({
         'timestamp': [1697000000000, 1697000060000],
         'open': [100.0, 95.0],
-        'high': [102.0, 97.0],  # High < önceki Close
+        'high': [102.0, 97.0],  # High < previous Close
         'low': [99.0, 94.0],
         'close': [101.0, 96.0],
         'volume': [1000, 1000]
@@ -365,7 +365,7 @@ if __name__ == "__main__":
     print(f"   [OK] Gap Direction: {result.metadata['gap_direction']}")
     print(f"   [OK] Low-PrevClose: {result.metadata['low_prev_close']}")
 
-    # Test 4: Normal mum (gap yok)
+    # Test 4: Normal candle (no gap)
     print("\n5. Normal mum testi...")
     normal_data = pd.DataFrame({
         'timestamp': [1697000000000, 1697000060000],
@@ -378,11 +378,11 @@ if __name__ == "__main__":
     result = tr.calculate(normal_data)
     print(f"   [OK] Normal TR: {result.value}")
     print(f"   [OK] Max Component: {result.metadata['max_component']}")
-    print(f"   [OK] Gap var mı: {result.metadata['has_gap']}")
+    print(f"   [OK] Does a gap exist: {result.metadata['has_gap']}")
     print(f"   [OK] High-Low: {result.metadata['high_low']}")
 
-    # Test 5: Yüksek volatilite
-    print("\n6. Yüksek volatilite testi...")
+    # Test 5: High volatility
+    print("\n6. High volatility test...")
     high_vol_data = pd.DataFrame({
         'timestamp': [1697000000000, 1697000060000],
         'open': [100.0, 110.0],
@@ -392,25 +392,25 @@ if __name__ == "__main__":
         'volume': [1000, 1000]
     })
     result = tr.calculate(high_vol_data)
-    print(f"   [OK] Yüksek Vol TR: {result.value}")
+    print(f"   [OK] High Voltage TR: {result.value}")
     print(f"   [OK] TR %: {result.metadata['tr_percent']:.2f}%")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
 
-    # Test 6: İstatistikler
-    print("\n7. İstatistik testi...")
+    # Test 6: Statistics
+    print("\n7. Statistical test...")
     stats = tr.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 7: Metadata
     print("\n8. Metadata testi...")
     metadata = tr.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Tip: {metadata.indicator_type.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

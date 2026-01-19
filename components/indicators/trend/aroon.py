@@ -5,24 +5,24 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    Aroon - Trend gücünü ve yönünü belirleyen indikatör
-    Tushar Chande tarafından 1995'te geliştirilmiş
-    Aroon Up ve Aroon Down olmak üzere iki çizgiden oluşur
+Description:
+    Aroon - An indicator that determines trend strength and direction.
+    Developed by Tushar Chande in 1995.
+    Consists of two lines: Aroon Up and Aroon Down.
 
-    Kullanım:
-    - Yeni trendlerin başlangıcını tespit etme
-    - Trend gücünü ölçme
-    - Konsolidasyon dönemlerini belirleme
+    Usage:
+    - Detecting the beginning of new trends
+    - Measuring trend strength
+    - Determining consolidation periods
 
-Formül:
-    Aroon Up = ((period - En yüksek değere olan periyot) / period) × 100
-    Aroon Down = ((period - En düşük değere olan periyot) / period) × 100
+Formula:
+    Aroon Up = ((period - period to the highest value) / period) x 100
+    Aroon Down = ((period - period to the lowest value) / period) x 100
 
-    Aroon Up > 70 ve Aroon Down < 30: Güçlü yükseliş trendi
-    Aroon Down > 70 ve Aroon Up < 30: Güçlü düşüş trendi
+    Aroon Up > 70 and Aroon Down < 30: Strong uptrend
+    Aroon Down > 70 and Aroon Up < 30: Strong downtrend
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -44,10 +44,10 @@ class Aroon(BaseIndicator):
     """
     Aroon Indicator
 
-    En yüksek ve en düşük değerlerin ne kadar yakın zamanda olduğunu ölçer.
+    Measures how recently the highest and lowest values occurred.
 
     Args:
-        period: Aroon periyodu (varsayılan: 25)
+        period: Aroon period (default: 25)
     """
 
     def __init__(
@@ -70,15 +70,15 @@ class Aroon(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.period + 1
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 1:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Periyot pozitif olmalı"
+                "The period must be positive"
             )
         return True
 
@@ -90,30 +90,30 @@ class Aroon(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: Aroon Up ve Aroon Down değerleri
+            IndicatorResult: Aroon Up and Aroon Down values
         """
         high = data['high'].values
         low = data['low'].values
 
-        # Son period için yüksek ve düşük değerleri
+        # High and low values for the last period
         high_slice = high[-self.period-1:]
         low_slice = low[-self.period-1:]
 
-        # En yüksek ve en düşük değerlerin indexlerini bul
-        # argmax/argmin son index'i döner
+        # Find the indices of the highest and lowest values
+        # argmax/argmin returns the last index
         high_idx = len(high_slice) - 1 - np.argmax(high_slice[::-1])
         low_idx = len(low_slice) - 1 - np.argmin(low_slice[::-1])
 
-        # Aroon Up ve Down hesapla
+        # Calculate Aroon Up and Down
         aroon_up = ((self.period - (len(high_slice) - 1 - high_idx)) / self.period) * 100
         aroon_down = ((self.period - (len(low_slice) - 1 - low_idx)) / self.period) * 100
 
-        # Aroon Oscillator (opsiyonel)
+        # Aroon Oscillator (optional)
         aroon_osc = aroon_up - aroon_down
 
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Trend ve sinyal belirleme
+        # Trend and signal determination
         trend = self.get_trend(aroon_up, aroon_down)
         signal = self.get_signal(aroon_up, aroon_down)
 
@@ -139,7 +139,7 @@ class Aroon(BaseIndicator):
         )
 
     def _get_trend_strength(self, aroon_up: float, aroon_down: float) -> str:
-        """Trend gücünü değerlendir"""
+        """Evaluate trend strength"""
         if aroon_up > 70 and aroon_down < 30:
             return 'Strong Uptrend'
         elif aroon_down > 70 and aroon_up < 30:
@@ -153,7 +153,7 @@ class Aroon(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        ⚡ VECTORIZED batch Aroon calculation - BACKTEST için
+        ⚡ VECTORIZED batch Aroon calculation - for BACKTEST
 
         Aroon Formula:
             Aroon Up = ((period - periods since highest high) / period) × 100
@@ -215,18 +215,18 @@ class Aroon(BaseIndicator):
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
         """
-        Warmup buffer - update() için gerekli
+        Warmup buffer - required for update().
 
         Args:
             data: OHLCV DataFrame (warmup verisi)
-            symbol: Sembol adı (opsiyonel)
+            symbol: Symbol name (optional)
         """
         super().warmup_buffer(data, symbol)
 
         from collections import deque
         max_len = self.get_required_periods() + 50
 
-        # Buffer'ları oluştur ve doldur
+        # Create and fill the buffers
         self._high_buffer = deque(maxlen=max_len)
         self._low_buffer = deque(maxlen=max_len)
         self._close_buffer = deque(maxlen=max_len)
@@ -291,11 +291,11 @@ class Aroon(BaseIndicator):
 
     def get_signal(self, aroon_up: float, aroon_down: float) -> SignalType:
         """
-        Aroon'dan sinyal üret
+        Generate a signal from Aroon.
 
         Args:
-            aroon_up: Aroon Up değeri
-            aroon_down: Aroon Down değeri
+            aroon_up: Aroon Up value
+            aroon_down: Aroon Down value
 
         Returns:
             SignalType: BUY/SELL/HOLD
@@ -311,8 +311,8 @@ class Aroon(BaseIndicator):
         Aroon'dan trend belirle
 
         Args:
-            aroon_up: Aroon Up değeri
-            aroon_down: Aroon Down değeri
+            aroon_up: Aroon Up value
+            aroon_down: Aroon Down value
 
         Returns:
             TrendDirection: UP/DOWN/NEUTRAL
@@ -324,7 +324,7 @@ class Aroon(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'period': 25
         }
@@ -346,31 +346,31 @@ __all__ = ['Aroon']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """Aroon indikatör testi"""
+    """Aroon indicator test"""
 
     print("\n" + "="*60)
     print("AROON INDICATOR TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(50)]
 
-    # Trend değişimi simülasyonu
+    # Trend change simulation
     base_price = 100
     prices = [base_price]
     for i in range(49):
         if i < 20:
-            trend = 1.0  # Yükseliş
+            trend = 1.0  # Ascending
         elif i < 35:
             trend = 0.0  # Konsolidasyon
         else:
-            trend = -0.8  # Düşüş
+            trend = -0.8  # Decrease
         noise = np.random.randn() * 1.0
         prices.append(prices[-1] + trend + noise)
 
@@ -383,59 +383,59 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     aroon = Aroon(period=25)
-    print(f"   [OK] Oluşturuldu: {aroon}")
+    print(f"   [OK] Created: {aroon}")
     print(f"   [OK] Kategori: {aroon.category.value}")
     print(f"   [OK] Tip: {aroon.indicator_type.value}")
-    print(f"   [OK] Gerekli periyot: {aroon.get_required_periods()}")
+    print(f"   [OK] Required period: {aroon.get_required_periods()}")
 
     result = aroon(data)
     print(f"   [OK] Aroon Up: {result.value['aroon_up']}")
     print(f"   [OK] Aroon Down: {result.value['aroon_down']}")
     print(f"   [OK] Aroon Oscillator: {result.value['aroon_osc']}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Power: {result.strength:.2f}")
     print(f"   [OK] Metadata: {result.metadata}")
 
-    # Test 2: Trend gücü analizi
-    print("\n3. Trend gücü analizi...")
-    print(f"   [OK] Trend Gücü: {result.metadata['trend_strength']}")
-    print(f"   [OK] En yüksek {result.metadata['high_periods_ago']} periyot önce")
-    print(f"   [OK] En düşük {result.metadata['low_periods_ago']} periyot önce")
+    # Test 2: Trend power analysis
+    print("\n3. Trend strength analysis...")
+    print(f"   [OK] Trend Strength: {result.metadata['trend_strength']}")
+    print(f"   [OK] Highest {result.metadata['high_periods_ago']} periods ago")
+    print(f"   [OK] The lowest value was {result.metadata['low_periods_ago']} periods ago")
 
-    # Test 3: Farklı veri dilimleri
-    print("\n4. Farklı veri dilimi testi...")
+    # Test 3: Different data types
+    print("\n4. Different data type test...")
     for i in [25, 35, 45]:
         data_slice = data.iloc[:i+1]
         result = aroon.calculate(data_slice)
         print(f"   [OK] Mum {i}: Up={result.value['aroon_up']:.1f}, Down={result.value['aroon_down']:.1f}, Trend={result.metadata['trend_strength']}")
 
-    # Test 4: Farklı periyotlar
-    print("\n5. Farklı periyot testi...")
+    # Test 4: Different periods
+    print("\n5. Different period test...")
     for period in [14, 25, 50]:
         aroon_test = Aroon(period=period)
         result = aroon_test.calculate(data)
         print(f"   [OK] Aroon({period}): Up={result.value['aroon_up']:.2f}, Down={result.value['aroon_down']:.2f}")
 
-    # Test 5: İstatistikler
-    print("\n6. İstatistik testi...")
+    # Test 5: Statistics
+    print("\n6. Statistical test...")
     stats = aroon.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 6: Metadata
     print("\n7. Metadata testi...")
     metadata = aroon.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Output'lar: {metadata.output_names}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

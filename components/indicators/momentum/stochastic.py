@@ -128,18 +128,18 @@ class Stochastic(BaseIndicator):
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
         """
-        Warmup buffer - update() için gerekli
+        Warmup buffer - required for update().
 
         Args:
             data: OHLCV DataFrame (warmup verisi)
-            symbol: Sembol adı (opsiyonel)
+            symbol: Symbol name (optional)
         """
         super().warmup_buffer(data, symbol)
 
         from collections import deque
         max_len = self.get_required_periods() + 50
 
-        # Buffer'ları oluştur ve doldur
+        # Create and fill the buffers
         self._high_buffer = deque(maxlen=max_len)
         self._low_buffer = deque(maxlen=max_len)
         self._close_buffer = deque(maxlen=max_len)
@@ -206,9 +206,9 @@ class Stochastic(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        ⚡ VECTORIZED batch Stochastic calculation - BACKTEST için
+        ⚡ VECTORIZED batch Stochastic calculation - for BACKTEST
 
-        TA-Lib STOCH uyumlu: SlowK ve SlowD hesaplar
+        TA-Lib STOCH compatible: Calculates SlowK and SlowD.
 
         TA-Lib Formula:
             FastK = (Close - Lowest Low) / (Highest High - Lowest Low) * 100
@@ -247,7 +247,7 @@ class Stochastic(BaseIndicator):
         # 3. SlowD = SMA of SlowK over d_period
         slow_d = slow_k.rolling(window=self.d_period).mean()
 
-        # Create result DataFrame (calculate() ile aynı key'ler)
+        # Create result DataFrame (same keys as calculate())
         result = pd.DataFrame({
             'k': slow_k,
             'd': slow_d

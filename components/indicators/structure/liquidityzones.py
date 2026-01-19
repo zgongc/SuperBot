@@ -5,27 +5,27 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
+Description:
     Liquidity Zones - Smart Money Concepts
-    Likidite havuzlarını (Stop-loss yoğunluğu) tespit eder
+    Detects liquidity pools (stop-loss density).
 
     Liquidity Zone Nedir:
-    - Swing High/Low seviyeleri = Stop-loss yoğunluğu
-    - Equal Highs/Lows = Çoklu stop-loss seviyesi
+    - Swing High/Low levels = Stop-loss density
+    - Equal Highs/Lows = Multiple stop-loss levels
     - Smart Money bu seviyeleri "sweep" ederek likidite toplar
 
-Formül:
+Formula:
     1. Swing High/Low tespiti
-    2. Equal seviye tespiti (±tolerance aralığında)
-    3. Likidite havuzları oluştur
-    4. "Sweep" tespiti (kısa süreli kırılma)
+    2. Detect level equality (within ±tolerance range)
+    3. Create liquidity pools
+    4. "Sweep" detection (short-term breakout)
 
     Liquidity Sweep:
-    - Fiyat likidite seviyesinin üstüne/altına çıkar
-    - Hemen geri döner (1-3 mum içinde)
-    - "Stop hunt" veya "liquidity grab"
+    - The price moves above/below the liquidity level.
+    - It quickly returns (within 1-3 candles).
+    - "Stop hunt" or "liquidity grab".
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -48,15 +48,15 @@ class LiquidityZones(BaseIndicator):
     """
     Liquidity Zones
 
-    Likidite havuzlarını tespit eder.
-    Smart Money'nin stop-loss'ları tetiklediği bölgeleri gösterir.
+    Detects liquidity pools.
+    Shows areas where Smart Money's stop-loss orders are triggered.
 
     Args:
-        left_bars: Sol taraf bar sayısı (varsayılan: 5)
-        right_bars: Sağ taraf bar sayısı (varsayılan: 5)
-        equal_tolerance: Equal seviye toleransı (%) (varsayılan: 0.1)
-        max_zones: Maksimum zone sayısı (varsayılan: 5)
-        sweep_lookback: Sweep kontrolü için geriye bakış (varsayılan: 3)
+        left_bars: Number of bars on the left side (default: 5)
+        right_bars: Number of bars on the right side (default: 5)
+        equal_tolerance: Tolerance level for "equal" (%) (default: 0.1)
+        max_zones: Maximum number of zones (default: 5)
+        sweep_lookback: Lookback period for sweep control (default: 3)
     """
 
     def __init__(
@@ -90,44 +90,44 @@ class LiquidityZones(BaseIndicator):
             error_handler=error_handler
         )
 
-        # State: Aktif likidite zone'ları
+        # State: Active liquidity zones
         self.liquidityzones: List[Dict[str, Any]] = []
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.left_bars + self.right_bars + 10
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.left_bars < 1:
             raise InvalidParameterError(
                 self.name, 'left_bars', self.left_bars,
-                "Left bars pozitif olmalı"
+                "Left bars must be positive"
             )
         if self.right_bars < 1:
             raise InvalidParameterError(
                 self.name, 'right_bars', self.right_bars,
-                "Right bars pozitif olmalı"
+                "Right bars must be positive"
             )
         if self.equal_tolerance < 0:
             raise InvalidParameterError(
                 self.name, 'equal_tolerance', self.equal_tolerance,
-                "Equal tolerance negatif olamaz"
+                "Equal tolerance cannot be negative"
             )
         if self.max_zones < 1:
             raise InvalidParameterError(
                 self.name, 'max_zones', self.max_zones,
-                "Max zones pozitif olmalı"
+                "Max zones must be positive"
             )
         if self.sweep_lookback < 1:
             raise InvalidParameterError(
                 self.name, 'sweep_lookback', self.sweep_lookback,
-                "Sweep lookback pozitif olmalı"
+                "Sweep lookback must be positive"
             )
         return True
 
     def _find_swing_highs(self, highs: np.ndarray) -> List[Dict[str, Any]]:
-        """Swing High noktalarını tespit et"""
+        """Detect swing high points"""
         swing_highs = []
 
         for i in range(self.left_bars, len(highs) - self.right_bars):
@@ -156,7 +156,7 @@ class LiquidityZones(BaseIndicator):
         return swing_highs
 
     def _find_swing_lows(self, lows: np.ndarray) -> List[Dict[str, Any]]:
-        """Swing Low noktalarını tespit et"""
+        """Detect Swing Low points"""
         swing_lows = []
 
         for i in range(self.left_bars, len(lows) - self.right_bars):
@@ -186,10 +186,10 @@ class LiquidityZones(BaseIndicator):
 
     def _find_equal_levels(self, swings: List[Dict[str, Any]]) -> List[List[Dict[str, Any]]]:
         """
-        Equal (eşit) seviyeleri tespit et
+        Detect equal (equal) levels.
 
         Args:
-            swings: Swing noktaları
+            swings: Swing points
 
         Returns:
             List[List]: Equal gruplar
@@ -203,7 +203,7 @@ class LiquidityZones(BaseIndicator):
             group = [swing1]
 
             for swing2 in swings[i + 1:]:
-                # Tolerance içinde mi?
+                # Is it within the tolerance?
                 diff_percent = abs(swing1['value'] - swing2['value']) / swing1['value'] * 100
 
                 if diff_percent <= self.equal_tolerance:
@@ -221,28 +221,28 @@ class LiquidityZones(BaseIndicator):
         swing_lows: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
         """
-        Likidite zone'ları oluştur
+        Create liquidity zones.
 
         Args:
             swing_highs: Swing high'lar
             swing_lows: Swing low'lar
 
         Returns:
-            List[Dict]: Likidite zone'ları
+            List[Dict]: Liquidity zones.
         """
         zones = []
 
-        # Swing High'lardan likidite zone'ları (Sell-side liquidity)
+        # Swing High'lardan liquidity zones (Sell-side liquidity)
         for swing in swing_highs[-self.max_zones:]:
             zones.append({
-                'type': 'sell_side',  # Üstte stop-loss'lar (long pozisyonlar)
+                'type': 'sell_side',  # Above are stop-losses (long positions)
                 'level': swing['value'],
                 'index': swing['index'],
                 'strength': 1,  # Tek seviye
                 'swept': False
             })
 
-        # Swing Low'lardan likidite zone'ları (Buy-side liquidity)
+        # Liquidity zones (Buy-side liquidity) from Swing Lows
         for swing in swing_lows[-self.max_zones:]:
             zones.append({
                 'type': 'buy_side',  # Altta stop-loss'lar (short pozisyonlar)
@@ -252,7 +252,7 @@ class LiquidityZones(BaseIndicator):
                 'swept': False
             })
 
-        # Equal level'lardan likidite zone'ları (güçlü)
+        # Liquidity zones at the same level (strong)
         equal_highs = self._find_equal_levels(swing_highs)
         for group in equal_highs:
             avg_level = np.mean([s['value'] for s in group])
@@ -260,7 +260,7 @@ class LiquidityZones(BaseIndicator):
                 'type': 'sell_side_equal',
                 'level': avg_level,
                 'index': group[-1]['index'],
-                'strength': len(group),  # Equal sayısı
+                'strength': len(group),  # Number of equal elements
                 'swept': False
             })
 
@@ -288,25 +288,25 @@ class LiquidityZones(BaseIndicator):
         Liquidity sweep tespiti
 
         Args:
-            zones: Likidite zone'ları
-            highs, lows, closes: Fiyat dizileri
+            zones: Liquidity zones
+            highs, lows, closes: Price arrays
 
         Returns:
-            List[Dict]: Güncellenmiş zone'lar
+            List[Dict]: Updated zones
         """
-        # Son N mumu kontrol et
+        # Check the last N frames
         lookback_start = max(0, len(closes) - self.sweep_lookback)
 
         for zone in zones:
             if zone['swept']:
-                continue  # Zaten sweep edilmiş
+                continue  # Already swept
 
             for i in range(lookback_start, len(closes)):
-                # Sell-side sweep (üst taraf)
+                # Sell-side sweep (top side)
                 if 'sell_side' in zone['type']:
-                    # High seviyeyi geçti mi?
+                    # Did it pass the high level?
                     if highs[i] > zone['level']:
-                        # Close seviyenin altında mı? (geri döndü)
+                        # Is it below the threshold level? (returned)
                         if closes[i] < zone['level']:
                             zone['swept'] = True
                             zone['swept_index'] = i
@@ -314,9 +314,9 @@ class LiquidityZones(BaseIndicator):
 
                 # Buy-side sweep (alt taraf)
                 elif 'buy_side' in zone['type']:
-                    # Low seviyeyi geçti mi?
+                    # Did it pass the low level?
                     if lows[i] < zone['level']:
-                        # Close seviyenin üstünde mi? (geri döndü)
+                        # Is it above the threshold level? (returned)
                         if closes[i] > zone['level']:
                             zone['swept'] = True
                             zone['swept_index'] = i
@@ -342,7 +342,7 @@ class LiquidityZones(BaseIndicator):
         swing_highs = self._find_swing_highs(highs)
         swing_lows = self._find_swing_lows(lows)
 
-        # Likidite zone'ları oluştur
+        # Create liquidity zones
         self.liquidityzones = self._create_liquidityzones(swing_highs, swing_lows)
 
         # Sweep tespiti
@@ -350,16 +350,16 @@ class LiquidityZones(BaseIndicator):
             self.liquidityzones, highs, lows, closes
         )
 
-        # Swept olmamış zone'ları filtrele (aktif zone'lar)
+        # Filter out zones that have not been swept (active zones)
         active_zones = [z for z in self.liquidityzones if not z['swept']]
 
-        # En güçlü zone'ları seç
+        # Select the most powerful zones
         active_zones.sort(key=lambda x: x['strength'], reverse=True)
         active_zones = active_zones[:self.max_zones]
 
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Değer: Aktif likidite zone'ları
+        # Value: Active liquidity zones
         zones = [
             {
                 'type': zone['type'],
@@ -410,9 +410,9 @@ class LiquidityZones(BaseIndicator):
             candle: Yeni mum verisi (dict)
             
         Returns:
-            IndicatorResult: Güncel Liquidity Zones
+            IndicatorResult: Current Liquidity Zones
         """
-        # Buffer yönetimi
+        # Buffer management
         if not hasattr(self, '_high_buffer'):
             from collections import deque
             max_len = self.get_required_periods() + 50
@@ -452,7 +452,7 @@ class LiquidityZones(BaseIndicator):
                 metadata={'total_zones': 0}
             )
             
-        # Hesaplama
+        # Calculation
         highs = np.array(self._high_buffer)
         lows = np.array(self._low_buffer)
         closes = np.array(self._close_buffer)
@@ -461,18 +461,18 @@ class LiquidityZones(BaseIndicator):
         swing_highs = self._find_swing_highs(highs)
         swing_lows = self._find_swing_lows(lows)
         
-        # Likidite zone'ları oluştur
+        # Create liquidity zones
         self.liquidityzones = self._create_liquidityzones(swing_highs, swing_lows)
         
         # Sweep tespiti
         self.liquidityzones = self._detect_sweeps(self.liquidityzones, highs, lows, closes)
         
-        # Swept olmamış zone'ları filtrele
+        # Filter out zones that have not been swept.
         active_zones = [z for z in self.liquidityzones if not z['swept']]
         active_zones.sort(key=lambda x: x['strength'], reverse=True)
         active_zones = active_zones[:self.max_zones]
         
-        # Değer: Aktif likidite zone'ları
+        # Value: Active liquidity zones
         zones = [
             {
                 'type': zone['type'],
@@ -549,37 +549,37 @@ class LiquidityZones(BaseIndicator):
         current_price: float
     ) -> SignalType:
         """
-        Liquidity zone'lardan sinyal üret
+        Generate signals from liquidity zones.
 
         Args:
-            zones: Aktif zone'lar
-            swept_zones: Yakın zamanda sweep edilmiş zone'lar
-            current_price: Güncel fiyat
+            zones: Active zones
+            swept_zones: Recently swept zones
+            current_price: Current price
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
-        # Sweep sonrası ters yönde sinyal
+        # Signal in the reverse direction after sweep
         if swept_zones:
             last_sweep = swept_zones[-1]
 
-            # Sell-side sweep -> Bullish (aşağı dönüş)
+            # Sell-side sweep -> Bullish (downward reversal)
             if 'sell_side' in last_sweep['type']:
                 return SignalType.BUY
 
-            # Buy-side sweep -> Bearish (yukarı dönüş)
+            # Buy-side sweep -> Bearish (reversal upwards)
             elif 'buy_side' in last_sweep['type']:
                 return SignalType.SELL
 
-        # Zone'a yaklaşma
+        # Approaching the zone
         for zone in zones:
             distance_percent = abs(current_price - zone['level']) / current_price * 100
 
-            if distance_percent < 1.0:  # %1 içinde
+            if distance_percent < 1.0:  # within 1%
                 if 'buy_side' in zone['type']:
                     return SignalType.BUY  # Destek
                 elif 'sell_side' in zone['type']:
-                    return SignalType.SELL  # Direnç
+                    return SignalType.SELL  # Resistance
 
         return SignalType.HOLD
 
@@ -588,10 +588,10 @@ class LiquidityZones(BaseIndicator):
         Liquidity zone'lardan trend belirle
 
         Args:
-            zones: Likidite zone'ları
+            zones: Liquidity zones
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         if not zones:
             return TrendDirection.NEUTRAL
@@ -604,14 +604,14 @@ class LiquidityZones(BaseIndicator):
         )
 
         if buy_side_strength > sell_side_strength * 1.2:
-            return TrendDirection.UP  # Daha fazla aşağı likidite
+            return TrendDirection.UP  # More downward liquidity
         elif sell_side_strength > buy_side_strength * 1.2:
-            return TrendDirection.DOWN  # Daha fazla yukarı likidite
+            return TrendDirection.DOWN  # More upward liquidity
 
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'left_bars': 5,
             'right_bars': 5,
@@ -633,22 +633,22 @@ __all__ = ['LiquidityZones']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """Liquidity Zones indikatör testi"""
+    """Liquidity Zones indicator test"""
 
     print("\n" + "="*60)
     print("LIQUIDITY ZONES TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(60)]
 
-    # Liquidity sweep simülasyonu
+    # Liquidity sweep simulation
     base_price = 100
     prices = []
     highs = []
@@ -656,15 +656,15 @@ if __name__ == "__main__":
 
     for i in range(60):
         if i == 20:
-            # Swing high oluştur
+            # Create swing high
             price = base_price + 5
             prices.append(price)
             highs.append(price + 0.5)
             lows.append(price - 0.3)
         elif i == 35:
-            # Liquidity sweep (yanlış kırılma)
-            price = base_price + 5.5  # Swing high'ı geç
-            prices.append(base_price + 4.8)  # Geri dön
+            # Liquidity sweep (incorrect breakage)
+            price = base_price + 5.5  # Exceed the swing high
+            prices.append(base_price + 4.8)  # Return
             highs.append(price)
             lows.append(base_price + 4.5)
         else:
@@ -683,11 +683,11 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     liq = LiquidityZones(
         left_bars=5,
         right_bars=5,
@@ -695,30 +695,30 @@ if __name__ == "__main__":
         max_zones=5,
         sweep_lookback=3
     )
-    print(f"   [OK] Oluşturuldu: {liq}")
+    print(f"   [OK] Created: {liq}")
     print(f"   [OK] Kategori: {liq.category.value}")
-    print(f"   [OK] Gerekli periyot: {liq.get_required_periods()}")
+    print(f"   [OK] Required period: {liq.get_required_periods()}")
 
     result = liq(data)
-    print(f"   [OK] Toplam Zone: {result.metadata['total_zones']}")
+    print(f"   [OK] Total Zone: {result.metadata['total_zones']}")
     print(f"   [OK] Sell-Side: {result.metadata['sell_side_zones']}")
     print(f"   [OK] Buy-Side: {result.metadata['buy_side_zones']}")
-    print(f"   [OK] Yakın Sweep: {result.metadata['recent_sweeps']}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Recent Sweep: {result.metadata['recent_sweeps']}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength}")
+    print(f"   [OK] Power: {result.strength}")
 
-    # Test 2: Zone detayları
-    print("\n3. Zone detayları...")
+    # Test 2: Zone details
+    print("\n3. Zone details...")
     if result.value:
         for i, zone in enumerate(result.value[:3]):
             print(f"   [OK] Zone #{i+1}:")
             print(f"       - Tip: {zone['type']}")
             print(f"       - Seviye: {zone['level']:.2f}")
-            print(f"       - Güç: {zone['strength']}")
+            print(f"       - Power: {zone['strength']}")
             print(f"       - Swept: {zone['swept']}")
     else:
-        print("   [OK] Aktif zone bulunamadı")
+        print("   [OK] Active zone not found")
 
     # Test 3: Swept zone'lar
     print("\n4. Swept zone'lar...")
@@ -729,30 +729,30 @@ if __name__ == "__main__":
             print(f"       - Seviye: {swept['level']:.2f}")
             print(f"       - Index: {swept['swept_at']}")
     else:
-        print("   [OK] Yakın zamanda sweep bulunamadı")
+        print("   [OK] No recent sweep found")
 
-    # Test 4: Farklı parametreler
-    print("\n5. Farklı parametre testi...")
+    # Test 4: Different parameters
+    print("\n5. Different parameter test...")
     for tolerance in [0.05, 0.1, 0.2]:
         liq_test = LiquidityZones(equal_tolerance=tolerance)
         result = liq_test.calculate(data)
         print(f"   [OK] LIQ(tolerance={tolerance}): {result.metadata['total_zones']} zones")
 
-    # Test 5: İstatistikler
-    print("\n6. İstatistik testi...")
+    # Test 5: Statistics
+    print("\n6. Statistical test...")
     stats = liq.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 6: Metadata
     print("\n7. Metadata testi...")
     metadata = liq.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Tip: {metadata.indicator_type.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

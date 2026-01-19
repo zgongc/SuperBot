@@ -5,17 +5,17 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    Bollinger Bands - Volatilite bantları
-    Fiyatın ortalama etrafındaki standart sapma bantları
-    Aşırı alım/satım ve volatilite ölçümü için kullanılır
+Description:
+    Bollinger Bands - Volatility bands
+    Standard deviation bands around the average price
+    Used for measuring overbought/oversold conditions and volatility
 
-Formül:
+Formula:
     Middle Band = SMA(close, period)
     Upper Band = Middle + (std_dev * multiplier)
     Lower Band = Middle - (std_dev * multiplier)
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -38,12 +38,12 @@ class BollingerBands(BaseIndicator):
     """
     Bollinger Bands
 
-    Fiyatın volatilite bantlarını oluşturarak aşırı alım/satım seviyelerini gösterir.
-    Bantlar daraldığında volatilite düşük, genişlediğinde yüksektir.
+    It creates volatility bands to indicate overbought/oversold levels.
+    When the bands narrow, volatility is low; when they widen, volatility is high.
 
     Args:
-        period: SMA periyodu (varsayılan: 20)
-        std_dev: Standart sapma çarpanı (varsayılan: 2.0)
+        period: SMA period (default: 20)
+        std_dev: Standard deviation factor (default: 2.0)
     """
 
     def __init__(
@@ -56,7 +56,7 @@ class BollingerBands(BaseIndicator):
         self.period = period
         self.std_dev = std_dev
 
-        # SMA indikatörünü kullan (code reuse)
+        # Use the SMA indicator (code reuse)
         self._sma = SMA(period=period)
 
         super().__init__(
@@ -72,20 +72,20 @@ class BollingerBands(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.period
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 2:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Periyot en az 2 olmalı"
+                "The period must be at least 2"
             )
         if self.std_dev <= 0:
             raise InvalidParameterError(
                 self.name, 'std_dev', self.std_dev,
-                "Standart sapma çarpanı pozitif olmalı"
+                "The standard deviation multiplier must be positive."
             )
         return True
 
@@ -97,7 +97,7 @@ class BollingerBands(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: Bollinger Bands değerleri (upper, middle, lower)
+            IndicatorResult: Bollinger Bands values (upper, middle, lower)
         """
         close = data['close'].values
 
@@ -107,20 +107,20 @@ class BollingerBands(BaseIndicator):
         # Standart sapma
         std = np.std(close[-self.period:], ddof=0)
 
-        # Upper ve Lower Bands
+        # Upper and Lower Bands
         upper = middle + (self.std_dev * std)
         lower = middle - (self.std_dev * std)
 
         current_price = close[-1]
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Fiyatın bantlar içindeki pozisyonu (%B)
+        # The position of the price within the bands (%B)
         if upper != lower:
             percent_b = (current_price - lower) / (upper - lower)
         else:
             percent_b = 0.5
 
-        # Bant genişliği (volatilite göstergesi)
+        # Bandwidth (volatility indicator)
         if middle != 0:
             bandwidth = ((upper - lower) / middle) * 100
         else:
@@ -138,7 +138,7 @@ class BollingerBands(BaseIndicator):
             timestamp=timestamp,
             signal=self.get_signal(percent_b),
             trend=self.get_trend(current_price, middle),
-            strength=min(abs(percent_b - 0.5) * 200, 100),  # 0-100 arası normalize et
+            strength=min(abs(percent_b - 0.5) * 200, 100),  # Normalize to a range of 0-100
             metadata={
                 'period': self.period,
                 'std_dev': self.std_dev,
@@ -150,7 +150,7 @@ class BollingerBands(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        ⚡ VECTORIZED batch Bollinger Bands calculation - BACKTEST için
+        ⚡ VECTORIZED batch Bollinger Bands calculation - for BACKTEST
 
         Bollinger Bands Formula:
             Middle Band = SMA(close, period)
@@ -179,7 +179,7 @@ class BollingerBands(BaseIndicator):
         upper = middle + (self.std_dev * std)
         lower = middle - (self.std_dev * std)
 
-        # Create result DataFrame (calculate() ile aynı key'ler - prefix yok)
+        # Create result DataFrame (same keys as calculate() - no prefix)
         result = pd.DataFrame({
             'upper': upper,
             'middle': middle,
@@ -193,11 +193,11 @@ class BollingerBands(BaseIndicator):
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
         """
-        Warmup buffer - update() için gerekli
+        Warmup buffer - required for update().
 
         Args:
             data: OHLCV DataFrame (warmup verisi)
-            symbol: Sembol adı (opsiyonel)
+            symbol: Symbol name (optional)
         """
         super().warmup_buffer(data, symbol)
 
@@ -231,7 +231,7 @@ class BollingerBands(BaseIndicator):
             symbol: Symbol identifier (for multi-symbol support)
 
         Returns:
-            IndicatorResult: Güncel Bollinger Bands değerleri
+            IndicatorResult: Current Bollinger Bands values
         """
         from collections import deque
 
@@ -301,34 +301,34 @@ class BollingerBands(BaseIndicator):
 
     def get_signal(self, percent_b: float) -> SignalType:
         """
-        %B değerinden sinyal üret
+        Generate a signal from the %B value.
 
         Args:
-            percent_b: Fiyatın bantlar içindeki pozisyonu (0-1 arası)
+            percent_b: The position of the price within the bands (between 0 and 1).
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
-        if percent_b <= 0:  # Alt bantta veya altında
+        if percent_b <= 0:  # Below or in the lower band
             return SignalType.BUY
-        elif percent_b >= 1:  # Üst bantta veya üstünde
+        elif percent_b >= 1:  # In or above the upper band
             return SignalType.SELL
-        elif percent_b < 0.2:  # Alt banda yakın
+        elif percent_b < 0.2:  # Close to the lower band
             return SignalType.BUY
-        elif percent_b > 0.8:  # Üst banda yakın
+        elif percent_b > 0.8:  # Close to the upper band
             return SignalType.SELL
         return SignalType.HOLD
 
     def get_trend(self, price: float, middle: float) -> TrendDirection:
         """
-        Fiyat ve orta banttan trend belirle
+        Determine the trend based on the price and middle band.
 
         Args:
-            price: Güncel fiyat
-            middle: Orta bant değeri
+            price: Current price
+            middle: Middle band value
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         if price > middle:
             return TrendDirection.UP
@@ -337,7 +337,7 @@ class BollingerBands(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'period': 20,
             'std_dev': 2.0
@@ -356,22 +356,22 @@ __all__ = ['BollingerBands']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """Bollinger Bands indikatör testi"""
+    """Bollinger Bands indicator test"""
 
     print("\n" + "="*60)
     print("BOLLINGER BANDS TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating example OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(30)]
 
-    # Fiyat hareketini simüle et
+    # Simulate price movement
     base_price = 100
     prices = [base_price]
     for i in range(29):
@@ -387,55 +387,55 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     bb = BollingerBands(period=20, std_dev=2.0)
-    print(f"   [OK] Oluşturuldu: {bb}")
+    print(f"   [OK] Created: {bb}")
     print(f"   [OK] Kategori: {bb.category.value}")
     print(f"   [OK] Tip: {bb.indicator_type.value}")
-    print(f"   [OK] Gerekli periyot: {bb.get_required_periods()}")
+    print(f"   [OK] Required period: {bb.get_required_periods()}")
 
     result = bb(data)
     print(f"   [OK] Upper Band: {result.value['upper']}")
     print(f"   [OK] Middle Band: {result.value['middle']}")
     print(f"   [OK] Lower Band: {result.value['lower']}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
     print(f"   [OK] %B: {result.metadata['percent_b']}")
     print(f"   [OK] Bandwidth: {result.metadata['bandwidth']:.2f}%")
 
-    # Test 2: Farklı periyotlar
-    print("\n3. Farklı periyot testi...")
+    # Test 2: Different periods
+    print("\n3. Different period test...")
     for period in [10, 20, 30]:
         bb_test = BollingerBands(period=period)
         result = bb_test.calculate(data)
         print(f"   [OK] BB({period}): Upper={result.value['upper']:.2f}, Middle={result.value['middle']:.2f}, Lower={result.value['lower']:.2f}")
 
-    # Test 3: Farklı standart sapma çarpanları
-    print("\n4. Farklı std_dev testi...")
+    # Test 3: Different standard deviation factors
+    print("\n4. Different std_dev test...")
     for std_dev in [1.5, 2.0, 2.5]:
         bb_test = BollingerBands(period=20, std_dev=std_dev)
         result = bb_test.calculate(data)
         print(f"   [OK] BB(std={std_dev}): Bandwidth={result.metadata['bandwidth']:.2f}%")
 
-    # Test 4: İstatistikler
-    print("\n5. İstatistik testi...")
+    # Test 4: Statistics
+    print("\n5. Statistical test...")
     stats = bb.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 5: Metadata
     print("\n6. Metadata testi...")
     metadata = bb.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Tip: {metadata.indicator_type.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

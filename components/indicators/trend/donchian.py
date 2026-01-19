@@ -5,25 +5,25 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    Donchian Channel - Donchian Kanalı
-    Richard Donchian tarafından geliştirilmiş basit ama etkili kanal indikatörü
-    Belirli periyottaki en yüksek ve en düşük değerleri kullanır
+Description:
+    Donchian Channel - Donchian Channel
+    A simple but effective channel indicator developed by Richard Donchian
+    Uses the highest and lowest values within a specific period.
 
-    Kullanım:
+    Usage:
     - Breakout stratejileri
-    - Trend yönünü belirleme
-    - Destek/direnç seviyeleri
-    - Volatilite ölçümü
+    - Determining the trend direction
+    - Support/resistance levels
+    - Volatility measurement
 
-Formül:
+Formula:
     Upper Band = Highest High (period)
     Lower Band = Lowest Low (period)
     Middle Band = (Upper Band + Lower Band) / 2
 
-    Varsayılan: period=20
+    Default: period=20
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -45,10 +45,10 @@ class DonchianChannel(BaseIndicator):
     """
     Donchian Channel Indicator
 
-    Belirli periyottaki en yüksek ve en düşük değerlerden kanal oluşturur.
+    Creates a channel from the highest and lowest values within a specified period.
 
     Args:
-        period: Kanal periyodu (varsayılan: 20)
+        period: Channel period (default: 20)
     """
 
     def __init__(
@@ -71,15 +71,15 @@ class DonchianChannel(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.period
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 1:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Period pozitif olmalı"
+                "Period must be positive"
             )
         return True
 
@@ -91,34 +91,34 @@ class DonchianChannel(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: Upper, Middle, Lower band değerleri
+            IndicatorResult: Upper, Middle, Lower band values
         """
         high = data['high'].values
         low = data['low'].values
         close = data['close'].values
 
-        # Upper Band = En yüksek değer
+        # Upper Band = Highest value
         upper = np.max(high[-self.period:])
 
-        # Lower Band = En düşük değer
+        # Lower Band = The lowest value
         lower = np.min(low[-self.period:])
 
         # Middle Band = Ortalama
         middle = (upper + lower) / 2
 
-        # Mevcut fiyat
+        # Current price
         current_price = close[-1]
 
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Trend ve sinyal belirleme
+        # Trend and signal determination
         trend = self.get_trend(current_price, middle)
         signal = self.get_signal(current_price, upper, middle, lower)
 
-        # Band genişliği
+        # Bandwidth
         bandwidth = ((upper - lower) / middle) * 100
 
-        # Fiyatın kanal içindeki pozisyonu (0-100)
+        # Price position within the channel (0-100)
         if upper != lower:
             position_pct = ((current_price - lower) / (upper - lower)) * 100
         else:
@@ -148,7 +148,7 @@ class DonchianChannel(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        ⚡ VECTORIZED batch Donchian Channel calculation - BACKTEST için
+        ⚡ VECTORIZED batch Donchian Channel calculation - for BACKTEST
 
         Donchian Formula:
             Upper = Highest High (period)
@@ -177,7 +177,7 @@ class DonchianChannel(BaseIndicator):
         # Middle Band = Average
         middle = (upper + lower) / 2
 
-        # Create result DataFrame (calculate() ile aynı key'ler)
+        # Create result DataFrame (same keys as calculate())
         result = pd.DataFrame({
             'upper': upper,
             'middle': middle,
@@ -190,7 +190,7 @@ class DonchianChannel(BaseIndicator):
         return result
 
     def _get_position(self, price: float, upper: float, middle: float, lower: float) -> str:
-        """Fiyatın kanal içindeki pozisyonu"""
+        """Price position within the channel"""
         if price >= upper:
             return 'at_upper'  # Breakout
         elif price > middle:
@@ -201,7 +201,7 @@ class DonchianChannel(BaseIndicator):
             return 'at_lower'  # Breakdown
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
-        """Warmup buffer - update() için gerekli"""
+        """Warmup buffer - required for update()"""
         super().warmup_buffer(data, symbol)
         from collections import deque
         max_len = self.get_required_periods() + 50
@@ -267,11 +267,11 @@ class DonchianChannel(BaseIndicator):
 
     def get_signal(self, price: float, upper: float, middle: float, lower: float) -> SignalType:
         """
-        Donchian Channel'dan sinyal üret
+        Generate a signal from the Donchian Channel.
 
         Args:
-            price: Mevcut fiyat
-            upper: Üst band
+            price: Current price
+            upper: Upper bound
             middle: Orta band
             lower: Alt band
 
@@ -280,7 +280,7 @@ class DonchianChannel(BaseIndicator):
         """
         # Breakout stratejisi
         if price >= upper:
-            return SignalType.BUY  # Üst banda breakout - BUY
+            return SignalType.BUY  # Breakout above the upper band - BUY
         elif price <= lower:
             return SignalType.SELL  # Alt banda breakdown - SELL
 
@@ -291,7 +291,7 @@ class DonchianChannel(BaseIndicator):
         Donchian Channel'dan trend belirle
 
         Args:
-            price: Mevcut fiyat
+            price: Current price
             middle: Orta band
 
         Returns:
@@ -304,17 +304,17 @@ class DonchianChannel(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _calculate_strength(self, price: float, upper: float, middle: float, lower: float) -> float:
-        """Sinyal gücünü hesapla (0-100)"""
-        # Fiyat üst veya alt banda ne kadar yakın?
+        """Calculate signal strength (0-100)"""
+        # How close is the price to the upper or lower band?
         upper_distance = abs(price - upper) / upper * 100
         lower_distance = abs(price - lower) / lower * 100
 
-        # En yakın bandın tersi olarak güç
+        # Power as the inverse of the nearest band
         min_distance = min(upper_distance, lower_distance)
         return max(0, 100 - min_distance * 20)
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'period': 20
         }
@@ -336,30 +336,30 @@ __all__ = ['DonchianChannel']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """Donchian Channel indikatör testi"""
+    """Donchian Channel indicator test"""
 
     print("\n" + "="*60)
     print("DONCHIAN CHANNEL TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(50)]
 
-    # Breakout simülasyonu
+    # Breakout simulation
     base_price = 100
     prices = [base_price]
     for i in range(49):
         if i < 30:
-            trend = 0.2  # Yavaş hareket
+            trend = 0.2  # Slow movement
             noise = np.random.randn() * 1.0
         else:
-            trend = 1.5  # Güçlü breakout
+            trend = 1.5  # Strong breakout
             noise = np.random.randn() * 1.5
 
         prices.append(prices[-1] + trend + noise)
@@ -373,68 +373,68 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     donchian = DonchianChannel(period=20)
-    print(f"   [OK] Oluşturuldu: {donchian}")
+    print(f"   [OK] Created: {donchian}")
     print(f"   [OK] Kategori: {donchian.category.value}")
     print(f"   [OK] Tip: {donchian.indicator_type.value}")
-    print(f"   [OK] Gerekli periyot: {donchian.get_required_periods()}")
+    print(f"   [OK] Required period: {donchian.get_required_periods()}")
 
     result = donchian(data)
     print(f"   [OK] Upper Band: {result.value['upper']}")
     print(f"   [OK] Middle Band: {result.value['middle']}")
     print(f"   [OK] Lower Band: {result.value['lower']}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Power: {result.strength:.2f}")
     print(f"   [OK] Metadata: {result.metadata}")
 
     # Test 2: Band analizi
     print("\n3. Band analizi...")
     print(f"   [OK] Bandwidth: {result.metadata['bandwidth']:.2f}%")
-    print(f"   [OK] Fiyat pozisyonu: {result.metadata['position']}")
-    print(f"   [OK] Pozisyon %: {result.metadata['position_pct']:.2f}%")
+    print(f"   [OK] Price position: {result.metadata['position']}")
+    print(f"   [OK] Position %: {result.metadata['position_pct']:.2f}%")
 
     # Test 3: Breakout testi
     print("\n4. Breakout testi...")
     if result.metadata['position'] == 'at_upper':
-        print(f"   [OK] Üst banda BREAKOUT - Güçlü BUY sinyali")
+        print(f"   [OK] BREAKOUT in the upper band - Strong BUY signal")
     elif result.metadata['position'] == 'at_lower':
-        print(f"   [OK] Alt banda BREAKDOWN - Güçlü SELL sinyali")
+        print(f"   [OK] Breakdown in the lower band - Strong SELL signal")
     else:
-        print(f"   [OK] Kanal içinde - Breakout bekleniyor")
+        print(f"   [OK] Channel inside - Breakout expected")
 
-    # Test 4: Farklı veri dilimleri (breakout öncesi/sonrası)
+    # Test 4: Different data slices (before/after breakout)
     print("\n5. Breakout analizi (zaman serisi)...")
     for i in [25, 35, 45]:
         data_slice = data.iloc[:i+1]
         result = donchian.calculate(data_slice)
         print(f"   [OK] Mum {i}: Pos={result.metadata['position']}, BW={result.metadata['bandwidth']:.2f}%")
 
-    # Test 5: Farklı periyotlar
-    print("\n6. Farklı periyot testi...")
+    # Test 5: Different periods
+    print("\n6. Different period test...")
     for period in [10, 20, 50]:
         don_test = DonchianChannel(period=period)
         result = don_test.calculate(data)
         print(f"   [OK] Donchian({period}): BW={result.metadata['bandwidth']:.2f}%")
 
-    # Test 6: İstatistikler
-    print("\n7. İstatistik testi...")
+    # Test 6: Statistics
+    print("\n7. Statistical test...")
     stats = donchian.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 7: Metadata
     print("\n8. Metadata testi...")
     metadata = donchian.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Output'lar: {metadata.output_names}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

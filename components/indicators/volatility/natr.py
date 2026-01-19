@@ -5,16 +5,16 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    NATR (Normalized Average True Range) - Normalleştirilmiş ATR
-    ATR'yi fiyata bölerek normalize eder
-    Farklı fiyat seviyelerindeki varlıkları karşılaştırmak için kullanılır
-    Yüzde cinsinden volatilite gösterir
+Description:
+    NATR (Normalized Average True Range) - Normalized ATR
+    Normalizes ATR by dividing it by the price.
+    Used to compare assets at different price levels.
+    Displays volatility as a percentage.
 
-Formül:
+Formula:
     NATR = (ATR / Close) × 100
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -36,11 +36,11 @@ class NATR(BaseIndicator):
     """
     Normalized Average True Range
 
-    ATR'yi fiyata bölerek yüzde cinsinden volatilite ölçümü sağlar.
-    Farklı fiyat seviyelerindeki varlıkları karşılaştırmak için kullanılır.
+    It provides a volatility measurement in percentage by dividing the ATR by the price.
+    It is used to compare assets at different price levels.
 
     Args:
-        period: ATR periyodu (varsayılan: 14)
+        period: ATR period (default: 14)
     """
 
     def __init__(
@@ -63,15 +63,15 @@ class NATR(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
-        return self.period + 1  # TR hesabı için bir önceki mum gerekli
+        """Minimum required number of periods"""
+        return self.period + 1  # The previous candle is required for the TR calculation
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 1:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Periyot pozitif olmalı"
+                "The period must be positive"
             )
         return True
 
@@ -83,7 +83,7 @@ class NATR(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: NATR değeri (yüzde)
+            IndicatorResult: NATR value (percentage)
         """
         high = data['high'].values
         low = data['low'].values
@@ -111,7 +111,7 @@ class NATR(BaseIndicator):
         current_price = close[-1]
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # NATR hesapla (yüzde cinsinden)
+        # Calculate NATR (in percentage)
         if current_price > 0:
             natr_value = (atr_value / current_price) * 100
         else:
@@ -124,8 +124,8 @@ class NATR(BaseIndicator):
             value=round(natr_value, 4),
             timestamp=timestamp,
             signal=self.get_signal(natr_value),
-            trend=TrendDirection.NEUTRAL,  # NATR trend göstermez
-            strength=min(natr_value * 10, 100),  # 0-100 arası normalize et
+            trend=TrendDirection.NEUTRAL,  # Does not show NATR trend
+            strength=min(natr_value * 10, 100),  # Normalize to a range of 0-100
             metadata={
                 'period': self.period,
                 'atr': round(atr_value, 8),
@@ -136,7 +136,7 @@ class NATR(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.Series:
         """
-        ⚡ VECTORIZED batch NATR calculation - BACKTEST için
+        ⚡ VECTORIZED batch NATR calculation - for BACKTEST
 
         NATR Formula:
             NATR = (ATR / Close) × 100
@@ -177,18 +177,18 @@ class NATR(BaseIndicator):
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
         """
-        Warmup buffer - update() için gerekli
+        Warmup buffer - required for update().
 
         Args:
             data: OHLCV DataFrame (warmup verisi)
-            symbol: Sembol adı (opsiyonel)
+            symbol: Symbol name (optional)
         """
         super().warmup_buffer(data, symbol)
 
         from collections import deque
         max_len = self.get_required_periods() + 50
 
-        # Buffer'ları oluştur ve doldur
+        # Create and fill the buffers
         self._high_buffer = deque(maxlen=max_len)
         self._low_buffer = deque(maxlen=max_len)
         self._close_buffer = deque(maxlen=max_len)
@@ -253,26 +253,26 @@ class NATR(BaseIndicator):
 
     def get_signal(self, natr_value: float) -> SignalType:
         """
-        NATR değerinden sinyal üret
+        Generate a signal from the NATR value.
 
         Args:
-            natr_value: NATR değeri (yüzde)
+            natr_value: NATR value (percentage)
 
         Returns:
-            SignalType: Volatilite seviyesine göre sinyal
+            SignalType: Signal based on volatility level.
         """
-        # Çok yüksek volatilite: dikkatli ol
+        # Very high volatility: be careful
         if natr_value > 5.0:
-            return SignalType.SELL  # Yüksek risk
+            return SignalType.SELL  # High risk
         # Normal volatilite
         elif natr_value > 2.0:
             return SignalType.HOLD
-        # Düşük volatilite: potansiyel fırsat
+        # Low volatility: potential opportunity
         else:
             return SignalType.BUY
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'period': 14
         }
@@ -290,22 +290,22 @@ __all__ = ['NATR']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """NATR indikatör testi"""
+    """NATR indicator test"""
 
     print("\n" + "="*60)
     print("NATR (NORMALIZED AVERAGE TRUE RANGE) TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(30)]
 
-    # Fiyat hareketini simüle et
+    # Simulate price movement
     base_price = 100
     prices = [base_price]
     for i in range(29):
@@ -321,41 +321,41 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     natr = NATR(period=14)
-    print(f"   [OK] Oluşturuldu: {natr}")
+    print(f"   [OK] Created: {natr}")
     print(f"   [OK] Kategori: {natr.category.value}")
-    print(f"   [OK] Gerekli periyot: {natr.get_required_periods()}")
+    print(f"   [OK] Required period: {natr.get_required_periods()}")
 
     result = natr(data)
-    print(f"   [OK] NATR Değeri: {result.value}%")
+    print(f"   [OK] NATR Value: {result.value}%")
     print(f"   [OK] ATR: {result.metadata['atr']}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Signal: {result.signal.value}")
+    print(f"   [OK] Power: {result.strength:.2f}")
     print(f"   [OK] Metadata: {result.metadata}")
 
-    # Test 2: Farklı periyotlar
-    print("\n3. Farklı periyot testi...")
+    # Test 2: Different periods
+    print("\n3. Different period test...")
     for period in [7, 14, 21]:
         natr_test = NATR(period=period)
         result = natr_test.calculate(data)
         print(f"   [OK] NATR({period}): {result.value:.2f}% | ATR: {result.metadata['atr']:.4f}")
 
-    # Test 3: Farklı fiyat seviyelerinde karşılaştırma
-    print("\n4. Farklı fiyat seviyesi karşılaştırma testi...")
+    # Test 3: Comparison at different price levels
+    print("\n4. Different price level comparison test...")
 
-    # Düşük fiyatlı varlık
+    # Low-cost asset
     low_price_data = data.copy()
     low_price_data['open'] = data['open'] / 10
     low_price_data['high'] = data['high'] / 10
     low_price_data['low'] = data['low'] / 10
     low_price_data['close'] = data['close'] / 10
 
-    # Yüksek fiyatlı varlık
+    # High-priced asset
     high_price_data = data.copy()
     high_price_data['open'] = data['open'] * 10
     high_price_data['high'] = data['high'] * 10
@@ -366,13 +366,13 @@ if __name__ == "__main__":
     result_low = natr.calculate(low_price_data)
     result_high = natr.calculate(high_price_data)
 
-    print(f"   [OK] Normal Fiyat (~{data['close'].iloc[-1]:.2f}): NATR={result_normal.value:.2f}%")
-    print(f"   [OK] Düşük Fiyat (~{low_price_data['close'].iloc[-1]:.2f}): NATR={result_low.value:.2f}%")
-    print(f"   [OK] Yüksek Fiyat (~{high_price_data['close'].iloc[-1]:.2f}): NATR={result_high.value:.2f}%")
-    print(f"   [INFO] NATR değerleri normalize olduğu için benzer olmalı")
+    print(f"   [OK] Normal Price (~{data['close'].iloc[-1]:.2f}): NATR={result_normal.value:.2f}%")
+    print(f"   [OK] Low Price (~{low_price_data['close'].iloc[-1]:.2f}): NATR={result_low.value:.2f}%")
+    print(f"   [OK] High Price (~{high_price_data['close'].iloc[-1]:.2f}): NATR={result_high.value:.2f}%")
+    print(f"   [INFO] NATR values should be similar because they are normalized")
 
-    # Test 4: Düşük volatilite
-    print("\n5. Düşük volatilite testi...")
+    # Test 4: Low volatility
+    print("\n5. Low volatility test...")
     low_vol_data = pd.DataFrame({
         'timestamp': timestamps,
         'open': [100.0] * 30,
@@ -382,14 +382,14 @@ if __name__ == "__main__":
         'volume': [1000] * 30
     })
     result = natr.calculate(low_vol_data)
-    print(f"   [OK] Düşük Vol NATR: {result.value:.4f}%")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Low Voltage NATR: {result.value:.4f}%")
+    print(f"   [OK] Signal: {result.signal.value}")
 
-    # Test 5: Yüksek volatilite
-    print("\n6. Yüksek volatilite testi...")
+    # Test 5: High volatility
+    print("\n6. High volatility test...")
     high_vol_prices = [100]
     for i in range(29):
-        change = np.random.randn() * 10  # Yüksek volatilite
+        change = np.random.randn() * 10  # High volatility
         high_vol_prices.append(high_vol_prices[-1] + change)
 
     high_vol_data = pd.DataFrame({
@@ -401,24 +401,24 @@ if __name__ == "__main__":
         'volume': [1000] * 30
     })
     result = natr.calculate(high_vol_data)
-    print(f"   [OK] Yüksek Vol NATR: {result.value:.2f}%")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] High Voltage NATR: {result.value:.2f}%")
+    print(f"   [OK] Signal: {result.signal.value}")
 
-    # Test 6: İstatistikler
-    print("\n7. İstatistik testi...")
+    # Test 6: Statistics
+    print("\n7. Statistical test...")
     stats = natr.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 7: Metadata
     print("\n8. Metadata testi...")
     metadata = natr.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Tip: {metadata.indicator_type.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

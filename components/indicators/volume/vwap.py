@@ -5,17 +5,17 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    VWAP (Volume Weighted Average Price) - Hacim ağırlıklı ortalama fiyat
-    Günlük işlemlerin ortalama fiyatını hacim ile ağırlıklandırır
-    Fiyat > VWAP = Güçlü (alıcı baskısı)
-    Fiyat < VWAP = Zayıf (satıcı baskısı)
+Description:
+    VWAP (Volume Weighted Average Price) - Volume weighted average price
+    Calculates the average price of daily transactions, weighted by volume.
+    Price > VWAP = Strong (buyer pressure)
+    Price < VWAP = Weak (seller pressure)
 
-Formül:
+Formula:
     VWAP = Σ(Typical Price × Volume) / Σ(Volume)
     Typical Price = (High + Low + Close) / 3
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -37,11 +37,11 @@ class VWAP(BaseIndicator):
     """
     Volume Weighted Average Price
 
-    Hacim ağırlıklı ortalama fiyat hesaplar.
-    Kurumsal yatırımcıların ortalama giriş fiyatını gösterir.
+    Calculates the volume-weighted average price.
+    Shows the average entry price for institutional investors.
 
     Args:
-        period: VWAP hesaplama periyodu (varsayılan: 20, 0=tüm data)
+        period: VWAP calculation period (default: 20, 0=all data)
     """
 
     def __init__(
@@ -64,15 +64,15 @@ class VWAP(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return max(self.period, 1) if self.period > 0 else 1
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 0:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Periyot negatif olamaz (0=tüm data)"
+                "Period cannot be negative (0=all data)"
             )
         return True
 
@@ -84,7 +84,7 @@ class VWAP(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: VWAP değeri
+            IndicatorResult: VWAP value
         """
         high = data['high'].values
         low = data['low'].values
@@ -94,7 +94,7 @@ class VWAP(BaseIndicator):
         # Typical Price hesapla
         typical_price = (high + low + close) / 3
 
-        # Period seçimi (0 ise tüm data)
+        # Period selection (0 means all data)
         if self.period == 0 or len(data) <= self.period:
             tp_vol = typical_price * volume
             vwap_value = np.sum(tp_vol) / np.sum(volume)
@@ -126,7 +126,7 @@ class VWAP(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.Series:
         """
-        ⚡ VECTORIZED batch VWAP calculation - BACKTEST için
+        ⚡ VECTORIZED batch VWAP calculation - for BACKTEST
 
         VWAP Formula:
             VWAP = Σ(Typical Price × Volume) / Σ(Volume)
@@ -164,7 +164,7 @@ class VWAP(BaseIndicator):
         return pd.Series(vwap.values, index=data.index, name='vwap')
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
-        """Warmup buffer - update() için gerekli state'i hazırlar"""
+        """Warmup buffer - prepares the necessary state for update()"""
         super().warmup_buffer(data, symbol)
         from collections import deque
         max_len = self.get_required_periods() + 50
@@ -199,7 +199,7 @@ class VWAP(BaseIndicator):
             symbol: Symbol identifier (for multi-symbol support)
 
         Returns:
-            IndicatorResult: Güncel VWAP değeri
+            IndicatorResult: The current VWAP value.
         """
         from collections import deque
 
@@ -269,33 +269,33 @@ class VWAP(BaseIndicator):
 
     def get_signal(self, price: float, vwap: float) -> SignalType:
         """
-        VWAP'a göre sinyal üret
+        Generate a signal based on VWAP.
 
         Args:
-            price: Güncel fiyat
-            vwap: VWAP değeri
+            price: Current price
+            vwap: VWAP value
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
         distance_pct = ((price - vwap) / vwap) * 100
 
-        if distance_pct < -1.0:  # %1'den fazla VWAP altında
+        if distance_pct < -1.0:  # Less than 1% below VWAP
             return SignalType.BUY
-        elif distance_pct > 1.0:  # %1'den fazla VWAP üstünde
+        elif distance_pct > 1.0:  # More than 1% above VWAP
             return SignalType.SELL
         return SignalType.HOLD
 
     def get_trend(self, price: float, vwap: float) -> TrendDirection:
         """
-        VWAP'a göre trend belirle
+        Determine the trend according to VWAP.
 
         Args:
-            price: Güncel fiyat
-            vwap: VWAP değeri
+            price: Current price
+            vwap: VWAP value
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         if price > vwap:
             return TrendDirection.UP
@@ -304,7 +304,7 @@ class VWAP(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'period': 20
         }
@@ -322,22 +322,22 @@ __all__ = ['VWAP']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """VWAP indikatör testi"""
+    """VWAP indicator test"""
 
     print("\n" + "="*60)
     print("VWAP (VOLUME WEIGHTED AVERAGE PRICE) TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating example OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(30)]
 
-    # Fiyat hareketi
+    # Price movement
     base_price = 100
     prices = [base_price]
     volumes = [10000]
@@ -356,53 +356,53 @@ if __name__ == "__main__":
         'volume': volumes
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
-    print(f"   [OK] Hacim aralığı: {min(volumes):.0f} -> {max(volumes):.0f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] Volume range: {min(volumes):.0f} -> {max(volumes):.0f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     vwap = VWAP(period=20)
-    print(f"   [OK] Oluşturuldu: {vwap}")
+    print(f"   [OK] Created: {vwap}")
     print(f"   [OK] Kategori: {vwap.category.value}")
-    print(f"   [OK] Gerekli periyot: {vwap.get_required_periods()}")
+    print(f"   [OK] Required period: {vwap.get_required_periods()}")
 
     result = vwap(data)
-    print(f"   [OK] VWAP Değeri: {result.value:.8f}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] VWAP Value: {result.value:.8f}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Power: {result.strength:.2f}")
     print(f"   [OK] Metadata: {result.metadata}")
 
-    # Test 2: Farklı periyotlar
-    print("\n3. Farklı periyot testi...")
+    # Test 2: Different periods
+    print("\n3. Different period test...")
     for period in [0, 10, 20, 30]:
         vwap_test = VWAP(period=period)
         result = vwap_test.calculate(data)
-        period_str = "Tüm" if period == 0 else str(period)
-        print(f"   [OK] VWAP({period_str}): {result.value:.8f} | Sinyal: {result.signal.value}")
+        period_str = "All" if period == 0 else str(period)
+        print(f"   [OK] VWAP({period_str}): {result.value:.8f} | Signal: {result.signal.value}")
 
     # Test 3: Volume gereksinimi
     print("\n4. Volume gereksinimi testi...")
     metadata = vwap.metadata
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
     assert metadata.requires_volume == True, "VWAP volume gerektirmeli!"
 
-    # Test 4: Fiyat-VWAP ilişkisi
-    print("\n5. Fiyat-VWAP ilişkisi testi...")
+    # Test 4: Price-VWAP relationship
+    print("\n5. Price-VWAP relationship test...")
     result = vwap.calculate(data)
     current_price = data['close'].iloc[-1]
-    print(f"   [OK] Güncel fiyat: {current_price:.8f}")
+    print(f"   [OK] Current price: {current_price:.8f}")
     print(f"   [OK] VWAP: {result.value:.8f}")
     print(f"   [OK] Fark: {result.metadata['distance_pct']:.2f}%")
-    print(f"   [OK] Durum: {'Fiyat VWAP üstünde' if current_price > result.value else 'Fiyat VWAP altında'}")
+    print(f"   [OK] Status: {'Price is above VWAP' if current_price > result.value else 'Price is below VWAP'}")
 
-    # Test 5: İstatistikler
-    print("\n6. İstatistik testi...")
+    # Test 5: Statistics
+    print("\n6. Statistical test...")
     stats = vwap.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

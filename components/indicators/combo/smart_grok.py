@@ -12,7 +12,7 @@ from components.indicators.indicator_types import (
 )
 class SmartGrok(BaseIndicator):
     """
-    Smart Money Concept (SMC) - Geliştirilmiş versiyon
+    Smart Money Concept (SMC) - Improved version
     FVG, Order Blocks, BOS/CHoCH, Market Structure analizi
     """
 
@@ -54,7 +54,7 @@ class SmartGrok(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return max(self.structure_lookback, self.adx_period, self.rsi_period) + 10
 
     def calculate(self, data: pd.DataFrame) -> IndicatorResult:

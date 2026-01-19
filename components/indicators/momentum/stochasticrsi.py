@@ -5,21 +5,21 @@ Version: 2.1.0
 Date: 2025-12-16
 Author: SuperBot Team
 
-Açıklama:
-    Stochastic RSI - RSI'a uygulanan Stochastic osilatörü
-    Aralık: 0-100 arası (daha hassas)
-    Aşırı Alım: > 80
-    Aşırı Satım: < 20
-    RSI'dan daha hassas sinyaller üretir, daha fazla gürültü içerebilir.
+Description:
+    Stochastic RSI - Stochastic oscillator applied to RSI.
+    Range: 0-100 (more sensitive).
+    Overbought: > 80.
+    Oversold: < 20.
+    Generates more sensitive signals than RSI, may contain more noise.
 
-Formül:
+Formula:
     1. RSI hesapla (14 periyot)
     2. StochRSI = (RSI - Min RSI) / (Max RSI - Min RSI) × 100
-       Min/Max son N periyottan alınır
+       The min/max values are taken from the last N periods.
     3. %K = StochRSI
-    4. %D = SMA(%K, 3) (sinyal line)
+    4. %D = SMA(%K, 3) (signal line)
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -42,17 +42,17 @@ class StochasticRSI(BaseIndicator):
     """
     Stochastic RSI
 
-    RSI'a Stochastic formülü uygulayarak daha hassas momentum sinyalleri üretir.
-    Aşırı alım/satım koşullarını daha erken tespit eder.
+    It generates more precise momentum signals by applying the Stochastic formula to the RSI.
+    It detects overbought/oversold conditions earlier.
 
     Args:
-        rsi_period: RSI periyodu (varsayılan: 14)
-        stoch_period: Stochastic periyodu (varsayılan: 14)
-        k_smooth: %K smoothing periyodu (varsayılan: 3)
-        d_smooth: %D smoothing periyodu (varsayılan: 3)
-        overbought: Aşırı alım seviyesi (varsayılan: 80)
-        oversold: Aşırı satım seviyesi (varsayılan: 20)
-        rsi_source: RSI hesaplama kaynağı (varsayılan: 0)
+        rsi_period: RSI period (default: 14)
+        stoch_period: Stochastic period (default: 14)
+        k_smooth: %K smoothing period (default: 3)
+        d_smooth: %D smoothing period (default: 3)
+        overbought: Overbought level (default: 80)
+        oversold: Oversold level (default: 20)
+        rsi_source: RSI calculation source (default: 0)
                     0=close, 1=open, 2=high, 3=low, 4=hl2, 5=hlc3, 6=ohlc4
     """
 
@@ -105,52 +105,52 @@ class StochasticRSI(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.rsi_period + self.stoch_period + max(self.k_smooth, self.d_smooth)
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.rsi_period < 1:
             raise InvalidParameterError(
                 self.name, 'rsi_period', self.rsi_period,
-                "RSI period pozitif olmalı"
+                "RSI period must be positive"
             )
         if self.stoch_period < 1:
             raise InvalidParameterError(
                 self.name, 'stoch_period', self.stoch_period,
-                "Stochastic period pozitif olmalı"
+                "Stochastic period must be positive"
             )
         if self.k_smooth < 1:
             raise InvalidParameterError(
                 self.name, 'k_smooth', self.k_smooth,
-                "K smooth pozitif olmalı"
+                "K smooth must be positive"
             )
         if self.d_smooth < 1:
             raise InvalidParameterError(
                 self.name, 'd_smooth', self.d_smooth,
-                "D smooth pozitif olmalı"
+                "D smooth must be positive"
             )
         if self.oversold >= self.overbought:
             raise InvalidParameterError(
                 self.name, 'levels',
                 f"oversold={self.oversold}, overbought={self.overbought}",
-                "Oversold, overbought'tan küçük olmalı"
+                "Oversold should be smaller than overbought"
             )
         if not (0 <= self.oversold <= 100) or not (0 <= self.overbought <= 100):
             raise InvalidParameterError(
                 self.name, 'levels',
                 f"oversold={self.oversold}, overbought={self.overbought}",
-                "Seviyeler 0-100 arası olmalı"
+                "Levels must be between 0 and 100"
             )
         if self.rsi_source not in self.SOURCE_MAP:
             raise InvalidParameterError(
                 self.name, 'rsi_source', self.rsi_source,
-                f"Geçerli değerler: 0-6 (0=close, 1=open, 2=high, 3=low, 4=hl2, 5=hlc3, 6=ohlc4)"
+                f"Valid values: 0-6 (0=close, 1=open, 2=high, 3=low, 4=hl2, 5=hlc3, 6=ohlc4)"
             )
         return True
 
     def _get_source_values(self, data: pd.DataFrame) -> np.ndarray:
-        """RSI için kaynak değerlerini hesapla"""
+        """Calculate source values for RSI"""
         source_name = self.SOURCE_MAP.get(self.rsi_source, 'close')
 
         if source_name == 'close':
@@ -179,7 +179,7 @@ class StochasticRSI(BaseIndicator):
         - fastd = SMA of fastk
 
         Args:
-            rsi_values: RSI değerleri
+            rsi_values: RSI values
 
         Returns:
             tuple: (stoch_rsi, k_values, d_values)
@@ -215,9 +215,9 @@ class StochasticRSI(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        ⚡ Batch Stochastic RSI calculation - BACKTEST için
+        ⚡ Batch Stochastic RSI calculation - for BACKTEST
 
-        calculate() ile aynı hesaplama yöntemini kullanır:
+        It uses the same calculation method as calculate():
             1. RSI = calculate_rsi_values() (Wilder's smoothed - TA-Lib uyumlu)
             2. StochRSI = (RSI - Min RSI) / (Max RSI - Min RSI) × 100
             3. %K = raw StochRSI
@@ -231,13 +231,13 @@ class StochasticRSI(BaseIndicator):
         """
         self._validate_data(data)
 
-        # Kaynak değerlerini al (close, hl2, hlc3, ohlc4, vb.) - calculate() ile aynı
+        # Get the source values (close, hl2, hlc3, ohlc4, etc.) - same as calculate()
         source_values = self._get_source_values(data)
 
-        # 1. RSI hesapla - calculate() ile aynı fonksiyon
+        # 1. Calculate RSI - same function as calculate()
         rsi_values = calculate_rsi_values(source_values, self.rsi_period)
 
-        # 2. Stochastic RSI hesapla - _calculate_stochastic_rsi ile aynı mantık
+        # 2. Calculate Stochastic RSI - same logic as _calculate_stochastic_rsi
         stoch_rsi_values = np.zeros_like(rsi_values, dtype=float)
         k_values = np.zeros_like(rsi_values, dtype=float)
         d_values = np.zeros_like(rsi_values, dtype=float)
@@ -269,7 +269,7 @@ class StochasticRSI(BaseIndicator):
             elif k_values[i-1] > d_values[i-1] and k_values[i] < d_values[i]:
                 crossover[i] = -1  # Bearish
 
-        # Warmup döneminde NaN yap
+        # Make NaN values during the warmup period
         warmup = self.rsi_period + self.stoch_period + self.d_smooth - 1
         stoch_rsi_values[:warmup] = np.nan
         k_values[:warmup] = np.nan
@@ -291,9 +291,9 @@ class StochasticRSI(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: Stochastic RSI değerleri
+            IndicatorResult: Stochastic RSI values
         """
-        # Kaynak değerlerini al (close, hl2, hlc3, ohlc4, vb.)
+        # Get the source values (close, hl2, hlc3, ohlc4, etc.)
         source_values = self._get_source_values(data)
 
         # RSI hesapla (rsi.py'den import edilen fonksiyon)
@@ -302,7 +302,7 @@ class StochasticRSI(BaseIndicator):
         # Stochastic RSI hesapla
         stoch_rsi, k_values, d_values = self._calculate_stochastic_rsi(rsi_values)
 
-        # Son değerler
+        # Last values
         current_k = k_values[-1]
         current_d = d_values[-1]
         current_stoch_rsi = stoch_rsi[-1]
@@ -334,7 +334,7 @@ class StochasticRSI(BaseIndicator):
             timestamp=timestamp,
             signal=self.get_signal(value),
             trend=self.get_trend(current_k),
-            strength=abs(current_k - 50) * 2,  # 0-100 arası normalize et
+            strength=abs(current_k - 50) * 2,  # Normalize to the 0-100 range
             metadata={
                 'rsi_period': self.rsi_period,
                 'stoch_period': self.stoch_period,
@@ -346,18 +346,18 @@ class StochasticRSI(BaseIndicator):
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
         """
-        Warmup buffer - update() için gerekli
+        Warmup buffer - required for update().
 
         Args:
             data: OHLCV DataFrame (warmup verisi)
-            symbol: Sembol adı (opsiyonel)
+            symbol: Symbol name (optional)
         """
         super().warmup_buffer(data, symbol)
 
         from collections import deque
         max_len = self.get_required_periods() + 50
 
-        # OHLC buffer'ları oluştur (rsi_source için gerekli)
+        # Create OHLC buffers (required for rsi_source)
         self._ohlc_buffer = {
             'open': deque(maxlen=max_len),
             'high': deque(maxlen=max_len),
@@ -378,11 +378,11 @@ class StochasticRSI(BaseIndicator):
         Incremental update (Real-time) - Symbol-aware
 
         Args:
-            candle: Yeni mum verisi (OHLCV dict veya list/tuple)
+            candle: New candle data (OHLCV dict or list/tuple)
             symbol: Symbol identifier (for multi-symbol support)
 
         Returns:
-            IndicatorResult: Güncel indicator değeri
+            IndicatorResult: The current indicator value.
         """
         from collections import deque
 
@@ -444,13 +444,13 @@ class StochasticRSI(BaseIndicator):
 
     def get_signal(self, value: dict) -> SignalType:
         """
-        Stochastic RSI değerinden sinyal üret
+        Generate a signal from the stochastic RSI value.
 
         Args:
-            value: Stochastic RSI değerleri
+            value: Stochastic RSI values
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
         if isinstance(value, dict):
             k = value['k']
@@ -470,13 +470,13 @@ class StochasticRSI(BaseIndicator):
 
     def get_trend(self, value: float) -> TrendDirection:
         """
-        Stochastic RSI değerinden trend belirle
+        Determine the trend based on the stochastic RSI value.
 
         Args:
-            value: %K değeri
+            value: The %K value.
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         if value > 50:
             return TrendDirection.UP
@@ -485,7 +485,7 @@ class StochasticRSI(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'rsi_period': 14,
             'stoch_period': 14,
@@ -508,22 +508,22 @@ __all__ = ['StochasticRSI']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """Stochastic RSI indikatör testi"""
+    """Stochastic RSI indicator test"""
 
     print("\n" + "="*60)
     print("STOCHASTIC RSI TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(60)]
 
-    # Fiyat hareketini simüle et
+    # Simulate price movement
     base_price = 100
     prices = [base_price]
     for i in range(59):
@@ -539,27 +539,27 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     stoch_rsi = StochasticRSI(rsi_period=14, stoch_period=14, k_smooth=3, d_smooth=3)
-    print(f"   [OK] Oluşturuldu: {stoch_rsi}")
+    print(f"   [OK] Created: {stoch_rsi}")
     print(f"   [OK] Kategori: {stoch_rsi.category.value}")
-    print(f"   [OK] Gerekli periyot: {stoch_rsi.get_required_periods()}")
+    print(f"   [OK] Required period: {stoch_rsi.get_required_periods()}")
 
     result = stoch_rsi(data)
     print(f"   [OK] Stochastic RSI: {result.value['stoch_rsi']}")
     print(f"   [OK] %K: {result.value['k']}")
     print(f"   [OK] %D: {result.value['d']}")
     print(f"   [OK] Crossover: {result.value['crossover']}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
     print(f"   [OK] RSI: {result.metadata['rsi']}")
 
-    # Test 2: Farklı parametreler
-    print("\n3. Farklı parametre testi...")
+    # Test 2: Different parameters
+    print("\n3. Different parameter test...")
     configs = [
         (14, 14, 3, 3),
         (14, 21, 5, 5),
@@ -571,18 +571,18 @@ if __name__ == "__main__":
         result = stoch_test.calculate(data)
         print(f"   [OK] Params({rsi_p},{stoch_p},{k_s},{d_s}): K={result.value['k']}, D={result.value['d']}")
 
-    # Test 3: Özel seviyeler
-    print("\n4. Özel seviye testi...")
+    # Test 3: Custom levels
+    print("\n4. Special level test...")
     stoch_custom = StochasticRSI(rsi_period=14, stoch_period=14,
                                   overbought=90, oversold=10)
     result = stoch_custom.calculate(data)
-    print(f"   [OK] Özel seviyeli Stoch RSI: K={result.value['k']}")
+    print(f"   [OK] Stochastic RSI with custom levels: K={result.value['k']}")
     print(f"   [OK] Overbought: {stoch_custom.overbought}, Oversold: {stoch_custom.oversold}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
 
     # Test 4: Crossover tespiti
     print("\n5. Crossover testi...")
-    # Son birkaç değeri kontrol et
+    # Check the last few values
     for i in range(-5, 0):
         test_data = data.iloc[:len(data)+i]
         if len(test_data) >= stoch_rsi.get_required_periods():
@@ -592,50 +592,50 @@ if __name__ == "__main__":
             cross = result.value['crossover']
             print(f"   [OK] Index {i}: K={k:.2f}, D={d:.2f}, Cross={cross}")
 
-    # Test 5: Aşırı alım/satım koşulları
-    print("\n6. Aşırı alım/satım testi...")
-    # Yükselen trend
+    # Test 5: Overbuying/overselling conditions
+    print("\n6. Overbuying/overselling test...")
+    # Rising trend
     up_data = data.copy()
     for i in range(20):
         idx = up_data.index[-(20-i)]
         up_data.loc[idx, 'close'] = prices[-(20-i)] + i * 1
 
     result_up = stoch_rsi.calculate(up_data)
-    print(f"   [OK] Yükselen trend Stoch RSI: K={result_up.value['k']}")
-    print(f"   [OK] Sinyal: {result_up.signal.value}")
+    print(f"   [OK] Rising trend Stoch RSI: K={result_up.value['k']}")
+    print(f"   [OK] Signal: {result_up.signal.value}")
 
-    # Düşen trend
+    # Declining trend
     down_data = data.copy()
     for i in range(20):
         idx = down_data.index[-(20-i)]
         down_data.loc[idx, 'close'] = prices[-(20-i)] - i * 1
 
     result_down = stoch_rsi.calculate(down_data)
-    print(f"   [OK] Düşen trend Stoch RSI: K={result_down.value['k']}")
-    print(f"   [OK] Sinyal: {result_down.signal.value}")
+    print(f"   [OK] Declining trend Stoch RSI: K={result_down.value['k']}")
+    print(f"   [OK] Signal: {result_down.signal.value}")
 
-    # Test 6: RSI vs Stochastic RSI karşılaştırma
-    print("\n7. RSI vs Stoch RSI karşılaştırma...")
+    # Test 6: Comparison of RSI vs Stochastic RSI
+    print("\n7. RSI vs Stoch RSI comparison...")
     print(f"   [OK] Normal RSI: {result.metadata['rsi']}")
     print(f"   [OK] Stochastic RSI: {result.value['stoch_rsi']}")
     print(f"   [OK] %K (smoothed): {result.value['k']}")
-    print(f"   [OK] Hassasiyet farkı: Stoch RSI 0-100 arası normalize edilmiştir")
+    print(f"   [OK] Sensitivity difference: Stochastic RSI is normalized between 0-100")
 
-    # Test 7: İstatistikler
-    print("\n8. İstatistik testi...")
+    # Test 7: Statistics
+    print("\n8. Statistical test...")
     stats = stoch_rsi.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 8: Metadata
     print("\n9. Metadata testi...")
     metadata = stoch_rsi.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Tip: {metadata.indicator_type.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

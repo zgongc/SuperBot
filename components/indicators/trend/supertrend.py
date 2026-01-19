@@ -5,17 +5,17 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    SuperTrend - ATR tabanlı trend takip indikatörü
-    Hem trend yönünü hem de dinamik destek/direnç seviyelerini gösterir
-    Olivier Seban tarafından geliştirilmiş popüler bir indikatör
+Description:
+    SuperTrend - A trend-following indicator based on ATR.
+    It shows both the trend direction and dynamic support/resistance levels.
+    A popular indicator developed by Olivier Seban.
 
-    Kullanım:
-    - Trend yönünü belirleme
+    Usage:
+    - Determining the trend direction
     - Stop-loss seviyeleri
     - Entry/Exit sinyalleri
 
-Formül:
+Formula:
     Basic Upper Band = (High + Low) / 2 + (Multiplier × ATR)
     Basic Lower Band = (High + Low) / 2 - (Multiplier × ATR)
 
@@ -24,7 +24,7 @@ Formül:
     Trend DOWN ise:
         SuperTrend = Upper Band
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -48,11 +48,11 @@ class SuperTrend(BaseIndicator):
     """
     SuperTrend Indicator
 
-    ATR kullanarak dinamik destek/direnç seviyeleri ve trend yönü belirler.
+    Determines dynamic support/resistance levels and trend direction using ATR.
 
     Args:
-        period: ATR periyodu (varsayılan: 10)
-        multiplier: ATR çarpanı (varsayılan: 3.0)
+        period: ATR period (default: 10)
+        multiplier: ATR multiplier (default: 3.0)
     """
 
     def __init__(
@@ -65,7 +65,7 @@ class SuperTrend(BaseIndicator):
         self.period = period
         self.multiplier = multiplier
 
-        # ATR indikatörünü kullan (code reuse)
+        # Use the ATR indicator (code reuse)
         self._atr = ATR(period=period)
 
         super().__init__(
@@ -81,32 +81,32 @@ class SuperTrend(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.period + 1
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 1:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Periyot pozitif olmalı"
+                "The period must be positive"
             )
         if self.multiplier <= 0:
             raise InvalidParameterError(
                 self.name, 'multiplier', self.multiplier,
-                "Multiplier pozitif olmalı"
+                "Multiplier must be positive"
             )
         return True
 
     def calculate(self, data: pd.DataFrame) -> IndicatorResult:
         """
-        SuperTrend hesapla - calculate_batch() ile AYNI mantık
+        Calculate SuperTrend - same logic as calculate_batch().
 
         Args:
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: SuperTrend değerleri (upper, lower, trend)
+            IndicatorResult: SuperTrend values (upper, lower, trend)
         """
         # Use calculate_batch for consistency
         batch_result = self.calculate_batch(data)
@@ -157,8 +157,8 @@ class SuperTrend(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        ⚡ VECTORIZED SuperTrend batch calculation - BACKTEST için
-        Senin IndicatorManager'ın beklediği abstract method
+        ⚡ VECTORIZED SuperTrend batch calculation - for BACKTEST
+        Abstract method expected by your IndicatorManager
 
         Performance: 10.000 bar ~0.015 saniye
         """
@@ -175,13 +175,13 @@ class SuperTrend(BaseIndicator):
         upper_band = hl2 + (self.multiplier * atr)
         lower_band = hl2 - (self.multiplier * atr)
 
-        # 3. Final bands & trend (vectorized loop – en hızlı yöntem)
+        # 3. Final bands & trend (vectorized loop - the fastest method)
         final_upper = np.zeros(len(df))
         final_lower = np.zeros(len(df))
         supertrend = np.zeros(len(df))
         trend = np.zeros(len(df), dtype=int)  # 1 = UP, -1 = DOWN
 
-        # İlk değerler
+        # Initial values
         final_upper[self.period] = upper_band[self.period]
         final_lower[self.period] = lower_band[self.period]
         supertrend[self.period] = lower_band[self.period]
@@ -196,13 +196,13 @@ class SuperTrend(BaseIndicator):
             final_lower[i] = (lower_band[i] if lower_band[i] > final_lower[i-1] or close[i-1] < final_lower[i-1]
                              else final_lower[i-1])
 
-            # Trend yönü
-            if trend[i-1] == 1:  # önceki uptrend
+            # Trend direction
+            if trend[i-1] == 1:  # previous uptrend
                 trend[i] = -1 if close[i] <= final_lower[i] else 1
-            else:  # önceki downtrend
+            else:  # previous downtrend
                 trend[i] = 1 if close[i] >= final_upper[i] else -1
 
-            # SuperTrend değeri
+            # SuperTrend value
             supertrend[i] = final_lower[i] if trend[i] == 1 else final_upper[i]
 
         # Warm-up periyodunu NaN yap
@@ -211,7 +211,7 @@ class SuperTrend(BaseIndicator):
         final_lower[:self.period] = np.nan
         trend[:self.period] = 0
 
-        # DataFrame'e ekle (calculate() ile aynı key'ler)
+        # Add to DataFrame (same keys as calculate())
         result_df = pd.DataFrame({
             'supertrend': supertrend,
             'upper': final_upper,
@@ -223,11 +223,11 @@ class SuperTrend(BaseIndicator):
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
         """
-        Warmup buffer - update() için gerekli
+        Warmup buffer - required for update().
 
         Args:
             data: OHLCV DataFrame (warmup verisi)
-            symbol: Sembol adı (opsiyonel)
+            symbol: Symbol name (optional)
         """
         super().warmup_buffer(data, symbol)
 
@@ -299,10 +299,10 @@ class SuperTrend(BaseIndicator):
 
     def get_signal(self, trend: TrendDirection) -> SignalType:
         """
-        SuperTrend'den sinyal üret
+        Generate signal from SuperTrend.
 
         Args:
-            trend: Mevcut trend
+            trend: Current trend
 
         Returns:
             SignalType: BUY (uptrend), SELL (downtrend)
@@ -314,16 +314,16 @@ class SuperTrend(BaseIndicator):
         return SignalType.HOLD
 
     def get_trend(self, value: Any) -> TrendDirection:
-        """Trend zaten hesaplanmış"""
+        """Trend has already been calculated"""
         return TrendDirection.NEUTRAL
 
     def _calculate_strength(self, price: float, supertrend: float) -> float:
-        """Sinyal gücünü hesapla (0-100)"""
+        """Calculate signal strength (0-100)"""
         distance_pct = abs((price - supertrend) / supertrend * 100)
         return min(distance_pct * 20, 100)
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'period': 10,
             'multiplier': 3.0
@@ -346,29 +346,29 @@ __all__ = ['SuperTrend']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """SuperTrend indikatör testi"""
+    """SuperTrend indicator test"""
 
     print("\n" + "="*60)
     print("SUPERTREND TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating example OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(50)]
 
-    # Volatil trend simülasyonu
+    # Volatile trend simulation
     base_price = 100
     prices = [base_price]
     for i in range(49):
         if i < 25:
-            trend = 1.0  # Güçlü yükseliş
+            trend = 1.0  # Strong upward trend
         else:
-            trend = -0.8  # Güçlü düşüş
+            trend = -0.8  # Strong decrease
         noise = np.random.randn() * 2
         prices.append(prices[-1] + trend + noise)
 
@@ -381,63 +381,63 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     st = SuperTrend(period=10, multiplier=3.0)
-    print(f"   [OK] Oluşturuldu: {st}")
+    print(f"   [OK] Created: {st}")
     print(f"   [OK] Kategori: {st.category.value}")
     print(f"   [OK] Tip: {st.indicator_type.value}")
-    print(f"   [OK] Gerekli periyot: {st.get_required_periods()}")
+    print(f"   [OK] Required period: {st.get_required_periods()}")
 
     result = st(data)
     print(f"   [OK] SuperTrend: {result.value['supertrend']}")
     print(f"   [OK] Upper Band: {result.value['upper']}")
     print(f"   [OK] Lower Band: {result.value['lower']}")
     print(f"   [OK] Trend: {result.value['trend']}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Signal: {result.signal.value}")
+    print(f"   [OK] Power: {result.strength:.2f}")
     print(f"   [OK] Metadata: {result.metadata}")
 
-    # Test 2: Trend değişimi testi
-    print("\n3. Trend değişimi testi...")
-    # Farklı veri dilimlerinde hesapla
+    # Test 2: Trend change test
+    print("\n3. Trend change test...")
+    # Calculate for different data slices
     for i in [20, 30, 40]:
         data_slice = data.iloc[:i+1]
         result = st.calculate(data_slice)
         print(f"   [OK] Mum {i}: Trend={result.value['trend']}, SuperTrend={result.value['supertrend']}")
 
-    # Test 3: Farklı parametreler
-    print("\n4. Farklı parametre testi...")
+    # Test 3: Different parameters
+    print("\n4. Different parameter test...")
     for mult in [2.0, 3.0, 4.0]:
         st_test = SuperTrend(period=10, multiplier=mult)
         result = st_test.calculate(data)
         print(f"   [OK] Multiplier={mult}: ST={result.value['supertrend']:.2f}, Trend={result.value['trend']}")
 
-    # Test 4: Band genişliği
-    print("\n5. Band genişliği testi...")
+    # Test 4: Bandwidth
+    print("\n5. Bandwidth test...")
     band_width = result.value['upper'] - result.value['lower']
     print(f"   [OK] Upper: {result.value['upper']:.2f}")
     print(f"   [OK] Lower: {result.value['lower']:.2f}")
-    print(f"   [OK] Band genişliği: {band_width:.2f}")
+    print(f"   [OK] Bandwidth: {band_width:.2f}")
     print(f"   [OK] ATR: {result.metadata['atr']:.2f}")
 
-    # Test 5: İstatistikler
-    print("\n6. İstatistik testi...")
+    # Test 5: Statistics
+    print("\n6. Statistical test...")
     stats = st.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 6: Metadata
     print("\n7. Metadata testi...")
     metadata = st.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Tip: {metadata.indicator_type.value}")
     print(f"   [OK] Output'lar: {metadata.output_names}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

@@ -1,0 +1,253 @@
+# config/infrastructure.yaml
+# SuperBot - Infrastructure Backend Selection
+# Adaptive backend system: Memory/Redis, SQLite/PostgreSQL
+# Author: SuperBot Team
+# Date: 2025-11-12
+
+# ============================================================
+# CACHE BACKEND
+# ============================================================
+cache:
+  # Backend selection: memory, redis
+  backend: "memory"
+
+  # Memory cache settings
+  memory:
+    max_size: 1000 # number of entries
+    eviction_policy: "lru" # lru, lfu, fifo
+
+  # Redis settings (if backend is redis)
+  redis:
+    # Retrieved from .env: REDIS_HOST, REDIS_PORT, REDIS_PASSWORD
+    # Linux Server: 100.98.224.83:6379
+    host: "${REDIS_HOST}"
+    port: "${REDIS_PORT}"
+    db: "${REDIS_DB}"
+    password: "${REDIS_PASSWORD}"
+
+    # Connection pool
+    pool_size: 10
+    max_connections: 50
+
+    # Timeout
+    socket_timeout: 5
+    socket_connect_timeout: 5
+
+  # General cache settings
+  compress: false
+  default_ttl: 3600 # Fix ttl_default
+  max_memory_items: 10000
+
+  # P1 Features
+  enable_warming: false
+  warming_keys: []
+  redis_url: "redis://${REDIS_HOST}:${REDIS_PORT}/${REDIS_DB}"
+
+# ============================================================
+# DATABASE BACKEND
+# ============================================================
+database:
+  # Backend selection: sqlite, postgresql, json
+  backend: "sqlite"
+
+  # SQLite settings
+  sqlite:
+    path: "data/database/superbot.db"
+    timeout: 30
+    check_same_thread: false
+
+    # WAL mode (Write-Ahead Logging - faster)
+    wal_mode: true
+
+    # Connection pool
+    pool_size: 5
+    max_overflow: 10
+
+  # PostgreSQL settings (if backend is postgresql)
+  postgresql:
+    # Retrieved from .env
+    host: "${POSTGRES_HOST}"
+    port: "${POSTGRES_PORT}"
+    database: "${POSTGRES_DB}"
+    user: "${POSTGRES_USER}"
+    password: "${POSTGRES_PASSWORD}"
+
+    # Connection pool
+    pool_size: 10
+    max_overflow: 20
+    pool_timeout: 30
+    pool_recycle: 3600 # 1 hour
+
+    # SSL
+    ssl_mode: "prefer"
+
+  # JSON storage (backend: json ise)
+  # For simple use-cases (less than 10K records, prototyping)
+  json:
+    path: "data/database/json"
+    pretty_print: true # Okunabilir format
+    auto_backup: true
+    backup_interval: 3600 # 1 hour (seconds)
+
+  # Schema management
+  auto_migrate: true
+  create_tables: true
+
+# ============================================================
+# QUEUE BACKEND
+# ============================================================
+queue:
+  # Backend selection: memory, rabbitmq
+  backend: "memory"
+
+  # Memory queue settings
+  memory:
+    max_size: 10000
+
+  # RabbitMQ settings (if backend is rabbitmq)
+  rabbitmq:
+    # Retrieved from .env
+    host: "${RABBITMQ_HOST}"
+    port: "${RABBITMQ_PORT}"
+    user: "${RABBITMQ_USER}"
+    password: "${RABBITMQ_PASSWORD}"
+
+    # Virtual host
+    vhost: "/"
+
+    # Connection
+    heartbeat: 60
+    connection_attempts: 3
+    retry_delay: 5
+
+  # Queue settings
+  #worker_count: 4
+  #max_retries: 3
+  #retry_delay: 5 # saniye
+
+  # Priority levels
+  priority_levels: 3 # low, medium, high
+
+  max_workers: 4
+  max_queue_size: 1000
+  retry_delays: [1, 5, 15, 30]
+  enable_dead_letter: true
+  default_job_timeout: 300
+
+  # ❌ P1: Rate limiting features
+  enable_rate_limiting: false
+  rate_limit_calls: 100
+  rate_limit_period: 60
+
+# ============================================================
+# EVENT BUS BACKEND
+# ============================================================
+eventbus:
+  # Backend selection: memory, redis
+  backend: "memory"
+
+  # Memory event bus
+  memory:
+    buffer_size: 1000
+    max_subscribers: 100
+
+  # Event bus settings
+  batch_size: 100
+  flush_interval: 1 # saniye
+
+  # Dead letter queue
+  dead_letter_enabled: true
+  dead_letter_max_size: 1000
+
+  history_size: 1000 # It can be the same as memory.buffer_size
+  # Redis pub/sub (backend: redis ise)
+  redis:
+    host: "${REDIS_HOST}"
+    port: "${REDIS_PORT}"
+    db: "${REDIS_DB}"
+    password: "${REDIS_PASSWORD}"
+    # Uses the cache.redis settings
+    channel_prefix: "superbot:"
+
+# ============================================================
+# PARQUET STORAGE
+# ============================================================
+parquet:
+  # Parquet file path
+  path: "data/parquets"
+
+  # Compression
+  compression: "snappy" # snappy, gzip, brotli, none
+
+  # Partitioning
+  partition_by:
+    - "symbol"
+    - "timeframe"
+
+  # File size limits
+  max_file_size_mb: 100
+
+  # Auto-cleanup
+  auto_cleanup: true
+  cleanup_interval: 86400 # 24 hours (seconds)
+
+# ============================================================
+# BACKUP & RECOVERY
+# ============================================================
+backup:
+  enabled: true
+
+  # Backup path
+  path: "data/backups"
+
+  # Backup schedule
+  schedule:
+    database: "0 2 * * *" # Daily at 02:00
+    config: "0 3 * * *" # Daily at 03:00
+
+  # Retention
+  retention_days: 30
+
+  # Compression
+  compress: true
+
+# ============================================================
+# MONITORING
+# ============================================================
+monitoring:
+  # Prometheus metrics (gelecek)
+  prometheus:
+    enabled: false
+    port: 9090
+
+  # Health check endpoint
+  health_check:
+    enabled: true
+    port: 8080
+    path: "/health"
+
+# ============================================================
+# NOTIFICATIONS - DEVELOPMENT
+# ============================================================
+notifications:
+  telegram:
+    enabled: true
+    bot_token: "${TELEGRAM_BOT_TOKEN}"
+    chat_id: "${TELEGRAM_CHAT_ID}"
+
+  discord:
+    enabled: false
+    webhook_url: "${DISCORD_WEBHOOK}"
+    min_score: 75
+
+  email:
+    enabled: false
+    email_password: ${EMAIL_PASSWORD}
+    from_email: ${EMAIL_FROM}
+    smtp_port: ${SMTP_PORT}
+    smtp_server: ${SMTP_SERVER}
+    to_email: ${EMAIL_TO}
+    min_score: 80
+
+strategies:
+  template_path: "components/strategies/templates/"

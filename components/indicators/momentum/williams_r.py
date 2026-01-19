@@ -5,19 +5,19 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    Williams %R - Momentum osilatörü
-    Aralık: -100 ile 0 arası
-    Aşırı Alım: > -20
-    Aşırı Satım: < -80
-    Stochastic ile benzer mantık, negatif skala kullanır.
+Description:
+    Williams %R - Momentum oscillator
+    Range: between -100 and 0
+    Overbought: > -20
+    Oversold: < -80
+    Similar logic to Stochastic, uses a negative scale.
 
-Formül:
+Formula:
     Williams %R = -100 × (Highest High - Close) / (Highest High - Lowest Low)
-    Highest High = Son N periyodun en yüksek fiyatı
-    Lowest Low = Son N periyodun en düşük fiyatı
+    Highest High = The highest price of the last N periods
+    Lowest Low = The lowest price of the last N periods
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -39,13 +39,13 @@ class WilliamsR(BaseIndicator):
     """
     Williams %R
 
-    Momentum osilatörü, aşırı alım/satım koşullarını tespit eder.
-    -100 ile 0 arası değer alır.
+    Momentum oscillator detects overbought/oversold conditions.
+    It takes values between -100 and 0.
 
     Args:
-        period: Williams %R periyodu (varsayılan: 14)
-        overbought: Aşırı alım seviyesi (varsayılan: -20)
-        oversold: Aşırı satım seviyesi (varsayılan: -80)
+        period: Williams %R period (default: 14)
+        overbought: Overbought level (default: -20)
+        oversold: Oversold level (default: -80)
     """
 
     def __init__(
@@ -74,27 +74,27 @@ class WilliamsR(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.period
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 1:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Periyot pozitif olmalı"
+                "The period must be positive"
             )
         if self.oversold >= self.overbought:
             raise InvalidParameterError(
                 self.name, 'levels',
                 f"oversold={self.oversold}, overbought={self.overbought}",
-                "Oversold, overbought'tan küçük olmalı"
+                "Oversold should be smaller than overbought"
             )
         if not (-100 <= self.oversold <= 0) or not (-100 <= self.overbought <= 0):
             raise InvalidParameterError(
                 self.name, 'levels',
                 f"oversold={self.oversold}, overbought={self.overbought}",
-                "Seviyeler -100 ile 0 arası olmalı"
+                "Levels must be between -100 and 0"
             )
         return True
 
@@ -106,24 +106,24 @@ class WilliamsR(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: Williams %R değeri
+            IndicatorResult: Williams %R value
         """
         high = data['high'].values
         low = data['low'].values
         close = data['close'].values
 
-        # Son period kadar veri al
+        # Get data up to the last period
         period_high = high[-self.period:]
         period_low = low[-self.period:]
         current_close = close[-1]
 
-        # Highest High ve Lowest Low hesapla
+        # Calculate the highest high and lowest low.
         highest_high = np.max(period_high)
         lowest_low = np.min(period_low)
 
         # Williams %R hesapla
         if highest_high == lowest_low:
-            williams_r_value = -50.0  # Neutral değer
+            williams_r_value = -50.0  # Neutral value
         else:
             williams_r_value = -100 * (highest_high - current_close) / (highest_high - lowest_low)
 
@@ -137,7 +137,7 @@ class WilliamsR(BaseIndicator):
             timestamp=timestamp,
             signal=self.get_signal(williams_r_value),
             trend=self.get_trend(williams_r_value),
-            strength=abs(williams_r_value + 50) * 2,  # 0-100 arası normalize et
+            strength=abs(williams_r_value + 50) * 2,  # Normalize to a range of 0-100
             metadata={
                 'period': self.period,
                 'highest_high': round(highest_high, 2),
@@ -148,7 +148,7 @@ class WilliamsR(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.Series:
         """
-        ⚡ VECTORIZED batch Williams %R calculation - BACKTEST için
+        ⚡ VECTORIZED batch Williams %R calculation - for BACKTEST
 
         Williams %R Formula:
             %R = -100 × (Highest High - Close) / (Highest High - Lowest Low)
@@ -187,18 +187,18 @@ class WilliamsR(BaseIndicator):
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
         """
-        Warmup buffer - update() için gerekli
+        Warmup buffer - required for update().
 
         Args:
             data: OHLCV DataFrame (warmup verisi)
-            symbol: Sembol adı (opsiyonel)
+            symbol: Symbol name (optional)
         """
         super().warmup_buffer(data, symbol)
 
         from collections import deque
         max_len = self.get_required_periods() + 50
 
-        # Buffer'ları oluştur ve doldur
+        # Create and fill the buffers
         self._high_buffer = deque(maxlen=max_len)
         self._low_buffer = deque(maxlen=max_len)
         self._close_buffer = deque(maxlen=max_len)
@@ -263,13 +263,13 @@ class WilliamsR(BaseIndicator):
 
     def get_signal(self, value: float) -> SignalType:
         """
-        Williams %R değerinden sinyal üret
+        Generate a signal from the Williams %R value.
 
         Args:
-            value: Williams %R değeri
+            value: Williams %R value
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
         if value < self.oversold:
             return SignalType.BUY
@@ -279,13 +279,13 @@ class WilliamsR(BaseIndicator):
 
     def get_trend(self, value: float) -> TrendDirection:
         """
-        Williams %R değerinden trend belirle
+        Determine the trend based on the Williams %R value.
 
         Args:
-            value: Williams %R değeri
+            value: Williams %R value
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         if value > -50:
             return TrendDirection.UP
@@ -294,7 +294,7 @@ class WilliamsR(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'period': 14,
             'overbought': -20,
@@ -314,22 +314,22 @@ __all__ = ['WilliamsR']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """Williams %R indikatör testi"""
+    """Williams %R indicator test"""
 
     print("\n" + "="*60)
     print("WILLIAMS %R TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(30)]
 
-    # Fiyat hareketini simüle et
+    # Simulate price movement
     base_price = 100
     prices = [base_price]
     for i in range(29):
@@ -345,72 +345,72 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     williams = WilliamsR(period=14)
-    print(f"   [OK] Oluşturuldu: {williams}")
+    print(f"   [OK] Created: {williams}")
     print(f"   [OK] Kategori: {williams.category.value}")
-    print(f"   [OK] Gerekli periyot: {williams.get_required_periods()}")
+    print(f"   [OK] Required period: {williams.get_required_periods()}")
 
     result = williams(data)
-    print(f"   [OK] Williams %R Değeri: {result.value}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Williams %R Value: {result.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Power: {result.strength:.2f}")
     print(f"   [OK] Metadata: {result.metadata}")
 
-    # Test 2: Farklı periyotlar
-    print("\n3. Farklı periyot testi...")
+    # Test 2: Different periods
+    print("\n3. Different period test...")
     for period in [7, 14, 21]:
         williams_test = WilliamsR(period=period)
         result = williams_test.calculate(data)
-        print(f"   [OK] Williams %R({period}): {result.value} | Sinyal: {result.signal.value}")
+        print(f"   [OK] Williams %R({period}): {result.value} | Signal: {result.signal.value}")
 
-    # Test 3: Özel seviyeler
-    print("\n4. Özel seviye testi...")
+    # Test 3: Custom levels
+    print("\n4. Special level test...")
     williams_custom = WilliamsR(period=14, overbought=-30, oversold=-70)
     result = williams_custom.calculate(data)
-    print(f"   [OK] Özel seviyeli Williams %R: {result.value}")
+    print(f"   [OK] Williams %R for custom levels: {result.value}")
     print(f"   [OK] Overbought: {williams_custom.overbought}, Oversold: {williams_custom.oversold}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
 
-    # Test 4: Aşırı alım/satım koşulları
-    print("\n5. Aşırı alım/satım testi...")
-    # Yükselen trend simüle et
+    # Test 4: Overbuying/overselling conditions
+    print("\n5. Overbuying/overselling test...")
+    # Simulate an upward trend
     up_data = data.copy()
     up_data.loc[up_data.index[-5:], 'close'] = [p + 5 for p in up_data.loc[up_data.index[-5:], 'close']]
     up_data.loc[up_data.index[-5:], 'high'] = [p + 5.5 for p in up_data.loc[up_data.index[-5:], 'high']]
 
     result_up = williams.calculate(up_data)
-    print(f"   [OK] Yükselen trend Williams %R: {result_up.value}")
-    print(f"   [OK] Sinyal: {result_up.signal.value}")
+    print(f"   [OK] Uprising trend Williams %R: {result_up.value}")
+    print(f"   [OK] Signal: {result_up.signal.value}")
 
-    # Düşen trend simüle et
+    # Simulate a downtrend
     down_data = data.copy()
     down_data.loc[down_data.index[-5:], 'close'] = [p - 5 for p in down_data.loc[down_data.index[-5:], 'close']]
     down_data.loc[down_data.index[-5:], 'low'] = [p - 5.5 for p in down_data.loc[down_data.index[-5:], 'low']]
 
     result_down = williams.calculate(down_data)
-    print(f"   [OK] Düşen trend Williams %R: {result_down.value}")
-    print(f"   [OK] Sinyal: {result_down.signal.value}")
+    print(f"   [OK] Williams %R downtrend: {result_down.value}")
+    print(f"   [OK] Signal: {result_down.signal.value}")
 
-    # Test 5: İstatistikler
-    print("\n6. İstatistik testi...")
+    # Test 5: Statistics
+    print("\n6. Statistical test...")
     stats = williams.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 6: Metadata
     print("\n7. Metadata testi...")
     metadata = williams.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

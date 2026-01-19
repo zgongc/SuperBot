@@ -5,24 +5,24 @@ Version: 3.0.0
 Date: 2025-12-24
 Author: SuperBot Team
 
-Açıklama:
+Description:
     CHoCH (Change of Character) - Smart Money Concepts
-    Piyasa karakterinin değişimini tespit eder
+    Detects changes in the market character.
 
     CHoCH Nedir:
-    - Yükseliş trendinde: Swing low'un kırılması (trend zayıflıyor)
-    - Düşüş trendinde: Swing high'ın kırılması (trend zayıflıyor)
-    - Potansiyel trend değişimini gösterir
+    - In an uptrend: Break of the swing low (trend weakening)
+    - In a downtrend: Break of the swing high (trend weakening)
+    - Indicates a potential trend reversal
 
-Formül:
-    1. Swing High/Low tespiti (SwingPoints kullanır - TradingView uyumlu)
-    2. Trend yönünü tespit et
-    3. Ters yönde swing kırılması -> CHoCH
+Formula:
+    1. Swing High/Low detection (uses SwingPoints - compatible with TradingView)
+    2. Determine the trend direction
+    3. Swing breakout in the opposite direction -> CHoCH
 
-    Bullish CHoCH (Düşüş -> Yükseliş): Close > Previous Swing High (in downtrend)
-    Bearish CHoCH (Yükseliş -> Düşüş): Close < Previous Swing Low (in uptrend)
+    Bullish CHoCH (Decline -> Rise): Close > Previous Swing High (in downtrend)
+    Bearish CHoCH (Rise -> Decline): Close < Previous Swing Low (in uptrend)
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
     - SwingPoints (../support_resistance/swing_points.py)
@@ -46,14 +46,14 @@ class CHoCH(BaseIndicator):
     """
     Change of Character (CHoCH)
 
-    Piyasa karakterinin değişim noktalarını tespit eder.
-    Trend değişimi sinyali verir.
+    Detects the turning points of the market character.
+    Provides a trend change signal.
 
     Args:
-        left_bars: Sol taraf bar sayısı (varsayılan: 5)
-        right_bars: Sağ taraf bar sayısı (varsayılan: 5)
-        max_levels: Maksimum seviye sayısı (varsayılan: 3)
-        trend_strength: Trend gücü eşiği (varsayılan: 3)
+        left_bars: Number of bars on the left side (default: 5)
+        right_bars: Number of bars on the right side (default: 5)
+        max_levels: Maximum number of levels (default: 3)
+        trend_strength: Trend strength threshold (default: 3)
     """
 
     def __init__(
@@ -70,7 +70,7 @@ class CHoCH(BaseIndicator):
         self.max_levels = max_levels
         self.trend_strength = trend_strength
 
-        # SwingPoints'i lazy import ile oluştur
+        # Create SwingPoints with lazy import
         self._swing_points = None
 
         super().__init__(
@@ -88,39 +88,39 @@ class CHoCH(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.left_bars + self.right_bars + self.trend_strength + 10
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.left_bars < 1:
             raise InvalidParameterError(
                 self.name, 'left_bars', self.left_bars,
-                "Left bars pozitif olmalı"
+                "Left bars must be positive"
             )
         if self.right_bars < 1:
             raise InvalidParameterError(
                 self.name, 'right_bars', self.right_bars,
-                "Right bars pozitif olmalı"
+                "Right bars must be positive"
             )
         if self.max_levels < 1:
             raise InvalidParameterError(
                 self.name, 'max_levels', self.max_levels,
-                "Max levels pozitif olmalı"
+                "Max levels must be positive"
             )
         if self.trend_strength < 1:
             raise InvalidParameterError(
                 self.name, 'trend_strength', self.trend_strength,
-                "Trend strength pozitif olmalı"
+                "Trend strength must be positive"
             )
         return True
 
     def _get_swing_points(self):
-        """SwingPoints instance'ını lazy load et"""
+        """Lazy load the SwingPoints instance."""
         if self._swing_points is None:
             import sys
             import os
-            # components/indicators'i 'indicators' olarak ekle (eski import uyumluluğu için)
+            # Add 'components/indicators' as 'indicators' (for old import compatibility)
             components_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             if components_path not in sys.path:
                 sys.path.insert(0, components_path)
@@ -134,11 +134,11 @@ class CHoCH(BaseIndicator):
         return self._swing_points
 
     def _find_swings(self, data: pd.DataFrame) -> tuple:
-        """SwingPoints kullanarak swing high/low noktalarını tespit et (alternating filtreli)"""
+        """Detect swing high/low points using SwingPoints (with alternating filter)"""
         swing_points = self._get_swing_points()
         swing_df = swing_points.calculate_batch(data)
 
-        # Önce tüm swing'leri topla (index, type, value)
+        # First, collect all swings (index, type, value)
         raw_swings = []
         for i in range(len(swing_df)):
             if not np.isnan(swing_df['swing_high'].iloc[i]):
@@ -146,7 +146,7 @@ class CHoCH(BaseIndicator):
             if not np.isnan(swing_df['swing_low'].iloc[i]):
                 raw_swings.append((i, 'low', swing_df['swing_low'].iloc[i]))
 
-        # Index'e göre sırala (kronolojik)
+        # Sort by index (chronological)
         raw_swings.sort(key=lambda x: x[0])
 
         # Alternating swing'leri filtrele (High-Low-High-Low pattern)
@@ -155,17 +155,17 @@ class CHoCH(BaseIndicator):
             if not filtered_swings:
                 filtered_swings.append((idx, swing_type, value))
             elif filtered_swings[-1][1] != swing_type:
-                # Farklı tip - ekle
+                # Different type - add
                 filtered_swings.append((idx, swing_type, value))
             else:
-                # Aynı tip - daha ekstrem olanı tut
+                # Same type - keep the more extreme one
                 last_idx, last_type, last_value = filtered_swings[-1]
                 if swing_type == 'high' and value > last_value:
                     filtered_swings[-1] = (idx, swing_type, value)
                 elif swing_type == 'low' and value < last_value:
                     filtered_swings[-1] = (idx, swing_type, value)
 
-        # Filtrelenmiş swing'lerden ayrı listeler oluştur
+        # Create separate lists from the filtered swings
         swing_highs = []
         swing_lows = []
         for idx, swing_type, value in filtered_swings:
@@ -182,12 +182,12 @@ class CHoCH(BaseIndicator):
         swing_lows: List[Dict[str, Any]]
     ) -> str:
         """
-        Mevcut trend yönünü tespit et
+        Detect the current trend direction.
 
-        SMC Approach (structure_detector.py ile aynı logic):
+        SMC Approach (same logic as structure_detector.py):
         - Uptrend: Higher High OR Higher Low (any bullish structure)
         - Downtrend: Lower Low OR Lower High (any bearish structure)
-        - Daha esnek - sadece son 2 swing'e bakıyor
+        - More flexible - only looks at the last 2 swings.
 
         Args:
             swing_highs: Swing high'lar
@@ -199,11 +199,11 @@ class CHoCH(BaseIndicator):
         if len(swing_highs) < 2 or len(swing_lows) < 2:
             return 'ranging'
 
-        # Son 2-3 swing'e bak (structure_detector.py gibi)
+        # Look at the last 2-3 swings (like in structure_detector.py)
         last_highs = [h['value'] for h in swing_highs[-3:]]
         last_lows = [l['value'] for l in swing_lows[-3:]]
 
-        # En son swing yönünü kontrol et
+        # Check the latest swing direction
         last_high_direction = 'higher' if last_highs[-1] > last_highs[-2] else 'lower'
         last_low_direction = 'higher' if last_lows[-1] > last_lows[-2] else 'lower'
 
@@ -235,7 +235,7 @@ class CHoCH(BaseIndicator):
         """
         CORE DETECTION FUNCTION - Used by calculate(), calculate_batch(), update()
 
-        CHoCH tespiti - TEK BAR için trend kontrolü ile.
+        CHoCH detection - Trend check for SINGLE BAR.
 
         IMPORTANT: CHoCH and BOS are MUTUALLY EXCLUSIVE!
         - CHoCH: Break in OPPOSITE direction of trend (reversal)
@@ -243,15 +243,15 @@ class CHoCH(BaseIndicator):
 
         Args:
             index: Current bar index
-            closes: Close fiyat dizisi
-            recent_highs: Recent swing highs (max_levels adet)
-            recent_lows: Recent swing lows (max_levels adet)
+            closes: Close price array
+            recent_highs: Recent swing highs (number of max_levels)
+            recent_lows: Recent swing lows (number of max_levels)
             current_trend: 'uptrend', 'downtrend', 'ranging'
             broken_highs: Set of already broken swing high indices
             broken_lows: Set of already broken swing low indices
 
         Returns:
-            Dict: CHoCH bilgisi veya None
+            Dict: CHoCH information or None
 
         Side Effects:
             Updates broken_highs and broken_lows sets
@@ -334,18 +334,18 @@ class CHoCH(BaseIndicator):
         trend: str
     ) -> Optional[Dict[str, Any]]:
         """
-        CHoCH tespiti - Son bar için (calculate() için wrapper)
+        CHoCH detection - Wrapper for the last bar (for calculate())
 
         Uses _detect_choch_at_index() with trend detection.
 
         Args:
-            closes: Close fiyat dizisi
+            closes: Close price array
             swing_highs: Swing high'lar
             swing_lows: Swing low'lar
-            trend: Mevcut trend
+            trend: Current trend
 
         Returns:
-            Dict: CHoCH bilgisi veya None
+            Dict: CHoCH information or None
         """
         if len(closes) < 2:
             return None
@@ -416,13 +416,13 @@ class CHoCH(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: CHoCH değeri
-                - value: Sinyal değeri (1=bullish, -1=bearish, 0=none)
-                - metadata: CHoCH seviyesi ve detayları
+            IndicatorResult: CHoCH value
+                - value: Signal value (1=bullish, -1=bearish, 0=none)
+                - metadata: CHoCH level and details
         """
         closes = data['close'].values
 
-        # Swing High/Low tespiti (SwingPoints kullanır)
+        # Swing High/Low detection (uses SwingPoints)
         swing_highs, swing_lows = self._find_swings(data)
 
         # Trend tespiti
@@ -433,8 +433,8 @@ class CHoCH(BaseIndicator):
 
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Değer: Sinyal (1=bullish, -1=bearish, 0=none/pending)
-        # calculate_batch() ile tutarlı!
+        # Value: Signal (1=bullish, -1=bearish, 0=none/pending)
+        # Consistent with calculate_batch()!
         choch_type = choch_data.get('type', 'none') if choch_data else 'none'
         if choch_type == 'bullish':
             value = 1
@@ -443,7 +443,7 @@ class CHoCH(BaseIndicator):
         else:
             value = 0  # 'none', 'pending_bullish', 'pending_bearish'
 
-        # Metadata: Tüm CHoCH seviyeleri ve fiyat bilgisi
+        # Metadata: All CHoCH levels and price information
         metadata = {
             'swing_highs': [{'level': s['value'], 'index': s['index']} for s in swing_highs[-self.max_levels:]],
             'swing_lows': [{'level': s['value'], 'index': s['index']} for s in swing_lows[-self.max_levels:]],
@@ -485,7 +485,7 @@ class CHoCH(BaseIndicator):
         # Result array: store CHoCH signal at each bar
         choch_signal = np.zeros(len(data))
 
-        # Find all swing highs/lows upfront (SwingPoints kullanır)
+        # Find all swing highs/lows upfront (uses SwingPoints)
         swing_highs, swing_lows = self._find_swings(data)
 
         # Convert to dict for fast lookup
@@ -500,7 +500,7 @@ class CHoCH(BaseIndicator):
         broken_highs = set()
         broken_lows = set()
 
-        # State: keep previous trend (structure_detector.py gibi)
+        # State: keep previous trend (like structure_detector.py)
         current_trend = 'ranging'
 
         start_idx = self.left_bars + self.right_bars
@@ -536,24 +536,24 @@ class CHoCH(BaseIndicator):
             if choch_result:
                 if choch_result['type'] == 'bullish':
                     choch_signal[i] = 1
-                    # CHoCH sonrası trend değişir - bullish CHoCH = artık uptrend
+                    # After CHoCH, the trend changes - bullish CHoCH = now uptrend
                     current_trend = 'uptrend'
                 elif choch_result['type'] == 'bearish':
                     choch_signal[i] = -1
-                    # CHoCH sonrası trend değişir - bearish CHoCH = artık downtrend
+                    # After CHoCH, the trend changes - bearish CHoCH = now downtrend
                     current_trend = 'downtrend'
 
         return pd.Series(choch_signal, index=data.index, name='choch')
 
     def _calculate_strength(self, choch_data: Dict[str, Any], current_close: float) -> float:
-        """CHoCH gücünü hesapla (0-100)"""
+        """Calculate CHoCH power (0-100)"""
         if not choch_data or not choch_data.get('broken_at'):
             return 0.0
 
         level = choch_data['level']
         distance = abs(current_close - level)
 
-        # Kırılma mesafesine göre güç hesapla
+        # Calculate power based on breaking distance.
         strength = min((distance / level) * 1000, 100)
 
         return round(strength, 2)
@@ -616,7 +616,7 @@ class CHoCH(BaseIndicator):
         
         if len(self._close_buffer) < self.get_required_periods():
             return IndicatorResult(
-                value=0,  # Sinyal yok (calculate() ile tutarlı)
+                value=0,  # No signal (consistent with calculate())
                 timestamp=timestamp_val,
                 signal=SignalType.HOLD,
                 trend=TrendDirection.NEUTRAL,
@@ -637,24 +637,24 @@ class CHoCH(BaseIndicator):
 
     def get_signal(self, choch_data: Optional[Dict[str, Any]]) -> SignalType:
         """
-        CHoCH'tan sinyal üret
+        Generate a signal from CHoCH.
 
         Args:
             choch_data: CHoCH bilgisi
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
         if not choch_data:
             return SignalType.HOLD
 
         choch_type = choch_data.get('type', 'none')
 
-        # CHoCH trend değişimini gösterir
+        # Shows the CHoCH trend change
         if choch_type == 'bullish':
-            return SignalType.BUY  # Düşüş -> Yükseliş
+            return SignalType.BUY  # Decrease -> Increase
         elif choch_type == 'bearish':
-            return SignalType.SELL  # Yükseliş -> Düşüş
+            return SignalType.SELL  # Increase -> Decrease
 
         return SignalType.HOLD
 
@@ -664,13 +664,13 @@ class CHoCH(BaseIndicator):
 
         Args:
             choch_data: CHoCH bilgisi
-            current_trend: Mevcut trend
+            current_trend: Current trend
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         if not choch_data:
-            # Mevcut trendi döndür
+            # Returns the current trend
             if current_trend == 'uptrend':
                 return TrendDirection.UP
             elif current_trend == 'downtrend':
@@ -679,7 +679,7 @@ class CHoCH(BaseIndicator):
 
         choch_type = choch_data.get('type', 'none')
 
-        # CHoCH sonrası yeni trend
+        # New trend after CHoCH
         if 'bullish' in choch_type:
             return TrendDirection.UP
         elif 'bearish' in choch_type:
@@ -688,7 +688,7 @@ class CHoCH(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'left_bars': 5,
             'right_bars': 5,
@@ -709,36 +709,36 @@ __all__ = ['CHoCH']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """CHoCH indikatör testi"""
+    """CHoCH indicator test"""
 
     print("\n" + "="*60)
     print("CHoCH (CHANGE OF CHARACTER) TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(60)]
 
-    # Trend değişimi simülasyonu
+    # Trend change simulation
     base_price = 100
     prices = []
     for i in range(60):
         if i < 20:
-            # Güçlü yükseliş (uptrend)
+            # Strong uptrend
             prices.append(base_price + i * 0.8 + np.random.randn() * 0.3)
         elif i < 25:
-            # Zayıflama (CHoCH hazırlığı)
+            # Weight loss (CHoCH preparation)
             prices.append(base_price + 16 - (i - 20) * 0.3 + np.random.randn() * 0.3)
         elif i < 45:
-            # Düşüş (downtrend)
+            # Downtrend
             prices.append(base_price + 14.5 - (i - 25) * 0.6 + np.random.randn() * 0.3)
         else:
-            # Yeniden yükseliş (CHoCH)
+            # Re-elevation (CHoCH)
             prices.append(base_price + 2.5 + (i - 45) * 0.5 + np.random.randn() * 0.3)
 
     data = pd.DataFrame({
@@ -750,53 +750,53 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     choch = CHoCH(left_bars=5, right_bars=5, max_levels=3, trend_strength=3)
-    print(f"   [OK] Oluşturuldu: {choch}")
+    print(f"   [OK] Created: {choch}")
     print(f"   [OK] Kategori: {choch.category.value}")
-    print(f"   [OK] Gerekli periyot: {choch.get_required_periods()}")
+    print(f"   [OK] Required period: {choch.get_required_periods()}")
 
     result = choch(data)
-    print(f"   [OK] CHoCH Değeri: {result.value}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] CHoCH Value: {result.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength}")
-    print(f"   [OK] CHoCH Tipi: {result.metadata['choch_type']}")
-    print(f"   [OK] Mevcut Trend: {result.metadata['current_trend']}")
-    print(f"   [OK] Önceki Trend: {result.metadata['previous_trend']}")
+    print(f"   [OK] Power: {result.strength}")
+    print(f"   [OK] CHoCH Type: {result.metadata['choch_type']}")
+    print(f"   [OK] Current Trend: {result.metadata['current_trend']}")
+    print(f"   [OK] Previous Trend: {result.metadata['previous_trend']}")
 
-    # Test 2: Swing seviyelerini göster
+    # Test 2: Show swing levels
     print("\n3. Swing seviyeleri...")
     for i, high in enumerate(result.metadata['swing_highs'][-3:]):
         print(f"   [OK] Swing High #{i+1}: {high['level']:.2f} @ index {high['index']}")
     for i, low in enumerate(result.metadata['swing_lows'][-3:]):
         print(f"   [OK] Swing Low #{i+1}: {low['level']:.2f} @ index {low['index']}")
 
-    # Test 3: Farklı parametreler
-    print("\n4. Farklı parametre testi...")
+    # Test 3: Different parameters
+    print("\n4. Different parameter test...")
     for trend_strength in [2, 3, 4]:
         choch_test = CHoCH(trend_strength=trend_strength)
         result = choch_test.calculate(data)
         print(f"   [OK] CHoCH(trend_str={trend_strength}): {result.metadata['current_trend']} | Tip: {result.metadata['choch_type']}")
 
-    # Test 4: İstatistikler
-    print("\n5. İstatistik testi...")
+    # Test 4: Statistics
+    print("\n5. Statistical test...")
     stats = choch.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 5: Metadata
     print("\n6. Metadata testi...")
     metadata = choch.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

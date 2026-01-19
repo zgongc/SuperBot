@@ -337,28 +337,32 @@ class LoggerEngine:
         """Set up console and file handlers."""
 
         # Console handler (Rich or Standard)
-        if RICH_AVAILABLE:
-            console_handler = RichHandler(
-                console=self.console,
-                rich_tracebacks=True,
-                show_time=False,
-                show_level=True,
-                show_path=False,
-                markup=True
-            )
-        else:
-            # Fallback: Standard console handler
-            console_handler = logging.StreamHandler(sys.stdout)
-            console_formatter = logging.Formatter(
-                '%(asctime)s [%(levelname)s] %(name)s: %(message)s',
-                datefmt='%H:%M:%S'
-            )
-            console_handler.setFormatter(console_formatter)
+        console_config = self.config.get('console', {})
+        if console_config.get('enabled', True):
+            use_colored = console_config.get('colored', True) and RICH_AVAILABLE
+            
+            if use_colored:
+                console_handler = RichHandler(
+                    console=self.console,
+                    rich_tracebacks=True,
+                    show_time=False,
+                    show_level=True,
+                    show_path=False,
+                    markup=True
+                )
+            else:
+                # Fallback: Standard console handler
+                console_handler = logging.StreamHandler(sys.stdout)
+                console_formatter = logging.Formatter(
+                    '%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+                    datefmt='%H:%M:%S'
+                )
+                console_handler.setFormatter(console_formatter)
 
-        console_handler.setLevel(self.log_level)
-        console_handler.addFilter(self.correlation_filter)
-        console_handler.addFilter(self.eventbus_filter)
-        self.root_logger.addHandler(console_handler)
+            console_handler.setLevel(self.log_level)
+            console_handler.addFilter(self.correlation_filter)
+            console_handler.addFilter(self.eventbus_filter)
+            self.root_logger.addHandler(console_handler)
 
         # File handlers (JSON format) - only if enabled in config
         if self.config.get('file', False):
@@ -391,12 +395,36 @@ class LoggerEngine:
         """Add file handler."""
         file_path = self.log_dir / filename
         
-        handler = RotatingFileHandler(
-            file_path, maxBytes=max_bytes, backupCount=backup_count, encoding='utf-8'
-        )
+        rotation_config = self.config.get('rotation', {})
+        rotation_enabled = rotation_config.get('enabled', True)
+        
+        if rotation_enabled:
+            handler = RotatingFileHandler(
+                file_path, maxBytes=max_bytes, backupCount=backup_count, encoding='utf-8'
+            )
+            
+            # Handle compression
+            if rotation_config.get('compress', False):
+                self._enable_compression(handler)
+        else:
+            # Simple FileHandler if rotation is disabled
+            handler = logging.FileHandler(file_path, encoding='utf-8')
         
         handler.setLevel(level)
-        handler.setFormatter(JSONFormatter())
+        
+        # Set formatter based on config
+        log_format = self.config.get('format', 'json')
+        if log_format == 'text':
+             formatter = logging.Formatter(
+                '%(asctime)s [%(levelname)s] %(name)s: %(message)s' 
+                + (' [cid:%(correlation_id)s]' if hasattr(CorrelationFilter.get_correlation_id(), 'correlation_id') else ''),
+                datefmt='%Y-%m-%dT%H:%M:%S%z'
+            )
+        else:
+             formatter = JSONFormatter()
+             
+        handler.setFormatter(formatter)
+        
         handler.addFilter(self.correlation_filter)
         handler.addFilter(self.eventbus_filter)
         
@@ -407,6 +435,22 @@ class LoggerEngine:
             handler.addFilter(lambda record: filter_name.lower() in record.name.lower())
         
         self.root_logger.addHandler(handler)
+
+    def _enable_compression(self, handler):
+        """Enable gzip compression for rotated log files."""
+        def namer(name):
+            return name + ".gz"
+        
+        def rotator(source, dest):
+            import gzip
+            import os
+            with open(source, 'rb') as f_in:
+                with gzip.open(dest, 'wb') as f_out:
+                    f_out.writelines(f_in)
+            os.remove(source)
+            
+        handler.rotator = rotator
+        handler.namer = namer
 
     def get_logger(self, name: str) -> CustomLogger:
         """Return module-specific logger."""

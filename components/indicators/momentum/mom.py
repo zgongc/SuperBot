@@ -2,20 +2,20 @@
 """
 indicators/momentum/mom.py - MOM (Momentum Indicator)
 
-Yazar: SuperBot Team
-Tarih: 2025-11-20
+Author: SuperBot Team
+Date: 2025-11-20
 Versiyon: 1.0.0
 
-Momentum (MOM) - En basit momentum indikatörü.
-Mevcut fiyat ile N periyot önceki fiyat arasındaki farkı hesaplar.
+Momentum (MOM) - The simplest momentum indicator.
+It calculates the difference between the current price and the price from N periods ago.
 
-Özellikler:
-- Basit ve hızlı hesaplama
-- Trend yönü ve gücünü ölçer
-- Pozitif değer = Bullish momentum
-- Negatif değer = Bearish momentum
+Features:
+- Simple and fast calculation
+- Measures trend direction and strength
+- Positive value = Bullish momentum
+- Negative value = Bearish momentum
 
-Kullanım:
+Usage:
     from components.indicators import get_indicator_class
 
     MOM = get_indicator_class('mom')
@@ -23,10 +23,10 @@ Kullanım:
     result = mom.calculate(data)
     print(result.value['mom'])
 
-Formül:
+Formula:
     MOM = Close - Close[n periods ago]
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -59,13 +59,13 @@ class MOM(BaseIndicator):
     """
     Momentum Indicator
 
-    En basit momentum göstergesi. Mevcut fiyat ile N periyot önceki
-    fiyat arasındaki farkı hesaplar.
+    The simplest momentum indicator. It compares the current price with the price N periods ago.
+    Calculates the difference between the prices.
 
     Args:
-        period: Momentum periyodu (varsayılan: 10)
-        logger: Logger instance (opsiyonel)
-        error_handler: Error handler (opsiyonel)
+        period: Momentum period (default: 10)
+        logger: Logger instance (optional)
+        error_handler: Error handler (optional)
     """
 
     def __init__(self, period: int = 10, logger=None, error_handler=None):
@@ -82,29 +82,29 @@ class MOM(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.period + 1
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 1:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Period pozitif olmalı"
+                "Period must be positive"
             )
         return True
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        Batch hesaplama (Backtest için)
+        Batch calculation (for backtesting)
 
-        Tüm veriyi vektörel olarak hesaplar.
+        Calculates all data vectorially.
 
         Args:
             data: OHLCV DataFrame
 
         Returns:
-            pd.DataFrame: MOM değerleri
+            pd.DataFrame: MOM values
         """
         close = data['close']
         mom = close - close.shift(self.period)
@@ -112,17 +112,17 @@ class MOM(BaseIndicator):
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
         """
-        Warmup buffer - update() için gerekli
+        Warmup buffer - required for update().
 
         Args:
             data: OHLCV DataFrame (warmup verisi)
-            symbol: Sembol adı (opsiyonel)
+            symbol: Symbol name (optional)
         """
         super().warmup_buffer(data, symbol)
 
         # prices deque'yu doldur
         self.prices.clear()
-        # Son period+1 veri gerekli
+        # The period+1 data is required.
         tail_data = data['close'].tail(self.period + 1).values
         for val in tail_data:
             self.prices.append(val)
@@ -135,7 +135,7 @@ class MOM(BaseIndicator):
             candle: Yeni mum verisi (dict)
 
         Returns:
-            IndicatorResult: Güncel MOM değeri
+            IndicatorResult: Current MOM value
         """
         # Support both dict and list/tuple formats
         if isinstance(candle, dict):
@@ -159,7 +159,7 @@ class MOM(BaseIndicator):
 
         mom_value = self.prices[-1] - self.prices[0]
 
-        # Sinyal ve trend belirleme
+        # Signal and trend determination
         if mom_value > 0:
             signal = SignalType.BUY
             trend = TrendDirection.UP
@@ -181,15 +181,15 @@ class MOM(BaseIndicator):
 
     def calculate(self, data: pd.DataFrame) -> IndicatorResult:
         """
-        MOM hesapla (son değer)
+        Calculate MOM (final value)
 
         Args:
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: MOM değeri
+            IndicatorResult: MOM value
         """
-        # Buffer'ları doldur
+        # Fill the buffers
         close_values = data['close'].tail(self.period + 1).values
         self.prices.clear()
         self.prices.extend(close_values)
@@ -204,7 +204,7 @@ class MOM(BaseIndicator):
         mom_value = valid_values[-1]
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Sinyal ve trend
+        # Signal and trend
         if mom_value > 0:
             signal = SignalType.BUY
             trend = TrendDirection.UP
@@ -228,7 +228,7 @@ class MOM(BaseIndicator):
         )
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {'period': 10}
 
     def _get_output_names(self) -> list:
@@ -252,9 +252,9 @@ __all__ = ['MOM']
 # ============================================================================
 
 if __name__ == "__main__":
-    """MOM indikatör testi"""
+    """MOM indicator test"""
 
-    # Windows console UTF-8 desteği
+    # Windows console UTF-8 support
     import sys
     import io
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
@@ -263,8 +263,8 @@ if __name__ == "__main__":
     print("🧪 MOMENTUM (MOM) TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(100)]
 
@@ -283,31 +283,31 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in range(100)]
     })
 
-    print(f"   ✅ {len(data)} mum oluşturuldu")
-    print(f"   ✅ Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   ✅ {len(data)} candles created")
+    print(f"   ✅ Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     mom = MOM(period=10)
-    print(f"   ✅ Oluşturuldu: {mom}")
+    print(f"   ✅ Created: {mom}")
     print(f"   ✅ Kategori: {mom.category.value}")
-    print(f"   ✅ Gerekli periyot: {mom.get_required_periods()}")
+    print(f"   ✅ Required period: {mom.get_required_periods()}")
 
     result = mom(data)
     print(f"   ✅ MOM: {result.value['mom']}")
-    print(f"   ✅ Sinyal: {result.signal.value}")
+    print(f"   ✅ Signal: {result.signal.value}")
     print(f"   ✅ Trend: {result.trend.name}")
-    print(f"   ✅ Güç: {result.strength:.2f}")
+    print(f"   ✅ Power: {result.strength:.2f}")
 
     # Test 2: Batch Calculation
     print("\n3. Batch Calculation Testi...")
     batch_result = mom.calculate_batch(data)
     print(f"   ✅ Batch result shape: {batch_result.shape}")
-    print(f"   ✅ Son 5 MOM değeri:")
+    print(f"   ✅ Last 5 MOM values:")
     print(batch_result['mom'].tail())
 
-    # Test 3: Update metodu
-    print("\n4. Update metodu testi...")
+    # Test 3: Update method
+    print("\n4. Update method test...")
     mom2 = MOM(period=10)
     init_data = data.head(50)
     mom2.calculate(init_data)
@@ -325,13 +325,13 @@ if __name__ == "__main__":
             print(f"   ✅ Bar {i}: MOM={update_result.value['mom']:.4f}, "
                   f"Signal={update_result.signal.value}")
 
-    # Test 4: Farklı periyotlar
-    print("\n5. Farklı periyot testi...")
+    # Test 4: Different periods
+    print("\n5. Different period test...")
     for period in [5, 10, 20]:
         mom_test = MOM(period=period)
         result = mom_test.calculate(data)
         print(f"   ✅ MOM({period}): {result.value['mom']:.4f}")
 
     print("\n" + "="*60)
-    print("✅ TÜM TESTLER BAŞARILI!")
+    print("✅ ALL TESTS PASSED!")
     print("="*60 + "\n")

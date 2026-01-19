@@ -5,24 +5,24 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
+Description:
     HMA (Hull Moving Average) - Hull hareketli ortalama
-    Alan Hull tarafından geliştirilmiş, lag'ı azaltan trend indikatörü
-    Hem hızlı hem de düzgün bir ortalama sağlar
+    Developed by Alan Hull, a trend indicator that reduces lag.
+    Provides both fast and smooth averaging.
 
-    Kullanım:
-    - Düşük lag ile trend takibi
-    - Hızlı trend değişimlerini yakalama
-    - Smooth ve responsive sinyal üretme
+    Usage:
+    - Trend tracking with low latency
+    - Capturing rapid trend changes
+    - Generating smooth and responsive signals
 
-Formül:
+Formula:
     HMA = WMA(2*WMA(n/2) - WMA(n)), sqrt(n))
     1. WMA(n/2) hesapla
     2. WMA(n) hesapla
-    3. 2*WMA(n/2) - WMA(n) farkını al
-    4. Bu farkın WMA(sqrt(n))'sini hesapla
+    3. Calculate the difference: 2*WMA(n/2) - WMA(n)
+    4. Calculate the WMA(sqrt(n)) of this difference.
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -44,11 +44,11 @@ class HMA(BaseIndicator):
     """
     Hull Moving Average
 
-    Lag'ı minimize eden ve smooth olan gelişmiş moving average.
-    WMA kombinasyonu kullanarak hızlı ve düzgün trend takibi sağlar.
+    Advanced moving average that minimizes lag and provides a smooth result.
+    Provides fast and smooth trend tracking using a WMA combination.
 
     Args:
-        period: HMA periyodu (varsayılan: 20)
+        period: HMA period (default: 20)
     """
 
     def __init__(
@@ -73,27 +73,27 @@ class HMA(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.period
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 2:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Periyot en az 2 olmalı"
+                "The period must be at least 2"
             )
         return True
 
     def calculate(self, data: pd.DataFrame) -> IndicatorResult:
         """
-        HMA hesapla - REALTIME için
+        Calculate HMA - for REALTIME.
 
         Args:
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: HMA değeri (son bar)
+            IndicatorResult: HMA value (last bar)
         """
         close = data['close'].values
 
@@ -106,8 +106,8 @@ class HMA(BaseIndicator):
         # 3. 2*WMA(n/2) - WMA(n)
         raw_hma = 2 * wma_half - wma_full
 
-        # 4. Son sqrt(n) değerini al ve bunların WMA'sını hesapla
-        # raw_hma array oluştur
+        # 4. Get the final sqrt(n) value and calculate its WMA.
+        # create raw_hma array
         raw_hma_series = []
         for i in range(len(close) - self.period + 1):
             slice_data = close[i:i + self.period]
@@ -115,7 +115,7 @@ class HMA(BaseIndicator):
             wf = self._calculate_wma_array(slice_data, self.period)
             raw_hma_series.append(2 * wh - wf)
 
-        # Son sqrt(n) değerin WMA'sını hesapla
+        # Calculate the WMA of the last sqrt(n) value
         if len(raw_hma_series) >= self.sqrt_period:
             hma_value = self._calculate_wma_array(
                 np.array(raw_hma_series[-self.sqrt_period:]),
@@ -124,7 +124,7 @@ class HMA(BaseIndicator):
         else:
             hma_value = raw_hma
 
-        # Mevcut fiyat
+        # Current price
         current_price = close[-1]
 
         timestamp = int(data.iloc[-1]['timestamp'])
@@ -149,7 +149,7 @@ class HMA(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.Series:
         """
-        ⚡ VECTORIZED batch HMA calculation - BACKTEST için
+        ⚡ VECTORIZED batch HMA calculation - for BACKTEST
 
         HMA Formula: HMA = WMA(2*WMA(n/2) - WMA(n), sqrt(n))
 
@@ -199,14 +199,14 @@ class HMA(BaseIndicator):
 
     def _calculate_wma(self, prices: np.ndarray, period: int) -> float:
         """
-        WMA hesaplama (son değer)
+        WMA calculation (last value)
 
         Args:
-            prices: Fiyat dizisi
+            prices: Array of prices
             period: WMA periyodu
 
         Returns:
-            float: WMA değeri
+            float: The WMA value.
         """
         if len(prices) < period:
             period = len(prices)
@@ -217,14 +217,14 @@ class HMA(BaseIndicator):
 
     def _calculate_wma_array(self, prices: np.ndarray, period: int) -> float:
         """
-        Array için WMA hesaplama
+        Weighted Moving Average calculation for an array.
 
         Args:
-            prices: Fiyat array
+            prices: Price array
             period: WMA periyodu
 
         Returns:
-            float: WMA değeri
+            float: The WMA value.
         """
         if len(prices) < period:
             period = len(prices)
@@ -234,11 +234,11 @@ class HMA(BaseIndicator):
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
         """
-        Warmup buffer - update() için gerekli state'i hazırlar
+        Warmup buffer - prepares the necessary state for update().
 
         Args:
             data: OHLCV DataFrame (warmup verisi)
-            symbol: Sembol adı (opsiyonel)
+            symbol: Symbol name (optional)
         """
         super().warmup_buffer(data, symbol)
 
@@ -289,14 +289,14 @@ class HMA(BaseIndicator):
 
     def get_signal(self, price: float, hma: float) -> SignalType:
         """
-        HMA'dan sinyal üret
+        Generate a signal from HMA.
 
         Args:
-            price: Mevcut fiyat
-            hma: HMA değeri
+            price: Current price
+            hma: HMA value
 
         Returns:
-            SignalType: BUY (fiyat HMA üstüne çıkınca), SELL (altına ininse)
+            SignalType: BUY (when the price goes above the HMA), SELL (when it goes below)
         """
         if price > hma:
             return SignalType.BUY
@@ -309,11 +309,11 @@ class HMA(BaseIndicator):
         HMA'dan trend belirle
 
         Args:
-            price: Mevcut fiyat
-            hma: HMA değeri
+            price: Current price
+            hma: HMA value
 
         Returns:
-            TrendDirection: UP (fiyat > HMA), DOWN (fiyat < HMA)
+            TrendDirection: UP (price > HMA), DOWN (price < HMA)
         """
         if price > hma:
             return TrendDirection.UP
@@ -322,12 +322,12 @@ class HMA(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _calculate_strength(self, price: float, hma: float) -> float:
-        """Sinyal gücünü hesapla (0-100)"""
+        """Calculate signal strength (0-100)"""
         distance_pct = abs((price - hma) / hma * 100)
         return min(distance_pct * 20, 100)
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'period': 20
         }
@@ -345,29 +345,29 @@ __all__ = ['HMA']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """HMA indikatör testi"""
+    """HMA indicator test"""
 
     print("\n" + "="*60)
     print("HMA (HULL MOVING AVERAGE) TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(50)]
 
-    # Volatil trend simülasyonu
+    # Volatile trend simulation
     base_price = 100
     prices = [base_price]
     for i in range(49):
         if i < 25:
-            trend = 1.0  # Yükseliş
+            trend = 1.0  # Increase
         else:
-            trend = -0.5  # Düşüş
+            trend = -0.5  # Decrease
         noise = np.random.randn() * 2
         prices.append(prices[-1] + trend + noise)
 
@@ -380,57 +380,57 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     hma = HMA(period=20)
-    print(f"   [OK] Oluşturuldu: {hma}")
+    print(f"   [OK] Created: {hma}")
     print(f"   [OK] Kategori: {hma.category.value}")
-    print(f"   [OK] Gerekli periyot: {hma.get_required_periods()}")
+    print(f"   [OK] Required period: {hma.get_required_periods()}")
 
     result = hma(data)
-    print(f"   [OK] HMA Değeri: {result.value}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] HMA Value: {result.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Power: {result.strength:.2f}")
     print(f"   [OK] Metadata: {result.metadata}")
 
-    # Test 2: HMA parametreleri
-    print("\n3. HMA parametreleri testi...")
+    # Test 2: HMA parameters
+    print("\n3. HMA parameter test...")
     print(f"   [OK] Period: {hma.period}")
     print(f"   [OK] Half Period: {hma.half_period}")
     print(f"   [OK] Sqrt Period: {hma.sqrt_period}")
 
-    # Test 3: Farklı periyotlar
-    print("\n4. Farklı periyot testi...")
+    # Test 3: Different periods
+    print("\n4. Different period test...")
     for period in [9, 16, 25]:
         hma_test = HMA(period=period)
         result = hma_test.calculate(data)
         print(f"   [OK] HMA({period}): {result.value:.2f} | sqrt_period: {hma_test.sqrt_period}")
 
-    # Test 4: HMA vs SMA karşılaştırması
-    print("\n5. HMA vs SMA karşılaştırma testi...")
+    # Test 4: Comparison of HMA vs SMA
+    print("\n5. HMA vs SMA comparison test...")
     sma_value = np.mean(data['close'].values[-20:])
     print(f"   [OK] SMA(20): {sma_value:.2f}")
     print(f"   [OK] HMA(20): {result.value:.2f}")
-    print(f"   [OK] HMA daha responsive ve düşük lag")
+    print(f"   [OK] HMA is more responsive and has lower lag")
 
-    # Test 5: İstatistikler
-    print("\n6. İstatistik testi...")
+    # Test 5: Statistics
+    print("\n6. Statistical test...")
     stats = hma.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 6: Metadata
     print("\n7. Metadata testi...")
     metadata = hma.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

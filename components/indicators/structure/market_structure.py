@@ -5,25 +5,25 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
+Description:
     Market Structure - Smart Money Concepts (Combined Indicator)
-    Tüm SMC indikatörlerini birleştirir
+    Combines all SMC indicators.
 
-    İçerik:
+    Content:
     - BOS (Break of Structure)
     - CHoCH (Change of Character)
     - FVG (Fair Value Gap)
     - Order Blocks
     - Liquidity Zones
 
-    Kullanım:
-    Tek bir indikatör çağrısıyla tüm SMC analizi
+    Usage:
+    Perform the entire SMC analysis with a single indicator call.
 
-Formül:
-    Her alt indikatörü ayrı ayrı hesaplar ve birleştirir.
-    Genel piyasa yapısı analizi sunar.
+Formula:
+    Calculates and combines each sub-indicator separately.
+    Provides a general market structure analysis.
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
     - indicators.structure.* (local)
@@ -42,7 +42,7 @@ from components.indicators.indicator_types import (
     InvalidParameterError
 )
 
-# Alt indikatörleri import et
+# Import sub-indicators
 from components.indicators.structure.bos import BOS
 from components.indicators.structure.choch import CHoCH
 from components.indicators.structure.fvg import FVG
@@ -54,17 +54,17 @@ class MarketStructure(BaseIndicator):
     """
     Market Structure (Combined)
 
-    Tüm Smart Money Concepts indikatörlerini birleştirir.
-    Kapsamlı piyasa yapısı analizi sağlar.
+    Combines all Smart Money Concepts indicators.
+    Provides comprehensive market structure analysis.
 
     Args:
-        enable_bos: BOS hesapla (varsayılan: True)
-        enable_choch: CHoCH hesapla (varsayılan: True)
-        enable_fvg: FVG hesapla (varsayılan: True)
-        enable_ob: Order Blocks hesapla (varsayılan: True)
-        enable_liq: Liquidity Zones hesapla (varsayılan: True)
-        left_bars: Swing tespiti sol bar (varsayılan: 5)
-        right_bars: Swing tespiti sağ bar (varsayılan: 5)
+        enable_bos: Calculate BOS (default: True)
+        enable_choch: Calculate CHoCH (default: True)
+        enable_fvg: Calculate FVG (default: True)
+        enable_ob: Calculate Order Blocks (default: True)
+        enable_liq: Calculate Liquidity Zones (default: True)
+        left_bars: Swing detection left bar (default: 5)
+        right_bars: Swing detection right bar (default: 5)
     """
 
     def __init__(
@@ -87,7 +87,7 @@ class MarketStructure(BaseIndicator):
         self.left_bars = left_bars
         self.right_bars = right_bars
 
-        # Alt indikatörleri oluştur (super().__init__ çağrısından ÖNCE)
+        # Create sub-indicators (BEFORE calling super().__init__)
         self._bos = BOS(left_bars=left_bars, right_bars=right_bars) if enable_bos else None
         self._choch = CHoCH(left_bars=left_bars, right_bars=right_bars) if enable_choch else None
         self._fvg = FVG() if enable_fvg else None
@@ -112,7 +112,7 @@ class MarketStructure(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         min_periods = []
         if self._bos:
             min_periods.append(self._bos.get_required_periods())
@@ -128,23 +128,23 @@ class MarketStructure(BaseIndicator):
         return max(min_periods) if min_periods else 20
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.left_bars < 1:
             raise InvalidParameterError(
                 self.name, 'left_bars', self.left_bars,
-                "Left bars pozitif olmalı"
+                "Left bars must be positive"
             )
         if self.right_bars < 1:
             raise InvalidParameterError(
                 self.name, 'right_bars', self.right_bars,
-                "Right bars pozitif olmalı"
+                "Right bars must be positive"
             )
 
-        # En az bir indikatör aktif olmalı
+        # At least one indicator must be active
         if not any([self.enable_bos, self.enable_choch, self.enable_fvg, self.enable_ob, self.enable_liq]):
             raise InvalidParameterError(
                 self.name, 'enabled_indicators', 'none',
-                "En az bir indikatör aktif olmalı"
+                "At least one indicator must be active"
             )
 
         return True
@@ -157,7 +157,7 @@ class MarketStructure(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: Tüm SMC indikatörleri
+            IndicatorResult: All SMC indicators
         """
         results = {}
 
@@ -233,7 +233,7 @@ class MarketStructure(BaseIndicator):
 
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Genel sinyal ve trend hesapla
+        # Calculate overall signal and trend
         overall_signal = self._calculate_overall_signal(results)
         overall_trend = self._calculate_overall_trend(results)
         overall_strength = self._calculate_overall_strength(results)
@@ -258,13 +258,13 @@ class MarketStructure(BaseIndicator):
 
     def _calculate_overall_signal(self, results: Dict[str, Any]) -> SignalType:
         """
-        Tüm indikatörlerden genel sinyal hesapla
+        Calculate the overall signal from all indicators.
 
         Args:
-            results: Alt indikatör sonuçları
+            results: Sub-indicator results
 
         Returns:
-            SignalType: Genel sinyal
+            SignalType: General signal
         """
         signals = []
 
@@ -275,11 +275,11 @@ class MarketStructure(BaseIndicator):
         if not signals:
             return SignalType.HOLD
 
-        # Sinyal sayımı
+        # Signal counting
         buy_count = signals.count('buy') + signals.count('strong_buy')
         sell_count = signals.count('sell') + signals.count('strong_sell')
 
-        # Çoğunluk kararı
+        # Majority decision
         if buy_count > sell_count and buy_count >= len(signals) * 0.5:
             return SignalType.BUY
         elif sell_count > buy_count and sell_count >= len(signals) * 0.5:
@@ -289,10 +289,10 @@ class MarketStructure(BaseIndicator):
 
     def _calculate_overall_trend(self, results: Dict[str, Any]) -> TrendDirection:
         """
-        Tüm indikatörlerden genel trend hesapla
+        Calculate the overall trend from all indicators.
 
         Args:
-            results: Alt indikatör sonuçları
+            results: Sub-indicator results
 
         Returns:
             TrendDirection: Genel trend
@@ -306,7 +306,7 @@ class MarketStructure(BaseIndicator):
         if not trends:
             return TrendDirection.NEUTRAL
 
-        # Trend sayımı
+        # Trend counting
         up_count = trends.count('UP')
         down_count = trends.count('DOWN')
 
@@ -319,15 +319,15 @@ class MarketStructure(BaseIndicator):
 
     def _calculate_overall_strength(self, results: Dict[str, Any]) -> float:
         """
-        Genel güç skoru hesapla
+        Calculate the overall power score.
 
         Args:
-            results: Alt indikatör sonuçları
+            results: Sub-indicator results
 
         Returns:
-            float: Güç skoru (0-100)
+            float: Power score (0-100)
         """
-        # Hesaplanan indikatör sayısına göre güç ver
+        # Allocate power based on the calculated indicator count.
         calculated_count = len([v for v in results.values() if v is not None])
         total_count = len([k for k in ['bos', 'choch', 'fvg', 'orderblocks', 'liquidityzones'] if k in results])
 
@@ -347,7 +347,7 @@ class MarketStructure(BaseIndicator):
             symbol: Symbol identifier (for multi-symbol support)
 
         Returns:
-            IndicatorResult: Güncel market structure değeri
+            IndicatorResult: The current market structure value.
         """
         from collections import deque
 
@@ -392,30 +392,30 @@ class MarketStructure(BaseIndicator):
 
     def get_signal(self, value: Any) -> SignalType:
         """
-        Değerden sinyal üret (zaten calculate içinde hesaplanıyor)
+        Generate a signal from the value (already calculated within calculate).
 
         Args:
-            value: Indikatör değeri
+            value: Indicator value
 
         Returns:
-            SignalType: HOLD (çünkü zaten hesaplandı)
+            SignalType: HOLD (because it has already been calculated)
         """
         return SignalType.HOLD
 
     def get_trend(self, value: Any) -> TrendDirection:
         """
-        Değerden trend belirle (zaten calculate içinde hesaplanıyor)
+        Determine the trend from the value (already calculated within calculate).
 
         Args:
-            value: Indikatör değeri
+            value: Indicator value
 
         Returns:
-            TrendDirection: NEUTRAL (çünkü zaten hesaplandı)
+            TrendDirection: NEUTRAL (because it has already been calculated)
         """
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'enable_bos': True,
             'enable_choch': True,
@@ -431,28 +431,28 @@ class MarketStructure(BaseIndicator):
         return False
 
     def _get_output_names(self):
-        """Output isimlerini döndür"""
+        """Returns the output names"""
         return ['bos', 'choch', 'fvg', 'orderblocks', 'liquidityzones']
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        Batch hesaplama - Her bar için market structure hesapla
+        Batch calculation - Calculate market structure for each bar.
 
         Args:
             data: OHLCV DataFrame
 
         Returns:
-            pd.DataFrame: Her bar için market structure sonuçları
+            pd.DataFrame: Market structure results for each bar.
         """
-        # Market structure bulk calculation desteklemiyor çünkü:
-        # Her bar için tüm historical data'ya bağımlı
-        # Bu yüzden calculate() metodunu döndür
+        # Market structure bulk calculation is not supported because:
+        # Dependent on all historical data for each bar.
+        # Therefore, return the calculate() method.
         result = self.calculate(data)
 
-        # Sonuçları DataFrame formatına çevir
+        # Convert the results to a DataFrame format
         df_result = pd.DataFrame(index=data.index)
 
-        # Her alt indicator için sonuçları ekle
+        # Add results for each sub indicator
         if result.value.get('bos'):
             df_result['ms_bos_value'] = result.value['bos']['value']
             df_result['ms_bos_signal'] = result.value['bos']['signal']
@@ -475,7 +475,7 @@ class MarketStructure(BaseIndicator):
             df_result['ms_liq_zones'] = str(result.value['liquidityzones']['zones'])
             df_result['ms_liq_signal'] = result.value['liquidityzones']['signal']
 
-        # Genel sonuçlar
+        # General results
         df_result['ms_overall_signal'] = result.signal.value
         df_result['ms_overall_trend'] = result.trend.name
         df_result['ms_overall_strength'] = result.strength
@@ -491,36 +491,36 @@ __all__ = ['MarketStructure']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """Market Structure indikatör testi"""
+    """Market Structure indicator test"""
 
     print("\n" + "="*60)
     print("MARKET STRUCTURE (COMBINED) TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating example OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(50)]
 
-    # Karmaşık piyasa yapısı simülasyonu
+    # Complex market structure simulation
     base_price = 100
     prices = []
     for i in range(50):
         if i < 15:
-            # Yükseliş
+            # Ascent
             prices.append(base_price + i * 0.5 + np.random.randn() * 0.3)
         elif i < 20:
             # Konsolidasyon
             prices.append(base_price + 7 + np.random.randn() * 0.5)
         elif i < 35:
-            # Düşüş
+            # Fall
             prices.append(base_price + 9 - (i - 20) * 0.4 + np.random.randn() * 0.3)
         else:
-            # Yeniden yükseliş
+            # Retry
             prices.append(base_price + 3 + (i - 35) * 0.3 + np.random.randn() * 0.3)
 
     data = pd.DataFrame({
@@ -532,11 +532,11 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Tüm indikatörlerle hesaplama
-    print("\n2. Tüm indikatörler aktif testi...")
+    # Test 1: Calculation with all indicators
+    print("\n2. All indicators are in active test...")
     ms = MarketStructure(
         enable_bos=True,
         enable_choch=True,
@@ -546,32 +546,32 @@ if __name__ == "__main__":
         left_bars=5,
         right_bars=5
     )
-    print(f"   [OK] Oluşturuldu: {ms}")
+    print(f"   [OK] Created: {ms}")
     print(f"   [OK] Kategori: {ms.category.value}")
-    print(f"   [OK] Gerekli periyot: {ms.get_required_periods()}")
+    print(f"   [OK] Required period: {ms.get_required_periods()}")
 
     result = ms(data)
-    print(f"   [OK] Hesaplanan indikatör: {result.metadata['calculated_count']}")
-    print(f"   [OK] Genel Sinyal: {result.signal.value}")
+    print(f"   [OK] Calculated indicator: {result.metadata['calculated_count']}")
+    print(f"   [OK] General Signal: {result.signal.value}")
     print(f"   [OK] Genel Trend: {result.trend.name}")
-    print(f"   [OK] Genel Güç: {result.strength}")
+    print(f"   [OK] Overall Power: {result.strength}")
 
-    # Test 2: Her indikatörün durumu
-    print("\n3. İndikatör detayları...")
+    # Test 2: Status of each indicator
+    print("\n3. Indicator details...")
     for indicator_name, indicator_result in result.value.items():
         if indicator_result:
             print(f"   [OK] {indicator_name.upper()}:")
-            print(f"       - Sinyal: {indicator_result.get('signal', 'N/A')}")
+            print(f"       - Signal: {indicator_result.get('signal', 'N/A')}")
             print(f"       - Trend: {indicator_result.get('trend', 'N/A')}")
             if 'zones' in indicator_result:
-                print(f"       - Zone sayısı: {len(indicator_result['zones'])}")
+                print(f"       - Number of zones: {len(indicator_result['zones'])}")
             elif 'value' in indicator_result:
-                print(f"       - Değer: {indicator_result['value']}")
+                print(f"       - Value: {indicator_result['value']}")
         else:
-            print(f"   [!] {indicator_name.upper()}: Hesaplanamadı")
+            print(f"   [!] {indicator_name.upper()}: Could not be calculated")
 
-    # Test 3: Kısmi indikatörler
-    print("\n4. Kısmi indikatör testi (sadece BOS ve FVG)...")
+    # Test 3: Partial indicators
+    print("\n4. Partial indicator test (only BOS and FVG)...")
     ms_partial = MarketStructure(
         enable_bos=True,
         enable_choch=False,
@@ -581,51 +581,51 @@ if __name__ == "__main__":
     )
     result_partial = ms_partial.calculate(data)
     print(f"   [OK] Hesaplanan: {result_partial.metadata['calculated_count']}")
-    print(f"   [OK] Aktif indikatörler:")
+    print(f"   [OK] Active indicators:")
     for name, enabled in result_partial.metadata['enabled_indicators'].items():
         print(f"       - {name}: {enabled}")
 
-    # Test 4: BOS detayı
-    print("\n5. BOS detayı...")
+    # Test 4: Empty detail
+    print("\n5. BOS detail...")
     if result.value.get('bos'):
         bos_data = result.value['bos']
-        print(f"   [OK] BOS Değer: {bos_data['value']}")
+        print(f"   [OK] Empty Value: {bos_data['value']}")
         print(f"   [OK] BOS Tip: {bos_data['metadata']['bos_type']}")
         print(f"   [OK] Swing High: {len(bos_data['metadata']['swing_highs'])}")
         print(f"   [OK] Swing Low: {len(bos_data['metadata']['swing_lows'])}")
 
-    # Test 5: FVG detayı
-    print("\n6. FVG detayı...")
+    # Test 5: FVG detail
+    print("\n6. FVG detail...")
     if result.value.get('fvg'):
         fvg_data = result.value['fvg']
         print(f"   [OK] FVG Zone: {fvg_data['metadata']['total_zones']}")
         print(f"   [OK] Bullish: {fvg_data['metadata']['bullish_zones']}")
         print(f"   [OK] Bearish: {fvg_data['metadata']['bearish_zones']}")
 
-    # Test 6: Order Blocks detayı
-    print("\n7. Order Blocks detayı...")
+    # Test 6: Order Blocks details
+    print("\n7. Order Blocks details...")
     if result.value.get('orderblocks'):
         ob_data = result.value['orderblocks']
         print(f"   [OK] OB Block: {ob_data['metadata']['total_blocks']}")
         print(f"   [OK] Bullish: {ob_data['metadata']['bullish_blocks']}")
         print(f"   [OK] Bearish: {ob_data['metadata']['bearish_blocks']}")
 
-    # Test 7: İstatistikler
-    print("\n8. İstatistik testi...")
+    # Test 7: Statistics
+    print("\n8. Statistical test...")
     stats = ms.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 8: Metadata
     print("\n9. Metadata testi...")
     metadata = ms.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Tip: {metadata.indicator_type.value}")
     print(f"   [OK] Output sayısı: {len(metadata.output_names)}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

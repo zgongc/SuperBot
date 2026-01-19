@@ -5,18 +5,18 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    OBV (On Balance Volume) - Hacim bazlı momentum indikatörü
-    Fiyat ve hacim arasındaki ilişkiyi ölçer
-    Yükselen OBV = Alım baskısı
-    Düşen OBV = Satım baskısı
+Description:
+    OBV (On Balance Volume) - A momentum indicator based on volume.
+    Measures the relationship between price and volume.
+    Rising OBV = Buying pressure.
+    Falling OBV = Selling pressure.
 
-Formül:
+Formula:
     OBV = OBV_prev + volume (if close > close_prev)
     OBV = OBV_prev - volume (if close < close_prev)
     OBV = OBV_prev (if close == close_prev)
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -38,11 +38,11 @@ class OBV(BaseIndicator):
     """
     On Balance Volume
 
-    Fiyat hareketlerini hacimle birleştirerek momentum ölçer.
-    Divergence'lar için güçlü sinyaller verir.
+    Measures momentum by combining price movements with volume.
+    Provides strong signals for divergences.
 
     Args:
-        signal_period: Sinyal hattı SMA periyodu (varsayılan: 20)
+        signal_period: Signal line SMA period (default: 20)
     """
 
     def __init__(
@@ -65,15 +65,15 @@ class OBV(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.signal_period + 10
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.signal_period < 1:
             raise InvalidParameterError(
                 self.name, 'signal_period', self.signal_period,
-                "Periyot pozitif olmalı"
+                "The period must be positive"
             )
         return True
 
@@ -117,7 +117,7 @@ class OBV(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        ⚡ VECTORIZED batch OBV calculation - BACKTEST için
+        ⚡ VECTORIZED batch OBV calculation - for BACKTEST
 
         OBV Formula:
             OBV += volume if close > close_prev
@@ -137,7 +137,7 @@ class OBV(BaseIndicator):
         close = data['close'].values
         volume = data['volume'].values
 
-        # OBV hesapla - loop ile (calculate ile aynı mantık)
+        # Calculate OBV - using a loop (same logic as calculate)
         obv_values = np.zeros(len(close))
         obv_values[0] = volume[0]
 
@@ -151,7 +151,7 @@ class OBV(BaseIndicator):
 
         obv = pd.Series(obv_values, index=data.index)
 
-        # SİNYAL HATTI (SMA) EKLE!
+        # ADD SIGNAL LINE (SMA)!
         obv_signal = obv.rolling(window=self.signal_period, min_periods=1).mean()
 
         return pd.DataFrame({
@@ -161,20 +161,20 @@ class OBV(BaseIndicator):
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
         """
-        Warmup buffer - update() için gerekli
+        Warmup buffer - required for update().
 
-        OBV kümülatif bir indikatördür, bu yüzden son OBV değerini
-        ve son N bar'ın OBV değerlerini saklamamız gerekiyor.
+        OBV is a cumulative indicator, so we need to store the last OBV value
+        and the OBV values of the last N bars.
 
         Args:
             data: OHLCV DataFrame (warmup verisi)
-            symbol: Sembol adı (opsiyonel)
+            symbol: Symbol name (optional)
         """
         super().warmup_buffer(data, symbol)
 
         from collections import deque
 
-        # OBV değerlerini hesapla
+        # Calculate OBV values
         close = data['close'].values
         volume = data['volume'].values
 
@@ -189,11 +189,11 @@ class OBV(BaseIndicator):
             else:
                 obv_values[i] = obv_values[i-1]
 
-        # Kümülatif OBV değerini sakla
+        # Store the cumulative OBV value
         self._cumulative_obv = obv_values[-1]
         self._prev_close = close[-1]
 
-        # Son signal_period kadar OBV değerini sakla
+        # Keep the OBV value for the last signal_period.
         max_len = self.signal_period + 10
         self._obv_buffer = deque(maxlen=max_len)
         for val in obv_values[-max_len:]:
@@ -205,8 +205,8 @@ class OBV(BaseIndicator):
         """
         Incremental update (Real-time)
 
-        OBV kümülatif hesaplandığı için, önceki OBV değerine
-        yeni bar'ın volume'unu ekleyip çıkarıyoruz.
+        Since OBV is cumulatively calculated, it refers to the previous OBV value.
+        We are adding and subtracting the volume of the new bar.
         """
         from collections import deque
 
@@ -227,16 +227,16 @@ class OBV(BaseIndicator):
             close_val = candle[4] if len(candle) > 4 else 0
             volume_val = candle[5] if len(candle) > 5 else 1000
 
-        # OBV güncelleme
+        # OBV update
         if self._prev_close is None:
-            # İlk bar
+            # First bar
             self._cumulative_obv = volume_val
         else:
             if close_val > self._prev_close:
                 self._cumulative_obv += volume_val
             elif close_val < self._prev_close:
                 self._cumulative_obv -= volume_val
-            # Eşitse değişiklik yok
+            # If they are equal, no change is needed.
 
         self._prev_close = close_val
         obv_value = self._cumulative_obv
@@ -254,7 +254,7 @@ class OBV(BaseIndicator):
                 metadata={'insufficient_data': True}
             )
 
-        # Sinyal hattı hesapla
+        # Calculate the signal path
         obv_signal = np.mean(list(self._obv_buffer)[-self.signal_period:])
 
         return IndicatorResult(
@@ -271,14 +271,14 @@ class OBV(BaseIndicator):
 
     def get_signal(self, obv_value: float, obv_signal: float) -> SignalType:
         """
-        OBV değerinden sinyal üret
+        Generate a signal from the OBV value.
 
         Args:
-            obv_value: OBV değeri
-            obv_signal: OBV sinyal hattı
+            obv_value: OBV value
+            obv_signal: OBV signal line
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
         if obv_value > obv_signal:
             return SignalType.BUY
@@ -291,15 +291,15 @@ class OBV(BaseIndicator):
         OBV trendini belirle
 
         Args:
-            obv_array: Son OBV değerleri
+            obv_array: The latest OBV values.
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         if len(obv_array) < 2:
             return TrendDirection.NEUTRAL
 
-        # Lineer regresyon ile trend belirleme
+        # Determining the trend using linear regression
         slope = np.polyfit(range(len(obv_array)), obv_array, 1)[0]
 
         if slope > 0:
@@ -309,7 +309,7 @@ class OBV(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'signal_period': 20
         }
@@ -327,22 +327,22 @@ __all__ = ['OBV']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """OBV indikatör testi"""
+    """OBV indicator test"""
 
     print("\n" + "="*60)
     print("OBV (ON BALANCE VOLUME) TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(50)]
 
-    # Trend yukarı yönlü fiyat hareketi
+    # Trend is an upward price movement
     base_price = 100
     prices = [base_price]
     volumes = [10000]
@@ -361,47 +361,47 @@ if __name__ == "__main__":
         'volume': volumes
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
-    print(f"   [OK] Hacim aralığı: {min(volumes):.0f} -> {max(volumes):.0f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] Volume range: {min(volumes):.0f} -> {max(volumes):.0f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     obv = OBV(signal_period=20)
-    print(f"   [OK] Oluşturuldu: {obv}")
+    print(f"   [OK] Created: {obv}")
     print(f"   [OK] Kategori: {obv.category.value}")
-    print(f"   [OK] Gerekli periyot: {obv.get_required_periods()}")
+    print(f"   [OK] Required period: {obv.get_required_periods()}")
 
     result = obv(data)
-    print(f"   [OK] OBV Değeri: {result.value['obv']:,.2f}")
+    print(f"   [OK] OBV Value: {result.value['obv']:,.2f}")
     print(f"   [OK] OBV Signal: {result.value['obv_signal']:,.2f}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Power: {result.strength:.2f}")
     print(f"   [OK] Metadata: {result.metadata}")
 
-    # Test 2: Farklı periyotlar
-    print("\n3. Farklı periyot testi...")
+    # Test 2: Different periods
+    print("\n3. Different period test...")
     for period in [10, 20, 30]:
         obv_test = OBV(signal_period=period)
         result = obv_test.calculate(data)
-        print(f"   [OK] OBV(signal={period}): {result.value['obv']:,.2f} | Sinyal: {result.signal.value}")
+        print(f"   [OK] OBV(signal={period}): {result.value['obv']:,.2f} | Signal: {result.signal.value}")
 
     # Test 3: Volume gereksinimi
     print("\n4. Volume gereksinimi testi...")
     metadata = obv.metadata
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
     assert metadata.requires_volume == True, "OBV volume gerektirmeli!"
 
-    # Test 4: İstatistikler
-    print("\n5. İstatistik testi...")
+    # Test 4: Statistics
+    print("\n5. Statistical test...")
     stats = obv.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 5: Trend testi
     print("\n6. Trend testi...")
-    # Yukarı trend oluştur
+    # Create an upward trend
     up_prices = [100 + i * 0.5 for i in range(30)]
     up_volumes = [10000 + i * 100 for i in range(30)]
 
@@ -415,9 +415,9 @@ if __name__ == "__main__":
     })
 
     result = obv.calculate(up_data)
-    print(f"   [OK] Yukarı trend OBV: {result.value['obv']:,.2f}")
-    print(f"   [OK] Trend yönü: {result.trend.name}")
+    print(f"   [OK] Uptrend OBV: {result.value['obv']:,.2f}")
+    print(f"   [OK] Trend direction: {result.trend.name}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

@@ -5,32 +5,32 @@ Version: 3.0.0 (PERFORMANCE BEAST!)
 Date: 2025-11-06
 Author: SuperBot Team
 
-Açıklama:
+Description:
     Linear Regression - OPTIMIZED VERSION
-    Numba JIT ile 50-100x hız artışı!
+    50-100 x speed increase with Numba JIT!
     
-    Önceki performans: 2000 bars → 0.15-0.2 saniye
-    Yeni performans: 2000 bars → 0.002-0.003 saniye
-    HIZ ARTIŞI: 50-100x! 🔥
-Açıklama:
-    Linear Regression - Fiyat hareketinin doğrusal trendini analiz eder
-    Çıktılar:
-        - slope: Eğim (pozitif=yükseliş, negatif=düşüş)
-        - intercept: Y-kesişim noktası
-        - r_squared: Korelasyon katsayısı karesi (0-1, yüksek=güçlü trend)
-        - forecast: Bir sonraki periyot için tahmin
+    Previous performance: 2000 bars -> 0.15-0.2 seconds
+    New performance: 2000 bars -> 0.002-0.003 seconds
+    SPEED INCREASE: 50-100 x! 🔥
+Description:
+    Linear Regression - Analyzes the linear trend of price movement.
+    Outputs:
+        - slope: Slope (positive=increase, negative=decrease)
+        - intercept: Y-intercept
+        - r_squared: Correlation coefficient squared (0-1, high=strong trend)
+        - forecast: Prediction for the next period
 
-Formül:
+Formula:
     y = slope * x + intercept
 
     slope = Σ((x - x̄)(y - ȳ)) / Σ((x - x̄)²)
     intercept = ȳ - slope * x̄
-    r_squared = (korelasyon katsayısı)²
-Bağımlılıklar:
+    r_squared = (correlation coefficient)^2
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
-    - scipy>=1.10.0 (sadece realtime için)
-    - numba>=0.58.0 (backtest için)
+    - scipy>=1.10.0 (only for realtime)
+    - numba>=0.58.0 (for backtest)
 """
 
 import numpy as np
@@ -76,9 +76,9 @@ def calculate_linear_regression_numba(
     """
     Numba-accelerated rolling linear regression
     
-    Manuel formül kullanarak scipy'den 50-100x daha hızlı!
+    Using a manual formula, it's 50-100 x faster than from scipy!
     
-    Formül:
+    Formula:
         slope = Σ((x - x̄)(y - ȳ)) / Σ((x - x̄)²)
         intercept = ȳ - slope × x̄
         r² = [Σ((x - x̄)(y - ȳ))]² / [Σ((x - x̄)²) × Σ((y - ȳ)²)]
@@ -189,16 +189,16 @@ def calculate_fitted_values_numba(
 
 class LinearRegression(BaseIndicator):
     """
-    Linear Regression (Doğrusal Regresyon) - OPTIMIZED VERSION 🚀
+    Linear Regression (Linear Regression) - OPTIMIZED VERSION 🚀
     
-    PERFORMANS:
-    - Numba JIT compilation ile 50-100x hız artışı!
+    PERFORMANCE:
+    - 50-100 x speed increase with Numba JIT compilation!
     - 2000 bar: ~0.002-0.003 saniye (eski: 0.15-0.2 saniye)
     
     Args:
-        period: Regresyon periyodu (varsayılan: 20)
-        forecast_periods: Kaç periyot ilerisi tahmin edilecek (varsayılan: 1)
-        min_r_squared: Minimum R² değeri (trend güvenilirliği, varsayılan: 0.5)
+        period: Regression period (default: 20)
+        forecast_periods: How many periods to forecast into the future (default: 1)
+        min_r_squared: Minimum R² value (trend reliability, default: 0.5)
     """
 
     def __init__(
@@ -227,76 +227,76 @@ class LinearRegression(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.period
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 2:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Periyot en az 2 olmalı (regresyon için)"
+                "Period must be at least 2 (for regression)"
             )
         if self.forecast_periods < 1:
             raise InvalidParameterError(
                 self.name, 'forecast_periods', self.forecast_periods,
-                "Forecast periyodu en az 1 olmalı"
+                "The forecast period must be at least 1"
             )
         if not (0 <= self.min_r_squared <= 1):
             raise InvalidParameterError(
                 self.name, 'min_r_squared', self.min_r_squared,
-                "Min R² değeri 0-1 arası olmalı"
+                "The minimum R² value should be between 0 and 1"
             )
         return True
 
     def calculate(self, data: pd.DataFrame) -> IndicatorResult:
         """
-        Linear Regression hesapla (realtime - scipy kullanır)
+        Calculate linear regression (realtime - uses scipy)
         
-        NOT: calculate() scipy.stats kullanır (daha esnek)
-        calculate_batch() ise Numba kullanır (50-100x daha hızlı!)
+        NOTE: calculate() uses scipy.stats (more flexible)
+        calculate_batch() uses Numba (50-100 x faster!)
         
         Args:
             data: OHLCV DataFrame
         
         Returns:
-            IndicatorResult: Regresyon analizi sonuçları
+            IndicatorResult: Regression analysis results
         """
         close = data['close'].values
 
-        # Son period kadar veriyi al
+        # Get data up to the last period
         period_data = close[-self.period:]
 
-        # X değerleri (zaman ekseni)
+        # X values (time axis)
         x = np.arange(len(period_data))
         y = period_data
 
-        # Linear regression hesapla (scipy - realtime için)
+        # Calculate linear regression (using scipy - for real-time)
         slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
 
         # R-squared hesapla
         r_squared = r_value ** 2
 
-        # Mevcut değer (fitted value)
+        # Current value (fitted value)
         current_fitted = slope * (len(x) - 1) + intercept
 
         # Tahmin (forecast)
         forecast = slope * (len(x) - 1 + self.forecast_periods) + intercept
 
-        # Üst ve alt bantlar (standart hata ile)
+        # Upper and lower bands (with standard error)
         residuals = y - (slope * x + intercept)
         std_residual = np.std(residuals)
         upper_band = forecast + (2 * std_residual)
         lower_band = forecast - (2 * std_residual)
 
-        # Fiyat ile fitted value arasındaki fark
+        # Difference between the price and the fitted value
         current_price = close[-1]
         deviation = current_price - current_fitted
         deviation_pct = (deviation / current_fitted) * 100 if current_fitted != 0 else 0
 
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Trend gücü: R² ve eğimin büyüklüğüne göre
+        # Trend strength: Based on the R² value and the magnitude of the slope.
         trend_strength = min(r_squared * 100 * (1 + abs(slope) / current_price), 100)
 
         # Warmup buffer for update() method
@@ -343,7 +343,7 @@ class LinearRegression(BaseIndicator):
 
         close = data['close'].values
 
-        # ✅ OPTİMİZASYON 1: Numba JIT ile regresyon hesaplama
+        # ✅ OPTIMIZATION 1: Regression calculation with Numba JIT
         slopes, forecasts, r_squared_values = calculate_linear_regression_numba(
             close,
             self.period,
@@ -359,7 +359,7 @@ class LinearRegression(BaseIndicator):
             mid_y = close[i - int(mid_x)]
             intercepts[i] = mid_y - (slopes[i] * mid_x)
 
-        # ✅ OPTİMİZASYON 2: Fitted values ve residuals (opsiyonel - bands için)
+        # ✅ OPTIMIZATION 2: Fitted values and residuals (optional - for bands)
         # fitted_values, std_residuals = calculate_fitted_values_numba(
         #     close, slopes, self.period
         # )
@@ -373,11 +373,11 @@ class LinearRegression(BaseIndicator):
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
         """
-        Warmup buffer - update() için gerekli
+        Warmup buffer - required for update().
 
         Args:
             data: OHLCV DataFrame (warmup verisi)
-            symbol: Sembol adı (opsiyonel)
+            symbol: Symbol name (optional)
         """
         super().warmup_buffer(data, symbol)
 
@@ -427,28 +427,28 @@ class LinearRegression(BaseIndicator):
         return self.calculate(buffer_data)
 
     def get_signal(self, slope: float, r_squared: float, deviation_pct: float) -> SignalType:
-        """Regresyon parametrelerinden sinyal üret"""
-        # Güçlü trend yoksa sinyal verme
+        """Generate signal from regression parameters"""
+        # Do not give a signal if there is no strong trend
         if r_squared < self.min_r_squared:
             return SignalType.HOLD
 
-        # Fiyat regresyon çizgisinin altındaysa ve trend yukarıysa
+        # If the price is below the regression line and the trend is upward
         if slope > 0 and deviation_pct < -2:
             return SignalType.BUY
 
-        # Fiyat regresyon çizgisinin üstündeyse ve trend aşağıysa
+        # If the price is above the regression line and the trend is downward
         elif slope < 0 and deviation_pct > 2:
             return SignalType.SELL
 
         return SignalType.HOLD
 
     def get_trend(self, slope: float, r_squared: float) -> TrendDirection:
-        """Eğimden trend belirle"""
-        # Zayıf korelasyon varsa trend belirsiz
+        """Determine trend from slope"""
+        # If there is a weak correlation, the trend is uncertain
         if r_squared < self.min_r_squared:
             return TrendDirection.NEUTRAL
 
-        # Eğim pozitifse yükseliş, negatifse düşüş
+        # If the slope is positive, it indicates an increase; if it's negative, it indicates a decrease.
         if slope > 0.001:
             return TrendDirection.UP
         elif slope < -0.001:
@@ -457,7 +457,7 @@ class LinearRegression(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'period': 20,
             'forecast_periods': 1,
@@ -491,7 +491,7 @@ if __name__ == "__main__":
     # Test data sizes
     test_sizes = [100, 500, 1000, 2000, 5000]
 
-    print("📊 Test senaryoları:")
+    print("📊 Test scenarios:")
     for size in test_sizes:
         print(f"   • {size} bar")
     print()
@@ -525,8 +525,8 @@ if __name__ == "__main__":
             'volume': [1000 + np.random.randint(0, 500) for _ in prices]
         })
 
-        print(f"✅ Test verisi oluşturuldu: {len(data)} bar")
-        print(f"   Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}\n")
+        print(f"✅ Test data created: {len(data)} items")
+        print(f"   Price range: {min(prices):.2f} -> {max(prices):.2f}\n")
 
         # Initialize Linear Regression
         linreg = LinearRegression(period=20, forecast_periods=1)
@@ -535,10 +535,10 @@ if __name__ == "__main__":
         if size == test_sizes[0]:
             print("🔥 Numba JIT warming up...")
             _ = linreg.calculate_batch(data)
-            print("   [OK] JIT compilation tamamlandı!\n")
+            print("   [OK] JIT compilation completed!\n")
 
         # Benchmark
-        print("⏱️  Performance test başlıyor...")
+        print("⏱️ Performance test is starting...")
         
         start_time = time.time()
         batch_result = linreg.calculate_batch(data)
@@ -549,9 +549,9 @@ if __name__ == "__main__":
         avg_slope = valid_slopes.mean()
         avg_r2 = batch_result['r_squared'].dropna().mean()
         
-        print(f"\n📈 SONUÇLAR:")
-        print(f"   • Süre: {elapsed_time*1000:.3f} ms ({elapsed_time:.6f} saniye)")
-        print(f"   • Hız: {size/elapsed_time:.0f} bar/saniye")
+        print(f"\n📈 RESULTS:")
+        print(f"   • Duration: {elapsed_time*1000:.3f} ms ({elapsed_time:.6f} seconds)")
+        print(f"   • Speed: {size/elapsed_time:.0f} bar/second")
         print(f"   • Ortalama Slope: {avg_slope:.6f}")
         print(f"   • Ortalama R²: {avg_r2:.4f}")
         print(f"   • Valid bars: {len(valid_slopes)}")
@@ -566,7 +566,7 @@ if __name__ == "__main__":
 
     # Final summary
     print("\n" + "="*70)
-    print("📊 PERFORMANS ÖZET")
+    print("📊 PERFORMANCE SUMMARY")
     print("="*70 + "\n")
 
     print(f"{'Bars':<10} {'Time (ms)':<15} {'Speed (bar/s)':<20} {'Avg R²':<15}")
@@ -578,18 +578,18 @@ if __name__ == "__main__":
 
     # Speed comparison
     if len(results) >= 2:
-        print("\n🚀 HIZ KARŞILAŞTIRMASI:")
-        print("   • ESKİ VERSİYON (scipy loop): ~0.15-0.2 saniye (2000 bar)")
-        print(f"   • YENİ VERSİYON (Numba JIT): {results[3]['time']:.6f} saniye (2000 bar)")
+        print("\n🚀 SPEED COMPARISON:")
+        print("   • OLD VERSION (scipy loop): ~0.15-0.2 seconds (2000 bar)")
+        print(f"   • NEW VERSION (Numba JIT): {results[3]['time']:.6f} seconds (2000 bar)")
         speedup = 0.15 / results[3]['time']
-        print(f"   • HIZ ARTIŞI: {speedup:.1f}x daha hızlı! 🔥")
+        print(f"   • SPEED INCREASE: {speedup:.1f}x faster! 🔥")
 
     print("\n" + "="*70)
-    print("✅ [BAŞARILI] BENCHMARK TAMAMLANDI!")
+    print("✅ [SUCCESS] BENCHMARK COMPLETED!")
     print("="*70 + "\n")
 
     print("💡 NOT:")
-    print("   • İlk run JIT compilation içerir (daha yavaş)")
-    print("   • Sonraki run'lar JIT cache kullanır (çok hızlı!)")
-    print("   • Manuel formül scipy.stats'dan 50-100x daha hızlı!")
+    print("   • The initial run includes JIT compilation (slower)")
+    print("   • Subsequent runs will use the JIT cache (very fast!)")
+    print("   • Manual formula is 50-100 x faster than from scipy.stats!")
     print()

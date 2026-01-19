@@ -5,7 +5,7 @@ Position Validator - Checks position rules.
 It validates whether a position can be opened based on the strategy parameters.
 This file is in the strategies/ folder because it is related to STRATEGY RULES.
 
-Sorumluluklar:
+Responsibilities:
 - Check pyramiding rules
 - Check hedging rules
 - Check position limits

@@ -1,29 +1,29 @@
 """
-indicators/statistical/correlation.py - Correlation (Korelasyon)
+indicators/statistical/correlation.py - Correlation
 
 Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    Correlation - İki varlık arasındaki doğrusal ilişkiyi ölçer
-    Aralık: -1 ile +1 arası
-    +1: Mükemmel pozitif korelasyon (birlikte hareket)
-    0: Korelasyon yok (bağımsız)
-    -1: Mükemmel negatif korelasyon (ters yönde hareket)
+Description:
+    Correlation - Measures the linear relationship between two entities.
+    Range: -1 to +1
+    +1: Perfect positive correlation (move together)
+    0: No correlation (independent)
+    -1: Perfect negative correlation (move in opposite directions)
 
-Formül:
-    Pearson Korelasyon Katsayısı:
+Formula:
+    Pearson Correlation Coefficient:
     r = Σ((x - x̄)(y - ȳ)) / √(Σ(x - x̄)² × Σ(y - ȳ)²)
 
-    Rolling korelasyon belirli bir pencere üzerinden hesaplanır.
+    Rolling correlation is calculated over a specific window.
 
-Kullanım:
+Usage:
     - Pairs trading stratejileri
-    - Portföy çeşitlendirme
-    - Risk yönetimi
+    - Portfolio diversification
+    - Risk management
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -43,16 +43,16 @@ from components.indicators.indicator_types import (
 
 class Correlation(BaseIndicator):
     """
-    Correlation (Korelasyon)
+    Correlation.
 
-    İki fiyat serisi arasındaki korelasyonu hesaplar.
-    Pairs trading ve portföy analizi için kullanılır.
+    Calculates the correlation between two price series.
+    It is used for pairs trading and portfolio analysis.
 
     Args:
-        period: Korelasyon pencere periyodu (varsayılan: 20)
-        reference_data: Karşılaştırılacak referans veri (varsayılan: None)
-        high_correlation: Yüksek korelasyon eşiği (varsayılan: 0.7)
-        low_correlation: Düşük korelasyon eşiği (varsayılan: -0.7)
+        period: Correlation window period (default: 20)
+        reference_data: Reference data to compare with (default: None)
+        high_correlation: High correlation threshold (default: 0.7)
+        low_correlation: Low correlation threshold (default: -0.7)
     """
 
     def __init__(
@@ -84,27 +84,27 @@ class Correlation(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.period
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 2:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Periyot en az 2 olmalı (korelasyon için)"
+                "Period must be at least 2 (for correlation)"
             )
         if not (-1 <= self.low_correlation < self.high_correlation <= 1):
             raise InvalidParameterError(
                 self.name, 'thresholds',
                 f"low={self.low_correlation}, high={self.high_correlation}",
-                "Eşikler -1 ile 1 arası olmalı ve low < high"
+                "Thresholds should be between -1 and 1, and low must be less than high."
             )
         return True
 
     def set_reference_data(self, reference_data: pd.DataFrame):
         """
-        Referans veriyi ayarla (karşılaştırılacak varlık)
+        Set the reference data (the asset to be compared).
 
         Args:
             reference_data: Referans OHLCV DataFrame
@@ -113,20 +113,20 @@ class Correlation(BaseIndicator):
 
     def calculate(self, data: pd.DataFrame) -> IndicatorResult:
         """
-        Korelasyon hesapla
+        Calculate correlation.
 
         Args:
-            data: OHLCV DataFrame (birinci varlık)
+            data: OHLCV DataFrame (first asset)
 
         Returns:
-            IndicatorResult: Korelasyon değeri
+            IndicatorResult: Correlation value
         """
-        # Referans veri yoksa, kendi geçmiş verileriyle korelasyonu hesapla (autocorrelation)
+        # If there is no reference data, calculate the correlation with its own historical data (autocorrelation)
         if self.reference_data is None:
             close = data['close'].values
             period_data = close[-self.period:]
 
-            # Autocorrelation: mevcut fiyat ile gecikmeli fiyat arasında
+            # Autocorrelation: relationship between the current price and the lagged price.
             if len(period_data) >= 2:
                 x = period_data[:-1]  # t-1
                 y = period_data[1:]   # t
@@ -138,11 +138,11 @@ class Correlation(BaseIndicator):
                 reference_name = "self_lag1"
                 reference_price = close[-1]
         else:
-            # İki farklı varlık arasında korelasyon
+            # Correlation between two different entities
             close1 = data['close'].values[-self.period:]
             close2 = self.reference_data['close'].values[-self.period:]
 
-            # Veri uzunluklarını eşitle
+            # Equalize data lengths
             min_len = min(len(close1), len(close2))
             if min_len < 2:
                 correlation = 0.0
@@ -154,14 +154,14 @@ class Correlation(BaseIndicator):
             reference_name = "reference_asset"
             reference_price = close2[-1] if len(close2) > 0 else 0
 
-        # NaN kontrolü
+        # NaN check
         if np.isnan(correlation):
             correlation = 0.0
 
         timestamp = int(data.iloc[-1]['timestamp'])
         current_price = data['close'].values[-1]
 
-        # Korelasyon gücü: mutlak değer
+        # Correlation strength: absolute value
         strength = abs(correlation) * 100
 
         # Warmup buffer for update() method
@@ -185,34 +185,34 @@ class Correlation(BaseIndicator):
 
     def _get_relationship(self, correlation: float) -> str:
         """
-        Korelasyon değerinden ilişki türünü belirle
+        Determine the relationship type from the correlation value.
 
         Args:
-            correlation: Korelasyon katsayısı
+            correlation: Correlation coefficient
 
         Returns:
-            str: İlişki açıklaması
+            str: Relationship description
         """
         abs_corr = abs(correlation)
 
         if abs_corr >= 0.9:
-            strength = "Çok Güçlü"
+            strength = "Very Strong"
         elif abs_corr >= 0.7:
-            strength = "Güçlü"
+            strength = "Strong"
         elif abs_corr >= 0.5:
             strength = "Orta"
         elif abs_corr >= 0.3:
-            strength = "Zayıf"
+            strength = "Weak"
         else:
-            strength = "Çok Zayıf"
+            strength = "Very Weak"
 
-        direction = "Pozitif" if correlation >= 0 else "Negatif"
+        direction = "Positive" if correlation >= 0 else "Negative"
 
         return f"{strength} {direction}"
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.Series:
         """
-        ⚡ VECTORIZED batch Correlation calculation - BACKTEST için
+        ⚡ VECTORIZED batch Correlation calculation - for BACKTEST
 
         Correlation Formula:
             Rolling Pearson correlation coefficient over 'period' window
@@ -263,7 +263,7 @@ class Correlation(BaseIndicator):
         return pd.Series(correlation.values, index=data.index, name='correlation')
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
-        """Warmup buffer - update() için gerekli state'i hazırlar"""
+        """Warmup buffer - prepares the necessary state for update()"""
         super().warmup_buffer(data, symbol)
         from collections import deque
         max_len = self.get_required_periods() + 50
@@ -308,19 +308,19 @@ class Correlation(BaseIndicator):
 
     def get_signal(self, value: float) -> SignalType:
         """
-        Korelasyon değerinden sinyal üret
+        Generate a signal from the correlation value.
 
         Args:
-            value: Korelasyon değeri
+            value: Correlation value
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
-        # Yüksek pozitif korelasyon: varlıklar birlikte hareket ediyor
+        # High positive correlation: assets move together
         if value >= self.high_correlation:
             return SignalType.BUY
 
-        # Yüksek negatif korelasyon: varlıklar ters hareket ediyor
+        # High negative correlation: assets move in opposite directions
         elif value <= self.low_correlation:
             return SignalType.SELL
 
@@ -328,22 +328,22 @@ class Correlation(BaseIndicator):
 
     def get_trend(self, value: float) -> TrendDirection:
         """
-        Korelasyon değerinden trend belirle
+        Determine the trend based on the correlation value.
 
         Args:
-            value: Korelasyon değeri
+            value: Correlation value
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         if value > 0.3:
-            return TrendDirection.UP  # Pozitif korelasyon
+            return TrendDirection.UP  # Positive correlation
         elif value < -0.3:
-            return TrendDirection.DOWN  # Negatif korelasyon
-        return TrendDirection.NEUTRAL  # Düşük/yok korelasyon
+            return TrendDirection.DOWN  # Negative correlation
+        return TrendDirection.NEUTRAL  # Low/no correlation
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'period': 20,
             'high_correlation': 0.7,
@@ -363,22 +363,22 @@ __all__ = ['Correlation']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """Correlation indikatör testi"""
+    """Correlation indicator test"""
 
     print("\n" + "="*60)
-    print("CORRELATION (KORELASYON) TEST")
+    print("CORRELATION TEST")
     print("="*60 + "\n")
 
     # Test 1: Autocorrelation testi
-    print("1. Autocorrelation testi (kendi gecikmiş haliyle)...")
+    print("1. Autocorrelation test (with its own lagged version)...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(50)]
 
-    # Trend + momentum içeren fiyat serisi
+    # Price series containing trend + momentum
     base_price = 100
     prices = [base_price]
     for i in range(49):
@@ -396,24 +396,24 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
     corr = Correlation(period=20)
-    print(f"   [OK] Oluşturuldu: {corr}")
+    print(f"   [OK] Created: {corr}")
     print(f"   [OK] Kategori: {corr.category.value}")
 
     result = corr(data)
     print(f"   [OK] Autocorrelation: {result.value}")
-    print(f"   [OK] İlişki: {result.metadata['relationship']}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Relationship: {result.metadata['relationship']}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
 
-    # Test 2: Pozitif korelasyon - iki benzer varlık
-    print("\n2. Pozitif korelasyon testi (benzer hareketler)...")
+    # Test 2: Positive correlation - two similar assets
+    print("\n2. Positive correlation test (similar movements)...")
     np.random.seed(42)
 
-    # Varlık 1
+    # Entity 1
     prices1 = [100]
     for i in range(49):
         trend = 0.2 + np.random.randn() * 0.5
@@ -428,10 +428,10 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices1]
     })
 
-    # Varlık 2 - Varlık 1 ile yüksek korelasyonlu
+    # Entity 2 - Highly correlated with Entity 1
     prices2 = []
     for p in prices1:
-        # Aynı trend + küçük noise
+        # Same trend + small noise
         prices2.append(p * 1.1 + np.random.randn() * 0.3)
 
     data2 = pd.DataFrame({
@@ -445,13 +445,13 @@ if __name__ == "__main__":
 
     corr.set_reference_data(data2)
     result = corr.calculate(data1)
-    print(f"   [OK] Pozitif Korelasyon: {result.value}")
-    print(f"   [OK] İlişki: {result.metadata['relationship']}")
-    print(f"   [OK] Korelasyon %: {result.metadata['correlation_pct']}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Positive Correlation: {result.value}")
+    print(f"   [OK] Relationship: {result.metadata['relationship']}")
+    print(f"   [OK] Correlation %: {result.metadata['correlation_pct']}")
+    print(f"   [OK] Signal: {result.signal.value}")
 
-    # Test 3: Negatif korelasyon - ters hareketler
-    print("\n3. Negatif korelasyon testi (ters hareketler)...")
+    # Test 3: Negative correlation - inverse movements
+    print("\n3. Negative correlation test (inverse movements)...")
     prices3 = []
     for p in prices1:
         # Ters hareket
@@ -468,12 +468,12 @@ if __name__ == "__main__":
 
     corr.set_reference_data(data3)
     result = corr.calculate(data1)
-    print(f"   [OK] Negatif Korelasyon: {result.value}")
-    print(f"   [OK] İlişki: {result.metadata['relationship']}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Negative Correlation: {result.value}")
+    print(f"   [OK] Relationship: {result.metadata['relationship']}")
+    print(f"   [OK] Signal: {result.signal.value}")
 
-    # Test 4: Sıfır korelasyon - bağımsız hareketler
-    print("\n4. Sıfır korelasyon testi (bağımsız hareketler)...")
+    # Test 4: Zero correlation - independent movements
+    print("\n4. Zero correlation test (independent movements)...")
     np.random.seed(99)
     prices4 = [100 + np.random.randn() * 3 for _ in range(50)]
 
@@ -488,20 +488,20 @@ if __name__ == "__main__":
 
     corr.set_reference_data(data4)
     result = corr.calculate(data1)
-    print(f"   [OK] Sıfır Korelasyon: {result.value}")
-    print(f"   [OK] İlişki: {result.metadata['relationship']}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Zero Correlation: {result.value}")
+    print(f"   [OK] Relationship: {result.metadata['relationship']}")
+    print(f"   [OK] Signal: {result.signal.value}")
 
-    # Test 5: Farklı periyotlar
-    print("\n5. Farklı periyot testi...")
+    # Test 5: Different periods
+    print("\n5. Different period test...")
     corr.set_reference_data(data2)  # Pozitif korelasyonlu veri
     for period in [10, 20, 30]:
         corr_test = Correlation(period=period, reference_data=data2)
         result = corr_test.calculate(data1)
-        print(f"   [OK] Corr({period}): {result.value:.4f} | İlişki: {result.metadata['relationship']}")
+        print(f"   [OK] Corr({period}): {result.value:.4f} | Relationship: {result.metadata['relationship']}")
 
-    # Test 6: Rolling korelasyon analizi
-    print("\n6. Rolling korelasyon testi (son 10 mum)...")
+    # Test 6: Rolling correlation analysis
+    print("\n6. Rolling correlation test (last 10 candles)...")
     corr_roll = Correlation(period=20, reference_data=data2)
     for i in range(-10, 0):
         test_data1 = data1.iloc[:len(data1)+i]
@@ -510,33 +510,33 @@ if __name__ == "__main__":
         if len(test_data1) >= corr_roll.period:
             result = corr_roll.calculate(test_data1)
             print(f"   [OK] Mum {i:3d}: Corr = {result.value:7.4f} | "
-                  f"İlişki = {result.metadata['relationship']:20s} | "
+                  f"Relationship = {result.metadata['relationship']:20s} | "
                   f"Trend = {result.trend.name}")
 
-    # Test 7: Özel eşikler
-    print("\n7. Özel eşik testi...")
+    # Test 7: Custom thresholds
+    print("\n7. Special threshold test...")
     corr_custom = Correlation(period=20, reference_data=data2,
                               high_correlation=0.9, low_correlation=-0.9)
     result = corr_custom.calculate(data1)
-    print(f"   [OK] Özel eşikli Korelasyon: {result.value}")
+    print(f"   [OK] Custom threshold correlation: {result.value}")
     print(f"   [OK] High threshold: {corr_custom.high_correlation}")
     print(f"   [OK] Low threshold: {corr_custom.low_correlation}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
 
-    # Test 8: İstatistikler
-    print("\n8. İstatistik testi...")
+    # Test 8: Statistics
+    print("\n8. Statistical test...")
     stats = corr.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 9: Metadata
     print("\n9. Metadata testi...")
     metadata = corr.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

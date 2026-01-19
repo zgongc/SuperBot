@@ -1,25 +1,25 @@
 # components/data - Data Management Layer
 
-**SuperBot Data Layer** - Veri indirme, saklama ve yönetim bileşenleri
+**SuperBot Data Layer** - Data download, storage, and management components.
 
 ---
 
-## 📋 Genel Bakış
+## 📋 Overview
 
-Bu dizin SuperBot'un tüm veri yönetim operasyonlarını içerir:
+This directory contains all of SuperBot's data management operations:
 - **Database Management:** SQLite/PostgreSQL veri saklama
-- **Historical Data:** Parquet-based geçmiş OHLCV verisi
+- **Historical Data:** Parquet-based historical OHLCV data
 - **Data Download:** Exchange'lerden veri indirme
-- **Timeframe Resampling:** Alt timeframe'den üst timeframe oluşturma
+- **Timeframe Resampling:** Creating a higher timeframe from a lower timeframe.
 
 ---
 
 ## 📁 Dosyalar
 
 ### 1. **database_engine.py** → `core/database_engine.py`
-**Sorumluluk:** Database connection management
+**Responsibility:** Database connection management
 
-**Özellikler:**
+**Features:**
 - ✅ SQLite/PostgreSQL dual backend (config-driven)
 - ✅ Async SQLAlchemy 2.0 engine
 - ✅ Connection pooling
@@ -28,7 +28,7 @@ Bu dizin SuperBot'un tüm veri yönetim operasyonlarını içerir:
 - ✅ Health check
 - ✅ Graceful shutdown
 
-**Kullanım:**
+**Usage:**
 ```python
 from core.database_engine import DatabaseEngine
 
@@ -41,18 +41,18 @@ async with db.get_session() as session:
 await db.shutdown()
 ```
 
-**Config:** `config/infrastructure.yaml` → `database` bölümü
+**Config:** `config/infrastructure.yaml` -> `database` section
 
 ---
 
 ### 2. **database_models.py**
-**Sorumluluk:** SQLAlchemy ORM model tanımları
+**Responsibility:** SQLAlchemy ORM model definitions
 
-**Özellikler:**
+**Features:**
 - ✅ SQLAlchemy `Base` class
-- ⏳ Model'lar ihtiyaca göre eklenecek (şu an 0 tablo)
+- ⏳ Models will be added as needed (currently 0 tables)
 
-**Kullanım:**
+**Usage:**
 ```python
 from components.data.database_models import Base
 from sqlalchemy import Column, Integer, String, Float
@@ -70,21 +70,21 @@ class Candle(Base):
     volume = Column(Float)
 ```
 
-**Not:** Tablo ekledikten sonra DatabaseEngine otomatik oluşturur.
+**Note:** The DatabaseEngine automatically creates the table after you add it.
 
 ---
 
 ### 3. **database_manager.py**
-**Sorumluluk:** DatabaseEngine facade - unified API
+**Responsibility:** DatabaseEngine facade - unified API
 
-**Özellikler:**
+**Features:**
 - ✅ DatabaseEngine wrapper
 - ✅ Session context manager
 - ✅ Health check proxy
 - ✅ Singleton pattern
-- ⏳ CRUD methodları ihtiyaca göre eklenecek (şu an YOK)
+- ⏳ CRUD methods will be added as needed (currently NOT available)
 
-**Kullanım:**
+**Usage:**
 ```python
 from components.data.database_manager import get_database_manager
 
@@ -101,11 +101,11 @@ is_healthy = await dm.health_check()
 await dm.shutdown()
 ```
 
-**Singleton:** `get_database_manager()` global instance döner
+**Singleton:** `get_database_manager()` returns the global instance.
 
-**Gelecek CRUD örnekleri:**
+**Future CRUD examples:**
 ```python
-# İhtiyaç olunca eklenecek:
+# To be added when needed:
 await dm.save_candle(candle_data)
 candles = await dm.get_candles(symbol, timeframe, limit=100)
 await dm.save_trade(trade_data)
@@ -115,9 +115,9 @@ trades = await dm.get_open_trades()
 ---
 
 ### 4. **historical_data_manager.py**
-**Sorumluluk:** Historical OHLCV data management (Parquet-based)
+**Responsibility:** Historical OHLCV data management (Parquet-based)
 
-**Özellikler:**
+**Features:**
 - ✅ Multi-backend: Parquet/SQLite/PostgreSQL/CSV
 - ✅ Smart incremental updates (duplicate prevention)
 - ✅ Date range filtering
@@ -125,7 +125,7 @@ trades = await dm.get_open_trades()
 - ✅ Cache management
 - ✅ Integration with data_downloader.py
 
-**Kullanım:**
+**Usage:**
 ```python
 from components.data.historical_data_manager import HistoricalDataManager
 
@@ -136,7 +136,7 @@ df = await hdm.load_data(
     symbol='BTCUSDT',
     timeframe='1m',
     start_date='2025-01-01',
-    end_date=None  # Bugüne kadar
+    end_date=None  # Up to now
 )
 
 # Update data (incremental)
@@ -149,7 +149,7 @@ await hdm.update_data(
 info = hdm.get_data_info('BTCUSDT')
 ```
 
-**Veri Kaynağı:** Parquet files (`data/parquets/`)
+**Data Source:** Parquet files (`data/parquets/`)
 
 **Use Cases:**
 - Backtest Module (historical data loading)
@@ -159,9 +159,9 @@ info = hdm.get_data_info('BTCUSDT')
 ---
 
 ### 5. **data_downloader.py**
-**Sorumluluk:** Exchange'lerden historical data indirme
+**Responsibility:** Downloading historical data from exchanges.
 
-**Özellikler:**
+**Features:**
 - ✅ Binance API integration
 - ✅ All timeframes support (1m → 1M)
 - ✅ Smart incremental update (son timestamp'ten devam)
@@ -169,13 +169,13 @@ info = hdm.get_data_info('BTCUSDT')
 - ✅ Parquet save
 - ✅ Progress tracking
 
-**Kullanım:**
+**Usage:**
 ```python
 from components.data.data_downloader import DataDownloader
 
 downloader = DataDownloader()
 
-# İlk download
+# Initial download
 await downloader.download(
     symbol='BTCUSDT',
     timeframe='1m',
@@ -199,16 +199,16 @@ await downloader.update(
 ---
 
 ### 6. **timeframe_resampler.py**
-**Sorumluluk:** Alt timeframe → üst timeframe dönüşümü
+**Responsibility:** Conversion from lower timeframe to higher timeframe.
 
-**Özellikler:**
-- ✅ Smart source selection (en yakın alt timeframe)
+**Features:**
+- ✅ Smart source selection (closest lower timeframe)
 - ✅ OHLCV aggregation (pandas resample)
 - ✅ File naming with `_re` suffix
 - ✅ Volume summation
 - ✅ Validation
 
-**Kullanım:**
+**Usage:**
 ```python
 from components.data.timeframe_resampler import TimeframeResampler
 
@@ -223,11 +223,11 @@ df_2h = resampler.resample(
 ```
 
 **Output:** Resampled parquet files
-- Format: `BTCUSDT_2h_2025_re1m.parquet` (1m'den resample edildi)
+- Format: `BTCUSDT_2h_2025_re1m.parquet` (resampled from 1m)
 
 **Use Cases:**
 - Missing timeframe data (2h, 3h, 6h, 8h, 3d)
-- Backtest optimization (daha az data)
+- Backtest optimization (less data)
 
 **Resample Hierarchy:**
 - 3m → 1m
@@ -238,7 +238,7 @@ df_2h = resampler.resample(
 
 ---
 
-## 🗂️ Veri Akışı
+## 🗂️ Data Flow
 
 ### Historical Data Pipeline
 
@@ -298,7 +298,7 @@ df_2h = resampler.resample(
 ## 🎯 Database vs Parquet
 
 ### Database (SQLite/PostgreSQL)
-**Amaç:** Real-time operational data
+**Purpose:** Real-time operational data
 
 **Use Cases:**
 - Live trading data (positions, orders, trades)
@@ -318,7 +318,7 @@ df_2h = resampler.resample(
 ---
 
 ### Parquet Files
-**Amaç:** Historical bulk data storage
+**Purpose:** Historical bulk data storage
 
 **Use Cases:**
 - Backtest data (years of OHLCV)
@@ -339,15 +339,15 @@ df_2h = resampler.resample(
 
 ---
 
-## 🚀 Kullanım Senaryoları
+## 🚀 Usage Scenarios
 
-### Senaryo 1: Backtest için Data Hazırlama
+### Scenario 1: Data Preparation for Backtesting
 ```python
 # 1. Download historical data
 downloader = DataDownloader()
 await downloader.download('BTCUSDT', '1m', start_date='2024-01-01')
 
-# 2. Resample to higher timeframe (eğer lazımsa)
+# 2. Resample to higher timeframe (if needed)
 resampler = TimeframeResampler()
 df_1h = resampler.resample('BTCUSDT', '1h', year=2024)
 
@@ -361,7 +361,7 @@ df = await hdm.load_data('BTCUSDT', '1m', start_date='2024-01-01')
 
 ### Senaryo 2: Live Trading Data Kaydetme (Gelecek)
 ```python
-# DatabaseManager kullanılacak
+# DatabaseManager will be used
 dm = get_database_manager()
 await dm.initialize()
 
@@ -377,7 +377,7 @@ await dm.save_candle({
     "volume": 100.5
 })
 
-# Trade kaydet
+# Save trade
 await dm.save_trade({
     "symbol": "BTCUSDT",
     "side": "LONG",
@@ -401,16 +401,16 @@ balance = await dm.get_latest_balance()
 
 ---
 
-## 📊 Dosya Organizasyonu
+## 📊 File Organization
 
 ```
 components/data/
-├── database_models.py          # SQLAlchemy Base + Models (ihtiyaca göre eklenecek)
-├── database_manager.py         # DatabaseEngine facade (ihtiyaca göre CRUD eklenecek)
+├── database_models.py          # SQLAlchemy Base + Models (to be added as needed)
+├── database_manager.py         # DatabaseEngine facade (CRUD operations will be added as needed)
 ├── historical_data_manager.py  # Parquet-based historical data loader
 ├── data_downloader.py          # Binance historical data downloader
 ├── timeframe_resampler.py      # Timeframe resampling (1m → 2h, etc.)
-└── README.md                   # Bu dosya
+└── README.md                   # This file
 
 core/
 └── database_engine.py          # Database connection manager
@@ -446,14 +446,14 @@ database:
 
 ---
 
-## ⚡ İlk Kullanım
+## ⚡ First Use
 
 ### 1. Database Setup
 ```python
 from components.data.database_manager import get_database_manager
 
 dm = get_database_manager()
-await dm.initialize()  # Database + tables oluşturulur
+await dm.initialize()  # Database and tables are created
 
 # Health check
 is_healthy = await dm.health_check()
@@ -479,7 +479,7 @@ df = await hdm.load_data('BTCUSDT', '1m', start_date='2024-01-01')
 
 ---
 
-## 🎯 Gelişme Planı
+## 🎯 Development Plan
 
 ### Phase 1: Base Infrastructure ✅
 - [x] DatabaseEngine (core/database_engine.py)
@@ -489,25 +489,25 @@ df = await hdm.load_data('BTCUSDT', '1m', start_date='2024-01-01')
 - [x] Data downloader (data_downloader.py)
 - [x] Timeframe resampler (timeframe_resampler.py)
 
-### Phase 2: Model'lar (İhtiyaca Göre)
-İlk ihtiyaç: **WebUI Portfolio Module**
-- [ ] ExchangeSymbol model (symbol listesi)
-- [ ] SymbolFavorite model (kullanıcı favorileri)
-- [ ] Portfolio model (portfolio tanımları)
-- [ ] PortfolioPosition model (portfolio pozisyonları)
+### Phase 2: Models (as needed)
+First need: **WebUI Portfolio Module**
+- [ ] ExchangeSymbol model (symbol list)
+- [ ] SymbolFavorite model (user favorites)
+- [ ] Portfolio model (portfolio definitions)
+- [ ] PortfolioPosition model (portfolio positions)
 - [ ] Corresponding CRUD methods
 
-**Backtest Module ihtiyacı:**
+**Backtest Module requirement:**
 - [ ] BacktestRun model
 - [ ] BacktestTrade model
 - [ ] Strategy model
 
-**Live Trading ihtiyacı:**
+**Live Trading requirement:**
 - [ ] LiveTrade model
 - [ ] Order model
 - [ ] Position model
 
-### Phase 3: Advanced Features (Uzun Vadeli)
+### Phase 3: Advanced Features (Long Term)
 - [ ] Alembic migrations (schema versioning)
 - [ ] Repository pattern (clean CRUD separation)
 - [ ] Bulk operations optimization
@@ -518,14 +518,14 @@ df = await hdm.load_data('BTCUSDT', '1m', start_date='2024-01-01')
 
 ## 🔍 Database vs Parquet - Ne Zaman Hangisi?
 
-### Database Kullan:
+### Use Database:
 ✅ Real-time data (live trading positions)
 ✅ Transactional data (orders, trades)
 ✅ Recent data queries (last 100 trades)
 ✅ Relational data (trade ↔ orders)
 ✅ WebUI dashboard (dynamic queries)
 
-### Parquet Kullan:
+### Use Parquet:
 ✅ Historical bulk data (years of OHLCV)
 ✅ Backtest data (static datasets)
 ✅ AI training datasets (millions of rows)
@@ -534,7 +534,7 @@ df = await hdm.load_data('BTCUSDT', '1m', start_date='2024-01-01')
 
 ---
 
-## 📝 Geliştirme Notları
+## 📝 Development Notes
 
 ### Yeni Model Eklemek:
 
@@ -555,15 +555,15 @@ class Trade(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 ```
 
-**2. DatabaseEngine otomatik table oluşturur:**
+**2. DatabaseEngine automatically creates tables:**
 ```python
-await db.initialize()  # Base.metadata.create_all() otomatik çalışır
+await db.initialize()  # Base.metadata.create_all() runs automatically
 ```
 
-**3. DatabaseManager'a CRUD ekle (opsiyonel):**
+**3. Add CRUD operations to DatabaseManager (optional):**
 ```python
 async def save_trade(self, trade_data: dict) -> bool:
-    """Trade kaydet"""
+    """Record a trade"""
     async with self.get_session() as session:
         trade = Trade(**trade_data)
         session.add(trade)
@@ -571,7 +571,7 @@ async def save_trade(self, trade_data: dict) -> bool:
     return True
 
 async def get_trades(self, symbol: str, limit: int = 100) -> List[dict]:
-    """Trade'leri getir"""
+    """Get trades"""
     async with self.get_session() as session:
         result = await session.execute(
             select(Trade)
@@ -597,29 +597,29 @@ python core/database_engine.py
 
 ---
 
-## 🚨 Önemli Kurallar
+## 🚨 Important Rules
 
 ### ✅ DO:
-- Model eklemeden önce **ihtiyaç olduğundan emin ol**
-- Tablolar **minimal** kalsın (gereksiz field ekleme)
-- CRUD methodları **lazy** ekle (kullanılacağı zaman)
-- Test et (her yeni model/method sonrası)
+- Make sure you **need** to add a model before doing so.
+- Tables should be kept **minimal** (avoid adding unnecessary fields).
+- Add **lazy** CRUD methods (add them when they are needed).
+- Test (after each new model/method)
 
 ### ❌ DON'T:
-- "Belki lazım olur" diye 40 tablo ekleme
-- Kullanılmayan field'lar ekleme
-- WebUI-specific logic'i DatabaseManager'a taşıma
-- Repository pattern şimdilik YAPMA (over-engineering)
+- Adding 40 tables "just in case"
+- Do not add unused fields.
+- Move WebUI-specific logic to the DatabaseManager.
+- Repository pattern is currently NOT IMPLEMENTED (over-engineering)
 
 ---
 
-## 🔗 İlgili Dosyalar
+## 🔗 Related Files
 
 - `core/database_engine.py` - Database connection layer
 - `config/infrastructure.yaml` - Database config
-- `docs/plans/data_manager_implementation_plan.md` - Detaylı plan (IGNORE - aşırı detaylı)
+- `docs/plans/data_manager_implementation_plan.md` - Detailed plan (IGNORE - overly detailed)
 
 ---
 
-**Oluşturuldu:** 2025-11-25
-**Durum:** ✅ Base infrastructure hazır - Models/CRUD ihtiyaca göre eklenecek
+**Created:** 2025-11-25
+**Status:** ✅ Base infrastructure is ready - Models/CRUD will be added as needed.

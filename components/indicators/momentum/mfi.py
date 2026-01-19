@@ -5,20 +5,20 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    MFI (Money Flow Index) - Volume ağırlıklı momentum osilatörü
-    Aralık: 0-100 arası
-    Aşırı Alım: > 80
-    Aşırı Satım: < 20
-    RSI'ın volume kullanan versiyonu olarak bilinir.
+Description:
+    MFI (Money Flow Index) - Volume weighted momentum oscillator
+    Range: 0-100
+    Overbought: > 80
+    Oversold: < 20
+    It is known as the version of RSI that uses volume.
 
-Formül:
+Formula:
     Typical Price = (High + Low + Close) / 3
     Raw Money Flow = Typical Price × Volume
     Money Flow Ratio = (14-period Positive Money Flow) / (14-period Negative Money Flow)
     MFI = 100 - (100 / (1 + Money Flow Ratio))
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -40,13 +40,13 @@ class MFI(BaseIndicator):
     """
     Money Flow Index
 
-    Volume ağırlıklı momentum osilatörü.
-    Fiyat ve hacim ilişkisini kullanarak aşırı alım/satım koşullarını tespit eder.
+    Volume-weighted momentum oscillator.
+    Detects overbought/oversold conditions by using the relationship between price and volume.
 
     Args:
-        period: MFI periyodu (varsayılan: 14)
-        overbought: Aşırı alım seviyesi (varsayılan: 80)
-        oversold: Aşırı satım seviyesi (varsayılan: 20)
+        period: MFI period (default: 14)
+        overbought: Overbought level (default: 80)
+        oversold: Oversold level (default: 20)
     """
 
     def __init__(
@@ -75,27 +75,27 @@ class MFI(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.period + 1
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 1:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Periyot pozitif olmalı"
+                "The period must be positive"
             )
         if self.oversold >= self.overbought:
             raise InvalidParameterError(
                 self.name, 'levels',
                 f"oversold={self.oversold}, overbought={self.overbought}",
-                "Oversold, overbought'tan küçük olmalı"
+                "Oversold should be smaller than overbought"
             )
         if not (0 <= self.oversold <= 100) or not (0 <= self.overbought <= 100):
             raise InvalidParameterError(
                 self.name, 'levels',
                 f"oversold={self.oversold}, overbought={self.overbought}",
-                "Seviyeler 0-100 arası olmalı"
+                "Levels must be between 0 and 100"
             )
         return True
 
@@ -107,7 +107,7 @@ class MFI(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: MFI değeri
+            IndicatorResult: MFI value
         """
         high = data['high'].values
         low = data['low'].values
@@ -120,8 +120,8 @@ class MFI(BaseIndicator):
         # Raw Money Flow hesapla
         raw_money_flow = typical_price * volume
 
-        # Pozitif ve negatif money flow'ları ayır
-        # Son period kadar data kullan
+        # Separate positive and negative money flows
+        # Use data up to the last period
         period_data = typical_price[-(self.period + 1):]
         period_flow = raw_money_flow[-(self.period + 1):]
 
@@ -139,7 +139,7 @@ class MFI(BaseIndicator):
                 positive_flow.append(0)
                 negative_flow.append(0)
 
-        # Toplam positive ve negative flow
+        # Total positive and negative flow
         positive_sum = np.sum(positive_flow)
         negative_sum = np.sum(negative_flow)
 
@@ -160,7 +160,7 @@ class MFI(BaseIndicator):
             timestamp=timestamp,
             signal=self.get_signal(mfi_value),
             trend=self.get_trend(mfi_value),
-            strength=abs(mfi_value - 50) * 2,  # 0-100 arası normalize et
+            strength=abs(mfi_value - 50) * 2,  # Normalize to a range of 0-100
             metadata={
                 'period': self.period,
                 'typical_price': round(typical_price[-1], 2),
@@ -171,7 +171,7 @@ class MFI(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.Series:
         """
-        ⚡ VECTORIZED batch MFI calculation - BACKTEST için
+        ⚡ VECTORIZED batch MFI calculation - for BACKTEST
 
         MFI Formula:
             Typical Price = (High + Low + Close) / 3
@@ -221,18 +221,18 @@ class MFI(BaseIndicator):
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
         """
-        Warmup buffer - update() için gerekli
+        Warmup buffer - required for update().
 
         Args:
             data: OHLCV DataFrame (warmup verisi)
-            symbol: Sembol adı (opsiyonel)
+            symbol: Symbol name (optional)
         """
         super().warmup_buffer(data, symbol)
 
         from collections import deque
         max_len = self.get_required_periods() + 50
 
-        # Buffer'ları oluştur ve doldur
+        # Create and fill the buffers
         self._high_buffer = deque(maxlen=max_len)
         self._low_buffer = deque(maxlen=max_len)
         self._close_buffer = deque(maxlen=max_len)
@@ -298,13 +298,13 @@ class MFI(BaseIndicator):
 
     def get_signal(self, value: float) -> SignalType:
         """
-        MFI değerinden sinyal üret
+        Generate a signal from the MFI value.
 
         Args:
-            value: MFI değeri
+            value: MFI value
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
         if value < self.oversold:
             return SignalType.BUY
@@ -314,13 +314,13 @@ class MFI(BaseIndicator):
 
     def get_trend(self, value: float) -> TrendDirection:
         """
-        MFI değerinden trend belirle
+        Determine the trend based on the MFI value.
 
         Args:
-            value: MFI değeri
+            value: MFI value
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         if value > 50:
             return TrendDirection.UP
@@ -329,7 +329,7 @@ class MFI(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'period': 14,
             'overbought': 80,
@@ -349,22 +349,22 @@ __all__ = ['MFI']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """MFI indikatör testi"""
+    """MFI indicator test"""
 
     print("\n" + "="*60)
     print("MFI (MONEY FLOW INDEX) TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(30)]
 
-    # Fiyat hareketini simüle et
+    # Simulate price movement
     base_price = 100
     prices = [base_price]
     for i in range(29):
@@ -380,63 +380,63 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     mfi = MFI(period=14)
-    print(f"   [OK] Oluşturuldu: {mfi}")
+    print(f"   [OK] Created: {mfi}")
     print(f"   [OK] Kategori: {mfi.category.value}")
-    print(f"   [OK] Gerekli periyot: {mfi.get_required_periods()}")
-    print(f"   [OK] Volume gerekli: {mfi._requires_volume()}")
+    print(f"   [OK] Required period: {mfi.get_required_periods()}")
+    print(f"   [OK] Volume required: {mfi._requires_volume()}")
 
     result = mfi(data)
-    print(f"   [OK] MFI Değeri: {result.value}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] MFI Value: {result.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Power: {result.strength:.2f}")
     print(f"   [OK] Metadata: {result.metadata}")
 
-    # Test 2: Farklı periyotlar
-    print("\n3. Farklı periyot testi...")
+    # Test 2: Different periods
+    print("\n3. Different period test...")
     for period in [7, 14, 21]:
         mfi_test = MFI(period=period)
         result = mfi_test.calculate(data)
-        print(f"   [OK] MFI({period}): {result.value} | Sinyal: {result.signal.value}")
+        print(f"   [OK] MFI({period}): {result.value} | Signal: {result.signal.value}")
 
-    # Test 3: Özel seviyeler
-    print("\n4. Özel seviye testi...")
+    # Test 3: Custom levels
+    print("\n4. Special level test...")
     mfi_custom = MFI(period=14, overbought=90, oversold=10)
     result = mfi_custom.calculate(data)
-    print(f"   [OK] Özel seviyeli MFI: {result.value}")
+    print(f"   [OK] MFI with custom level: {result.value}")
     print(f"   [OK] Overbought: {mfi_custom.overbought}, Oversold: {mfi_custom.oversold}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
 
-    # Test 4: Volume etkisi - Yüksek volume ile test
+    # Test 4: Volume effect - Test with high volume
     print("\n5. Volume etkisi testi...")
     high_vol_data = data.copy()
     high_vol_data.loc[high_vol_data.index[-5:], 'volume'] *= 3
     result_high_vol = mfi.calculate(high_vol_data)
     result_normal_vol = mfi.calculate(data)
     print(f"   [OK] Normal volume MFI: {result_normal_vol.value}")
-    print(f"   [OK] Yüksek volume MFI: {result_high_vol.value}")
+    print(f"   [OK] High volume MFI: {result_high_vol.value}")
     print(f"   [OK] Fark: {abs(result_high_vol.value - result_normal_vol.value):.2f}")
 
-    # Test 5: İstatistikler
-    print("\n6. İstatistik testi...")
+    # Test 5: Statistics
+    print("\n6. Statistical test...")
     stats = mfi.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 6: Metadata
     print("\n7. Metadata testi...")
     metadata = mfi.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

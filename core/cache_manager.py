@@ -69,11 +69,13 @@ class CacheEntry:
 
 class MemoryCache:
     """
-    Memory-based cache implementation (LRU).
+    Memory-based cache implementation.
     """
 
-    def __init__(self, max_size: int = 1000) -> None:
+    def __init__(self, max_size: int = 1000, eviction_policy: str = "lru", compress: bool = False) -> None:
         self.max_size = max_size
+        self.eviction_policy = eviction_policy.lower()
+        self.compress = compress
         self.cache: OrderedDict[str, CacheEntry] = OrderedDict()
         self.stats = {"hits": 0, "misses": 0, "evictions": 0, "expired": 0}
 
@@ -90,21 +92,54 @@ class MemoryCache:
             self.stats["misses"] += 1
             return None
 
-        self.cache.move_to_end(key)
+        # Update access order only for LRU
+        if self.eviction_policy == "lru":
+            self.cache.move_to_end(key)
+            
         entry.accessed_count += 1
         self.stats["hits"] += 1
-        return entry.value
+        
+        value = entry.value
+        if self.compress and isinstance(value, bytes):
+            try:
+                import zlib
+                import pickle
+                value = pickle.loads(zlib.decompress(value))
+            except Exception:
+                pass
+                
+        return value
 
     def set(self, key: str, value: Any, ttl: Optional[float] = None) -> None:
+        if self.compress:
+             import zlib
+             import pickle
+             value = zlib.compress(pickle.dumps(value))
+
         if len(self.cache) >= self.max_size and key not in self.cache:
-            oldest_key = next(iter(self.cache))
-            self.delete(oldest_key)
+            # Evict based on policy
+            last = False if self.eviction_policy == "fifo" else False 
+            # OrderedDict: popitem(last=False) -> FIFO (pop first inserted)
+            # OrderedDict: popitem(last=False) -> LRU (pop least recently used/inserted) if move_to_end used
+            # For LRU: The oldest accessed item is at the beginning (if we use move_to_end on access)
+            # For FIFO: The oldest inserted item is at the beginning (if we DONT use move_to_end on access)
+            
+            # Since we manage move_to_end logic in get(), popitem(last=False) works for both LRU (oldest used) and FIFO (oldest inserted)
+            self.cache.popitem(last=False)
             self.stats["evictions"] += 1
 
         entry = CacheEntry(key=key, value=value, ttl=ttl, created_at=time.time())
 
         if key in self.cache:
-            self.cache.move_to_end(key)
+            # For LRU, update position. For FIFO, keep original insertion position? 
+            # Usually FIFO doesn't update position on update, but let's stick to standard map behavior which is update in place.
+            # If we delete and re-insert, it becomes "new". 
+            if self.eviction_policy == "lru":
+                self.cache.move_to_end(key)
+            # If FIFO, we don't move it to end, keeping its original "insertion time" relative to others?
+            # Or does 'set' count as a new insertion? Typically yes.
+            elif self.eviction_policy == "fifo":
+                 self.cache.move_to_end(key) 
 
         self.cache[key] = entry
 
@@ -134,16 +169,25 @@ class RedisCache:
     Redis-based cache implementation.
     """
 
-    def __init__(self, host: str, port: int, db: int, password: Optional[str] = None) -> None:
+    def __init__(self, host: str, port: int, db: int, password: Optional[str] = None, 
+                 pool_size: int = 10, socket_timeout: int = 5, compress: bool = False) -> None:
         try:
             import redis
 
+            pool = redis.ConnectionPool(
+                host=host, 
+                port=port, 
+                db=db, 
+                password=password, 
+                max_connections=pool_size,
+                decode_responses=not compress # If compressing, we need bytes
+            )
+            
+            self.compress = compress
             self.redis = redis.Redis(
-                host=host,
-                port=port,
-                db=db,
-                password=password,
-                decode_responses=True,
+                connection_pool=pool,
+                socket_timeout=socket_timeout,
+                socket_connect_timeout=socket_timeout
             )
             self.redis.ping()
             logger.info(f"✅ Redis connection successful: {host}:{port}")
@@ -162,6 +206,12 @@ class RedisCache:
                 return None
 
             self.stats["hits"] += 1
+            
+            if self.compress:
+                import zlib
+                import pickle
+                return pickle.loads(zlib.decompress(value))
+            
             return json.loads(value)
         except Exception as exc:  # noqa: BLE001
             logger.error(f"❌ Redis get error: {exc}")
@@ -169,11 +219,17 @@ class RedisCache:
 
     def set(self, key: str, value: Any, ttl: Optional[float] = None) -> None:
         try:
-            value_str = json.dumps(value)
-            if ttl:
-                self.redis.setex(key, int(ttl), value_str)
+            if self.compress:
+                import zlib
+                import pickle
+                value_data = zlib.compress(pickle.dumps(value))
             else:
-                self.redis.set(key, value_str)
+                value_data = json.dumps(value)
+                
+            if ttl:
+                self.redis.setex(key, int(ttl), value_data)
+            else:
+                self.redis.set(key, value_data)
         except Exception as exc:  # noqa: BLE001
             logger.error(f"❌ Redis set error: {exc}")
 
@@ -220,6 +276,8 @@ class CacheManager:
 
         self.backend_type = cache_cfg.get("backend", "memory")
 
+        compress = cache_cfg.get("compress", False)
+
         if self.backend_type == "redis":
             redis_cfg = cache_cfg.get("redis", {})
             try:
@@ -228,18 +286,23 @@ class CacheManager:
                     port=int(redis_cfg.get("port", 6379)),
                     db=int(redis_cfg.get("db", 0)),
                     password=redis_cfg.get("password"),
+                    pool_size=int(redis_cfg.get("pool_size", 10)),
+                    socket_timeout=int(redis_cfg.get("socket_timeout", 5)),
+                    compress=compress
                 )
             except Exception as exc:  # noqa: BLE001
                 logger.warning(f"⚠️  Redis initialization error, Memory backend will be used: {exc}")
                 self.backend_type = "memory"
                 memory_cfg = cache_cfg.get("memory", {})
                 max_size = int(memory_cfg.get("max_size", cache_cfg.get("max_size", 1000)))
-                self.backend = MemoryCache(max_size=max_size)
+                eviction_policy = memory_cfg.get("eviction_policy", "lru")
+                self.backend = MemoryCache(max_size=max_size, eviction_policy=eviction_policy, compress=compress)
         else:
             memory_cfg = cache_cfg.get("memory", {})
             max_size = int(memory_cfg.get("max_size", cache_cfg.get("max_size", 1000)))
-            self.backend = MemoryCache(max_size=max_size)
-            logger.info("✅ CacheManager initialized with Memory backend")
+            eviction_policy = memory_cfg.get("eviction_policy", "lru")
+            self.backend = MemoryCache(max_size=max_size, eviction_policy=eviction_policy, compress=compress)
+            logger.info(f"✅ CacheManager initialized with Memory backend (Policy: {eviction_policy}, Compress: {compress})")
 
         self.default_ttl = cache_cfg.get("default_ttl") or cache_cfg.get("ttl_default")
         self.warming_keys = cache_cfg.get("warming_keys", [])

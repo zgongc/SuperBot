@@ -5,24 +5,24 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
+Description:
     Breakout Scanner - Multi-Timeframe Breakout Analizi
-    Birden fazla zaman diliminde breakout tespiti yapar
-    Destek/direnç seviyelerini, hacmi ve momentum'u analiz eder
+    Performs breakout detection in multiple time zones.
+    Analyzes support/resistance levels, volume, and momentum.
 
     Analiz Kriterleri:
-    - Fiyat range dışına çıkış (High/Low breakout)
-    - Hacim artışı (ortalama hacmin üzerinde)
-    - Momentum doğrulaması (RSI benzeri)
+    - Price breakout (above high or below low)
+    - Volume increase (above average volume)
+    - Momentum confirmation (similar to RSI)
     - Multi-candle confirmation
 
-    Çıktı:
-    - breakout_score: 0-100 arası breakout puanı
-    - direction: Breakout yönü (up/down/none)
-    - resistance: Direnç seviyesi
-    - support: Destek seviyesi
+    Output:
+    - breakout_score: Breakout score between 0-100
+    - direction: Breakout direction (up/down/none)
+    - resistance: Resistance level
+    - support: Support level
 
-Formül:
+Formula:
     Range High = MAX(High, lookback)
     Range Low = MIN(Low, lookback)
     Breakout UP = Close > Range High (previous)
@@ -30,7 +30,7 @@ Formül:
 
     Score = (Price Movement × 0.4) + (Volume × 0.3) + (Momentum × 0.3)
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -52,14 +52,14 @@ class BreakoutScanner(BaseIndicator):
     """
     Multi-Timeframe Breakout Scanner
 
-    Destek/direnç seviyelerini, hacim ve momentum analizini kullanarak
-    breakout'ları tespit eder ve puanlar.
+    Using support/resistance levels, volume, and momentum analysis.
+    detects and scores breakouts.
 
     Args:
-        lookback: Geriye bakış periyodu (varsayılan: 20)
-        confirmation: Doğrulama mum sayısı (varsayılan: 2)
-        volume_threshold: Hacim eşiği (ortalama hacmin katı) (varsayılan: 1.5)
-        momentum_period: Momentum hesaplama periyodu (varsayılan: 14)
+        lookback: Lookback period (default: 20)
+        confirmation: Confirmation candle count (default: 2)
+        volume_threshold: Volume threshold (multiple of average volume) (default: 1.5)
+        momentum_period: Momentum calculation period (default: 14)
     """
 
     def __init__(
@@ -91,25 +91,25 @@ class BreakoutScanner(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return max(self.lookback, self.momentum_period) + self.confirmation + 5
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.lookback < 5:
             raise InvalidParameterError(
                 self.name, 'lookback', self.lookback,
-                "Lookback en az 5 olmalı"
+                "Lookback must be at least 5"
             )
         if self.confirmation < 1:
             raise InvalidParameterError(
                 self.name, 'confirmation', self.confirmation,
-                "Confirmation en az 1 olmalı"
+                "Confirmation must be at least 1"
             )
         if self.volume_threshold <= 0:
             raise InvalidParameterError(
                 self.name, 'volume_threshold', self.volume_threshold,
-                "Volume threshold pozitif olmalı"
+                "Volume threshold must be positive"
             )
         return True
 
@@ -141,29 +141,29 @@ class BreakoutScanner(BaseIndicator):
         volume: np.ndarray
     ) -> tuple:
         """
-        Breakout tespit et
+        Detect breakout.
 
         Returns:
             (breakout_type, score, resistance, support)
             breakout_type: 'up', 'down', 'none'
         """
-        # Range belirleme (lookback periyodundan önceki)
+        # Range determination (before the lookback period)
         range_start = -(self.lookback + self.confirmation)
         range_end = -self.confirmation
 
         range_high = np.max(high[range_start:range_end])
         range_low = np.min(low[range_start:range_end])
 
-        # Son confirmation mumlarını kontrol et
+        # Check the last confirmation candles
         recent_high = np.max(high[-self.confirmation:])
         recent_low = np.min(low[-self.confirmation:])
         current_close = close[-1]
 
-        # Breakout kontrolü
+        # Breakout control
         breakout_up = recent_high > range_high and current_close > range_high
         breakout_down = recent_low < range_low and current_close < range_low
 
-        # Hacim analizi
+        # Volume analysis
         avg_volume = np.mean(volume[-(self.lookback + self.confirmation):-self.confirmation])
         recent_volume = np.mean(volume[-self.confirmation:])
         volume_confirm = recent_volume > (avg_volume * self.volume_threshold)
@@ -171,21 +171,21 @@ class BreakoutScanner(BaseIndicator):
         # Momentum analizi
         momentum = self._calculate_momentum(close)
 
-        # Score hesaplama
+        # Score calculation
         score = 0.0
         breakout_type = 'none'
 
         if breakout_up:
             breakout_type = 'up'
 
-            # Fiyat hareketi puanı (0-40)
+            # Price movement score (0-40)
             price_move = ((current_close - range_high) / range_high) * 100
             price_score = min(price_move * 10, 40)
 
-            # Hacim puanı (0-30)
+            # Volume score (0-30)
             volume_score = 30 if volume_confirm else 15
 
-            # Momentum puanı (0-30)
+            # Momentum score (0-30)
             momentum_score = (momentum / 100) * 30
 
             score = price_score + volume_score + momentum_score
@@ -193,14 +193,14 @@ class BreakoutScanner(BaseIndicator):
         elif breakout_down:
             breakout_type = 'down'
 
-            # Fiyat hareketi puanı (0-40)
+            # Price movement score (0-40)
             price_move = ((range_low - current_close) / range_low) * 100
             price_score = min(price_move * 10, 40)
 
-            # Hacim puanı (0-30)
+            # Volume score (0-30)
             volume_score = 30 if volume_confirm else 15
 
-            # Momentum puanı (0-30)
+            # Momentum score (0-30)
             momentum_score = ((100 - momentum) / 100) * 30
 
             score = price_score + volume_score + momentum_score
@@ -217,7 +217,7 @@ class BreakoutScanner(BaseIndicator):
         Returns:
             IndicatorResult: Breakout analizi
         """
-        # Bufferları doldur (Incremental update için hazırlık)
+        # Fill the buffers (preparation for incremental update)
         if not hasattr(self, '_high_buffer'):
             from collections import deque
             max_len = max(self.lookback, self.momentum_period) + self.confirmation + 50
@@ -231,7 +231,7 @@ class BreakoutScanner(BaseIndicator):
         self._close_buffer.clear()
         self._volume_buffer.clear()
         
-        # Son max_len kadar veriyi al
+        # Get the data up to the last max_len.
         start_idx = max(0, len(data) - (max(self.lookback, self.momentum_period) + self.confirmation + 50))
         self._high_buffer.extend(data['high'].values[start_idx:])
         self._low_buffer.extend(data['low'].values[start_idx:])
@@ -242,14 +242,14 @@ class BreakoutScanner(BaseIndicator):
         close = data['close'].values
         volume = data['volume'].values
 
-        # Breakout tespit et
+        # Detect breakout
         breakout_type, score, resistance, support, momentum, volume_confirm = self._detect_breakout(
             high, low, close, volume
         )
 
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Sinyal belirle
+        # Define signal
         signal = self.get_signal(breakout_type, score)
         trend = self.get_trend(breakout_type)
 
@@ -278,13 +278,13 @@ class BreakoutScanner(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        Batch hesaplama (Backtest için)
+        Batch calculation (for backtesting)
         
         Args:
             data: OHLCV DataFrame
             
         Returns:
-            pd.DataFrame: Breakout değerleri
+            pd.DataFrame: Breakout values
         """
         high = data['high'].values
         low = data['low'].values
@@ -292,7 +292,7 @@ class BreakoutScanner(BaseIndicator):
         volume = data['volume'].values
         n = len(data)
         
-        # Sonuç dizileri (calculate() ile uyumlu - sadece 5 key)
+        # Result arrays (compatible with calculate() - only 5 keys)
         results = {
             'breakout_score': np.zeros(n),
             'direction': np.full(n, 'none', dtype=object),
@@ -301,17 +301,17 @@ class BreakoutScanner(BaseIndicator):
             'momentum': np.full(n, 50.0)
         }
         
-        # Her bar için hesapla
+        # Calculate for each bar
         min_required = max(self.lookback, self.momentum_period) + self.confirmation
         for i in range(min_required, n):
-            # Gerekli veriyi al
+            # Get the required data
             start_idx = max(0, i - min_required - 10)
             h = high[start_idx:i+1]
             l = low[start_idx:i+1]
             c = close[start_idx:i+1]
             v = volume[start_idx:i+1]
             
-            # Breakout tespit et
+            # Detect breakout
             breakout_type, score, resistance, support, momentum, volume_confirm = self._detect_breakout(h, l, c, v)
             
             results['breakout_score'][i] = score
@@ -319,7 +319,7 @@ class BreakoutScanner(BaseIndicator):
             results['resistance'][i] = resistance
             results['support'][i] = support
             results['momentum'][i] = momentum
-            # volume_confirm metadata'da, output'ta değil
+            # volume_confirm is in the metadata, not in the output.
             
         return pd.DataFrame(results, index=data.index)
 
@@ -331,9 +331,9 @@ class BreakoutScanner(BaseIndicator):
             candle: Yeni mum verisi (dict)
             
         Returns:
-            IndicatorResult: Güncel Breakout değeri
+            IndicatorResult: Current Breakout value
         """
-        # Buffer yönetimi
+        # Buffer management
         if not hasattr(self, '_high_buffer'):
             from collections import deque
             max_len = max(self.lookback, self.momentum_period) + self.confirmation + 50
@@ -375,18 +375,18 @@ class BreakoutScanner(BaseIndicator):
                 metadata={'breakout_type': 'none', 'volume_confirm': False}
             )
             
-        # Hesaplama
+        # Calculation
         high = np.array(self._high_buffer)
         low = np.array(self._low_buffer)
         close = np.array(self._close_buffer)
         volume = np.array(self._volume_buffer)
         
-        # Breakout tespit et
+        # Detect breakout
         breakout_type, score, resistance, support, momentum, volume_confirm = self._detect_breakout(
             high, low, close, volume
         )
         
-        # Sinyal belirle
+        # Define signal
         signal = self.get_signal(breakout_type, score)
         trend = self.get_trend(breakout_type)
 
@@ -412,14 +412,14 @@ class BreakoutScanner(BaseIndicator):
 
     def get_signal(self, breakout_type: str, score: float) -> SignalType:
         """
-        Breakout tipinden sinyal üret
+        Generate a signal from the breakout type.
 
         Args:
-            breakout_type: Breakout yönü ('up', 'down', 'none')
-            score: Breakout puanı
+            breakout_type: Breakout direction ('up', 'down', 'none')
+            score: Breakout score
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
         if breakout_type == 'up':
             if score >= 70:
@@ -439,10 +439,10 @@ class BreakoutScanner(BaseIndicator):
         Breakout tipinden trend belirle
 
         Args:
-            breakout_type: Breakout yönü
+            breakout_type: Breakout direction
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         if breakout_type == 'up':
             return TrendDirection.UP
@@ -451,7 +451,7 @@ class BreakoutScanner(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'lookback': 20,
             'confirmation': 2,
@@ -476,26 +476,26 @@ __all__ = ['BreakoutScanner']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """Breakout Scanner indikatör testi"""
+    """Breakout Scanner indicator test"""
 
     print("\n" + "="*60)
     print("BREAKOUT SCANNER TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating example OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(100)]
 
-    # Range -> Breakout simüle et
+    # Simulate Range -> Breakout
     base_price = 100
     prices = [base_price]
 
-    # İlk 40 mum: Dar range
+    # First 40 candles: Narrow range
     for i in range(39):
         change = np.random.randn() * 0.3
         prices.append(np.clip(prices[-1] + change, 98, 102))
@@ -505,13 +505,13 @@ if __name__ == "__main__":
         change = np.random.randn() * 0.5 + 0.8
         prices.append(prices[-1] + change)
 
-    # Son 30 mum: Devam veya konsolidasyon
+    # Last 30 candles: Continuation or consolidation
     for i in range(30):
         change = np.random.randn() * 0.5
         prices.append(prices[-1] + change)
 
     volumes = [1000 + np.random.randint(0, 500) for _ in range(40)]
-    volumes.extend([2000 + np.random.randint(0, 1000) for _ in range(30)])  # Yüksek hacim
+    volumes.extend([2000 + np.random.randint(0, 1000) for _ in range(30)])  # High volume
     volumes.extend([1000 + np.random.randint(0, 500) for _ in range(30)])
 
     data = pd.DataFrame({
@@ -523,15 +523,15 @@ if __name__ == "__main__":
         'volume': volumes
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     scanner = BreakoutScanner()
-    print(f"   [OK] Oluşturuldu: {scanner}")
+    print(f"   [OK] Created: {scanner}")
     print(f"   [OK] Kategori: {scanner.category.value}")
-    print(f"   [OK] Gerekli periyot: {scanner.get_required_periods()}")
+    print(f"   [OK] Required period: {scanner.get_required_periods()}")
 
     result = scanner(data)
     print(f"   [OK] Breakout Score: {result.value['breakout_score']}")
@@ -539,7 +539,7 @@ if __name__ == "__main__":
     print(f"   [OK] Resistance: {result.value['resistance']}")
     print(f"   [OK] Support: {result.value['support']}")
     print(f"   [OK] Momentum: {result.value['momentum']}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
 
     # Test 2: Range testi
@@ -557,11 +557,11 @@ if __name__ == "__main__":
     print(f"   [OK] Breakout Score: {result.value['breakout_score']}")
     print(f"   [OK] Direction: {result.value['direction']}")
     print(f"   [OK] Volume Confirm: {result.metadata['volume_confirm']}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Signal: {result.signal.value}")
+    print(f"   [OK] Power: {result.strength:.2f}")
 
-    # Test 4: Farklı parametreler
-    print("\n5. Farklı parametre testi...")
+    # Test 4: Different parameters
+    print("\n5. Different parameter test...")
     scanner_fast = BreakoutScanner(lookback=10, confirmation=1)
     result = scanner_fast.calculate(data)
     print(f"   [OK] Fast Scanner Score: {result.value['breakout_score']}")
@@ -582,28 +582,28 @@ if __name__ == "__main__":
     down_count = directions.count('down')
     none_count = directions.count('none')
 
-    print(f"   [OK] Toplam ölçüm: {len(scores)}")
+    print(f"   [OK] Total measurements: {len(scores)}")
     print(f"   [OK] Breakout UP: {up_count}")
     print(f"   [OK] Breakout DOWN: {down_count}")
     print(f"   [OK] No Breakout: {none_count}")
     print(f"   [OK] Ortalama score: {np.mean(scores):.2f}")
     print(f"   [OK] Max score: {max(scores):.2f}")
 
-    # Test 6: İstatistikler
-    print("\n7. İstatistik testi...")
+    # Test 6: Statistics
+    print("\n7. Statistical test...")
     stats = scanner.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 7: Metadata
     print("\n8. Metadata testi...")
     metadata = scanner.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Tip: {metadata.indicator_type.value}")
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
     print(f"   [OK] Output names: {metadata.output_names}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

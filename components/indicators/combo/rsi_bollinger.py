@@ -5,25 +5,25 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    RSI + Bollinger Bands Kombine indikatörü
-    RSI momentum osilatörünü Bollinger Bands volatilite bantları ile birleştirerek
-    güçlü al/sat sinyalleri üretir
+Description:
+    RSI + Bollinger Bands combined indicator
+    Combines the RSI momentum oscillator with Bollinger Bands volatility bands to
+    generate strong buy/sell signals.
 
-    Özellikler:
-    - RSI aşırı alım/satım seviyeleri
-    - Bollinger Bands fiyat pozisyonu
-    - Kombine sinyal üretimi
-    - Güçlü onay sistemi
+    Features:
+    - RSI overbought/oversold levels
+    - Bollinger Bands price position
+    - Combined signal generation
+    - Robust confirmation system
 
-Strateji:
-    GÜÇLÜ AL: RSI < 30 VE Fiyat Alt Banda Yakın/Altında
-    AL: RSI < 40 VE Fiyat Alt Banda Yakın
-    GÜÇLÜ SAT: RSI > 70 VE Fiyat Üst Banda Yakın/Üstünde
-    SAT: RSI > 60 VE Fiyat Üst Banda Yakın
-    HOLD: Diğer durumlar
+Strategy:
+    STRONG BUY: RSI < 30 AND Price Near/Below Lower Band
+    BUY: RSI < 40 AND Price Near Lower Band
+    STRONG SELL: RSI > 70 AND Price Near/Above Upper Band
+    SELL: RSI > 60 AND Price Near Upper Band
+    HOLD: Other cases
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
     - indicators.momentum.rsi
@@ -49,15 +49,15 @@ class RSIBollinger(BaseIndicator):
     """
     RSI + Bollinger Bands Kombine Stratejisi
 
-    RSI momentum osilatörü ile Bollinger Bands volatilite bantlarını birleştirerek
-    güçlü al/sat sinyalleri üretir.
+    Combining the RSI momentum oscillator with the Bollinger Bands volatility bands.
+    generates strong buy/sell signals.
 
     Args:
-        rsi_period: RSI periyodu (varsayılan: 14)
-        rsi_overbought: RSI aşırı alım seviyesi (varsayılan: 70)
-        rsi_oversold: RSI aşırı satım seviyesi (varsayılan: 30)
-        bb_period: Bollinger Bands periyodu (varsayılan: 20)
-        bb_std_dev: BB standart sapma çarpanı (varsayılan: 2.0)
+        rsi_period: RSI period (default: 14)
+        rsi_overbought: RSI overbought level (default: 70)
+        rsi_oversold: RSI oversold level (default: 30)
+        bb_period: Bollinger Bands period (default: 20)
+        bb_std_dev: BB standard deviation factor (default: 2.0)
     """
 
     def __init__(
@@ -76,7 +76,7 @@ class RSIBollinger(BaseIndicator):
         self.bb_period = bb_period
         self.bb_std_dev = bb_std_dev
 
-        # Alt indikatörleri oluştur
+        # Create sub-indicators
         self.rsi = RSI(
             period=rsi_period,
             overbought=rsi_overbought,
@@ -108,32 +108,32 @@ class RSIBollinger(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return max(self.rsi.get_required_periods(), self.bb.get_required_periods())
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.rsi_period < 1:
             raise InvalidParameterError(
                 self.name, 'rsi_period', self.rsi_period,
-                "RSI periyodu pozitif olmalı"
+                "The RSI period must be positive"
             )
         if self.bb_period < 2:
             raise InvalidParameterError(
                 self.name, 'bb_period', self.bb_period,
-                "BB periyodu en az 2 olmalı"
+                "The BB period must be at least 2"
             )
         if self.rsi_oversold >= self.rsi_overbought:
             raise InvalidParameterError(
                 self.name, 'rsi_levels',
                 f"oversold={self.rsi_oversold}, overbought={self.rsi_overbought}",
-                "RSI oversold, overbought'tan küçük olmalı"
+                "RSI oversold should be less than overbought"
             )
         return True
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        ⚡ VECTORIZED batch RSI + Bollinger calculation - BACKTEST için
+        ⚡ VECTORIZED batch RSI + Bollinger calculation - for BACKTEST
 
         Combines RSI and Bollinger Bands using their respective calculate_batch() methods
 
@@ -174,13 +174,13 @@ class RSIBollinger(BaseIndicator):
 
     def calculate(self, data: pd.DataFrame) -> IndicatorResult:
         """
-        RSI + Bollinger kombine hesaplama
+        RSI + Bollinger combined calculation
 
         Args:
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: Kombine RSI + BB değerleri ve sinyalleri
+            IndicatorResult: Combined RSI + BB values and signals.
         """
         # RSI hesapla
         rsi_result = self.rsi.calculate(data)
@@ -192,18 +192,18 @@ class RSIBollinger(BaseIndicator):
         bb_middle = bb_result.value['middle']
         bb_lower = bb_result.value['lower']
 
-        # Mevcut fiyat ve %B değeri
+        # Current price and %B value
         current_price = data['close'].values[-1]
         percent_b = bb_result.metadata['percent_b']
 
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Kombine sinyal ve trend belirleme
+        # Combined signal and trend determination
         signal = self.get_signal(rsi_value, percent_b, current_price, bb_upper, bb_lower)
         trend = self.get_trend(rsi_value, percent_b)
         strength = self._calculate_strength(rsi_value, percent_b)
 
-        # Sinyal konfirmasyonu
+        # Signal confirmation
         confirmation = self._get_confirmation(rsi_value, percent_b)
 
         # Warmup buffer for update() method
@@ -291,26 +291,26 @@ class RSIBollinger(BaseIndicator):
         Kombine RSI + BB sinyali
 
         Args:
-            rsi: RSI değeri
-            percent_b: Bollinger %B değeri
-            price: Güncel fiyat
-            bb_upper: Üst bant
+            rsi: RSI value
+            percent_b: Bollinger %B value
+            price: Current price
+            bb_upper: Upper band
             bb_lower: Alt bant
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
-        # GÜÇLÜ AL sinyalleri
+        # STRONG AL signals
         if rsi < 30 and (percent_b <= 0 or price <= bb_lower):
-            return SignalType.BUY  # Çok güçlü al
+            return SignalType.BUY  # Very strong buy
 
         # AL sinyalleri
         if rsi < 40 and percent_b < 0.2:
             return SignalType.BUY
 
-        # GÜÇLÜ SAT sinyalleri
+        # STRONG BUY signals
         if rsi > 70 and (percent_b >= 1 or price >= bb_upper):
-            return SignalType.SELL  # Çok güçlü sat
+            return SignalType.SELL  # Strong sell signal
 
         # SAT sinyalleri
         if rsi > 60 and percent_b > 0.8:
@@ -323,16 +323,16 @@ class RSIBollinger(BaseIndicator):
         Kombine trend belirleme
 
         Args:
-            rsi: RSI değeri
-            percent_b: Bollinger %B değeri
+            rsi: RSI value
+            percent_b: Bollinger %B value
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
-        # Her iki indikatör de yükseliş gösteriyorsa
+        # If both indicators show an upward trend
         if rsi > 50 and percent_b > 0.5:
             return TrendDirection.UP
-        # Her iki indikatör de düşüş gösteriyorsa
+        # If both indicators show a decrease
         elif rsi < 50 and percent_b < 0.5:
             return TrendDirection.DOWN
 
@@ -340,18 +340,18 @@ class RSIBollinger(BaseIndicator):
 
     def _calculate_strength(self, rsi: float, percent_b: float) -> float:
         """
-        Sinyal gücünü hesapla (0-100)
+        Calculate signal strength (0-100)
 
-        İki indikatörün ekstrem değerlerinde güç artar
+        The power increases at the extreme values of two indicators.
         """
-        # RSI'dan gelen güç
+        # Power from RSI
         rsi_strength = 0
         if rsi < 30:
-            rsi_strength = (30 - rsi) * 2  # Aşırı satım
+            rsi_strength = (30 - rsi) * 2  # Oversold
         elif rsi > 70:
-            rsi_strength = (rsi - 70) * 2  # Aşırı alım
+            rsi_strength = (rsi - 70) * 2  # Oversold
 
-        # %B'den gelen güç
+        # Power from %B
         bb_strength = 0
         if percent_b <= 0:
             bb_strength = abs(percent_b) * 100 + 50
@@ -362,34 +362,34 @@ class RSIBollinger(BaseIndicator):
         elif percent_b > 0.8:
             bb_strength = (percent_b - 0.8) * 200
 
-        # Kombine güç (ortalama)
+        # Combined power (average)
         combined_strength = (rsi_strength + bb_strength) / 2
 
         return min(combined_strength, 100)
 
     def _get_confirmation(self, rsi: float, percent_b: float) -> str:
         """
-        Sinyal konfirmasyonu durumunu belirle
+        Determine the signal confirmation status.
 
         Returns:
-            str: 'strong', 'moderate', 'weak' veya 'none'
+            str: 'strong', 'moderate', 'weak' or 'none'
         """
-        # Güçlü konfirmasyon (her iki indikatör de aynı yönde ekstrem)
+        # Strong confirmation (both indicators are in the same direction and extreme)
         if (rsi < 30 and percent_b < 0.2) or (rsi > 70 and percent_b > 0.8):
             return 'strong'
 
-        # Orta konfirmasyon (bir indikatör ekstrem, diğeri onaylıyor)
+        # Middle confirmation (one indicator is extreme, the other confirms)
         if (rsi < 40 and percent_b < 0.3) or (rsi > 60 and percent_b > 0.7):
             return 'moderate'
 
-        # Zayıf konfirmasyon (indikatörler farklı yönde)
+        # Weak confirmation (indicators are in different directions)
         if (rsi < 50 and percent_b > 0.5) or (rsi > 50 and percent_b < 0.5):
             return 'weak'
 
         return 'none'
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'rsi_period': 14,
             'rsi_overbought': 70,
@@ -411,29 +411,29 @@ __all__ = ['RSIBollinger']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """RSI + Bollinger kombine indikatör testi"""
+    """RSI + Bollinger combined indicator test"""
 
     print("\n" + "="*60)
     print("RSI + BOLLINGER BANDS COMBO TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating example OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(50)]
 
-    # Volatil fiyat hareketi simüle et
+    # Simulate volatile price movements
     base_price = 100
     prices = [base_price]
     for i in range(49):
         if i < 15:
-            change = np.random.randn() * 1.5 - 0.5  # Düşüş trendi
+            change = np.random.randn() * 1.5 - 0.5  # Downward trend
         elif i < 35:
-            change = np.random.randn() * 1.5 + 0.5  # Yükseliş trendi
+            change = np.random.randn() * 1.5 + 0.5  # Upward trend
         else:
             change = np.random.randn() * 2  # Yatay hareket
         prices.append(max(prices[-1] + change, 50))  # Minimum 50
@@ -447,16 +447,16 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     combo = RSIBollinger()
-    print(f"   [OK] Oluşturuldu: {combo}")
+    print(f"   [OK] Created: {combo}")
     print(f"   [OK] Kategori: {combo.category.value}")
     print(f"   [OK] Tip: {combo.indicator_type.value}")
-    print(f"   [OK] Gerekli periyot: {combo.get_required_periods()}")
+    print(f"   [OK] Required period: {combo.get_required_periods()}")
 
     result = combo(data)
     print(f"   [OK] RSI: {result.value['rsi']}")
@@ -464,24 +464,24 @@ if __name__ == "__main__":
     print(f"   [OK] BB Middle: {result.value['bb_middle']:.2f}")
     print(f"   [OK] BB Lower: {result.value['bb_lower']:.2f}")
     print(f"   [OK] %B: {result.value['percent_b']}")
-    print(f"   [OK] Fiyat: {result.value['price']:.2f}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Price: {result.value['price']:.2f}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Power: {result.strength:.2f}")
 
-    # Test 2: Sinyal analizi
-    print("\n3. Sinyal analizi...")
+    # Test 2: Signal analysis
+    print("\n3. Signal analysis...")
     print(f"   [OK] RSI Sinyali: {result.metadata['rsi_signal']}")
     print(f"   [OK] BB Sinyali: {result.metadata['bb_signal']}")
-    print(f"   [OK] Kombine Sinyal: {result.signal.value}")
+    print(f"   [OK] Combined Signal: {result.signal.value}")
     print(f"   [OK] Konfirmasyon: {result.metadata['confirmation']}")
 
-    # Test 3: Farklı senaryolar
-    print("\n4. Farklı senaryo testi...")
+    # Test 3: Different scenarios
+    print("\n4. Different scenario testing...")
     scenarios = [
-        (20, "Düşüş sonu"),
-        (30, "Yükseliş ortası"),
-        (45, "Yükseliş sonu")
+        (20, "End of decrease"),
+        (30, "Ascent middle"),
+        (45, "End of ascent")
     ]
 
     for idx, desc in scenarios:
@@ -490,11 +490,11 @@ if __name__ == "__main__":
             result = combo.calculate(data_slice)
             print(f"   [OK] {desc}: RSI={result.value['rsi']:.1f}, "
                   f"%B={result.value['percent_b']:.2f}, "
-                  f"Sinyal={result.signal.value}, "
+                  f"Signal={result.signal.value}, "
                   f"Konfirmasyon={result.metadata['confirmation']}")
 
-    # Test 4: Özel parametreler
-    print("\n5. Özel parametre testi...")
+    # Test 4: Custom parameters
+    print("\n5. Special parameter test...")
     combo_custom = RSIBollinger(
         rsi_period=21,
         rsi_overbought=75,
@@ -503,29 +503,29 @@ if __name__ == "__main__":
         bb_std_dev=2.5
     )
     result = combo_custom.calculate(data)
-    print(f"   [OK] Özel parametreli RSI: {result.value['rsi']}")
-    print(f"   [OK] Özel parametreli %B: {result.value['percent_b']:.4f}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] RSI with custom parameters: {result.value['rsi']}")
+    print(f"   [OK] Parameter with special format %B: {result.value['percent_b']:.4f}")
+    print(f"   [OK] Signal: {result.signal.value}")
 
-    # Test 5: Güç analizi
-    print("\n6. Güç analizi...")
-    print(f"   [OK] Sinyal Gücü: {result.strength:.2f}/100")
+    # Test 5: Power analysis
+    print("\n6. Power analysis...")
+    print(f"   [OK] Signal Strength: {result.strength:.2f}/100")
     print(f"   [OK] Konfirmasyon: {result.metadata['confirmation']}")
     print(f"   [OK] Bandwidth: {result.metadata['bandwidth']:.2f}%")
 
-    # Test 6: İstatistikler
-    print("\n7. İstatistik testi...")
+    # Test 6: Statistics
+    print("\n7. Statistical test...")
     stats = combo.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 7: Metadata
     print("\n8. Metadata testi...")
     metadata = combo.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

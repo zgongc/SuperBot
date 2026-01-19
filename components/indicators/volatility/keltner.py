@@ -5,17 +5,17 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    Keltner Channel - ATR tabanlı volatilite bantları
-    EMA ve ATR kullanarak fiyat kanalları oluşturur
-    Bollinger Bands'e benzer ancak ATR kullanır
+Description:
+    Keltner Channel - Volatility bands based on ATR
+    Creates price channels using EMA and ATR
+    Similar to Bollinger Bands, but uses ATR
 
-Formül:
+Formula:
     Middle Line = EMA(close, period)
     Upper Channel = Middle + (ATR(atr_period) * multiplier)
     Lower Channel = Middle - (ATR(atr_period) * multiplier)
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -39,13 +39,13 @@ class KeltnerChannel(BaseIndicator):
     """
     Keltner Channel
 
-    EMA ve ATR kullanarak volatilite kanalları oluşturur.
-    Trend takibi ve breakout tespiti için kullanılır.
+    It creates volatility channels using EMA and ATR.
+    It is used for trend tracking and breakout detection.
 
     Args:
-        ema_period: EMA periyodu (varsayılan: 20)
-        atr_period: ATR periyodu (varsayılan: 10)
-        multiplier: ATR çarpanı (varsayılan: 2.0)
+        ema_period: EMA period (default: 20)
+        atr_period: ATR period (default: 10)
+        multiplier: ATR multiplier (default: 2.0)
     """
 
     def __init__(
@@ -60,7 +60,7 @@ class KeltnerChannel(BaseIndicator):
         self.atr_period = atr_period
         self.multiplier = multiplier
 
-        # EMA ve ATR indikatörlerini kullan (code reuse)
+        # Use EMA and ATR indicators (code reuse)
         self._ema = EMA(period=ema_period)
         self._atr = ATR(period=atr_period)
 
@@ -78,25 +78,25 @@ class KeltnerChannel(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return max(self.ema_period, self.atr_period) + 1
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.ema_period < 1:
             raise InvalidParameterError(
                 self.name, 'ema_period', self.ema_period,
-                "EMA periyodu pozitif olmalı"
+                "The EMA period must be positive"
             )
         if self.atr_period < 1:
             raise InvalidParameterError(
                 self.name, 'atr_period', self.atr_period,
-                "ATR periyodu pozitif olmalı"
+                "ATR period must be positive"
             )
         if self.multiplier <= 0:
             raise InvalidParameterError(
                 self.name, 'multiplier', self.multiplier,
-                "Çarpan pozitif olmalı"
+                "The factor must be positive"
             )
         return True
 
@@ -108,7 +108,7 @@ class KeltnerChannel(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: Keltner Channel değerleri (upper, middle, lower)
+            IndicatorResult: Keltner Channel values (upper, middle, lower)
         """
         high = data['high'].values
         low = data['low'].values
@@ -145,20 +145,20 @@ class KeltnerChannel(BaseIndicator):
 
         atr = atr_values[-1]
 
-        # Upper ve Lower Channels
+        # Upper and Lower Channels
         upper = middle + (atr * self.multiplier)
         lower = middle - (atr * self.multiplier)
 
         current_price = close[-1]
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Fiyatın kanal içindeki pozisyonu
+        # Price position within the channel
         if upper != lower:
             position = (current_price - lower) / (upper - lower)
         else:
             position = 0.5
 
-        # Kanal genişliği
+        # Channel width
         if middle != 0:
             channel_width = ((upper - lower) / middle) * 100
         else:
@@ -190,7 +190,7 @@ class KeltnerChannel(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        ⚡ VECTORIZED batch Keltner Channel calculation - BACKTEST için
+        ⚡ VECTORIZED batch Keltner Channel calculation - for BACKTEST
 
         Keltner Channel Formula:
             Middle = EMA(close, ema_period)
@@ -217,7 +217,7 @@ class KeltnerChannel(BaseIndicator):
         upper = middle + (atr * self.multiplier)
         lower = middle - (atr * self.multiplier)
 
-        # Create result DataFrame (calculate() ile aynı key'ler)
+        # Create result DataFrame (same keys as calculate())
         result = pd.DataFrame({
             'upper': upper,
             'middle': middle,
@@ -283,34 +283,34 @@ class KeltnerChannel(BaseIndicator):
 
     def get_signal(self, position: float) -> SignalType:
         """
-        Pozisyondan sinyal üret
+        Generate a signal from the position.
 
         Args:
-            position: Fiyatın kanal içindeki pozisyonu (0-1 arası)
+            position: The position of the price within the channel (between 0 and 1).
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
-        if position <= 0:  # Alt kanalda veya altında
+        if position <= 0:  # In the lower channel or below
             return SignalType.BUY
-        elif position >= 1:  # Üst kanalda veya üstünde
+        elif position >= 1:  # On the upper channel or above
             return SignalType.SELL
-        elif position < 0.2:  # Alt kanala yakın
+        elif position < 0.2:  # Close to the lower channel
             return SignalType.BUY
-        elif position > 0.8:  # Üst kanala yakın
+        elif position > 0.8:  # Close to the upper channel
             return SignalType.SELL
         return SignalType.HOLD
 
     def get_trend(self, price: float, middle: float) -> TrendDirection:
         """
-        Fiyat ve orta çizgiden trend belirle
+        Determine the trend based on price and the middle line.
 
         Args:
-            price: Güncel fiyat
-            middle: Orta çizgi değeri
+            price: Current price
+            middle: Middle line value
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         if price > middle:
             return TrendDirection.UP
@@ -319,7 +319,7 @@ class KeltnerChannel(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'ema_period': 20,
             'atr_period': 10,
@@ -339,22 +339,22 @@ __all__ = ['KeltnerChannel']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """Keltner Channel indikatör testi"""
+    """Keltner Channel indicator test"""
 
     print("\n" + "="*60)
     print("KELTNER CHANNEL TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating example OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(35)]
 
-    # Fiyat hareketini simüle et
+    # Simulate price movement
     base_price = 100
     prices = [base_price]
     for i in range(34):
@@ -370,56 +370,56 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     kc = KeltnerChannel(ema_period=20, atr_period=10, multiplier=2.0)
-    print(f"   [OK] Oluşturuldu: {kc}")
+    print(f"   [OK] Created: {kc}")
     print(f"   [OK] Kategori: {kc.category.value}")
     print(f"   [OK] Tip: {kc.indicator_type.value}")
-    print(f"   [OK] Gerekli periyot: {kc.get_required_periods()}")
+    print(f"   [OK] Required period: {kc.get_required_periods()}")
 
     result = kc(data)
     print(f"   [OK] Upper Channel: {result.value['upper']}")
     print(f"   [OK] Middle Line: {result.value['middle']}")
     print(f"   [OK] Lower Channel: {result.value['lower']}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
     print(f"   [OK] ATR: {result.metadata['atr']}")
     print(f"   [OK] Position: {result.metadata['position']}")
     print(f"   [OK] Channel Width: {result.metadata['channel_width']:.2f}%")
 
-    # Test 2: Farklı parametreler
-    print("\n3. Farklı parametre testi...")
+    # Test 2: Different parameters
+    print("\n3. Different parameter test...")
     for ema_p, atr_p in [(10, 10), (20, 10), (30, 20)]:
         kc_test = KeltnerChannel(ema_period=ema_p, atr_period=atr_p)
         result = kc_test.calculate(data)
         print(f"   [OK] KC(EMA={ema_p}, ATR={atr_p}): Width={result.metadata['channel_width']:.2f}%")
 
-    # Test 3: Farklı çarpanlar
-    print("\n4. Farklı multiplier testi...")
+    # Test 3: Different factors
+    print("\n4. Different multiplier test...")
     for mult in [1.5, 2.0, 2.5]:
         kc_test = KeltnerChannel(ema_period=20, atr_period=10, multiplier=mult)
         result = kc_test.calculate(data)
         print(f"   [OK] KC(mult={mult}): Width={result.metadata['channel_width']:.2f}%")
 
-    # Test 4: İstatistikler
-    print("\n5. İstatistik testi...")
+    # Test 4: Statistics
+    print("\n5. Statistical test...")
     stats = kc.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 5: Metadata
     print("\n6. Metadata testi...")
     metadata = kc.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Tip: {metadata.indicator_type.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

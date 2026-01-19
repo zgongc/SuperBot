@@ -8,7 +8,7 @@ Date: 2025-11-13
 Author: SuperBot Team
 
 Description:
-    Market filtreleri:
+    Market filters:
     - Trading session filters (London, NY, Tokyo, Sydney)
     - Time filters (start_hour, end_hour)
     - Day filters (Monday-Sunday)

@@ -1,41 +1,41 @@
 """
-indicators/statistical/cointegration.py - Cointegration (Eş-bütünleşme)
+indicators/statistical/cointegration.py - Cointegration
 
 Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    Cointegration - İki zaman serisinin uzun vadeli dengesini test eder
-    Çıktılar:
-        - spread: İki varlık arasındaki fark (spread)
-        - zscore: Spread'in Z-Score'u
-        - is_cointegrated: Eş-bütünleşme var mı (boolean)
+Description:
+    Cointegration - Tests the long-term equilibrium of two time series.
+    Outputs:
+        - spread: The difference between the two assets.
+        - zscore: The Z-Score of the spread.
+        - is_cointegrated: Whether cointegration exists (boolean).
 
-    Pairs trading stratejilerinde kritik öneme sahiptir.
+    It is of critical importance in pairs trading strategies.
 
-Formül:
+Formula:
     1. Hedge Ratio (β) hesapla: Linear Regression
        Asset1 = β × Asset2 + ε
 
-    2. Spread hesapla:
-       Spread = Asset1 - (β × Asset2)
+    2. Calculate the spread:
+       Spread = Asset1 - (β x Asset2)
 
-    3. Spread'in Z-Score'unu hesapla:
+    3. Calculate the Z-Score of the Spread:
        Z-Score = (Spread - Mean(Spread)) / Std(Spread)
 
-    4. Augmented Dickey-Fuller (ADF) testi ile durağanlık kontrolü
+    4. Stationarity check using the Augmented Dickey-Fuller (ADF) test.
 
-Kullanım:
+Usage:
     - Pairs trading
     - Statistical arbitrage
     - Mean reversion stratejileri
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
     - scipy>=1.10.0
-    - statsmodels>=0.14.0 (ADF testi için)
+    - statsmodels>=0.14.0 (for the ADF test)
 """
 
 import numpy as np
@@ -51,7 +51,7 @@ from components.indicators.indicator_types import (
     InvalidParameterError
 )
 
-# statsmodels için optional import
+# optional import for statsmodels
 try:
     from statsmodels.tsa.stattools import adfuller
     HAS_STATSMODELS = True
@@ -61,17 +61,17 @@ except ImportError:
 
 class Cointegration(BaseIndicator):
     """
-    Cointegration (Eş-bütünleşme)
+    Cointegration (Cointegration)
 
-    İki varlık arasındaki uzun vadeli dengeyi ve spread'i hesaplar.
-    Pairs trading stratejileri için kullanılır.
+    Calculates the long-term equilibrium and spread between two assets.
+    Used for pairs trading strategies.
 
     Args:
-        period: Hesaplama periyodu (varsayılan: 50)
-        reference_data: Karşılaştırılacak referans veri (varsayılan: None)
-        entry_threshold: Spread Z-Score giriş eşiği (varsayılan: 2.0)
-        exit_threshold: Spread Z-Score çıkış eşiği (varsayılan: 0.5)
-        adf_significance: ADF test anlamlılık seviyesi (varsayılan: 0.05)
+        period: Calculation period (default: 50)
+        reference_data: Reference data to compare with (default: None)
+        entry_threshold: Spread Z-Score entry threshold (default: 2.0)
+        exit_threshold: Spread Z-Score exit threshold (default: 0.5)
+        adf_significance: ADF test significance level (default: 0.05)
     """
 
     def __init__(
@@ -106,32 +106,32 @@ class Cointegration(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.period
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 10:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Periyot en az 10 olmalı (cointegration için)"
+                "Period must be at least 10 (for cointegration)"
             )
         if self.entry_threshold <= self.exit_threshold:
             raise InvalidParameterError(
                 self.name, 'thresholds',
                 f"entry={self.entry_threshold}, exit={self.exit_threshold}",
-                "Entry threshold, exit threshold'dan büyük olmalı"
+                "Entry threshold must be greater than the exit threshold"
             )
         if not (0 < self.adf_significance < 1):
             raise InvalidParameterError(
                 self.name, 'adf_significance', self.adf_significance,
-                "ADF anlamlılık seviyesi 0-1 arası olmalı"
+                "ADF significance level must be between 0 and 1"
             )
         return True
 
     def set_reference_data(self, reference_data: pd.DataFrame):
         """
-        Referans veriyi ayarla (pair'in diğer varlığı)
+        Set the reference data (the other asset of the pair).
 
         Args:
             reference_data: Referans OHLCV DataFrame
@@ -140,7 +140,7 @@ class Cointegration(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        Batch hesaplama (Backtest için)
+        Batch calculation (for backtesting)
         
         Args:
             data: OHLCV DataFrame
@@ -152,7 +152,7 @@ class Cointegration(BaseIndicator):
             return pd.DataFrame(index=data.index, columns=['spread', 'zscore', 'is_cointegrated'])
             
         # Veri hizalama
-        # Indexlerin eşleştiğinden emin olmalıyız
+        # We must ensure that the indices match
         common_index = data.index.intersection(self.reference_data.index)
         if len(common_index) < self.period:
             return pd.DataFrame(index=data.index, columns=['spread', 'zscore', 'is_cointegrated'])
@@ -187,28 +187,28 @@ class Cointegration(BaseIndicator):
         spread = s1 - beta * s2
         
         # Z-Score
-        # Sıfıra bölme hatasını önle
+        # Prevent division by zero error
         spread_std = spread_std.replace(0, np.nan)
         zscore = (spread - spread_mean) / spread_std
         
         # Cointegration Check (Vectorized approximation)
-        # ADF testi çok yavaş olduğu için batch modunda volatility ratio kullanıyoruz
+        # Since the ADF test is very slow, we are using the volatility ratio in batch mode.
         # spread_volatility = spread_std / abs(spread_mean)
         # is_cointegrated = spread_volatility < 0.5
         
-        # Sıfıra bölme hatasını önle
+        # Prevent division by zero error
         spread_mean_abs = spread_mean.abs().replace(0, np.nan)
         spread_volatility = spread_std / spread_mean_abs
         is_cointegrated = spread_volatility < 0.5
         
-        # Sonuç DataFrame
+        # Result DataFrame
         result = pd.DataFrame({
             'spread': spread,
             'zscore': zscore,
             'is_cointegrated': is_cointegrated
         }, index=common_index)
         
-        # Orijinal index'e reindex et (eksik yerler NaN kalır)
+        # Reindex to the original index (missing values will remain NaN)
         return result.reindex(data.index)
 
     def update(self, candle: dict, symbol: str = None) -> IndicatorResult:
@@ -219,7 +219,7 @@ class Cointegration(BaseIndicator):
             candle: Yeni mum verisi (dict)
 
         Returns:
-            IndicatorResult: Güncel Cointegration değerleri
+            IndicatorResult: Current cointegration values
         """
         # Support both dict and list/tuple formats
         if isinstance(candle, dict):
@@ -237,7 +237,7 @@ class Cointegration(BaseIndicator):
                 metadata={'insufficient_data': True}
             )
             
-        # Timestamp kontrolü
+        # Timestamp check
         timestamp = candle.get('timestamp')
         if timestamp is None:
             return IndicatorResult(
@@ -250,15 +250,15 @@ class Cointegration(BaseIndicator):
             )
             
         # Referans veriden ilgili mumu bul
-        # Not: Bu basit bir lookup. Gerçek hayatta senkronizasyon önemli.
-        # self.reference_data'nın index'i timestamp veya datetime olmalı.
-        # Eğer range index ise timestamp kolonunda arama yapmalıyız.
+        # Note: This is a simple lookup. Synchronization is important in real life.
+        # self.reference_data's index must be a timestamp or datetime.
+        # If the range is an index, we need to search in the timestamp column.
         
         ref_price = None
         
-        # Timestamp ile eşleşen satırı bulmaya çalış
+        # Try to find the line that matches the timestamp
         if isinstance(self.reference_data.index, pd.DatetimeIndex):
-            # Timestamp ms ise datetime'a çevir gerekirse
+            # If the timestamp is in milliseconds, convert it to datetime if necessary.
             try:
                 ts_dt = pd.to_datetime(timestamp, unit='ms')
                 if ts_dt in self.reference_data.index:
@@ -273,7 +273,7 @@ class Cointegration(BaseIndicator):
                     ref_price = matches.iloc[0]['close']
         
         if ref_price is None:
-            # Eşleşen referans veri yoksa hesaplama yapılamaz
+            # If there is no matching reference data, the calculation cannot be performed.
             return IndicatorResult(
                 value=0.0,
                 timestamp=timestamp_val,
@@ -283,24 +283,24 @@ class Cointegration(BaseIndicator):
                 metadata={'insufficient_data': True}
             )
             
-        # Buffer yönetimi (BaseIndicator'da standart bir buffer yok, kendimiz yönetelim veya calculate çağıralım)
-        # Cointegration için buffer yönetimi karmaşık çünkü iki seri var.
-        # En kolayı: Son period kadar veriyi alıp calculate çağırmak (Incremental değil ama Realtime)
-        # Ancak performans için incremental yapmak istersek:
+        # Buffer management (BaseIndicator does not have a standard buffer, we need to manage it ourselves or call calculate)
+        # Buffer management for cointegration is complex because there are two series.
+        # The easiest way: Get data up to the last period and call calculate (Not incremental, but real-time)
+        # However, if we want to do it incrementally for performance:
         
-        # Şimdilik güvenli yol: RealtimeCalculator zaten buffer tutuyor (data['close']).
-        # Ancak sadece ana varlık için tutuyor.
-        # Bizim referans varlık için de son period verisine ihtiyacımız var.
+        # For now, the safe way: RealtimeCalculator already holds a buffer (data['close']).
+        # However, it only keeps the main entity.
+        # We also need the latest period data for our reference asset.
         
-        # Bu yüzden burada basitçe `calculate` metodunu son data ile çağırmak en mantıklısı.
-        # Ancak `calculate` metodu tüm datayı alıyor gibi görünüyor.
-        # BaseIndicator.update() varsayılan olarak calculate() çağırır zaten.
+        # Therefore, it's most logical to simply call the `calculate` method with the latest data here.
+        # However, the `calculate` method seems to be taking all the data.
+        # BaseIndicator.update() by default calls calculate() already.
         # Ama biz optimize etmek istiyoruz.
         
-        # Optimize edilmiş update için:
-        # 1. Sınıf state'inde son periodluk close1 ve close2 tutulmalı.
-        # 2. Yeni gelen close1 ve bulunan close2 eklenmeli.
-        # 3. Hesaplama yapılmalı.
+        # For optimized update:
+        # 1. The last period's close1 and close2 values must be stored in the class state.
+        # 2. The newly arrived close1 and the found close2 should be added.
+        # 3. Calculation should be performed.
         
         # State initialize (ilk seferde)
         if not hasattr(self, '_close1_buffer'):
@@ -308,9 +308,9 @@ class Cointegration(BaseIndicator):
             self._close1_buffer = deque(maxlen=self.period)
             self._close2_buffer = deque(maxlen=self.period)
             
-            # Eğer geçmiş veri varsa doldur (warmup)
-            # Bu kısım biraz tricky, çünkü update() tek tek çağrılır.
-            # Warmup dışarıdan yapılmalı veya ilk update'de yapılmalı.
+            # If there is historical data, fill it (warmup)
+            # This part is a bit tricky, because update() is called individually.
+            # Warmup should be done externally or during the initial update.
             pass
 
         close1 = candle['close']
@@ -329,7 +329,7 @@ class Cointegration(BaseIndicator):
                 metadata={'insufficient_data': True}
             )
              
-        # Hesaplama
+        # Calculation
         c1 = np.array(self._close1_buffer)
         c2 = np.array(self._close2_buffer)
         
@@ -350,8 +350,8 @@ class Cointegration(BaseIndicator):
         else:
             spread_zscore = 0.0
             
-        # Cointegration Check (ADF veya Volatility)
-        # Realtime'da ADF çalıştırabiliriz (tek seferlik olduğu için)
+        # Cointegration Check (ADF or Volatility)
+        # We can run ADF in real-time (since it's a one-time operation)
         is_cointegrated = False
         adf_pvalue = 1.0
         
@@ -367,7 +367,7 @@ class Cointegration(BaseIndicator):
             spread_volatility = spread_std / abs(spread_mean) if spread_mean != 0 else 999
             is_cointegrated = spread_volatility < 0.5
             
-        # Sonuç
+        # Result
         strength = min(abs(spread_zscore) * 50, 100)
         
         return IndicatorResult(
@@ -398,13 +398,13 @@ class Cointegration(BaseIndicator):
         Cointegration hesapla
 
         Args:
-            data: OHLCV DataFrame (birinci varlık)
+            data: OHLCV DataFrame (first asset)
 
         Returns:
-            IndicatorResult: Cointegration analizi sonuçları
+            IndicatorResult: Results of the cointegration analysis.
         """
         if self.reference_data is None:
-            # Referans veri yoksa dummy değerler döndür
+            # If reference data is not available, return dummy values.
             timestamp = int(data.iloc[-1]['timestamp'])
             return IndicatorResult(
                 value={
@@ -423,11 +423,11 @@ class Cointegration(BaseIndicator):
                 }
             )
 
-        # Veri hazırlığı
+        # Data preparation
         close1 = data['close'].values[-self.period:]
         close2 = self.reference_data['close'].values[-self.period:]
 
-        # Veri uzunluklarını eşitle
+        # Equalize data lengths
         min_len = min(len(close1), len(close2))
         if min_len < 10:
             timestamp = int(data.iloc[-1]['timestamp'])
@@ -451,15 +451,15 @@ class Cointegration(BaseIndicator):
         close1 = close1[-min_len:]
         close2 = close2[-min_len:]
         
-        # Bufferları doldur (Incremental update için hazırlık)
+        # Fill the buffers (preparation for incremental update)
         if not hasattr(self, '_close1_buffer'):
             from collections import deque
             self._close1_buffer = deque(maxlen=self.period)
             self._close2_buffer = deque(maxlen=self.period)
             
-        # Son period kadar veriyi buffer'a at
-        # Not: calculate() genellikle tüm tarihçeyi alır ama biz son durumu state olarak saklamak istiyoruz.
-        # Eğer calculate() backtest için çağrılıyorsa bu state son anı temsil eder.
+        # Add data to the buffer up to the last period.
+        # Note: calculate() usually takes the entire history, but we want to save the latest status as the state.
+        # If calculate() is called for backtesting, this state represents the last moment.
         buffer_data1 = close1[-self.period:] if len(close1) >= self.period else close1
         buffer_data2 = close2[-self.period:] if len(close2) >= self.period else close2
         
@@ -473,11 +473,11 @@ class Cointegration(BaseIndicator):
         slope, intercept, r_value, p_value, std_err = stats.linregress(close2, close1)
         hedge_ratio = slope
 
-        # 2. Spread hesapla
+        # 2. Calculate spread
         spread_series = close1 - (hedge_ratio * close2)
         current_spread = spread_series[-1]
 
-        # 3. Spread'in Z-Score'unu hesapla
+        # Calculate the Z-Score of the 3rd spread.
         spread_mean = np.mean(spread_series)
         spread_std = np.std(spread_series, ddof=1)
 
@@ -486,7 +486,7 @@ class Cointegration(BaseIndicator):
         else:
             spread_zscore = 0.0
 
-        # 4. ADF test ile durağanlık kontrolü (cointegration testi)
+        # 4. Stationarity check with the ADF test (cointegration test)
         is_cointegrated = False
         adf_pvalue = 1.0
 
@@ -496,20 +496,20 @@ class Cointegration(BaseIndicator):
                 adf_statistic = adf_result[0]
                 adf_pvalue = adf_result[1]
 
-                # p-value < anlamlılık seviyesi ise spread durağan (cointegrated)
+                # If p-value < significance level, then the spread is stationary (cointegrated)
                 is_cointegrated = adf_pvalue < self.adf_significance
             except Exception:
-                # ADF test başarısız olursa basit volatilite kontrolü yap
+                # If the ADF test fails, perform a simple volatility check.
                 spread_volatility = spread_std / abs(spread_mean) if spread_mean != 0 else 999
                 is_cointegrated = spread_volatility < 0.5
         else:
-            # statsmodels yoksa basit volatilite kontrolü
+            # If statsmodels is not available, perform a simple volatility check.
             spread_volatility = spread_std / abs(spread_mean) if spread_mean != 0 else 999
             is_cointegrated = spread_volatility < 0.5
 
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Sinyal gücü: Z-Score'un mutlak değeri
+        # Signal strength: Absolute value of the Z-score
         strength = min(abs(spread_zscore) * 50, 100)
 
         # Warmup buffer for update() method
@@ -540,30 +540,30 @@ class Cointegration(BaseIndicator):
 
     def get_signal(self, zscore: float, is_cointegrated: bool) -> SignalType:
         """
-        Spread Z-Score'dan sinyal üret
+        Generate a signal from the Spread Z-Score.
 
         Args:
-            zscore: Spread'in Z-Score'u
-            is_cointegrated: Eş-bütünleşme var mı
+            zscore: The Z-score of the spread.
+            is_cointegrated: Does cointegration exist?
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
-        # Eş-bütünleşme yoksa sinyal verme
+        # Do not send a signal if there is no co-integration
         if not is_cointegrated:
             return SignalType.HOLD
 
-        # Spread çok düşük (asset1 ucuz, asset2 pahalı)
+        # Spread is very low (asset1 is cheap, asset2 is expensive)
         # Asset1 al, Asset2 sat
         if zscore <= -self.entry_threshold:
             return SignalType.BUY
 
-        # Spread çok yüksek (asset1 pahalı, asset2 ucuz)
+        # Spread is very high (asset1 is expensive, asset2 is cheap)
         # Asset1 sat, Asset2 al
         elif zscore >= self.entry_threshold:
             return SignalType.SELL
 
-        # Spread normale dönüyor, pozisyon kapat
+        # Returning to normal, close the position.
         elif abs(zscore) <= self.exit_threshold:
             return SignalType.HOLD
 
@@ -571,22 +571,22 @@ class Cointegration(BaseIndicator):
 
     def get_trend(self, zscore: float) -> TrendDirection:
         """
-        Spread Z-Score'dan trend belirle
+        Determine the trend from the Spread Z-Score.
 
         Args:
-            zscore: Spread'in Z-Score'u
+            zscore: The Z-score of the spread.
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         if zscore > 1:
-            return TrendDirection.UP  # Spread genişliyor
+            return TrendDirection.UP  # Spread is widening
         elif zscore < -1:
-            return TrendDirection.DOWN  # Spread daralıyor
+            return TrendDirection.DOWN  # Spread is narrowing
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'period': 50,
             'entry_threshold': 2.0,
@@ -607,22 +607,22 @@ __all__ = ['Cointegration']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """Cointegration indikatör testi"""
+    """Cointegration indicator test"""
 
     print("\n" + "="*60)
-    print("COINTEGRATION (EŞ-BÜTÜNLEŞME) TEST")
+    print("COINTEGRATION TEST")
     print("="*60 + "\n")
 
-    # Test 1: Eş-bütünleşmiş varlıklar
-    print("1. Eş-bütünleşmiş varlık çifti testi...")
+    # Test 1: Merged assets
+    print("1. Paired asset integration test...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(100)]
 
-    # Varlık 1 - ortak trend + bireysel noise
+    # Entity 1 - common trend + individual noise
     common_trend = np.cumsum(np.random.randn(100) * 0.1)
     individual_noise1 = np.random.randn(100) * 0.3
 
@@ -637,7 +637,7 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices1]
     })
 
-    # Varlık 2 - aynı ortak trend + farklı bireysel noise (eş-bütünleşik)
+    # Entity 2 - same common trend + different individual noise (co-integrated)
     individual_noise2 = np.random.randn(100) * 0.3
     prices2 = 110 + common_trend * 1.2 + individual_noise2
 
@@ -650,30 +650,30 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices2]
     })
 
-    print(f"   [OK] {len(data1)} mum oluşturuldu")
-    print(f"   [OK] Varlık 1 fiyat: {prices1[-1]:.2f}")
-    print(f"   [OK] Varlık 2 fiyat: {prices2[-1]:.2f}")
+    print(f"   [OK] {len(data1)} candles created")
+    print(f"   [OK] Asset 1 price: {prices1[-1]:.2f}")
+    print(f"   [OK] Asset 2 price: {prices2[-1]:.2f}")
 
     coint = Cointegration(period=50, reference_data=data2)
-    print(f"   [OK] Oluşturuldu: {coint}")
+    print(f"   [OK] Created: {coint}")
     print(f"   [OK] Kategori: {coint.category.value}")
     print(f"   [OK] statsmodels var: {HAS_STATSMODELS}")
 
     result = coint(data1)
     print(f"   [OK] Spread: {result.value['spread']:.4f}")
     print(f"   [OK] Z-Score: {result.value['zscore']:.4f}")
-    print(f"   [OK] Eş-bütünleşme: {result.value['is_cointegrated']}")
+    print(f"   [OK] Cointegration: {result.value['is_cointegrated']}")
     print(f"   [OK] Hedge Ratio: {result.metadata['hedge_ratio']}")
-    print(f"   [OK] Korelasyon: {result.metadata['correlation']}")
+    print(f"   [OK] Correlation: {result.metadata['correlation']}")
     print(f"   [OK] ADF P-value: {result.metadata['adf_pvalue']}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
 
-    # Test 2: Eş-bütünleşmemiş varlıklar
-    print("\n2. Eş-bütünleşmemiş varlık çifti testi...")
+    # Test 2: Non-integrated assets
+    print("\n2. Uncorrelated asset pair test...")
     np.random.seed(99)
 
-    # Varlık 3 - tamamen bağımsız random walk
+    # Entity 3 - completely independent random walk
     prices3 = [100]
     for _ in range(99):
         prices3.append(prices3[-1] + np.random.randn() * 2)
@@ -687,7 +687,7 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices3]
     })
 
-    # Varlık 4 - başka bir bağımsız random walk
+    # Entity 4 - another independent random walk
     prices4 = [110]
     for _ in range(99):
         prices4.append(prices4[-1] + np.random.randn() * 2)
@@ -705,41 +705,41 @@ if __name__ == "__main__":
     result = coint.calculate(data3)
     print(f"   [OK] Spread: {result.value['spread']:.4f}")
     print(f"   [OK] Z-Score: {result.value['zscore']:.4f}")
-    print(f"   [OK] Eş-bütünleşme: {result.value['is_cointegrated']}")
-    print(f"   [OK] Korelasyon: {result.metadata['correlation']}")
+    print(f"   [OK] Cointegration: {result.value['is_cointegrated']}")
+    print(f"   [OK] Correlation: {result.metadata['correlation']}")
     print(f"   [OK] ADF P-value: {result.metadata['adf_pvalue']}")
 
-    # Test 3: Spread genişlemesi - trading sinyali
-    print("\n3. Trading sinyal testi (spread genişlemesi)...")
-    # Spread'i yapay olarak genişlet
+    # Test 3: Spread expansion - trading signal
+    print("\n3. Trading signal test (spread expansion)...")
+    # Artificially expand the spread.
     prices1_wide = prices1.copy()
-    prices1_wide[-1] += 5  # Son fiyatı yükselt
+    prices1_wide[-1] += 5  # Increase the last price
 
     data1_wide = data1.copy()
     data1_wide.loc[data1_wide.index[-1], 'close'] = prices1_wide[-1]
 
     coint.set_reference_data(data2)
     result = coint.calculate(data1_wide)
-    print(f"   [OK] Genişletilmiş Spread: {result.value['spread']:.4f}")
+    print(f"   [OK] Expanded Spread: {result.value['spread']:.4f}")
     print(f"   [OK] Z-Score: {result.value['zscore']:.4f}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
 
-    # Test 4: Spread daralması
-    print("\n4. Spread daralma testi...")
+    # Test 4: Spread reduction
+    print("\n4. Spread shrinkage test...")
     prices1_narrow = prices1.copy()
-    prices1_narrow[-1] -= 3  # Son fiyatı düşür
+    prices1_narrow[-1] -= 3  # Decrease the last price
 
     data1_narrow = data1.copy()
     data1_narrow.loc[data1_narrow.index[-1], 'close'] = prices1_narrow[-1]
 
     result = coint.calculate(data1_narrow)
-    print(f"   [OK] Daraltılmış Spread: {result.value['spread']:.4f}")
+    print(f"   [OK] Reduced Spread: {result.value['spread']:.4f}")
     print(f"   [OK] Z-Score: {result.value['zscore']:.4f}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
 
-    # Test 5: Farklı periyotlar
-    print("\n5. Farklı periyot testi...")
+    # Test 5: Different periods
+    print("\n5. Different period test...")
     for period in [30, 50, 70]:
         if len(data1) >= period:
             coint_test = Cointegration(period=period, reference_data=data2)
@@ -748,8 +748,8 @@ if __name__ == "__main__":
                   f"Coint={result.value['is_cointegrated']} | "
                   f"Hedge Ratio={result.metadata['hedge_ratio']:.4f}")
 
-    # Test 6: Spread zaman serisi
-    print("\n6. Spread zaman serisi (son 10 mum)...")
+    # Test 6: Spread time series
+    print("\n6. Spread time series (last 10 candles)...")
     coint_ts = Cointegration(period=50, reference_data=data2)
     for i in range(-10, 0):
         test_data1 = data1.iloc[:len(data1)+i]
@@ -759,40 +759,40 @@ if __name__ == "__main__":
             result = coint_ts.calculate(test_data1)
             print(f"   [OK] Mum {i:3d}: Spread={result.value['spread']:8.4f} | "
                   f"Z-Score={result.value['zscore']:7.4f} | "
-                  f"Sinyal={result.signal.value}")
+                  f"Signal={result.signal.value}")
 
-    # Test 7: Özel eşikler
-    print("\n7. Özel eşik testi...")
+    # Test 7: Custom thresholds
+    print("\n7. Special threshold test...")
     coint_custom = Cointegration(period=50, reference_data=data2,
                                   entry_threshold=3.0, exit_threshold=1.0)
     result = coint_custom.calculate(data1)
     print(f"   [OK] Entry threshold: {coint_custom.entry_threshold}")
     print(f"   [OK] Exit threshold: {coint_custom.exit_threshold}")
     print(f"   [OK] Z-Score: {result.value['zscore']:.4f}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
 
-    # Test 8: İstatistikler
-    print("\n8. İstatistik testi...")
+    # Test 8: Statistics
+    print("\n8. Statistical test...")
     stats_data = coint.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats_data['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats_data['error_count']}")
+    print(f"   [OK] Calculation count: {stats_data['calculation_count']}")
+    print(f"   [OK] Error count: {stats_data['error_count']}")
 
     # Test 9: Metadata
     print("\n9. Metadata testi...")
     metadata = coint.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Tip: {metadata.indicator_type.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
 
     # Test 10: Referans veri olmadan
-    print("\n10. Referans veri yok testi...")
+    print("\n10. Reference data missing test...")
     coint_no_ref = Cointegration(period=50)
     result = coint_no_ref.calculate(data1)
     print(f"   [OK] Spread: {result.value['spread']}")
-    print(f"   [OK] Error mesajı: {result.metadata.get('error', 'N/A')}")
+    print(f"   [OK] Error message: {result.metadata.get('error', 'N/A')}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

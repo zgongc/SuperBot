@@ -6,24 +6,24 @@ Date: 2025-10-14
 Author: SuperBot Team
 
 Description:
-    Real-time indikatör hesaplayıcı (incremental updates).
-    Yeni kline geldiğinde tüm history'yi tekrar hesaplamaz,
-    sadece son değeri günceller (rolling window).
+    Real-time indicator calculator (incremental updates).
+    When a new kline arrives, it doesn't recalculate the entire history,
+    it only updates the last value (rolling window).
     
-    Görevleri:
-    - Incremental calculation (1000x daha hızlı)
+    Tasks:
+    - Incremental calculation (1000 x faster)
     - Rolling window (memory efficient)
-    - Streaming data için optimize
+    - Optimized for streaming data
     - WebSocket friendly
     - State management
     
-    Kullanım:
+    Usage:
         calculator = RealtimeCalculator('rsi', period=14)
         
-        # Warmup (ilk N kline ile hazırlık)
+        # Warmup (preparation with the first N clusters)
         calculator.warmup(historical_data)
         
-        # Her yeni kline geldiğinde
+        # When a new Kline arrives
         result = calculator.update(new_kline)
 
 Dependencies:
@@ -61,30 +61,30 @@ except ImportError:
 
 class RealtimeCalculator:
     """
-    Real-time indikatör hesaplayıcı
+    Real-time indicator calculator
     
-    Incremental update yapar, tüm history'yi tekrar hesaplamaz.
-    Rolling window kullanarak memory efficient çalışır.
+    Performs incremental updates, avoiding recalculation of the entire history.
+    Operates in a memory-efficient manner using a rolling window.
     
-    Örnek:
-        # Old way (her update'te tüm DF tekrar hesaplanır) ❌
+    Example:
+        # Old way (the entire DataFrame is recalculated with each update) ❌
         def on_kline(new_kline):
             df = pd.concat([df, new_kline])
-            rsi = indicator.calculate(df)  # TÜM DF TEKRAR!
+            rsi = indicator.calculate(df)  # REPEATS THE ENTIRE DF!
             return rsi
         
-        # New way (sadece son değer güncellenir) ✅
+        # New way (only the last value is updated) ✅
         def on_kline(new_kline):
-            rsi = calculator.update(new_kline)  # SADECE SON DEĞER!
+            rsi = calculator.update(new_kline)  # ONLY THE LAST VALUE!
             return rsi
     
     Attributes:
-        indicator_name: Indikatör adı
+        indicator_name: Indicator name
         indicator: BaseIndicator instance
-        window_size: Rolling window boyutu
+        window_size: Rolling window size
         buffer: OHLCV buffer (deque)
         state: Internal state (gains, losses, etc.)
-        warmup_complete: Hazırlık tamamlandı mı?
+        warmup_complete: Has the warmup been completed?
     """
     
     def __init__(
@@ -98,8 +98,8 @@ class RealtimeCalculator:
         Initialize realtime calculator
         
         Args:
-            indicator_name: Indikatör adı
-            indicator_instance: BaseIndicator instance (opsiyonel)
+            indicator_name: Indicator name
+            indicator_instance: BaseIndicator instance (optional)
             window_size: Rolling window size (None = auto-detect)
             logger: Logger instance
         """
@@ -127,21 +127,21 @@ class RealtimeCalculator:
         #self._log('info', f"Initialized with window_size={self.window_size}")
     
     # ========================================================================
-    # WARMUP (İlk Hazırlık)
+    # WARMUP (Initial Setup)
     # ========================================================================
     
     def warmup(self, data: pd.DataFrame) -> None:
         """
         Warmup with historical data
         
-        İlk N kline ile hazırlık yapar. Rolling window'u doldurur ve
+        It prepares with the first N klines. It fills the rolling window and
         internal state'i initialize eder.
         
         Args:
             data: Historical OHLCV DataFrame
         
         Raises:
-            InsufficientDataError: Yetersiz data
+            InsufficientDataError: Insufficient data
         """
         if data.empty:
             raise InsufficientDataError(self.indicator_name, self.window_size, 0)
@@ -205,8 +205,8 @@ class RealtimeCalculator:
         """
         Update with new candle (incremental calculation)
         
-        Yeni kline geldiğinde sadece son değeri günceller.
-        Tüm DataFrame'i tekrar hesaplamaz.
+        It only updates the last value when a new Kline arrives.
+        It does not recalculate the entire DataFrame.
         
         Args:
             new_candle: New OHLCV candle
@@ -401,8 +401,8 @@ class RealtimeRSI(RealtimeCalculator):
     """
     Specialized RSI calculator with true incremental calculation
     
-    Bu örnek gösterir ki specialized calculator'lar nasıl yazılır.
-    Gerçek incremental RSI calculation implementasyonu.
+    This example shows how to write specialized calculators.
+    A real incremental RSI calculation implementation.
     """
     
     def __init__(self, period: int = 14, logger=None):
@@ -448,11 +448,11 @@ class RealtimeRSI(RealtimeCalculator):
             rs = self.state['avg_gain'] / self.state['avg_loss']
             rsi = 100 - (100 / (1 + rs))
         
-        # Timestamp'i al (index veya column'dan)
+        # Get the timestamp (from index or column)
         if 'timestamp' in data.columns:
             ts = int(data.iloc[-1]['timestamp'])
         else:
-            # Index datetime ise timestamp'e çevir
+            # If the index is a datetime object, convert it to a timestamp.
             ts = int(data.index[-1].timestamp() * 1000) if hasattr(data.index[-1], 'timestamp') else 0
 
         self.last_result = IndicatorResult(
@@ -539,11 +539,11 @@ class RealtimeEMA(RealtimeCalculator):
         close = data['close'].values
         self.state['ema'] = np.mean(close[-self.period:])
 
-        # Timestamp'i al (index veya column'dan)
+        # Get the timestamp (from index or column)
         if 'timestamp' in data.columns:
             ts = int(data.iloc[-1]['timestamp'])
         else:
-            # Index datetime ise timestamp'e çevir
+            # If the index is a datetime object, convert it to a timestamp.
             ts = int(data.index[-1].timestamp() * 1000) if hasattr(data.index[-1], 'timestamp') else 0
 
         self.last_result = IndicatorResult(

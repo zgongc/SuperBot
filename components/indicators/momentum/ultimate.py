@@ -5,14 +5,14 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    Ultimate Oscillator - Larry Williams tarafından geliştirildi
-    Aralık: 0-100 arası
-    Aşırı Alım: > 70
-    Aşırı Satım: < 30
-    3 farklı timeframe'in weighted average'ını kullanır.
+Description:
+    Ultimate Oscillator - Developed by Larry Williams
+    Range: 0-100
+    Overbought: > 70
+    Oversold: < 30
+    Uses the weighted average of 3 different timeframes.
 
-Formül:
+Formula:
     BP = Close - Min(Low, Previous Close)
     TR = Max(High, Previous Close) - Min(Low, Previous Close)
     Average7 = Sum(BP, 7) / Sum(TR, 7)
@@ -20,7 +20,7 @@ Formül:
     Average28 = Sum(BP, 28) / Sum(TR, 28)
     UO = 100 × ((4×Average7 + 2×Average14 + Average28) / (4 + 2 + 1))
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -42,15 +42,15 @@ class UltimateOscillator(BaseIndicator):
     """
     Ultimate Oscillator
 
-    3 farklı periyodu birleştirerek daha güvenilir sinyaller üretir.
-    Kısa, orta ve uzun vadeli momentum'u dengeler.
+    It combines three different periods to generate more reliable signals.
+    It balances short, medium, and long-term momentum.
 
     Args:
-        period1: Kısa periyot (varsayılan: 7)
-        period2: Orta periyot (varsayılan: 14)
-        period3: Uzun periyot (varsayılan: 28)
-        overbought: Aşırı alım seviyesi (varsayılan: 70)
-        oversold: Aşırı satım seviyesi (varsayılan: 30)
+        period1: Short period (default: 7)
+        period2: Medium period (default: 14)
+        period3: Long period (default: 28)
+        overbought: Overbought level (default: 70)
+        oversold: Oversold level (default: 30)
     """
 
     def __init__(
@@ -85,34 +85,34 @@ class UltimateOscillator(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
-        return self.period3 + 1  # En uzun periyot + önceki close için 1
+        """Minimum required number of periods"""
+        return self.period3 + 1  # The longest period + 1 for the previous close
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period1 < 1 or self.period2 < 1 or self.period3 < 1:
             raise InvalidParameterError(
                 self.name, 'periods',
                 f"period1={self.period1}, period2={self.period2}, period3={self.period3}",
-                "Tüm periyotlar pozitif olmalı"
+                "All periods must be positive"
             )
         if not (self.period1 < self.period2 < self.period3):
             raise InvalidParameterError(
                 self.name, 'periods',
                 f"period1={self.period1}, period2={self.period2}, period3={self.period3}",
-                "Periyotlar artan sırada olmalı: period1 < period2 < period3"
+                "Periods must be in increasing order: period1 < period2 < period3"
             )
         if self.oversold >= self.overbought:
             raise InvalidParameterError(
                 self.name, 'levels',
                 f"oversold={self.oversold}, overbought={self.overbought}",
-                "Oversold, overbought'tan küçük olmalı"
+                "Oversold should be smaller than overbought"
             )
         if not (0 <= self.oversold <= 100) or not (0 <= self.overbought <= 100):
             raise InvalidParameterError(
                 self.name, 'levels',
                 f"oversold={self.oversold}, overbought={self.overbought}",
-                "Seviyeler 0-100 arası olmalı"
+                "Levels must be between 0 and 100"
             )
         return True
 
@@ -124,13 +124,13 @@ class UltimateOscillator(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: UO değeri
+            IndicatorResult: UO value
         """
         high = data['high'].values
         low = data['low'].values
         close = data['close'].values
 
-        # BP (Buying Pressure) ve TR (True Range) hesapla
+        # Calculate BP (Buying Pressure) and TR (True Range)
         bp_values = []
         tr_values = []
 
@@ -146,7 +146,7 @@ class UltimateOscillator(BaseIndicator):
         bp_array = np.array(bp_values)
         tr_array = np.array(tr_values)
 
-        # Her 3 periyot için Average hesapla
+        # Calculate the average for every 3 periods
         def calculate_average(period: int) -> float:
             if len(bp_array) < period:
                 return 0.0
@@ -163,7 +163,7 @@ class UltimateOscillator(BaseIndicator):
         avg3 = calculate_average(self.period3)
 
         # Ultimate Oscillator hesapla (weighted average)
-        # Ağırlıklar: 4, 2, 1
+        # Weights: 4, 2, 1
         uo_value = 100 * ((4 * avg1 + 2 * avg2 + avg3) / 7)
 
         timestamp = int(data.iloc[-1]['timestamp'])
@@ -173,7 +173,7 @@ class UltimateOscillator(BaseIndicator):
             timestamp=timestamp,
             signal=self.get_signal(uo_value),
             trend=self.get_trend(uo_value),
-            strength=abs(uo_value - 50) * 2,  # 0-100 arası normalize et
+            strength=abs(uo_value - 50) * 2,  # Normalize to a range of 0-100
             metadata={
                 'period1': self.period1,
                 'period2': self.period2,
@@ -186,7 +186,7 @@ class UltimateOscillator(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.Series:
         """
-        ⚡ VECTORIZED batch Ultimate Oscillator calculation - BACKTEST için
+        ⚡ VECTORIZED batch Ultimate Oscillator calculation - for BACKTEST
 
         UO Formula:
             BP = Close - Min(Low, Previous Close)
@@ -248,7 +248,7 @@ class UltimateOscillator(BaseIndicator):
             symbol: Symbol identifier (for multi-symbol support)
 
         Returns:
-            IndicatorResult: Güncel indicator değeri
+            IndicatorResult: The current indicator value.
         """
         from collections import deque
 
@@ -293,13 +293,13 @@ class UltimateOscillator(BaseIndicator):
 
     def get_signal(self, value: float) -> SignalType:
         """
-        UO değerinden sinyal üret
+        Generate a signal from the UO value.
 
         Args:
-            value: UO değeri
+            value: The UO value.
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
         if value < self.oversold:
             return SignalType.BUY
@@ -309,13 +309,13 @@ class UltimateOscillator(BaseIndicator):
 
     def get_trend(self, value: float) -> TrendDirection:
         """
-        UO değerinden trend belirle
+        Determine the trend based on the UO value.
 
         Args:
-            value: UO değeri
+            value: The UO value.
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         if value > 50:
             return TrendDirection.UP
@@ -324,7 +324,7 @@ class UltimateOscillator(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'period1': 7,
             'period2': 14,
@@ -346,22 +346,22 @@ __all__ = ['UltimateOscillator']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """Ultimate Oscillator indikatör testi"""
+    """Ultimate Oscillator indicator test"""
 
     print("\n" + "="*60)
     print("ULTIMATE OSCILLATOR TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(50)]
 
-    # Fiyat hareketini simüle et
+    # Simulate price movement
     base_price = 100
     prices = [base_price]
     for i in range(49):
@@ -377,27 +377,27 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     uo = UltimateOscillator(period1=7, period2=14, period3=28)
-    print(f"   [OK] Oluşturuldu: {uo}")
+    print(f"   [OK] Created: {uo}")
     print(f"   [OK] Kategori: {uo.category.value}")
-    print(f"   [OK] Gerekli periyot: {uo.get_required_periods()}")
+    print(f"   [OK] Required period: {uo.get_required_periods()}")
 
     result = uo(data)
-    print(f"   [OK] UO Değeri: {result.value}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] UO Value: {result.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Power: {result.strength:.2f}")
     print(f"   [OK] Avg1: {result.metadata['avg1']}")
     print(f"   [OK] Avg2: {result.metadata['avg2']}")
     print(f"   [OK] Avg3: {result.metadata['avg3']}")
 
-    # Test 2: Farklı periyotlar
-    print("\n3. Farklı periyot testi...")
+    # Test 2: Different periods
+    print("\n3. Different period test...")
     configs = [
         (5, 10, 20),
         (7, 14, 28),
@@ -406,19 +406,19 @@ if __name__ == "__main__":
     for p1, p2, p3 in configs:
         uo_test = UltimateOscillator(period1=p1, period2=p2, period3=p3)
         result = uo_test.calculate(data)
-        print(f"   [OK] UO({p1},{p2},{p3}): {result.value} | Sinyal: {result.signal.value}")
+        print(f"   [OK] UO({p1},{p2},{p3}): {result.value} | Signal: {result.signal.value}")
 
-    # Test 3: Özel seviyeler
-    print("\n4. Özel seviye testi...")
+    # Test 3: Custom levels
+    print("\n4. Special level test...")
     uo_custom = UltimateOscillator(period1=7, period2=14, period3=28,
                                     overbought=80, oversold=20)
     result = uo_custom.calculate(data)
-    print(f"   [OK] Özel seviyeli UO: {result.value}")
+    print(f"   [OK] UO with specific level: {result.value}")
     print(f"   [OK] Overbought: {uo_custom.overbought}, Oversold: {uo_custom.oversold}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
 
-    # Test 4: Yükselen trend
-    print("\n5. Yükselen trend testi...")
+    # Test 4: Rising trend
+    print("\n5. Rising trend test...")
     up_data = data.copy()
     for i in range(20):
         idx = up_data.index[-(20-i)]
@@ -427,12 +427,12 @@ if __name__ == "__main__":
         up_data.loc[idx, 'low'] = prices[-(20-i)] + i * 0.5 - 0.3
 
     result_up = uo.calculate(up_data)
-    print(f"   [OK] Yükselen trend UO: {result_up.value}")
-    print(f"   [OK] Sinyal: {result_up.signal.value}")
+    print(f"   [OK] Rising trend UO: {result_up.value}")
+    print(f"   [OK] Signal: {result_up.signal.value}")
     print(f"   [OK] Trend: {result_up.trend.name}")
 
-    # Test 5: Düşen trend
-    print("\n6. Düşen trend testi...")
+    # Test 5: Declining trend
+    print("\n6. Downtrend test...")
     down_data = data.copy()
     for i in range(20):
         idx = down_data.index[-(20-i)]
@@ -441,13 +441,13 @@ if __name__ == "__main__":
         down_data.loc[idx, 'low'] = prices[-(20-i)] - i * 0.5 - 0.3
 
     result_down = uo.calculate(down_data)
-    print(f"   [OK] Düşen trend UO: {result_down.value}")
-    print(f"   [OK] Sinyal: {result_down.signal.value}")
+    print(f"   [OK] Declining trend UO: {result_down.value}")
+    print(f"   [OK] Signal: {result_down.signal.value}")
     print(f"   [OK] Trend: {result_down.trend.name}")
 
-    # Test 6: Aşırı alım/satım
-    print("\n7. Aşırı alım/satım testi...")
-    # Güçlü yükseliş
+    # Test 6: Overbuying/overselling
+    print("\n7. Overbuying/overselling test...")
+    # Strong upward trend
     strong_up_data = data.copy()
     for i in range(10):
         idx = strong_up_data.index[-(10-i)]
@@ -456,23 +456,23 @@ if __name__ == "__main__":
         strong_up_data.loc[idx, 'low'] = prices[-(10-i)] + i * 2 - 0.2
 
     result_strong_up = uo.calculate(strong_up_data)
-    print(f"   [OK] Güçlü yükseliş UO: {result_strong_up.value}")
-    print(f"   [OK] Sinyal: {result_strong_up.signal.value}")
+    print(f"   [OK] Strong upward trend UO: {result_strong_up.value}")
+    print(f"   [OK] Signal: {result_strong_up.signal.value}")
 
-    # Test 7: İstatistikler
-    print("\n8. İstatistik testi...")
+    # Test 7: Statistics
+    print("\n8. Statistical test...")
     stats = uo.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 8: Metadata
     print("\n9. Metadata testi...")
     metadata = uo.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

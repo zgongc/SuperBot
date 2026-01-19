@@ -1,37 +1,37 @@
 # config/main.yaml
-# SuperBot - Ana Yapılandırma Dosyası
-# Yazar: SuperBot Team
-# Tarih: 2025-11-12
-# Versiyon: 1.0.0
+# SuperBot - Main Configuration File
+# Author: SuperBot Team
+# Date: 2025-11-12
+# Version: 1.0.0
 
 # ============================================================
-# SİSTEM AYARLARI
+# SYSTEM SETTINGS
 # ============================================================
 system:
   name: "SuperBot"
   version: "1.0.0"
-  environment: "testnet" # testnet veya production
-  language: "en" # tr veya en
+  environment: "testnet" # testnet or production
+  language: "en" # tr or en
 
-  # Timezone ayarları
-  timezone: "UTC" # Sistem timezone (UTC önerilir)
-  utc_offset: 3 # UTC offset (saat cinsinden): 0=UTC, 3=UTC+3, -5=UTC-5
-  use_local_time: false # true: Local time kullan, false: UTC kullan (önerilen)
+  # Timezone settings
+  timezone: "UTC" # System timezone (UTC is recommended)
+  utc_offset: 3 # UTC offset (in hours): 0=UTC, 3=UTC+3, -5=UTC-5
+  use_local_time: false # true: Use local time, false: Use UTC (recommended)
 
 # ============================================================
 # LOGLAMA AYARLARI
 # ============================================================
 logging:
   level: "DEBUG" # DEBUG, INFO, WARNING, ERROR, CRITICAL
-  format: "json" # json veya text
+  format: "json" # json or text
 
-  # Konsol çıktısı
+  # Console output
   console:
     enabled: true
     colored: true
     ansi_color: false # Disable ANSI color codes (Flask/Werkzeug)
 
-  # Dosya çıktısı
+  # File output
   file:
     enabled: false
     log_dir: "data/logs"
@@ -47,13 +47,13 @@ logging:
   # Flask Logging Option
   flask:
     level: "DEBUG" # DEBUG/INFO/WARNING/ERROR
-    log_output: true # true = göster, false = gizle
+    log_output: true # true = show, false = hide
 
-  # Engine bazlı ayrı log dosyaları
+  # Engine-based separate log files
   per_engine_logs: false
 
 # ============================================================
-# PERFORMANS AYARLARI
+# PERFORMANCE SETTINGS
 # ============================================================
 performance:
   # Kaynak limitleri
@@ -72,10 +72,10 @@ performance:
   max_workers: 10
 
 # ============================================================
-# GÜVENLİK AYARLARI
+# SECURITY SETTINGS
 # ============================================================
 security:
-  # IP whitelisting (Dashboard için)
+  # IP whitelisting (for the Dashboard)
   ip_whitelist:
     enabled: false
     allowed_ips:
@@ -87,32 +87,32 @@ security:
     enabled: true
     requests_per_minute: 1000
 
-  encryption_enabled: true # encrypt_keys ile aynı anlama gelebilir
+  encryption_enabled: true # can have the same meaning as encrypt_keys
   key_rotation_days: 90
   audit_enabled: true
   key_file: "data/security/.master_key"
   audit_log: "data/logs/security_audit.log"
   max_decryption_per_minute: 100
 # ============================================================
-# FILE WATCHER AYARLARI
+# FILE WATCHER SETTINGS
 # ============================================================
 file_watcher:
   enabled: true
   debounce_ms: 500 # debounce_seconds yerine
-  check_interval: 1 # Her 1 saniyede kontrol et (watchdog yoksa)
+  check_interval: 1 # Check every 1 second (if watchdog is not available)
 
 # ============================================================
-# GÜVENLİ KAPANMA AYARLARI
+# SAFE SHUTDOWN SETTINGS
 # ============================================================
 shutdown:
-  timeout: 30 # Maksimum bekleme süresi (saniye)
-  task_timeout: 30 # Task timeout süresi
+  timeout: 30 # Maximum waiting time (seconds)
+  task_timeout: 30 # Task timeout duration
   wait_for_tasks: true # Task bekle flag'i
-  force_after_timeout: true # Timeout sonrası zorla kapat
-  save_state: true # Durumu kaydet (state_persistence.state_dir kullanılır)
-  close_positions: false # Açık pozisyonları kapat (false: sadece uyar)
-  flush_buffers: true # Buffer'ları boşalt
-  wait_for_pending_tasks: true # Bekleyen işleri tamamla
+  force_after_timeout: true # Force close after timeout
+  save_state: true # Save state (state_persistence.state_dir is used)
+  close_positions: false # Close open positions (false: only warn)
+  flush_buffers: true # Flush the buffers
+  wait_for_pending_tasks: true # Complete pending tasks
 
 # ============================================================
 # ERROR HANDLING & RETRY
@@ -127,7 +127,7 @@ error_handling:
       multiplier: 2.0
       max_delay: 30
 
-  error_rate_limit: 10 # Dakika başına max hata sayısı
-  critical_error_notify: true # Critical hatalarda bildirim gönder
-  error_threshold_notify: 5 # Kaç hatadan sonra notify
+  error_rate_limit: 10 # Maximum number of errors per minute
+  critical_error_notify: true # Send notification in case of critical errors
+  error_threshold_notify: 5 # How many errors before notification
 

@@ -5,18 +5,18 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    A/D (Accumulation/Distribution) - Biriktirme/Dağıtım indikatörü
-    Hacim akışını ve fiyat hareketlerini birleştirir
-    Yükselen A/D = Biriktirme (alım)
-    Düşen A/D = Dağıtım (satım)
+Description:
+    A/D (Accumulation/Distribution) - Accumulation/Distribution indicator
+    Combines volume flow and price movements
+    Rising A/D = Accumulation (buying)
+    Falling A/D = Distribution (selling)
 
-Formül:
+Formula:
     MFM = ((Close - Low) - (High - Close)) / (High - Low)
     MF Volume = MFM × Volume
     A/D = A/D_prev + MF Volume
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -38,11 +38,11 @@ class AD(BaseIndicator):
     """
     Accumulation/Distribution
 
-    Para akışını (money flow) ölçerek biriktirme ve dağıtım
-    fazlarını tespit eder.
+    Measuring money flow for accumulation and distribution.
+    detects the phases.
 
     Args:
-        signal_period: Sinyal hattı SMA periyodu (varsayılan: 10)
+        signal_period: Signal line SMA period (default: 10)
     """
 
     def __init__(
@@ -65,15 +65,15 @@ class AD(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.signal_period + 1
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.signal_period < 1:
             raise InvalidParameterError(
                 self.name, 'signal_period', self.signal_period,
-                "Periyot pozitif olmalı"
+                "The period must be positive"
             )
         return True
 
@@ -85,7 +85,7 @@ class AD(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: A/D değeri
+            IndicatorResult: A/D value
         """
         high = data['high'].values
         low = data['low'].values
@@ -107,7 +107,7 @@ class AD(BaseIndicator):
             # Money Flow Volume
             mf_volume = mfm * volume[i]
 
-            # Kümülatif A/D
+            # Cumulative A/D
             if i == 0:
                 ad_values[i] = mf_volume
             else:
@@ -115,7 +115,7 @@ class AD(BaseIndicator):
 
         ad_value = ad_values[-1]
 
-        # Sinyal hattı (SMA)
+        # Signal line (SMA)
         ad_signal = np.mean(ad_values[-self.signal_period:])
 
         timestamp = int(data.iloc[-1]['timestamp'])
@@ -139,7 +139,7 @@ class AD(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.Series:
         """
-        ⚡ VECTORIZED batch A/D calculation - BACKTEST için
+        ⚡ VECTORIZED batch A/D calculation - for BACKTEST
 
         A/D Formula:
             MFM = ((Close - Low) - (High - Close)) / (High - Low)
@@ -180,20 +180,20 @@ class AD(BaseIndicator):
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
         """
-        Warmup buffer - update() için gerekli
+        Warmup buffer - required for update().
 
-        AD kümülatif bir indikatördür, bu yüzden son AD değerini ve
-        son N bar'ın AD değerlerini (signal için) saklamamız gerekiyor.
+        AD is a cumulative indicator, so we need to store the last AD value and
+        the AD values of the last N bars (for the signal).
 
         Args:
             data: OHLCV DataFrame (warmup verisi)
-            symbol: Sembol adı (opsiyonel)
+            symbol: Symbol name (optional)
         """
         super().warmup_buffer(data, symbol)
 
         from collections import deque
 
-        # AD değerlerini hesapla ve son değeri sakla
+        # Calculate AD values and store the final value.
         high = data['high'].values
         low = data['low'].values
         close = data['close'].values
@@ -212,10 +212,10 @@ class AD(BaseIndicator):
             else:
                 ad_values[i] = ad_values[i-1] + mf_volume
 
-        # Kümülatif AD değerini sakla
+        # Store the cumulative AD value
         self._cumulative_ad = ad_values[-1]
 
-        # Son signal_period kadar AD değerini sakla (signal için)
+        # Store the AD value for the last signal_period (for the signal)
         max_len = self.signal_period + 10
         self._ad_buffer = deque(maxlen=max_len)
         for val in ad_values[-max_len:]:
@@ -227,7 +227,7 @@ class AD(BaseIndicator):
         """
         Incremental update (Real-time)
 
-        AD kümülatif hesaplandığı için, önceki AD değerine yeni bar'ın
+        Since the AD is calculated cumulatively, the new bar's value is added to the previous AD value.
         MF Volume'unu ekliyoruz.
         """
         from collections import deque
@@ -253,7 +253,7 @@ class AD(BaseIndicator):
             close_val = candle[4] if len(candle) > 4 else 0
             volume_val = candle[5] if len(candle) > 5 else 1000
 
-        # MFM ve MF Volume hesapla
+        # Calculate MFM and MF Volume
         high_low_diff = high_val - low_val
         if high_low_diff == 0:
             mfm = 0
@@ -261,7 +261,7 @@ class AD(BaseIndicator):
             mfm = ((close_val - low_val) - (high_val - close_val)) / high_low_diff
         mf_volume = mfm * volume_val
 
-        # Kümülatif AD'yi güncelle
+        # Update the cumulative AD.
         self._cumulative_ad += mf_volume
         ad_value = self._cumulative_ad
 
@@ -278,7 +278,7 @@ class AD(BaseIndicator):
                 metadata={'insufficient_data': True}
             )
 
-        # Sinyal hattı hesapla
+        # Calculate the signal path
         ad_signal = np.mean(list(self._ad_buffer)[-self.signal_period:])
 
         return IndicatorResult(
@@ -297,19 +297,19 @@ class AD(BaseIndicator):
 
     def get_signal(self, ad_value: float, ad_signal: float) -> SignalType:
         """
-        A/D değerinden sinyal üret
+        Generate a signal from the A/D value.
 
         Args:
-            ad_value: A/D değeri
-            ad_signal: A/D sinyal hattı
+            ad_value: A/D value
+            ad_signal: A/D signal line
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
         if ad_value > ad_signal:
             return SignalType.BUY  # Biriktirme
         elif ad_value < ad_signal:
-            return SignalType.SELL  # Dağıtım
+            return SignalType.SELL  # Sell
         return SignalType.HOLD
 
     def get_trend(self, ad_array: np.ndarray) -> TrendDirection:
@@ -317,15 +317,15 @@ class AD(BaseIndicator):
         A/D trendini belirle
 
         Args:
-            ad_array: Son A/D değerleri
+            ad_array: Last A/D values
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         if len(ad_array) < 2:
             return TrendDirection.NEUTRAL
 
-        # Lineer regresyon ile trend
+        # Linear regression for trend
         slope = np.polyfit(range(len(ad_array)), ad_array, 1)[0]
 
         if slope > 0:
@@ -335,7 +335,7 @@ class AD(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'signal_period': 10
         }
@@ -353,18 +353,18 @@ __all__ = ['AD']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """A/D indikatör testi"""
+    """A/D indicator test"""
 
     print("\n" + "="*60)
     print("A/D (ACCUMULATION/DISTRIBUTION) TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating example OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(30)]
 
@@ -386,63 +386,63 @@ if __name__ == "__main__":
         'volume': volumes
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     ad = AD(signal_period=10)
-    print(f"   [OK] Oluşturuldu: {ad}")
+    print(f"   [OK] Created: {name}")
     print(f"   [OK] Kategori: {ad.category.value}")
-    print(f"   [OK] Gerekli periyot: {ad.get_required_periods()}")
+    print(f"   [OK] Required period: {ad.get_required_periods()}")
 
     result = ad(data)
-    print(f"   [OK] A/D Değeri: {result.value:,.2f}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] A/D Value: {result.value:,.2f}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Power: {result.strength:.2f}")
     print(f"   [OK] Metadata: {result.metadata}")
 
-    # Test 2: Farklı periyotlar
-    print("\n3. Farklı periyot testi...")
+    # Test 2: Different periods
+    print("\n3. Different period test...")
     for period in [5, 10, 20]:
         ad_test = AD(signal_period=period)
         result = ad_test.calculate(data)
-        print(f"   [OK] A/D(signal={period}): {result.value:,.2f} | Sinyal: {result.signal.value}")
+        print(f"   [OK] A/D(signal={period}): {result.value:,.2f} | Signal: {result.signal.value}")
 
     # Test 3: Volume gereksinimi
     print("\n4. Volume gereksinimi testi...")
     metadata = ad.metadata
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
     assert metadata.requires_volume == True, "A/D volume gerektirmeli!"
 
-    # Test 4: Biriktirme/Dağıtım tespiti
-    print("\n5. Biriktirme/Dağıtım testi...")
+    # Test 4: Accumulation/Distribution detection
+    print("\n5. Accumulation/Distribution test...")
     result = ad.calculate(data)
     if result.signal == SignalType.BUY:
-        print("   [OK] Biriktirme fazı tespit edildi")
+        print("   [OK] Accumulation phase detected")
     elif result.signal == SignalType.SELL:
-        print("   [OK] Dağıtım fazı tespit edildi")
+        print("   [OK] Deployment phase detected")
     else:
-        print("   [OK] Nötr faz")
+        print("   [OK] Neutral phase")
 
-    # Test 5: MFM değeri
+    # Test 5: MFM value
     print("\n6. Money Flow Multiplier testi...")
     mfm = result.metadata['mfm']
     print(f"   [OK] MFM: {mfm:.4f}")
     if mfm > 0:
-        print("   [OK] Pozitif para akışı (alıcı baskısı)")
+        print("   [OK] Positive cash flow (buyer pressure)")
     elif mfm < 0:
-        print("   [OK] Negatif para akışı (satıcı baskısı)")
+        print("   [OK] Negative cash flow (seller pressure)")
     else:
-        print("   [OK] Nötr para akışı")
+        print("   [OK] Neutral cash flow")
 
-    # Test 6: İstatistikler
-    print("\n7. İstatistik testi...")
+    # Test 6: Statistics
+    print("\n7. Statistical test...")
     stats = ad.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

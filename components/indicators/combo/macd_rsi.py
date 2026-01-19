@@ -5,25 +5,25 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    MACD + RSI Kombine indikatörü
-    MACD trend ve momentum indikatörünü RSI osilatörü ile birleştirerek
-    güçlü trend takibi ve giriş/çıkış sinyalleri üretir
+Description:
+    MACD + RSI Combined indicator
+    Combines the MACD trend and momentum indicator with the RSI oscillator,
+    producing strong trend tracking and entry/exit signals.
 
-    Özellikler:
-    - MACD histogram ve crossover analizi
-    - RSI aşırı alım/satım seviyeleri
+    Features:
+    - MACD histogram and crossover analysis
+    - RSI overbought/oversold levels
     - Divergence tespiti
-    - Çoklu zaman dilimi konfirmasyonu
+    - Multiple timezone confirmation
 
-Strateji:
-    GÜÇLÜ AL: MACD Bullish Crossover VE RSI < 40
-    AL: MACD > Signal VE RSI < 50
-    GÜÇLÜ SAT: MACD Bearish Crossover VE RSI > 60
-    SAT: MACD < Signal VE RSI > 50
-    HOLD: Diğer durumlar
+Strategy:
+    STRONG BUY: MACD Bullish Crossover AND RSI < 40
+    BUY: MACD > Signal AND RSI < 50
+    STRONG SELL: MACD Bearish Crossover AND RSI > 60
+    SELL: MACD < Signal AND RSI > 50
+    HOLD: Other cases
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
     - indicators.trend.macd
@@ -49,16 +49,16 @@ class MACDRSICombo(BaseIndicator):
     """
     MACD + RSI Kombine Stratejisi
 
-    MACD'nin trend takibi ile RSI'ın momentum ölçümünü birleştirerek
-    daha güvenilir al/sat sinyalleri üretir.
+    By combining MACD's trend tracking with RSI's momentum measurement,
+    it generates more reliable buy/sell signals.
 
     Args:
-        macd_fast: MACD hızlı EMA periyodu (varsayılan: 12)
-        macd_slow: MACD yavaş EMA periyodu (varsayılan: 26)
-        macd_signal: MACD sinyal periyodu (varsayılan: 9)
-        rsi_period: RSI periyodu (varsayılan: 14)
-        rsi_overbought: RSI aşırı alım seviyesi (varsayılan: 70)
-        rsi_oversold: RSI aşırı satım seviyesi (varsayılan: 30)
+        macd_fast: MACD fast EMA period (default: 12)
+        macd_slow: MACD slow EMA period (default: 26)
+        macd_signal: MACD signal period (default: 9)
+        rsi_period: RSI period (default: 14)
+        rsi_overbought: RSI overbought level (default: 70)
+        rsi_oversold: RSI oversold level (default: 30)
     """
 
     def __init__(
@@ -79,7 +79,7 @@ class MACDRSICombo(BaseIndicator):
         self.rsi_overbought = rsi_overbought
         self.rsi_oversold = rsi_oversold
 
-        # Alt indikatörleri oluştur
+        # Create sub-indicators
         self.macd = MACD(
             fast_period=macd_fast,
             slow_period=macd_slow,
@@ -113,39 +113,39 @@ class MACDRSICombo(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return max(self.macd.get_required_periods(), self.rsi.get_required_periods())
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.macd_fast >= self.macd_slow:
             raise InvalidParameterError(
                 self.name, 'macd_periods',
                 f"fast={self.macd_fast}, slow={self.macd_slow}",
-                "MACD fast periyodu slow'dan küçük olmalı"
+                "The MACD fast period must be smaller than the slow period."
             )
         if self.rsi_period < 1:
             raise InvalidParameterError(
                 self.name, 'rsi_period', self.rsi_period,
-                "RSI periyodu pozitif olmalı"
+                "The RSI period must be positive"
             )
         if self.rsi_oversold >= self.rsi_overbought:
             raise InvalidParameterError(
                 self.name, 'rsi_levels',
                 f"oversold={self.rsi_oversold}, overbought={self.rsi_overbought}",
-                "RSI oversold, overbought'tan küçük olmalı"
+                "RSI oversold should be less than overbought"
             )
         return True
 
     def calculate(self, data: pd.DataFrame) -> IndicatorResult:
         """
-        MACD + RSI kombine hesaplama
+        MACD + RSI combined calculation
 
         Args:
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: Kombine MACD + RSI değerleri ve sinyalleri
+            IndicatorResult: Combined MACD + RSI values and signals.
         """
         # MACD hesapla
         macd_result = self.macd.calculate(data)
@@ -159,12 +159,12 @@ class MACDRSICombo(BaseIndicator):
 
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Kombine sinyal ve trend belirleme
+        # Combined signal and trend determination
         signal = self.get_signal(macd_line, signal_line, histogram, rsi_value)
         trend = self.get_trend(macd_line, signal_line, rsi_value)
         strength = self._calculate_strength(histogram, rsi_value)
 
-        # Crossover ve konfirmasyon durumu
+        # Crossover and confirmation status
         crossover_type = self._get_crossover_type(macd_line, signal_line)
         confirmation = self._get_confirmation(macd_line, signal_line, rsi_value)
 
@@ -198,7 +198,7 @@ class MACDRSICombo(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        ⚡ VECTORIZED batch MACD + RSI calculation - BACKTEST için
+        ⚡ VECTORIZED batch MACD + RSI calculation - for BACKTEST
 
         Combines MACD and RSI using their respective calculate_batch() methods
 
@@ -283,27 +283,27 @@ class MACDRSICombo(BaseIndicator):
         Kombine MACD + RSI sinyali
 
         Args:
-            macd: MACD line değeri
-            signal: Signal line değeri
-            histogram: Histogram değeri
-            rsi: RSI değeri
+            macd: MACD line value
+            signal: Signal line value
+            histogram: Histogram value
+            rsi: RSI value
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
-        # GÜÇLÜ AL: MACD bullish crossover + RSI düşük
+        # STRONG BUY: MACD bullish crossover + RSI is low
         if macd > signal and histogram > 0 and rsi < 40:
             return SignalType.BUY
 
-        # AL: MACD yükseliş + RSI nötr/düşük
+        # EN: MACD uptrend + RSI neutral/low
         if macd > signal and rsi < 50:
             return SignalType.BUY
 
-        # GÜÇLÜ SAT: MACD bearish crossover + RSI yüksek
+        # STRONG SELL: MACD bearish crossover + RSI high
         if macd < signal and histogram < 0 and rsi > 60:
             return SignalType.SELL
 
-        # SAT: MACD düşüş + RSI nötr/yüksek
+        # SAT: MACD decreasing + RSI neutral/high
         if macd < signal and rsi > 50:
             return SignalType.SELL
 
@@ -314,17 +314,17 @@ class MACDRSICombo(BaseIndicator):
         Kombine trend belirleme
 
         Args:
-            macd: MACD line değeri
-            signal: Signal line değeri
-            rsi: RSI değeri
+            macd: MACD line value
+            signal: Signal line value
+            rsi: RSI value
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
-        # Her iki indikatör de yükseliş gösteriyorsa
+        # If both indicators show an upward trend
         if macd > signal and rsi > 50:
             return TrendDirection.UP
-        # Her iki indikatör de düşüş gösteriyorsa
+        # If both indicators show a decrease
         elif macd < signal and rsi < 50:
             return TrendDirection.DOWN
 
@@ -332,18 +332,18 @@ class MACDRSICombo(BaseIndicator):
 
     def _calculate_strength(self, histogram: float, rsi: float) -> float:
         """
-        Sinyal gücünü hesapla (0-100)
+        Calculate signal strength (0-100)
 
-        MACD histogram büyüklüğü ve RSI ekstrem değerleriyle güç artar
+        MACD histogram size and RSI extreme values increase strength.
         """
-        # MACD'den gelen güç (histogram büyüklüğü)
+        # Power from MACD (histogram size)
         macd_strength = min(abs(histogram) * 50, 50)
 
-        # RSI'dan gelen güç (50'den uzaklık)
+        # Power received from RSI (distance from 50)
         rsi_deviation = abs(rsi - 50)
         rsi_strength = min(rsi_deviation, 50)
 
-        # Kombine güç
+        # Combined power
         combined_strength = macd_strength + rsi_strength
 
         return min(combined_strength, 100)
@@ -353,7 +353,7 @@ class MACDRSICombo(BaseIndicator):
         MACD crossover tipini belirle
 
         Returns:
-            str: 'bullish', 'bearish' veya 'none'
+            str: 'bullish', 'bearish' or 'none'
         """
         if macd > signal:
             return 'bullish'
@@ -363,26 +363,26 @@ class MACDRSICombo(BaseIndicator):
 
     def _get_confirmation(self, macd: float, signal: float, rsi: float) -> str:
         """
-        Sinyal konfirmasyonu durumunu belirle
+        Determine the signal confirmation status.
 
         Returns:
-            str: 'strong', 'moderate', 'weak' veya 'conflicting'
+            str: 'strong', 'moderate', 'weak' or 'conflicting'
         """
-        # Güçlü konfirmasyon (her iki indikatör de aynı yönde güçlü)
+        # Strong confirmation (both indicators are in the same direction and strong)
         if (macd > signal and rsi > 50) or (macd < signal and rsi < 50):
             # RSI ekstrem seviyelerde mi?
             if rsi < 30 or rsi > 70:
                 return 'strong'
             return 'moderate'
 
-        # Çelişkili sinyaller
+        # Conflicting signals
         if (macd > signal and rsi < 40) or (macd < signal and rsi > 60):
             return 'weak'
 
         return 'conflicting'
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'macd_fast': 12,
             'macd_slow': 26,
@@ -405,31 +405,31 @@ __all__ = ['MACDRSICombo']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """MACD + RSI kombine indikatör testi"""
+    """MACD + RSI combined indicator test"""
 
     print("\n" + "="*60)
     print("MACD + RSI COMBO TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating example OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(100)]
 
-    # Trend değişimli fiyat simülasyonu
+    # Price simulation with trend changes
     base_price = 100
     prices = [base_price]
     for i in range(99):
         if i < 30:
-            trend = 0.3  # Yükseliş
+            trend = 0.3  # Increase
         elif i < 60:
-            trend = -0.2  # Düşüş
+            trend = -0.2  # Decrease
         else:
-            trend = 0.5  # Güçlü yükseliş
+            trend = 0.5  # Strong upward trend
         noise = np.random.randn() * 1.5
         prices.append(prices[-1] + trend + noise)
 
@@ -442,36 +442,36 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     combo = MACDRSICombo()
-    print(f"   [OK] Oluşturuldu: {combo}")
+    print(f"   [OK] Created: {combo}")
     print(f"   [OK] Kategori: {combo.category.value}")
     print(f"   [OK] Tip: {combo.indicator_type.value}")
-    print(f"   [OK] Gerekli periyot: {combo.get_required_periods()}")
+    print(f"   [OK] Required period: {combo.get_required_periods()}")
 
     result = combo(data)
     print(f"   [OK] MACD: {result.value['macd']}")
     print(f"   [OK] Signal: {result.value['signal']}")
     print(f"   [OK] Histogram: {result.value['histogram']}")
     print(f"   [OK] RSI: {result.value['rsi']}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Power: {result.strength:.2f}")
 
-    # Test 2: Sinyal analizi
-    print("\n3. Sinyal analizi...")
+    # Test 2: Signal analysis
+    print("\n3. Signal analysis...")
     print(f"   [OK] MACD Sinyali: {result.metadata['macd_signal_type']}")
     print(f"   [OK] RSI Sinyali: {result.metadata['rsi_signal_type']}")
-    print(f"   [OK] Kombine Sinyal: {result.signal.value}")
+    print(f"   [OK] Combined Signal: {result.signal.value}")
     print(f"   [OK] Crossover: {result.metadata['crossover']}")
     print(f"   [OK] Konfirmasyon: {result.metadata['confirmation']}")
 
-    # Test 3: Trend değişimi analizi
-    print("\n4. Trend değişimi analizi...")
+    # Test 3: Trend change analysis
+    print("\n4. Trend change analysis...")
     test_points = [35, 50, 75, 95]
     for idx in test_points:
         data_slice = data.iloc[:idx+1]
@@ -480,11 +480,11 @@ if __name__ == "__main__":
               f"MACD={result.value['macd']:.4f}, "
               f"Hist={result.value['histogram']:.4f}, "
               f"RSI={result.value['rsi']:.1f}, "
-              f"Sinyal={result.signal.value}, "
+              f"Signal={result.signal.value}, "
               f"Trend={result.trend.name}")
 
-    # Test 4: Özel parametreler
-    print("\n5. Özel parametre testi...")
+    # Test 4: Custom parameters
+    print("\n5. Special parameter test...")
     combo_custom = MACDRSICombo(
         macd_fast=8,
         macd_slow=21,
@@ -494,23 +494,23 @@ if __name__ == "__main__":
         rsi_oversold=25
     )
     result = combo_custom.calculate(data)
-    print(f"   [OK] Özel MACD: {result.value['macd']:.4f}")
-    print(f"   [OK] Özel RSI: {result.value['rsi']}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Custom MACD: {result.value['macd']:.4f}")
+    print(f"   [OK] Custom RSI: {result.value['rsi']}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Konfirmasyon: {result.metadata['confirmation']}")
 
-    # Test 5: Güç ve konfirmasyon analizi
-    print("\n6. Güç ve konfirmasyon analizi...")
-    print(f"   [OK] Sinyal Gücü: {result.strength:.2f}/100")
-    print(f"   [OK] Konfirmasyon Seviyesi: {result.metadata['confirmation']}")
+    # Test 5: Power and confirmation analysis
+    print("\n6. Power and confirmation analysis...")
+    print(f"   [OK] Signal Strength: {result.strength:.2f}/100")
+    print(f"   [OK] Confirmation Level: {result.metadata['confirmation']}")
     print(f"   [OK] Histogram: {result.value['histogram']:.4f}")
 
-    # Test 6: Farklı MACD periyotları
-    print("\n7. Farklı MACD periyodu testi...")
+    # Test 6: Different MACD periods
+    print("\n7. Testing different MACD periods...")
     configs = [
         (12, 26, 9, "Standart"),
         (5, 35, 5, "Uzun vadeli"),
-        (8, 17, 9, "Kısa vadeli")
+        (8, 17, 9, "Short term")
     ]
     for fast, slow, sig, desc in configs:
         combo_test = MACDRSICombo(
@@ -522,21 +522,21 @@ if __name__ == "__main__":
         print(f"   [OK] {desc} ({fast},{slow},{sig}): "
               f"MACD={result.value['macd']:.4f}, "
               f"RSI={result.value['rsi']:.1f}, "
-              f"Sinyal={result.signal.value}")
+              f"Signal={result.signal.value}")
 
-    # Test 7: İstatistikler
-    print("\n8. İstatistik testi...")
+    # Test 7: Statistics
+    print("\n8. Statistical test...")
     stats = combo.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 8: Metadata
     print("\n9. Metadata testi...")
     metadata = combo.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

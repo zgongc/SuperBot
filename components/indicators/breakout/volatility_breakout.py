@@ -5,31 +5,31 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    Volatility Breakout - Bollinger Genişlemesi ile Breakout Tespiti
-    Bollinger Bands genişlemesini ve fiyat hareketini kullanarak
-    volatilite breakout'larını tespit eder.
+Description:
+    Volatility Breakout - Breakout Detection with Bollinger Expansion
+    Using Bollinger Bands expansion and price movement.
+    detects volatility breakouts.
 
     Breakout Kriterleri:
-    - BB genişliği artar (volatilite artışı)
-    - Fiyat BB üst/alt bandını kırar
-    - Hacim ortalamanın üzerinde (opsiyonel)
+    - The BB width increases (volatility increase)
+    - The price breaks the upper/lower BB band
+    - Volume is above the average (optional)
 
-    Çıktı:
-    - Upper Band: Üst bant
+    Output:
+    - Upper Band: Upper band
     - Middle Band: Orta bant (SMA)
     - Lower Band: Alt bant
-    - Width: Band genişliği
-    - %B: Fiyatın bantlar içindeki konumu
+    - Width: Bandwidth
+    - %B: The position of the price within the bands
 
-Formül:
+Formula:
     BB Middle = SMA(Close, period)
     BB Upper = Middle + (std_dev × StdDev)
     BB Lower = Middle - (std_dev × StdDev)
     BB Width = (Upper - Lower) / Middle × 100
     %B = (Close - Lower) / (Upper - Lower) × 100
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -51,14 +51,14 @@ class VolatilityBreakout(BaseIndicator):
     """
     Volatility Breakout Indicator
 
-    Bollinger Bands genişlemesini izleyerek volatilite breakout'larını tespit eder.
-    Band genişliği, %B ve fiyat hareketini analiz eder.
+    It detects volatility breakouts by monitoring the expansion of Bollinger Bands.
+    It analyzes the band width, %B, and price movement.
 
     Args:
-        period: BB periyodu (varsayılan: 20)
-        std_dev: Standart sapma çarpanı (varsayılan: 2.0)
-        width_threshold: Genişlik eşik değeri (varsayılan: 4.0)
-        use_volume: Hacim kontrolü kullan (varsayılan: True)
+        period: BB period (default: 20)
+        std_dev: Standard deviation factor (default: 2.0)
+        width_threshold: Width threshold value (default: 4.0)
+        use_volume: Use volume check (default: True)
     """
 
     def __init__(
@@ -90,12 +90,12 @@ class VolatilityBreakout(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.period + 10
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        ⚡ VECTORIZED batch Volatility Breakout calculation - BACKTEST için
+        ⚡ VECTORIZED batch Volatility Breakout calculation - for BACKTEST
 
         Uses Bollinger Bands for volatility breakout detection
 
@@ -143,21 +143,21 @@ class VolatilityBreakout(BaseIndicator):
         }, index=data.index)
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 2:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Periyot en az 2 olmalı"
+                "The period must be at least 2"
             )
         if self.std_dev <= 0:
             raise InvalidParameterError(
                 self.name, 'std_dev', self.std_dev,
-                "Standart sapma pozitif olmalı"
+                "Standard deviation must be positive"
             )
         if self.width_threshold <= 0:
             raise InvalidParameterError(
                 self.name, 'width_threshold', self.width_threshold,
-                "Genişlik eşiği pozitif olmalı"
+                "The width threshold must be positive"
             )
         return True
 
@@ -169,7 +169,7 @@ class VolatilityBreakout(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: BB bantları, genişlik ve %B değeri
+            IndicatorResult: BB bands, width, and %B value.
         """
         close = data['close'].values
         volume = data['volume'].values if self.use_volume else None
@@ -184,14 +184,14 @@ class VolatilityBreakout(BaseIndicator):
         # BB Width hesapla (%)
         width = ((upper_band - lower_band) / sma) * 100 if sma != 0 else 0
 
-        # %B hesapla (fiyatın bantlar içindeki konumu)
+        # Calculate %B (the position of the price within the bands)
         band_range = upper_band - lower_band
         if band_range != 0:
             percent_b = ((close[-1] - lower_band) / band_range) * 100
         else:
             percent_b = 50.0
 
-        # Önceki genişliği hesapla (trend için)
+        # Calculate the previous width (for the trend)
         if len(close) >= self.period + 5:
             prev_sma = np.mean(close[-(self.period+5):-5])
             prev_std = np.std(close[-(self.period+5):-5])
@@ -203,13 +203,13 @@ class VolatilityBreakout(BaseIndicator):
 
         width_expanding = width > prev_width
 
-        # Hacim kontrolü
+        # Volume control
         volume_confirm = True
         if self.use_volume and volume is not None:
             avg_volume = np.mean(volume[-self.period:])
             volume_confirm = volume[-1] > avg_volume * 1.2
 
-        # Breakout tespit et
+        # Detect breakout
         breakout_up = (
             close[-1] > upper_band and
             width > self.width_threshold and
@@ -228,11 +228,11 @@ class VolatilityBreakout(BaseIndicator):
 
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Sinyal belirle
+        # Define signal
         signal = self.get_signal(breakout_up, breakout_down, percent_b)
         trend = self.get_trend(percent_b, close[-1], sma)
 
-        # Güç: Genişlik ve %B kombinasyonu
+        # Power: Width and %B combination
         strength = min((width / self.width_threshold) * 50 + abs(percent_b - 50), 100)
 
         # Warmup buffer for update() method
@@ -312,15 +312,15 @@ class VolatilityBreakout(BaseIndicator):
 
     def get_signal(self, breakout_up: bool, breakout_down: bool, percent_b: float) -> SignalType:
         """
-        Breakout durumundan sinyal üret
+        Generate a signal from the breakout state.
 
         Args:
-            breakout_up: Yukarı breakout var mı?
-            breakout_down: Aşağı breakout var mı?
-            percent_b: %B değeri
+            breakout_up: Is there an upward breakout?
+            breakout_down: Is there a downward breakout?
+            percent_b: %B value
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
         if breakout_up:
             return SignalType.STRONG_BUY
@@ -335,15 +335,15 @@ class VolatilityBreakout(BaseIndicator):
 
     def get_trend(self, percent_b: float, price: float, middle: float) -> TrendDirection:
         """
-        %B ve fiyattan trend belirle
+        Determine the trend based on %B and price.
 
         Args:
-            percent_b: %B değeri
-            price: Mevcut fiyat
+            percent_b: The value of %B
+            price: The current price
             middle: Orta bant (SMA)
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         if price > middle and percent_b > 50:
             return TrendDirection.UP
@@ -352,7 +352,7 @@ class VolatilityBreakout(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'period': 20,
             'std_dev': 2.0,
@@ -361,7 +361,7 @@ class VolatilityBreakout(BaseIndicator):
         }
 
     def _requires_volume(self) -> bool:
-        """Volume kullanılabilir ama zorunlu değil"""
+        """Volume is optional, but can be used."""
         return False
 
     def _get_output_names(self) -> list:
@@ -377,31 +377,31 @@ __all__ = ['VolatilityBreakout']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """Volatility Breakout indikatör testi"""
+    """Volatility Breakout indicator test"""
 
     print("\n" + "="*60)
     print("VOLATILITY BREAKOUT TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(100)]
 
-    # Düşük volatilite -> Yüksek volatilite simüle et
+    # Simulate low volatility to high volatility
     base_price = 100
     prices = [base_price]
 
-    # İlk 50 mum: Düşük volatilite
+    # First 50 candles: Low volatility
     for i in range(49):
         change = np.random.randn() * 0.5
         prices.append(prices[-1] + change)
 
-    # Son 50 mum: Yüksek volatilite + trend
+    # Last 50 candles: High volatility + trend
     for i in range(50):
         change = np.random.randn() * 3.0 + 0.8
         prices.append(prices[-1] + change)
@@ -415,15 +415,15 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 2000) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     vb = VolatilityBreakout()
-    print(f"   [OK] Oluşturuldu: {vb}")
+    print(f"   [OK] Created: {vb}")
     print(f"   [OK] Kategori: {vb.category.value}")
-    print(f"   [OK] Gerekli periyot: {vb.get_required_periods()}")
+    print(f"   [OK] Required period: {vb.get_required_periods()}")
 
     result = vb(data)
     print(f"   [OK] Upper Band: {result.value['upper']}")
@@ -431,11 +431,11 @@ if __name__ == "__main__":
     print(f"   [OK] Lower Band: {result.value['lower']}")
     print(f"   [OK] Width: {result.value['width']:.2f}%")
     print(f"   [OK] %B: {result.value['percent_b']:.2f}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
 
-    # Test 2: Düşük volatilite testi
-    print("\n3. Düşük volatilite testi (ilk 50 mum)...")
+    # Test 2: Low volatility test
+    print("\n3. Low volatility test (first 50 candles)...")
     low_vol_data = data.head(60)
     result = vb.calculate(low_vol_data)
     print(f"   [OK] Width: {result.value['width']:.2f}%")
@@ -443,17 +443,17 @@ if __name__ == "__main__":
     print(f"   [OK] Breakout DOWN: {result.metadata['breakout_down']}")
     print(f"   [OK] Width Expanding: {result.metadata['width_expanding']}")
 
-    # Test 3: Yüksek volatilite testi
-    print("\n4. Yüksek volatilite testi (tüm data)...")
+    # Test 3: High volatility test
+    print("\n4. High volatility test (all data)...")
     result = vb.calculate(data)
     print(f"   [OK] Width: {result.value['width']:.2f}%")
     print(f"   [OK] %B: {result.value['percent_b']:.2f}")
     print(f"   [OK] Breakout UP: {result.metadata['breakout_up']}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Signal: {result.signal.value}")
+    print(f"   [OK] Power: {result.strength:.2f}")
 
-    # Test 4: Farklı parametreler
-    print("\n5. Farklı parametre testi...")
+    # Test 4: Different parameters
+    print("\n5. Different parameter test...")
     vb_tight = VolatilityBreakout(std_dev=1.5, width_threshold=3.0)
     result = vb_tight.calculate(data)
     print(f"   [OK] Tight BB Width: {result.value['width']:.2f}%")
@@ -465,7 +465,7 @@ if __name__ == "__main__":
     result = vb_no_vol.calculate(data)
     print(f"   [OK] Breakout UP: {result.metadata['breakout_up']}")
     print(f"   [OK] Volume Confirm: {result.metadata['volume_confirm']}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
 
     # Test 6: Zaman serisi analizi
     print("\n7. Zaman serisi analizi...")
@@ -478,25 +478,25 @@ if __name__ == "__main__":
         width_history.append(result.value['width'])
         percent_b_history.append(result.value['percent_b'])
 
-    print(f"   [OK] Toplam ölçüm: {len(width_history)}")
-    print(f"   [OK] Ortalama genişlik: {np.mean(width_history):.2f}%")
-    print(f"   [OK] Max genişlik: {max(width_history):.2f}%")
-    print(f"   [OK] Min genişlik: {min(width_history):.2f}%")
+    print(f"   [OK] Total measurement: {len(width_history)}")
+    print(f"   [OK] Average width: {np.mean(width_history):.2f}%")
+    print(f"   [OK] Max width: {max(width_history):.2f}%")
+    print(f"   [OK] Minimum width: {min(width_history):.2f}%")
 
-    # Test 7: İstatistikler
-    print("\n8. İstatistik testi...")
+    # Test 7: Statistics
+    print("\n8. Statistical test...")
     stats = vb.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 8: Metadata
     print("\n9. Metadata testi...")
     metadata = vb.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Tip: {metadata.indicator_type.value}")
     print(f"   [OK] Output names: {metadata.output_names}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

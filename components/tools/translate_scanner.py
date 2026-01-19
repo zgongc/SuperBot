@@ -92,8 +92,14 @@ TURKISH_WORDS = [
     r'\b(hacim|lot|pip)\b',
     r'\b(giren|cikan|kalan)\b',
     r'\b(basari|kayip|elde)\b',
+    # Headers/Metadata
+    r'\b(yazar|tarih|sistemi|yetersiz)\b',
+    r'\b(sorumluluk|uzun|vadeli|daha)\b', 
+    
     # Question endings
     r'\b\w+\s+mi\?\b',
+    # Common log words/verbs
+    r'\b(okundu|temizle|temizlendi|tamamlandi)\b',
 ]
 TURKISH_WORD_PATTERN = re.compile('|'.join(TURKISH_WORDS), re.IGNORECASE)
 

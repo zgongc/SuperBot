@@ -5,12 +5,12 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    Hacim (Volume) kategorisi indikatörleri.
-    Toplam 9 indikatör: OBV, VWAP, VWAP Bands, A/D, CMF, EOM,
+Description:
+    Volume category indicators.
+    Total of 9 indicators: OBV, VWAP, VWAP Bands, A/D, CMF, EOM,
     Force Index, Volume Profile, Volume Oscillator
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -44,7 +44,7 @@ __all__ = [
 CATEGORY = 'volume'
 INDICATOR_COUNT = 9
 
-# Her indikatörün gerekli volume durumu
+# The required volume status for each indicator.
 REQUIRES_VOLUME = {
     'obv': True,
     'vwap': True,
@@ -60,10 +60,10 @@ REQUIRES_VOLUME = {
 
 def get_all_indicators():
     """
-    Tüm volume indikatörlerini döndür
+    Returns all volume indicators.
 
     Returns:
-        dict: {name: class} şeklinde indikatör sözlüğü
+        dict: A dictionary of indicators in the format {name: class}
     """
     return {
         'obv': OBV,
@@ -80,10 +80,10 @@ def get_all_indicators():
 
 def get_indicator_info():
     """
-    İndikatör bilgilerini döndür
+    Returns indicator information.
 
     Returns:
-        dict: İndikatör bilgileri
+        dict: Indicator information
     """
     return {
         'category': CATEGORY,

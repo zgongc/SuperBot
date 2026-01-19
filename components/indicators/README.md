@@ -1,4 +1,4 @@
-# 📊 Indicator Kullanım Kılavuzu - SuperBot
+# 📊 Indicator User Guide - SuperBot
 
 **Version**: 2.1.0
 **Date**: 2025-11-20
@@ -6,9 +6,9 @@
 
 ---
 
-## 🎯 Genel Bakış
+## 🎯 Overview
 
-SuperBot'ta **76+ indicator** (9 kategoride) ve **otomatik registry sistemi** bulunmaktadır. Bu kılavuz, indicator'ların strategy template'lerde nasıl kullanılacağını detaylı şekilde açıklar.
+SuperBot features a **76+ indicator** (in 9 categories) and an **automatic registry system**. This guide explains in detail how to use indicators in strategy templates.
 
 ### 📦 Indicator Kategorileri (9)
 
@@ -22,44 +22,44 @@ SuperBot'ta **76+ indicator** (9 kategoride) ve **otomatik registry sistemi** bu
 8. **Statistical Indicators** (5) - Z-Score, Correlation, Linear Regression
 9. **Structure (SMC)** (6) - FVG, iFVG, BoS, CHoCH, Order Blocks, Liquidity Zones
 
-### 📚 İçindekiler
+### 📚 Contents
 
-1. [Hızlı Başlangıç](#-hızlı-başlangıç)
-2. [Strategy Template Yapısı](#%EF%B8%8F-strategy-template-yapısı)
-3. [Indicator Tanımlama](#-indicator-tanımlama)
+1. [Quick Start](#-quick-start)
+2. [Strategy Template Structure](#strategy-template-yapısı)
+3. [Indicator Definition](#-indicator-definition)
 4. [Entry/Exit Conditions](#-entryexit-conditions)
 5. [Indicator Kategorileri](#-indicator-kategorileri)
 6. [Pattern Detection](#-pattern-detection)
-7. [Örnek Stratejiler](#-örnek-stratejiler)
+7. [Example Strategies](#-example-strategies)
 8. [Best Practices](#-best-practices)
 
 ---
 
-## 🚀 Hızlı Başlangıç
+## 🚀 Quick Start
 
-### Registry Kullanımı
+### Registry Usage
 
 ```python
 from components.indicators import INDICATOR_REGISTRY, get_indicator_class
 
-# Tüm indicator'ları listele
+# List all indicators
 for name, info in INDICATOR_REGISTRY.items():
     print(f"{name}: {info['description']}")
     print(f"  - Default params: {info['default_params']}")
     print(f"  - Output keys: {info['output_keys']}")
 
-# Indicator class'ını al ve kullan
+# Get and use the Indicator class.
 RSI = get_indicator_class('rsi')
 rsi = RSI(period=14)
 result = rsi.calculate(data)
-print(result.value)  # {'rsi': 45.67} veya single value
+print(result.value)  # {'rsi': 45.67} or single value
 ```
 
 ---
 
-## 🏗️ Strategy Template Yapısı
+## 🏗️ Strategy Template Structure
 
-Tüm stratejiler `BaseStrategy` sınıfından türer ve şu yapıyı kullanır:
+All strategies inherit from the `BaseStrategy` class and use the following structure:
 
 ```python
 from components.strategies.base_strategy import (
@@ -103,7 +103,7 @@ class MyStrategy(BaseStrategy):
         # 3. EXIT CONDITIONS
         self.exit_conditions = {
             'long': [
-                ['macd_macd', 'crossunder', 'macd_signal']  # MACD bearish dönünce çık
+                ['macd_macd', 'crossunder', 'macd_signal']  # MACD turns bearish, exit
             ],
             'short': [
                 ['macd_macd', 'crossover', 'macd_signal']
@@ -114,14 +114,14 @@ class MyStrategy(BaseStrategy):
         self.exit_strategy = ExitStrategy(
             stop_loss_percent=1.0,        # %1 stop loss
             take_profit_percent=2.0,      # %2 take profit
-            trailing_stop_enabled=True,   # Trailing stop aktif
+            trailing_stop_enabled=True,   # Trailing stop active
             trailing_callback_percent=0.5 # %0.5 trailing distance
         )
 ```
 
 ---
 
-## 📊 Indicator Tanımlama
+## 📊 Indicator Definition
 
 ### Temel Syntax
 
@@ -131,7 +131,7 @@ self.technical_parameters = TechnicalParameters(
         # Basit indicator (default params)
         "rsi": {"period": 14},
 
-        # Custom isim (aynı indicator'dan birden fazla)
+        # Custom name (multiple from the same indicator)
         "rsi_fast": {"period": 7},
         "rsi_slow": {"period": 21},
 
@@ -154,22 +154,22 @@ self.technical_parameters = TechnicalParameters(
 )
 ```
 
-### Indicator İsimlendirme
+### Indicator Naming
 
-Indicator isimleri otomatik olarak formatlanır:
+Indicator names are automatically formatted:
 
 ```python
-# Tanım
+# Definition
 "rsi": {"period": 14}
 
-# Oluşan output keys
-# - rsi_14 (veya sadece 'rsi' registry'de default param ise)
+# Created output keys
+# - rsi_14 (or just 'rsi' if the default parameter is set in the registry)
 
 # Custom isim
 "rsi_fast": {"period": 7}
-# Output: rsi_fast_7 (veya 'rsi_fast')
+# Output: rsi_fast_7 (or 'rsi_fast')
 
-# Multi-value indicator (MACD örneği)
+# Multi-value indicator (MACD example)
 "macd": {"fast_period": 12, "slow_period": 26, "signal_period": 9}
 # Outputs:
 # - macd_macd  (main line)
@@ -186,43 +186,43 @@ Indicator isimleri otomatik olarak formatlanır:
 ```python
 self.entry_conditions = {
     'long': [
-        # [sol_operand, operator, sağ_operand]
-        ['rsi', '<', 30],                    # Değer karşılaştırma
-        ['ema_20', '>', 'ema_50'],           # İki indicator karşılaştırma
+        # [left_operand, operator, right_operand]
+        ['rsi', '<', 30],                    # Value comparison
+        ['ema_20', '>', 'ema_50'],           # Two indicator comparison
         ['ema_20', 'crossover', 'ema_50'],   # Crossover tespiti
-        ['close', '>', 'bollinger_upper'],   # Fiyat vs indicator
+        ['close', '>', 'bollinger_upper'],   # Price vs indicator
     ],
     'short': [...]
 }
 ```
 
-### Desteklenen Operatörler
+### Supported Operators
 
-#### 1. Karşılaştırma Operatörleri
+#### 1. Comparison Operators
 
-| Operator | Açıklama | Örnek |
+| Operator | Description | Example |
 |----------|----------|-------|
-| `'>'` | Büyüktür | `['rsi', '>', 70]` |
-| `'<'` | Küçüktür | `['rsi', '<', 30]` |
-| `'>='` | Büyük eşit | `['close', '>=', 'ema_20']` |
-| `'<='` | Küçük eşit | `['atr', '<=', 0.5]` |
-| `'=='` | Eşittir | `['squeeze', '==', True]` |
-| `'!='` | Eşit değil | `['squeeze', '!=', False]` |
+| `'>'` | Greater than | `['rsi', '>', 70]` |
+| `'<'` | Less than | `['rsi', '<', 30]` |
+| `'>='` | Greater than or equal to | `['close', '>=', 'ema_20']` |
+| `'<='` | Less than or equal to | `['atr', '<=', 0.5]` |
+| `'=='` | Equals | `['squeeze', '==', True]` |
+| `'!='` | Not equal | `['squeeze', '!=', False]` |
 
-#### 2. Trend ve Hareket Operatörleri
+#### 2. Trend and Movement Operators
 
-| Operator | Açıklama | Örnek |
+| Operator | Description | Example |
 |----------|----------|-------|
-| `'crossover'` | Yukarı kesişim | `['ema_20', 'crossover', 'ema_50']` |
-| `'crossunder'` | Aşağı kesişim | `['ema_20', 'crossunder', 'ema_50']` |
-| `'rising'` | Yükseliyor (N bar) | `['close', 'rising', 3]` |
-| `'falling'` | Düşüyor (N bar) | `['close', 'falling', 3]` |
-| `'between'` | Arasında | `['rsi', 'between', [40, 60]]` |
-| `'outside'` | Aralık dışında | `['rsi', 'outside', [30, 70]]` |
+| `'crossover'` | Upper intersection | `['ema_20', 'crossover', 'ema_50']` |
+| `'crossunder'` | Below intersection | `['ema_20', 'crossunder', 'ema_50']` |
+| `'rising'` | Rising (N bar) | `['close', 'rising', 3]` |
+| `'falling'` | Falling (N bar) | `['close', 'falling', 3]` |
+| `'between'` | Between | `['rsi', 'between', [40, 60]]` |
+| `'outside'` | Outside the range | `['rsi', 'outside', [30, 70]]` |
 
 ### Indicator Output Keys
 
-Multi-value indicator'lar birden fazla output döndürür:
+Multi-value indicators return multiple outputs:
 
 ```python
 # MACD outputs
@@ -231,20 +231,20 @@ Multi-value indicator'lar birden fazla output döndürür:
 'macd_histogram'  # Histogram
 
 # Bollinger Bands outputs
-'bollinger_upper'   # Üst bant
+'bollinger_upper'   # Upper band
 'bollinger_middle'  # Orta bant (SMA)
 'bollinger_lower'   # Alt bant
-'bollinger_width'   # Bant genişliği
+'bollinger_width'   # Band width
 'bollinger_percent_b'  # %B indicator
 
 # SuperTrend outputs
 'supertrend_supertrend'  # SuperTrend line
-'supertrend_upper'       # Üst bant
+'supertrend_upper'       # Upper band
 'supertrend_lower'       # Alt bant
 'supertrend_trend'       # Trend direction (1=UP, -1=DOWN, 0=NEUTRAL)
 
 # ADX outputs
-'adx_adx'        # ADX değeri
+'adx_adx'        # ADX value
 'adx_plus_di'    # +DI
 'adx_minus_di'   # -DI
 
@@ -297,7 +297,7 @@ self.technical_parameters = TechnicalParameters(
 )
 ```
 
-**Kullanım Örnekleri:**
+**Usage Examples:**
 
 ```python
 # EMA Crossover
@@ -314,14 +314,14 @@ self.entry_conditions = {
 self.entry_conditions = {
     'long': [
         ['supertrend_trend', '==', 1],           # Bullish trend
-        ['close', '>', 'supertrend_supertrend']  # Fiyat SuperTrend üstünde
+        ['close', '>', 'supertrend_supertrend']  # Price is above SuperTrend
     ]
 }
 
 # ADX Trend Strength
 self.entry_conditions = {
     'long': [
-        ['adx_adx', '>', 25],              # Güçlü trend
+        ['adx_adx', '>', 25],              # Strong trend
         ['adx_plus_di', '>', 'adx_minus_di']  # Bullish direction
     ]
 }
@@ -365,7 +365,7 @@ self.technical_parameters = TechnicalParameters(
 )
 ```
 
-**Kullanım Örnekleri:**
+**Usage Examples:**
 
 ```python
 # RSI Oversold/Overbought
@@ -428,19 +428,19 @@ self.technical_parameters = TechnicalParameters(
 )
 ```
 
-**Kullanım Örnekleri:**
+**Usage Examples:**
 
 ```python
 # Bollinger Bands Breakout
 self.entry_conditions = {
     'long': [
-        ['close', '>', 'bollinger_upper'],     # Üst banttan breakout
+        ['close', '>', 'bollinger_upper'],     # Breakout from the upper band
         ['bollinger_width', '<', 0.02],        # Squeeze durumu
     ]
 }
 
 # ATR for Stop Loss (dynamic)
-# Exit strategy'de kullanılır (otomatik)
+# Used in the exit strategy (automatic)
 self.exit_strategy = ExitStrategy(
     stop_loss_method=StopLossMethod.ATR_BASED,
     stop_loss_atr_multiplier=2.0,  # 2x ATR stop
@@ -480,13 +480,13 @@ self.technical_parameters = TechnicalParameters(
 )
 ```
 
-**Kullanım Örnekleri:**
+**Usage Examples:**
 
 ```python
 # VWAP
 self.entry_conditions = {
     'long': [
-        ['close', '>', 'vwap'],   # Fiyat VWAP üstünde
+        ['close', '>', 'vwap'],   # Price is above VWAP
     ]
 }
 
@@ -540,23 +540,23 @@ self.technical_parameters = TechnicalParameters(
 # Swing Points: swing_high, swing_low
 ```
 
-**Kullanım Örnekleri:**
+**Usage Examples:**
 
 ```python
 # Pivot Point Breakout
 self.entry_conditions = {
     'long': [
-        ['close', '>', 'pivot_points_R1'],  # R1'i kırdı
-        ['rsi', '>', 50],                    # Momentum var
+        ['close', '>', 'pivot_points_R1'],  # Broke through R1
+        ['rsi', '>', 50],                    # Momentum indicator
     ]
 }
 
 # Fibonacci Golden Zone
 self.entry_conditions = {
     'long': [
-        ['close', '>', 'fib_retracement_Fib_61.8'],   # %61.8 üstünde
-        ['close', '<', 'fib_retracement_Fib_50.0'],   # %50 altında
-        # Golden zone: 50-61.8% arası
+        ['close', '>', 'fib_retracement_Fib_61.8'],   # Above 61.8%
+        ['close', '<', 'fib_retracement_Fib_50.0'],   # below %50
+        # Golden zone: between 50-61.8%
     ]
 }
 
@@ -600,7 +600,7 @@ self.technical_parameters = TechnicalParameters(
 )
 ```
 
-**Kullanım Örnekleri:**
+**Usage Examples:**
 
 ```python
 # RSI Bollinger
@@ -720,9 +720,9 @@ self.technical_parameters = TechnicalParameters(
 )
 ```
 
-**FVG (Fair Value Gap) - Kullanım Örnekleri:**
+**FVG (Fair Value Gap) - Usage Examples:**
 
-FVG, 3 mum arasında oluşan fiyat boşluklarını tespit eder. `calculate_batch()` metodu **net FVG değeri** döndürür:
+FVG detects price gaps that form between 3 candles. The `calculate_batch()` method returns the **net FVG value**:
 
 ```python
 # Output Format:
@@ -730,9 +730,9 @@ FVG, 3 mum arasında oluşan fiyat boşluklarını tespit eder. `calculate_batch
 # Negative value = Bearish FVG dominance
 # Zero = No FVG or balanced
 
-# ✅ DOĞRU KULLANIM:
+# ✅ CORRECT USAGE:
 
-# Bullish FVG var mı?
+# Is there a bullish FVG?
 self.entry_conditions = {
     'long': [
         ["fvg", ">", 0],                    # Any bullish FVG present
@@ -740,7 +740,7 @@ self.entry_conditions = {
     ]
 }
 
-# Bearish FVG var mı?
+# Is there a bearish FVG?
 self.entry_conditions = {
     'short': [
         ["fvg", "<", 0],                    # Any bearish FVG present
@@ -748,7 +748,7 @@ self.entry_conditions = {
     ]
 }
 
-# Güçlü Bullish FVG (2+ net zones)
+# Strong Bullish FVG (2+ net zones)
 self.entry_conditions = {
     'long': [
         ["fvg", ">=", 2],                   # Strong bullish FVG
@@ -756,7 +756,7 @@ self.entry_conditions = {
     ]
 }
 
-# Güçlü Bearish FVG (2+ net zones)
+# Strong Bearish FVG (2+ net zones)
 self.entry_conditions = {
     'short': [
         ["fvg", "<=", -2],                  # Strong bearish FVG
@@ -764,7 +764,7 @@ self.entry_conditions = {
     ]
 }
 
-# FVG yok veya balanced
+# FVG is not present or is balanced
 self.entry_conditions = {
     'long': [
         ["fvg", "==", 0],                   # No FVG or equal bull/bear
@@ -772,23 +772,23 @@ self.entry_conditions = {
     ]
 }
 
-# ❌ YANLIŞ KULLANIM (eski format - artık çalışmaz):
-["fvg", "==", 100]   # YANLIŞ! FVG artık 100/-100 değil, net zone sayısı dönüyor
-["fvg", "==", -100]  # YANLIŞ!
+# ❌ INCORRECT USAGE (old format - no longer works):
+["fvg", "==", 100]   # WRONG! FVG is no longer 100/-100, it returns the number of net zones.
+["fvg", "==", -100]  # WRONG!
 ```
 
-**BoS (Break of Structure) - Kullanım Örnekleri:**
+**BoS (Break of Structure) - Usage Examples:**
 
-BoS, swing high/low seviyelerinin kırılmasını tespit eder. Pivot tespiti için `SwingPoints` kullanır (TradingView uyumlu algoritma).
+BoS detects breakouts of swing high/low levels. It uses `SwingPoints` for pivot detection (algorithm compatible with TradingView).
 
-**Pivot Algoritması (TradingView uyumlu):**
+**Pivot Algorithm (compatible with TradingView):**
 - Sol taraf: Strictly greater/less (current > left bars)
-- Sağ taraf: Greater/less or equal (current >= right bars) - ilk oluşan pivot kazanır
+- Right side: Greater/less or equal (current >= right bars) - the first pivot to form wins.
 
 ```python
 # BoS outputs: 1 (bullish BoS), -1 (bearish BoS), 0 (none)
 
-# Temel kullanım
+# Basic usage
 self.entry_conditions = {
     'long': [
         ["bos", "==", 1],                   # Bullish BoS on primary timeframe
@@ -800,15 +800,15 @@ self.entry_conditions = {
     ]
 }
 
-# BoS parametreleri
+# Empty parameters
 "bos": {
-    "left_bars": 5,    # Pivot için sol taraf bar sayısı (default: 5)
-    "right_bars": 5,   # Pivot için sağ taraf bar sayısı (default: 5)
-    "max_levels": 3,   # Takip edilecek max swing seviyesi (default: 3)
+    "left_bars": 5,    # Number of bars on the left side for the pivot (default: 5)
+    "right_bars": 5,   # Number of right-side bars for the pivot (default: 5)
+    "max_levels": 3,   # Maximum swing level to track (default: 3)
 }
 ```
 
-**CHoCH (Change of Character) - Kullanım Örnekleri:**
+**CHoCH (Change of Character) - Usage Examples:**
 
 ```python
 # CHoCH outputs: 1 (bullish CHoCH), -1 (bearish CHoCH), 0 (none)
@@ -835,7 +835,7 @@ self.exit_conditions = {
 }
 ```
 
-**iFVG (Inverse Fair Value Gap) - Kullanım Örnekleri:**
+**iFVG (Inverse Fair Value Gap) - Usage Examples:**
 
 ```python
 # iFVG outputs: 1 (bullish reversal), -1 (bearish reversal), 0 (none)
@@ -887,7 +887,7 @@ self.entry_conditions = {
 ```python
 self.technical_parameters = TechnicalParameters(
     indicators={
-        "candlestick_patterns": {}  # Tüm pattern'ler otomatik detect edilir
+        "candlestick_patterns": {}  # All patterns are automatically detected
     }
 )
 
@@ -899,7 +899,7 @@ self.entry_conditions = {
         ['engulfing_bullish', '==', 1],   # Bullish Engulfing
         ['morning_star', '==', 1],        # Morning Star
 
-        # Trend filter (ÖNEMLİ!)
+        # Trend filter (IMPORTANT!)
         ['close', '>', 'ema_50'],
         ['rsi', '<', 50],
     ],
@@ -1002,11 +1002,11 @@ self.entry_conditions = {
 
 ---
 
-## 🔄 Multi-Timeframe (MTF) Kullanımı
+## 🔄 Multi-Timeframe (MTF) Usage
 
-Multi-timeframe analizi, farklı zaman dilimlerinden indicator'ları kullanarak daha güvenilir sinyaller üretir.
+Multi-timeframe analysis uses indicators from different timeframes to generate more reliable signals.
 
-### MTF Yapılandırması
+### MTF Configuration
 
 ```python
 class MTFStrategy(BaseStrategy):
@@ -1015,11 +1015,11 @@ class MTFStrategy(BaseStrategy):
 
         self.strategy_name = "MTF_Strategy"
 
-        # 1. TIMEFRAME'LERİ TANIMLA
+        # 1. DEFINE THE TIMEFRAMES
         self.primary_timeframe = "5m"         # Ana entry timeframe
         self.mtf_timeframes = ["15m", "1h"]   # Ek timeframe'ler
 
-        # 2. INDICATOR'LARI TANIMLA (tüm timeframe'lerde kullanılacak)
+        # 2. DEFINE INDICATORS (to be used in all timeframes)
         self.technical_parameters = TechnicalParameters(
             indicators={
                 "ema_20": {"period": 20},
@@ -1031,10 +1031,10 @@ class MTFStrategy(BaseStrategy):
             }
         )
 
-        # 3. ENTRY CONDITIONS (MTF kullanımı)
+        # 3. ENTRY CONDITIONS (MTF usage)
         self.entry_conditions = {
             'long': [
-                # 1h - Büyük trend (higher timeframe confirmation)
+                # 1h - Major trend (higher timeframe confirmation)
                 ['close', '>', 'ema_200', '1h'],           # 1h'de uptrend
                 ['supertrend_trend', '==', 1, '1h'],       # 1h SuperTrend bullish
 
@@ -1070,24 +1070,24 @@ class MTFStrategy(BaseStrategy):
         )
 ```
 
-### MTF Entry Logic Açıklaması
+### MTF Entry Logic Explanation
 
-**Timeframe Hiyerarşisi:**
-1. **1h (Highest)**: Büyük trend yönü (filter)
-2. **15m (Middle)**: Orta vadeli momentum (confirmation)
+**Timeframe Hierarchy:**
+1. **1h (Highest)**: Major trend direction (filter)
+2. **15m (Middle)**: Medium-term momentum (confirmation)
 3. **5m (Entry)**: Entry timing (trigger)
 
-**Mantık:**
-- 1h uptrend olmalı (major filter)
-- 15m'de momentum bullish olmalı (confirmation)
-- 5m'de pullback sonrası entry (timing)
+**Logic:**
+- There should be a 1-hour uptrend (major filter)
+- At 15m, the momentum should be bullish (confirmation).
+- At 5 minutes, enter after the pullback (timing)
 
-### MTF Örnek 1: Trend Alignment Strategy
+### MTF Example 1: Trend Alignment Strategy
 
 ```python
 class TrendAlignmentMTF(BaseStrategy):
     """
-    Tüm timeframe'lerde trend aligned olmalı
+    The trend should be aligned in all timeframes.
     """
     def __init__(self):
         super().__init__()
@@ -1121,7 +1121,7 @@ class TrendAlignmentMTF(BaseStrategy):
         }
 ```
 
-### MTF Örnek 2: Higher TF Filter + Lower TF Entry
+### MTF Example 2: Higher TF Filter + Lower TF Entry
 
 ```python
 class HTFFilterLTFEntry(BaseStrategy):
@@ -1188,12 +1188,12 @@ class HTFFilterLTFEntry(BaseStrategy):
         )
 ```
 
-### MTF Örnek 3: Confluence Strategy
+### MTF Example 3: Confluence Strategy
 
 ```python
 class ConfluenceMTF(BaseStrategy):
     """
-    Multiple timeframe confluence (aynı seviyede farklı TF'lerde sinyal)
+    Multiple timeframe confluence (signal at the same level in different timeframes)
     """
     def __init__(self):
         super().__init__()
@@ -1213,7 +1213,7 @@ class ConfluenceMTF(BaseStrategy):
 
         self.entry_conditions = {
             'long': [
-                # Confluence: Fiyat önemli seviyede (multiple TF)
+                # Confluence: Price is at an important level (multiple TF)
                 # 1h pivot support
                 ['close', '>', 'pivot_points_S1', '1h'],
                 ['close', '<', 'pivot_points_P', '1h'],
@@ -1232,16 +1232,16 @@ class ConfluenceMTF(BaseStrategy):
 ### MTF Best Practices
 
 ✅ **DO:**
-- Higher TF için trend filter kullan (1h, 4h)
-- Lower TF için entry timing kullan (5m, 15m)
-- Timeframe ratio 3:1 veya 4:1 (örn: 5m + 15m + 1h veya 1m + 5m + 15m)
-- En az 2, en fazla 3 timeframe kullan
+- Use a trend filter for higher TF (1h, 4h).
+- Use entry timing for lower TF (5m, 15m).
+- Timeframe ratio 3:1 or 4:1 (e.g., 5m + 15m + 1h or 1m + 5m + 15m)
+- Use at least 2, at most 3 timeframes.
 
 ❌ **DON'T:**
-- Çok fazla timeframe (4+) kullanma (confusion)
-- Yakın timeframe'ler kullanma (5m + 10m, too similar)
-- Lower TF'de filter, higher TF'de entry (ters mantık)
-- All timeframes'de aynı indicator (redundant)
+- Do not use too many timeframes (4+), it can cause confusion.
+- Do not use short timeframes (5m + 10m, too similar).
+- In lower TF, filter; in higher TF, entry (reversed logic)
+- All timeframes' in the same indicator (redundant)
 
 ### MTF Timeframe Combinations
 
@@ -1290,7 +1290,7 @@ self.exit_conditions = {
 
 ---
 
-## 📚 Örnek Stratejiler
+## 📚 Example Strategies
 
 ### 1. Simple RSI Strategy
 
@@ -1475,13 +1475,13 @@ class HammerMomentumStrategy(BaseStrategy):
 ### 1. Indicator Selection
 
 ✅ **DO:**
-- 3-5 indicator yeterli (farklı kategorilerden)
+- 3-5 indicators are sufficient (from different categories)
 - Trend + Momentum + Volume/Volatility kombinasyonu
-- Her indicator'ın amacını bil
+- Know the purpose of each indicator.
 
 ❌ **DON'T:**
-- 10+ indicator kullanma (over-fitting)
-- Aynı kategoriden çok indicator (5 farklı MA)
+- Use fewer indicators (over-fitting)
+- Multiple indicators from the same category (5 different MAs).
 - Redundant indicator'lar (RSI + CCI + Williams %R hepsi momentum)
 
 ### 2. Entry Conditions
@@ -1489,20 +1489,20 @@ class HammerMomentumStrategy(BaseStrategy):
 ✅ **DO:**
 - 2-4 core condition + 1-2 filter optimal
 - Mutlaka trend filter ekle
-- Volume/momentum confirmation kullan
+- Use volume/momentum confirmation.
 
 ❌ **DON'T:**
-- 10+ condition (hiç işlem açılmaz)
-- Pattern-only entry (düşük win rate)
-- Trend filter olmadan trade
+- 10+ condition (no process is opened)
+- Pattern-only entry (low win rate)
+- Trade without a trend filter.
 
 ### 3. Pattern Trading
 
 ✅ **DO:**
 - Pattern + Trend filter + Momentum confirmation
 - Volume confirmation ekle
-- Tight stop loss kullan (patterns quick)
-- Trend context önemli (uptrend'de hammer, downtrend'de shooting star)
+- Use a tight stop loss (patterns quick)
+- Trend context is important (hammer in an uptrend, shooting star in a downtrend)
 
 ❌ **DON'T:**
 - Pattern alone (win rate %30)
@@ -1512,13 +1512,13 @@ class HammerMomentumStrategy(BaseStrategy):
 ### 4. Exit Strategy
 
 ✅ **DO:**
-- Her zaman stop loss kullan
+- Always use stop loss.
 - Risk/Reward minimum 1:1.5
-- Trailing stop kazancı korur
+- Trailing stop protects profit.
 - ATR-based dynamic stop loss
 
 ❌ **DON'T:**
-- Stop loss yok
+- No stop loss
 - Take profit too tight
 - Fixed stop in volatile markets
 
@@ -1527,30 +1527,30 @@ class HammerMomentumStrategy(BaseStrategy):
 **❌ Mistake 1: Parameter Mismatch**
 ```python
 # Wrong
-"squeeze": {"bb_mult": 2.0}  # Parameter adı yanlış
+"squeeze": {"bb_mult": 2.0}  # Parameter name is incorrect
 
 # Correct
-"squeeze": {"bb_std": 2.0}   # Registry'deki parametre adı
+"squeeze": {"bb_std": 2.0}   # The parameter name in the registry
 ```
 
 **❌ Mistake 2: Wrong Condition Format**
 ```python
 # Wrong
 self.entry_conditions = {
-    "buy": [...],   # "buy" değil
-    "sell": [...],  # "sell" değil
+    "buy": [...],   # "buy" instead of "buy"
+    "sell": [...],  # "sell" is not
 }
 
 # Correct
 self.entry_conditions = {
-    'long': [...],   # 'long' kullan
-    'short': [...],  # 'short' kullan
+    'long': [...],   # Use 'long'
+    'short': [...],  # Use 'short'
 }
 ```
 
 **❌ Mistake 3: Over-fitting**
 ```python
-# Bad: 11 filters! Hiç trade açılmaz
+# Bad: 11 filters! No trades will open.
 self.entry_conditions = {
     'long': [
         ['rsi', '>', 50], ['rsi', '<', 70],
@@ -1578,13 +1578,13 @@ self.entry_conditions = {
 
 ## 🔗 Kaynaklar
 
-### Dokümantasyon
-- [Indicator Registry](./__init__.py) - 76 indicator listesi
+### Documentation
+- [Indicator Registry](./__init__.py) - 76 indicator list
 - [Base Indicator](./base_indicator.py) - Indicator base class
 - [Discovery Script](./discovery_indicators.py) - Auto-discovery
 
 ### Stratejiler
-- [Strategy Templates](../../strategies/templates/) - Örnek stratejiler
+- [Strategy Templates](../../strategies/templates/) - Example strategies
 - [Base Strategy](../../strategies/base_strategy.py) - Strategy base class
 
 ### Testler
@@ -1597,9 +1597,9 @@ self.entry_conditions = {
 **Author**: SuperBot Team
 
 **Changelog v2.2.0**:
-- ✅ BOS artık SwingPoints kullanıyor (kod tekrarı kaldırıldı)
-- ✅ TradingView uyumlu pivot algoritması dokümante edildi
-- ✅ BoS parametreleri ve kullanım örnekleri genişletildi
+- ✅ BOS now uses SwingPoints (code duplication removed)
+- ✅ TradingView compatible pivot algorithm documented
+- ✅ BoS parameters and usage examples have been expanded.
 
 **Changelog v2.1.0**:
 - ✅ SMC (Structure) indicators section added (FVG, iFVG, BoS, CHoCH)

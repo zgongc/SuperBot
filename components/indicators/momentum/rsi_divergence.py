@@ -5,21 +5,21 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    RSI Divergence - Fiyat ve RSI arasındaki uyumsuzluğu tespit eder
-    Bullish Divergence: Fiyat düşerken RSI yükselir (alım sinyali)
-    Bearish Divergence: Fiyat yükselirken RSI düşer (satım sinyali)
-    Hidden Divergence: Trend devamı sinyalleri
-    Güçlü reversal göstergesi
+Description:
+    RSI Divergence - Detects the discrepancy between price and RSI.
+    Bullish Divergence: Price decreases while RSI increases (buy signal).
+    Bearish Divergence: Price increases while RSI decreases (sell signal).
+    Hidden Divergence: Signals for trend continuation.
+    Strong reversal indicator.
 
-Formül:
+Formula:
     1. RSI hesapla (14 periyot)
-    2. Son N periyotta fiyat pivot noktalarını bul
-    3. Aynı noktalarda RSI pivot noktalarını bul
-    4. Fiyat ve RSI hareketlerini karşılaştır
-    5. Divergence tespit et
+    2. Find price pivot points in the last N periods.
+    3. Find RSI pivot points at the same points.
+    4. Compare price and RSI movements.
+    5. Detect divergence.
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -41,13 +41,13 @@ class RSIDivergence(BaseIndicator):
     """
     RSI Divergence
 
-    Fiyat ve RSI arasındaki divergence'ları tespit eder.
-    Trend dönüş noktalarını yakalamak için kullanılır.
+    Detects divergences between price and RSI.
+    Used to capture trend reversal points.
 
     Args:
-        rsi_period: RSI periyodu (varsayılan: 14)
-        lookback: Geriye bakış periyodu (pivot noktaları için) (varsayılan: 5)
-        min_strength: Minimum divergence gücü (0-100) (varsayılan: 30)
+        rsi_period: RSI period (default: 14)
+        lookback: Lookback period (for pivot points) (default: 5)
+        min_strength: Minimum divergence strength (0-100) (default: 30)
     """
 
     def __init__(
@@ -76,25 +76,25 @@ class RSIDivergence(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.rsi_period + self.lookback * 2
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.rsi_period < 1:
             raise InvalidParameterError(
                 self.name, 'rsi_period', self.rsi_period,
-                "RSI period pozitif olmalı"
+                "RSI period must be positive"
             )
         if self.lookback < 2:
             raise InvalidParameterError(
                 self.name, 'lookback', self.lookback,
-                "Lookback en az 2 olmalı"
+                "Lookback must be at least 2"
             )
         if not (0 <= self.min_strength <= 100):
             raise InvalidParameterError(
                 self.name, 'min_strength', self.min_strength,
-                "Min strength 0-100 arası olmalı"
+                "Minimum strength must be between 0 and 100"
             )
         return True
 
@@ -103,10 +103,10 @@ class RSIDivergence(BaseIndicator):
         RSI hesapla
 
         Args:
-            close: Kapanış fiyatları
+            close: Closing prices
 
         Returns:
-            RSI değerleri
+            RSI values
         """
         delta = np.diff(close)
         delta = np.insert(delta, 0, 0)
@@ -130,11 +130,11 @@ class RSIDivergence(BaseIndicator):
 
     def _find_pivots(self, data: np.ndarray, lookback: int) -> dict:
         """
-        Pivot noktalarını bul (local highs ve lows)
+        Find pivot points (local highs and lows)
 
         Args:
             data: Veri array
-            lookback: Geriye bakış periyodu
+            lookback: The lookback period.
 
         Returns:
             dict: {'highs': [(index, value)], 'lows': [(index, value)]}
@@ -142,7 +142,7 @@ class RSIDivergence(BaseIndicator):
         pivots = {'highs': [], 'lows': []}
 
         for i in range(lookback, len(data) - lookback):
-            # Local high: Sağ ve sol taraftan daha yüksek
+            # Local high: Higher than the right and left sides
             is_high = True
             for j in range(1, lookback + 1):
                 if data[i] <= data[i-j] or data[i] <= data[i+j]:
@@ -151,7 +151,7 @@ class RSIDivergence(BaseIndicator):
             if is_high:
                 pivots['highs'].append((i, data[i]))
 
-            # Local low: Sağ ve sol taraftan daha düşük
+            # Local minimum: Lower than the left and right sides.
             is_low = True
             for j in range(1, lookback + 1):
                 if data[i] >= data[i-j] or data[i] >= data[i+j]:
@@ -164,11 +164,11 @@ class RSIDivergence(BaseIndicator):
 
     def _detect_divergence(self, price_pivots: dict, rsi_pivots: dict) -> dict:
         """
-        Divergence tespit et
+        Detect divergence.
 
         Args:
-            price_pivots: Fiyat pivot noktaları
-            rsi_pivots: RSI pivot noktaları
+            price_pivots: Price pivot points
+            rsi_pivots: RSI pivot points
 
         Returns:
             dict: Divergence bilgisi
@@ -181,12 +181,12 @@ class RSIDivergence(BaseIndicator):
             'strength': 0
         }
 
-        # Bullish Divergence: Fiyat düşer, RSI yükselir
+        # Bullish Divergence: Price decreases, RSI increases
         if len(price_pivots['lows']) >= 2 and len(rsi_pivots['lows']) >= 2:
             price_low1, price_val1 = price_pivots['lows'][-2]
             price_low2, price_val2 = price_pivots['lows'][-1]
 
-            # RSI pivot'larını price pivot'lara yakın olanları bul
+            # Find RSI pivots that are close to price pivots.
             rsi_low1 = None
             rsi_low2 = None
             for idx, val in rsi_pivots['lows']:
@@ -196,17 +196,17 @@ class RSIDivergence(BaseIndicator):
                     rsi_low2 = (idx, val)
 
             if rsi_low1 and rsi_low2:
-                # Bullish divergence: Fiyat düşer, RSI yükselir
+                # Bullish divergence: Price decreases, RSI increases
                 if price_val2 < price_val1 and rsi_low2[1] > rsi_low1[1]:
                     result['bullish'] = True
                     result['strength'] = min(100, abs(price_val1 - price_val2) * 10)
 
-        # Bearish Divergence: Fiyat yükselir, RSI düşer
+        # Bearish Divergence: Price increases, RSI decreases
         if len(price_pivots['highs']) >= 2 and len(rsi_pivots['highs']) >= 2:
             price_high1, price_val1 = price_pivots['highs'][-2]
             price_high2, price_val2 = price_pivots['highs'][-1]
 
-            # RSI pivot'larını price pivot'lara yakın olanları bul
+            # Find RSI pivots that are close to price pivots.
             rsi_high1 = None
             rsi_high2 = None
             for idx, val in rsi_pivots['highs']:
@@ -216,7 +216,7 @@ class RSIDivergence(BaseIndicator):
                     rsi_high2 = (idx, val)
 
             if rsi_high1 and rsi_high2:
-                # Bearish divergence: Fiyat yükselir, RSI düşer
+                # Bearish divergence: Price increases, RSI decreases
                 if price_val2 > price_val1 and rsi_high2[1] < rsi_high1[1]:
                     result['bearish'] = True
                     result['strength'] = min(100, abs(price_val2 - price_val1) * 10)
@@ -238,14 +238,14 @@ class RSIDivergence(BaseIndicator):
         # RSI hesapla
         rsi_values = self._calculate_rsi(close)
 
-        # Pivot noktalarını bul
+        # Find pivot points
         price_pivots = self._find_pivots(close, self.lookback)
         rsi_pivots = self._find_pivots(rsi_values, self.lookback)
 
-        # Divergence tespit et
+        # Detect divergence
         divergence = self._detect_divergence(price_pivots, rsi_pivots)
 
-        # Sonuç değeri
+        # Result value
         value = {
             'rsi': round(rsi_values[-1], 2),
             'bullish_divergence': divergence['bullish'],
@@ -255,7 +255,7 @@ class RSIDivergence(BaseIndicator):
 
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Sinyal belirleme
+        # Signal determination
         if divergence['bullish'] and divergence['strength'] >= self.min_strength:
             signal = SignalType.BUY
             trend = TrendDirection.UP
@@ -284,11 +284,11 @@ class RSIDivergence(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        ⚡ VECTORIZED batch RSI Divergence calculation - BACKTEST için
+        ⚡ VECTORIZED batch RSI Divergence calculation - for BACKTEST
 
-        Basitleştirilmiş implementasyon:
+        Simplified implementation:
         - RSI hesapla (vectorized)
-        - Divergence detection için simplified logic
+        - Simplified logic for divergence detection.
 
         Returns:
             pd.DataFrame: 4 columns (rsi, bullish_divergence, bearish_divergence, divergence_strength)
@@ -394,7 +394,7 @@ class RSIDivergence(BaseIndicator):
             symbol: Symbol identifier (for multi-symbol support)
 
         Returns:
-            IndicatorResult: Güncel indicator değeri
+            IndicatorResult: The current indicator value.
         """
         from collections import deque
 
@@ -439,13 +439,13 @@ class RSIDivergence(BaseIndicator):
 
     def get_signal(self, value: dict) -> SignalType:
         """
-        Divergence değerinden sinyal üret
+        Generate a signal from the divergence value.
 
         Args:
             value: Divergence bilgisi
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
         if isinstance(value, dict):
             if value.get('bullish_divergence') and value.get('divergence_strength', 0) >= self.min_strength:
@@ -456,13 +456,13 @@ class RSIDivergence(BaseIndicator):
 
     def get_trend(self, value: dict) -> TrendDirection:
         """
-        Divergence değerinden trend belirle
+        Determine the trend based on the divergence value.
 
         Args:
             value: Divergence bilgisi
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         if isinstance(value, dict):
             if value.get('bullish_divergence'):
@@ -472,7 +472,7 @@ class RSIDivergence(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'rsi_period': 14,
             'lookback': 5,
@@ -492,32 +492,32 @@ __all__ = ['RSIDivergence']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """RSI Divergence indikatör testi"""
+    """RSI Divergence indicator test"""
 
     print("\n" + "="*60)
     print("RSI DIVERGENCE TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur - Divergence oluşturmak için özel pattern
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create sample data - special pattern to create divergence
+    print("1. Creating example OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(60)]
 
-    # Bullish divergence pattern oluştur
+    # Create a bullish divergence pattern
     prices = []
     for i in range(60):
         if i < 20:
             # Normal hareket
             prices.append(100 + i * 0.5 + np.random.randn() * 0.3)
         elif i < 40:
-            # Fiyat düşer
+            # Price decreases
             prices.append(110 - (i-20) * 0.5 + np.random.randn() * 0.3)
         else:
-            # Fiyat daha da düşer (lower low)
+            # The price may fall even further (lower low)
             prices.append(100 - (i-40) * 0.3 + np.random.randn() * 0.3)
 
     data = pd.DataFrame({
@@ -529,26 +529,26 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     rsi_div = RSIDivergence(rsi_period=14, lookback=5, min_strength=30)
-    print(f"   [OK] Oluşturuldu: {rsi_div}")
+    print(f"   [OK] Created: {rsi_div}")
     print(f"   [OK] Kategori: {rsi_div.category.value}")
-    print(f"   [OK] Gerekli periyot: {rsi_div.get_required_periods()}")
+    print(f"   [OK] Required period: {rsi_div.get_required_periods()}")
 
     result = rsi_div(data)
-    print(f"   [OK] RSI Değeri: {result.value['rsi']}")
+    print(f"   [OK] RSI Value: {result.value['rsi']}")
     print(f"   [OK] Bullish Divergence: {result.value['bullish_divergence']}")
     print(f"   [OK] Bearish Divergence: {result.value['bearish_divergence']}")
-    print(f"   [OK] Divergence Gücü: {result.value['divergence_strength']}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Divergence Power: {result.value['divergence_strength']}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
 
-    # Test 2: Farklı parametreler
-    print("\n3. Farklı parametre testi...")
+    # Test 2: Different parameters
+    print("\n3. Different parameter test...")
     configs = [
         (14, 3, 20),
         (14, 5, 30),
@@ -578,37 +578,37 @@ if __name__ == "__main__":
     result_bearish = rsi_div.calculate(bearish_data)
     print(f"   [OK] Bearish pattern RSI: {result_bearish.value['rsi']}")
     print(f"   [OK] Bearish Divergence: {result_bearish.value['bearish_divergence']}")
-    print(f"   [OK] Sinyal: {result_bearish.signal.value}")
+    print(f"   [OK] Signal: {result_bearish.signal.value}")
 
-    # Test 4: Pivot noktaları
-    print("\n5. Pivot noktaları testi...")
-    print(f"   [OK] Fiyat pivot highs: {result.metadata['price_pivots_highs']}")
-    print(f"   [OK] Fiyat pivot lows: {result.metadata['price_pivots_lows']}")
+    # Test 4: Pivot points
+    print("\n5. Pivot point test...")
+    print(f"   [OK] Price pivot highs: {result.metadata['price_pivots_highs']}")
+    print(f"   [OK] Price pivot lows: {result.metadata['price_pivots_lows']}")
     print(f"   [OK] RSI pivot highs: {result.metadata['rsi_pivots_highs']}")
     print(f"   [OK] RSI pivot lows: {result.metadata['rsi_pivots_lows']}")
 
-    # Test 5: Güç testi
-    print("\n6. Divergence güç testi...")
+    # Test 5: Power test
+    print("\n6. Divergence power test...")
     if result.value['divergence_strength'] >= rsi_div.min_strength:
-        print(f"   [OK] Güçlü divergence tespit edildi: {result.value['divergence_strength']}")
+        print(f"   [OK] Strong divergence detected: {result.value['divergence_strength']}")
     else:
-        print(f"   [OK] Zayıf veya divergence yok: {result.value['divergence_strength']}")
+        print(f"   [OK] Weak or no divergence: {result.value['divergence_strength']}")
 
-    # Test 6: İstatistikler
-    print("\n7. İstatistik testi...")
+    # Test 6: Statistics
+    print("\n7. Statistical test...")
     stats = rsi_div.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 7: Metadata
     print("\n8. Metadata testi...")
     metadata = rsi_div.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Tip: {metadata.indicator_type.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

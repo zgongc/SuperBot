@@ -2,9 +2,9 @@
 """
 modules/backtest/bulk_backtest.py
 SuperBot - Bulk Backtest Runner
-Yazar: SuperBot Team
-Tarih: 2025-11-23
-Versiyon: 1.0.0
+Author: SuperBot Team
+Date: 2025-11-23
+Version: 1.0.0
 
 Automatically tests multiple symbol and timeframe combinations.
 
@@ -15,7 +15,7 @@ Features:
 - Test all symbol x timeframe combinations.
 - Detailed results for each test.
 - Best/worst performance comparison.
-- Genel istatistikler
+- General statistics
 
 Dependencies:
     - python>=3.10

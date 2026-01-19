@@ -5,18 +5,18 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    VWAP Bands - VWAP etrafında standart sapma bantları
-    VWAP + (std_dev × multiplier) = Üst bant
+Description:
+    VWAP Bands - Standard deviation bands around the VWAP
+    VWAP + (std_dev x multiplier) = Upper band
     VWAP - (std_dev × multiplier) = Alt bant
-    Fiyat bantların dışına çıktığında aşırı alım/satım sinyali
+    When the price goes outside the price bands, it signals an overbought/oversold condition.
 
-Formül:
+Formula:
     VWAP = Σ(Typical Price × Volume) / Σ(Volume)
     Upper = VWAP + (StdDev × multiplier)
     Lower = VWAP - (StdDev × multiplier)
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -38,12 +38,12 @@ class VWAPBands(BaseIndicator):
     """
     VWAP Bands
 
-    VWAP etrafında standart sapma bantları oluşturur.
-    Bollinger Bands benzeri mantıkla çalışır.
+    Creates standard deviation bands around the VWAP.
+    Works with a similar logic to Bollinger Bands.
 
     Args:
-        period: VWAP hesaplama periyodu (varsayılan: 20)
-        multiplier: Standart sapma çarpanı (varsayılan: 2.0)
+        period: VWAP calculation period (default: 20)
+        multiplier: Standard deviation multiplier (default: 2.0)
     """
 
     def __init__(
@@ -69,20 +69,20 @@ class VWAPBands(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return max(self.period, 2)
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 1:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Periyot pozitif olmalı"
+                "The period must be positive"
             )
         if self.multiplier <= 0:
             raise InvalidParameterError(
                 self.name, 'multiplier', self.multiplier,
-                "Çarpan pozitif olmalı"
+                "The factor must be positive"
             )
         return True
 
@@ -94,7 +94,7 @@ class VWAPBands(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: VWAP Bands değerleri
+            IndicatorResult: VWAP Bands values
         """
         high = data['high'].values
         low = data['low'].values
@@ -104,7 +104,7 @@ class VWAPBands(BaseIndicator):
         # Typical Price hesapla
         typical_price = (high + low + close) / 3
 
-        # Period seçimi
+        # Period selection
         if len(data) <= self.period:
             tp_period = typical_price
             vol_period = volume
@@ -116,21 +116,21 @@ class VWAPBands(BaseIndicator):
         tp_vol = tp_period * vol_period
         vwap = np.sum(tp_vol) / np.sum(vol_period)
 
-        # Standart sapma hesapla (hacim ağırlıklı)
+        # Calculate standard deviation (volume weighted)
         variance = np.sum(vol_period * (tp_period - vwap) ** 2) / np.sum(vol_period)
         std_dev = np.sqrt(variance)
 
-        # Bantları hesapla
+        # Calculate the bands
         upper_band = vwap + (std_dev * self.multiplier)
         lower_band = vwap - (std_dev * self.multiplier)
 
         current_price = close[-1]
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Bant genişliği
+        # Bandwidth
         bandwidth = ((upper_band - lower_band) / vwap) * 100
 
-        # Fiyatın bantlara göre pozisyonu (0-100)
+        # Price position according to the bands (0-100)
         if upper_band != lower_band:
             position = ((current_price - lower_band) / (upper_band - lower_band)) * 100
         else:
@@ -161,7 +161,7 @@ class VWAPBands(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        ⚡ VECTORIZED batch VWAP Bands calculation - BACKTEST için
+        ⚡ VECTORIZED batch VWAP Bands calculation - for BACKTEST
 
         VWAP Bands Formula:
             VWAP = Σ(Typical Price × Volume) / Σ(Volume)
@@ -275,36 +275,36 @@ class VWAPBands(BaseIndicator):
 
     def get_signal(self, price: float, upper: float, lower: float, vwap: float) -> SignalType:
         """
-        VWAP Bands'a göre sinyal üret
+        Generate a signal based on VWAP Bands.
 
         Args:
-            price: Güncel fiyat
-            upper: Üst bant
+            price: Current price
+            upper: Upper band
             lower: Alt bant
-            vwap: VWAP değeri
+            vwap: VWAP value
 
         Returns:
-            SignalType: BUY, SELL veya HOLD
+            SignalType: BUY, SELL or HOLD
         """
         if price <= lower:
-            return SignalType.BUY  # Aşırı satım
+            return SignalType.BUY  # Oversold
         elif price >= upper:
-            return SignalType.SELL  # Aşırı alım
+            return SignalType.SELL  # Overselling
         elif price > vwap:
-            return SignalType.HOLD  # VWAP üstünde
+            return SignalType.HOLD  # Above VWAP
         else:
-            return SignalType.HOLD  # VWAP altında
+            return SignalType.HOLD  # Below VWAP
 
     def get_trend(self, price: float, vwap: float) -> TrendDirection:
         """
-        VWAP'a göre trend belirle
+        Determine the trend according to VWAP.
 
         Args:
-            price: Güncel fiyat
-            vwap: VWAP değeri
+            price: Current price
+            vwap: VWAP value
 
         Returns:
-            TrendDirection: UP, DOWN veya NEUTRAL
+            TrendDirection: UP, DOWN or NEUTRAL
         """
         distance_pct = abs(((price - vwap) / vwap) * 100)
 
@@ -315,7 +315,7 @@ class VWAPBands(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'period': 20,
             'multiplier': 2.0
@@ -338,18 +338,18 @@ __all__ = ['VWAPBands']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """VWAP Bands indikatör testi"""
+    """VWAP Bands indicator test"""
 
     print("\n" + "="*60)
     print("VWAP BANDS TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(30)]
 
@@ -371,26 +371,26 @@ if __name__ == "__main__":
         'volume': volumes
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     vwap_bands = VWAPBands(period=20, multiplier=2.0)
-    print(f"   [OK] Oluşturuldu: {vwap_bands}")
+    print(f"   [OK] Created: {vwap_bands}")
     print(f"   [OK] Kategori: {vwap_bands.category.value}")
     print(f"   [OK] Tip: {vwap_bands.indicator_type.value}")
 
     result = vwap_bands(data)
-    print(f"   [OK] Üst Bant: {result.value['upper']:.8f}")
+    print(f"   [OK] Upper Band: {result.value['upper']:.8f}")
     print(f"   [OK] VWAP: {result.value['vwap']:.8f}")
     print(f"   [OK] Alt Bant: {result.value['lower']:.8f}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
     print(f"   [OK] Metadata: {result.metadata}")
 
-    # Test 2: Farklı çarpanlar
-    print("\n3. Farklı çarpan testi...")
+    # Test 2: Different factors
+    print("\n3. Different factor test...")
     for mult in [1.0, 2.0, 3.0]:
         bands = VWAPBands(period=20, multiplier=mult)
         result = bands.calculate(data)
@@ -402,32 +402,32 @@ if __name__ == "__main__":
     outputs = vwap_bands._get_output_names()
     print(f"   [OK] Output sayısı: {len(outputs)}")
     print(f"   [OK] Outputs: {outputs}")
-    assert len(outputs) == 3, "3 output olmalı!"
+    assert len(outputs) == 3, "There should be 3 outputs!"
 
     # Test 4: Volume gereksinimi
     print("\n5. Volume gereksinimi testi...")
     metadata = vwap_bands.metadata
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
     assert metadata.requires_volume == True, "VWAP Bands volume gerektirmeli!"
 
-    # Test 5: Fiyat pozisyonu
-    print("\n6. Fiyat pozisyonu testi...")
+    # Test 5: Price position
+    print("\n6. Price position test...")
     result = vwap_bands.calculate(data)
     position = result.metadata['price_position']
-    print(f"   [OK] Fiyat pozisyonu: {position:.2f}%")
+    print(f"   [OK] Price position: {position:.2f}%")
     if position < 25:
-        print("   [OK] Fiyat alt banda yakın (oversold)")
+        print("   [OK] Price is close to the lower band (oversold)")
     elif position > 75:
-        print("   [OK] Fiyat üst banda yakın (overbought)")
+        print("   [OK] Price is close to the upper band (overbought)")
     else:
-        print("   [OK] Fiyat bantlar arasında")
+        print("   [OK] Price is within the specified range")
 
-    # Test 6: İstatistikler
-    print("\n7. İstatistik testi...")
+    # Test 6: Statistics
+    print("\n7. Statistical test...")
     stats = vwap_bands.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

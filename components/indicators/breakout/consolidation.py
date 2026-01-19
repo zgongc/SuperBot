@@ -5,25 +5,25 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    Consolidation - Konsolidasyon Tespiti ve Puanı
-    Fiyatın dar bir aralıkta hareket ettiği dönemleri tespit eder
-    ve konsolidasyon kalitesini puanlar.
+Description:
+    Consolidation - Consolidation Detection and Score
+    Detects periods where the price moves within a narrow range
+    and scores the quality of the consolidation.
 
     Analiz Kriterleri:
-    - Volatilite (ATR): Düşük volatilite = konsolidasyon
-    - Range genişliği: Dar range = konsolidasyon
-    - Fiyat dağılımı: Uniform dağılım = kaliteli konsolidasyon
-    - Süre: Uzun süre = güçlü konsolidasyon
+    - Volatility (ATR): Low volatility = consolidation
+    - Range width: Narrow range = consolidation
+    - Price distribution: Uniform distribution = quality consolidation
+    - Duration: Long duration = strong consolidation
 
-    Çıktı:
-    - consolidation_score: 0-100 arası konsolidasyon puanı
-    - 0-25: Trend var, konsolidasyon yok
-    - 25-50: Zayıf konsolidasyon
+    Output:
+    - consolidation_score: Consolidation score between 0 and 100
+    - 0-25: Trend exists, no consolidation
+    - 25-50: Weak consolidation
     - 50-75: Orta konsolidasyon
-    - 75-100: Güçlü konsolidasyon
+    - 75-100: Strong consolidation
 
-Formül:
+Formula:
     ATR Score = (1 - Current ATR / Average ATR) × 100
     Range Score = (1 - Range % / Historical Avg %) × 100
     Distribution Score = Uniformity of price distribution
@@ -31,7 +31,7 @@ Formül:
 
     Final Score = (ATR × 0.4) + (Range × 0.3) + (Distribution × 0.2) + (Time × 0.1)
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -53,14 +53,14 @@ class Consolidation(BaseIndicator):
     """
     Consolidation Detector
 
-    Fiyatın konsolidasyon halinde olup olmadığını tespit eder ve
-    konsolidasyon kalitesini 0-100 arası puanlar.
+    Determines whether the price is in a consolidation phase and
+    scores the consolidation quality on a scale of 0-100.
 
     Args:
-        period: Analiz periyodu (varsayılan: 20)
-        atr_period: ATR hesaplama periyodu (varsayılan: 14)
-        lookback: Geçmiş karşılaştırma periyodu (varsayılan: 100)
-        min_consolidation_bars: Minimum konsolidasyon mum sayısı (varsayılan: 10)
+        period: Analysis period (default: 20)
+        atr_period: ATR calculation period (default: 14)
+        lookback: Historical comparison period (default: 100)
+        min_consolidation_bars: Minimum consolidation candle count (default: 10)
     """
 
     def __init__(
@@ -92,25 +92,25 @@ class Consolidation(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return max(self.period, self.atr_period, self.min_consolidation_bars) + 10
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 5:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Periyot en az 5 olmalı"
+                "The period must be at least 5"
             )
         if self.atr_period < 2:
             raise InvalidParameterError(
                 self.name, 'atr_period', self.atr_period,
-                "ATR periyodu en az 2 olmalı"
+                "The ATR period must be at least 2"
             )
         if self.min_consolidation_bars < 3:
             raise InvalidParameterError(
                 self.name, 'min_consolidation_bars', self.min_consolidation_bars,
-                "Minimum konsolidasyon mum sayısı en az 3 olmalı"
+                "The minimum number of consolidation candles must be at least 3"
             )
         return True
 
@@ -138,11 +138,11 @@ class Consolidation(BaseIndicator):
         low: np.ndarray,
         close: np.ndarray
     ) -> float:
-        """ATR bazlı konsolidasyon puanı (0-100)"""
-        # Mevcut ATR
+        """ATR-based consolidation score (0-100)"""
+        # Current ATR
         current_atr = self._calculate_atr(high, low, close)
 
-        # Geçmiş ATR ortalaması
+        # Past ATR average
         lookback_size = min(self.lookback, len(close) - self.atr_period - 1)
         if lookback_size < self.atr_period:
             return 50.0
@@ -165,7 +165,7 @@ class Consolidation(BaseIndicator):
 
         avg_historical_atr = np.mean(historical_atrs)
 
-        # Düşük ATR = yüksek puan
+        # Low ATR = high score
         if avg_historical_atr == 0:
             return 50.0
 
@@ -175,14 +175,14 @@ class Consolidation(BaseIndicator):
         return score
 
     def _calculate_range_score(self, high: np.ndarray, low: np.ndarray) -> tuple:
-        """Range bazlı konsolidasyon puanı (0-100)"""
-        # Mevcut range
+        """Range-based consolidation score (0-100)"""
+        # Current range
         current_high = np.max(high[-self.period:])
         current_low = np.min(low[-self.period:])
         current_range = current_high - current_low
         current_range_pct = (current_range / current_low * 100) if current_low > 0 else 0
 
-        # Geçmiş range ortalaması
+        # Past range average
         lookback_size = min(self.lookback, len(high) - self.period)
         if lookback_size < self.period:
             return 50.0, current_range_pct
@@ -204,7 +204,7 @@ class Consolidation(BaseIndicator):
 
         avg_historical_range = np.mean(historical_ranges)
 
-        # Dar range = yüksek puan
+        # Narrow range = high score
         if avg_historical_range == 0:
             return 50.0, current_range_pct
 
@@ -214,14 +214,14 @@ class Consolidation(BaseIndicator):
         return score, current_range_pct
 
     def _calculate_distribution_score(self, close: np.ndarray) -> float:
-        """Fiyat dağılımı puanı (0-100)"""
-        # Son period içindeki fiyatların dağılımını analiz et
+        """Price distribution score (0-100)"""
+        # Analyze the distribution of prices within the last period.
         prices = close[-self.period:]
 
-        # Histogram oluştur (5 bin)
+        # Create a histogram (5000)
         hist, bin_edges = np.histogram(prices, bins=5)
 
-        # Uniform dağılım = her bin'de eşit fiyat
+        # Uniform distribution = equal price for every bin
         expected_count = len(prices) / 5
 
         # Chi-square benzeri test
@@ -231,7 +231,7 @@ class Consolidation(BaseIndicator):
 
         deviation_score = np.mean(deviations)
 
-        # Düşük sapma = yüksek puan
+        # Low deviation = high score
         # Max sapma ~len(prices) olabilir
         max_deviation = len(prices) / 2
         score = (1 - min(deviation_score / max_deviation, 1.0)) * 100
@@ -239,9 +239,9 @@ class Consolidation(BaseIndicator):
         return score
 
     def _calculate_time_score(self, high: np.ndarray, low: np.ndarray, close: np.ndarray) -> tuple:
-        """Konsolidasyon süresi puanı (0-100)"""
-        # Range yüzdesini her mum için hesapla
-        range_threshold = 3.0  # %3 eşiği
+        """Consolidation period score (0-100)"""
+        # Calculate the range percentage for each candle.
+        range_threshold = 3.0  # %3 threshold
 
         consolidation_count = 0
         for i in range(self.min_consolidation_bars, 0, -1):
@@ -257,7 +257,7 @@ class Consolidation(BaseIndicator):
             else:
                 break
 
-        # Uzun süre = yüksek puan
+        # Long duration = high score
         score = min((consolidation_count / self.min_consolidation_bars) * 100, 100)
 
         return score, consolidation_count
@@ -270,13 +270,13 @@ class Consolidation(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: Konsolidasyon puanı ve detayları
+            IndicatorResult: Consolidation score and details.
         """
         high = data['high'].values
         low = data['low'].values
         close = data['close'].values
         
-        # Bufferları doldur (Incremental update için hazırlık)
+        # Fill the buffers (preparation for incremental update)
         if not hasattr(self, '_high_buffer'):
             from collections import deque
             max_len = self.lookback + self.period + 50
@@ -288,25 +288,25 @@ class Consolidation(BaseIndicator):
         self._low_buffer.clear()
         self._close_buffer.clear()
         
-        # Son max_len kadar veriyi al
+        # Get the data up to the last max_len.
         start_idx = max(0, len(data) - (self.lookback + self.period + 50))
         self._high_buffer.extend(high[start_idx:])
         self._low_buffer.extend(low[start_idx:])
         self._close_buffer.extend(close[start_idx:])
 
-        # ATR puanı (ağırlık: 0.4)
+        # ATR score (weight: 0.4)
         atr_score = self._calculate_atr_score(high, low, close)
 
-        # Range puanı (ağırlık: 0.3)
+        # Range score (weight: 0.3)
         range_score, current_range_pct = self._calculate_range_score(high, low)
 
-        # Dağılım puanı (ağırlık: 0.2)
+        # Distribution score (weight: 0.2)
         distribution_score = self._calculate_distribution_score(close)
 
-        # Zaman puanı (ağırlık: 0.1)
+        # Time score (weight: 0.1)
         time_score, consolidation_bars = self._calculate_time_score(high, low, close)
 
-        # Final konsolidasyon puanı
+        # Final consolidation score
         consolidation_score = (
             atr_score * 0.4 +
             range_score * 0.3 +
@@ -314,7 +314,7 @@ class Consolidation(BaseIndicator):
             time_score * 0.1
         )
 
-        # Konsolidasyon seviyesi
+        # Consolidation level
         if consolidation_score >= 75:
             level = "Strong"
         elif consolidation_score >= 50:
@@ -326,7 +326,7 @@ class Consolidation(BaseIndicator):
 
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Sinyal belirle
+        # Define signal
         signal = self.get_signal(consolidation_score)
         trend = self.get_trend(consolidation_score)
 
@@ -354,13 +354,13 @@ class Consolidation(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        Batch hesaplama (Backtest için)
+        Batch calculation (for backtesting)
         
         Args:
             data: OHLCV DataFrame
             
         Returns:
-            pd.DataFrame: Consolidation değerleri
+            pd.DataFrame: Consolidation values
         """
         high = data['high']
         low = data['low']
@@ -376,10 +376,10 @@ class Consolidation(BaseIndicator):
         # Current ATR
         current_atr = tr.rolling(window=self.atr_period).mean()
         
-        # Historical Avg ATR (Lookback kadar geriye dönük ortalama)
-        # Bu biraz ağır olabilir: rolling(lookback).mean()
-        # Ancak logic: lookback içindeki ortalama ATR değil, 
-        # lookback süresince hesaplanan ATR'lerin ortalaması.
+        # Historical Avg ATR (Average calculated backwards for the Lookback period)
+        # This might be a bit slow: rolling(lookback).mean()
+        # However, the logic: it's not the average ATR within the lookback period,
+        # The average of ATR values calculated during the lookback period.
         # Yani rolling(atr_period).mean() serisinin rolling(lookback).mean()'i.
         historical_avg_atr = current_atr.shift(1).rolling(window=self.lookback).mean()
         
@@ -404,12 +404,12 @@ class Consolidation(BaseIndicator):
         range_score = range_score.fillna(50.0)
         
         # 3. Distribution Score
-        # Rolling apply ile histogram hesabı yavaş olabilir.
-        # Basitleştirilmiş yaklaşım: Standart sapma / Range
-        # Uniform dağılımda std dev yüksektir (range'e göre).
+        # Calculating the histogram with rolling apply can be slow.
+        # Simplified approach: standard deviation / range
+        # The standard deviation is high in a uniform distribution (compared to the range).
         # Ama burada "uniformity" isteniyor.
         # Orijinal logic: Chi-square test.
-        # Bunu batch yapmak zor. Rolling apply kullanalım.
+        # It's difficult to make this a batch operation. Let's use rolling apply.
         
         def calc_dist_score(x):
             if len(x) < 5: return 50.0
@@ -421,67 +421,67 @@ class Consolidation(BaseIndicator):
             max_dev = len(x) / 2
             return (1 - min(dev_score / max_dev, 1.0)) * 100
 
-        # Performance için sadece close üzerinde rolling apply
-        # Bu işlem yavaş olabilir, optimize edilebilir.
+        # For performance, only use rolling apply on the 'close' column.
+        # This operation may be slow, it can be optimized.
         distribution_score = close.rolling(window=self.period).apply(calc_dist_score, raw=True)
         distribution_score = distribution_score.fillna(50.0)
         
         # 4. Time Score
-        # Son X barda range < threshold olanların sayısı
+        # Number of values in the range < threshold for the last X periods
         range_threshold = 3.0
         
-        # Her bar için range % hesapla (period bazlı değil, o anki barın range'i değil)
-        # Logic: "Range yüzdesini her mum için hesapla" diyor ama loop içinde
-        # period_high/low kullanıyor. Yani her mumda geriye dönük period kadar bakıyor.
-        # Bu zaten current_range_pct.
+        # Calculate the range % for each bar (not period-based, but the range of the current bar)
+        # Logic: "Calculate the range percentage for each candle" but inside the loop.
+        # It uses period_high/low. That means it looks back period units for each candle.
+        # This is already current_range_pct.
         
-        # Yani: current_range_pct < 3.0 olan ardışık mum sayısı?
-        # Hayır, loop: for i in range(min_consolidation_bars, 0, -1)
-        # Geriye dönük i kadar gidip bakıyor.
-        # Aslında mantık: Şu anki mumdan geriye doğru giderek, 
-        # kaç tane mumun "kendi periodluk penceresinde" range'i düşük?
+        # That is: the number of consecutive candles where current_range_pct < 3.0?
+        # No, loop: for i in range(min_consolidation_bars, 0, -1)
+        # It looks back by going back i steps.
+        # Actually, the logic is: going backward from the current candle,
+        # How many candles have a range that is below their "own period" range?
         
         is_consolidating = current_range_pct < range_threshold
         
         # Rolling sum of boolean?
-        # Hayır, ardışık olması lazım.
-        # Basitçe: Son min_consolidation_bars içindeki is_consolidating sayısı değil.
-        # Loop mantığı: En uzundan başlayıp (min_consolidation_bars), 
-        # eğer o periyotta range düşükse sayıyor.
+        # No, it needs to be sequential.
+        # Simply: It's not the number of is_consolidating within the last min_consolidation_bars.
+        # Loop logic: Starting from the longest (min_consolidation_bars),
+        # if the range is low during that period, it counts.
         
-        # Orijinal koda bakalım:
+        # Let's look at the original code:
         # for i in range(self.min_consolidation_bars, 0, -1):
         #    period_range_pct = ...
         #    if period_range_pct < range_threshold: count += 1 else break
         
-        # Bu mantık biraz garip. i azaldıkça pencere küçülmüyor, start_idx değişiyor.
+        # This logic is a bit strange. As 'i' decreases, the window doesn't shrink, but 'start_idx' changes.
         # start_idx = end_idx - self.period
-        # Yani kayan pencere ile geriye gidiyor.
+        # That means it's going backward with a sliding window.
         
-        # Batch için:
+        # For batch:
         # is_consolidating serisi (current_range_pct < 3.0)
-        # Geriye dönük ardışık true sayısı.
+        # The number of consecutive true values in reverse order.
         
-        # Pandas ile ardışık grupları bulmak:
+        # Finding consecutive groups with Pandas:
         # grouper = (is_consolidating != is_consolidating.shift()).cumsum()
-        # Ama biz her bar için o anki ardışık sayıyı istiyoruz.
+        # But we want the current sequential number for each bar.
         
         # Bu tipik bir "consecutive streak" problemi.
         # df['streak'] = df.groupby((df['val'] != df['val'].shift()).cumsum()).cumcount() + 1
-        # Sadece True olanları alacağız.
+        # We will only take the ones that are True.
         
         streak_groups = (is_consolidating != is_consolidating.shift()).cumsum()
         streaks = is_consolidating.groupby(streak_groups).cumsum()
         
-        # Sadece True olanlar streak, False olanlar 0 olmalı ama cumsum boolean'ı 1/0 toplar.
+        # Only True values contribute to the streak, False values should be 0, but cumsum treats booleans as 1/0.
         # False olanlar resetlenmeli.
-        # Daha iyi yöntem:
+        # A better approach:
         # y = x * (y.shift() + 1)
         # Bu recursive, pandas'ta zor.
         
-        # Alternatif: Rolling sum ama sadece hepsi 1 ise? Hayır.
+        # Alternative: Rolling sum but only if all are 1? No.
         
-        # Python loop ile hızlıca hesaplayalım (Numpy iteration)
+        # Let's calculate it quickly using a Python loop (Numpy iteration)
         cons_vals = is_consolidating.values.astype(int)
         time_counts = np.zeros(len(cons_vals))
         
@@ -530,15 +530,15 @@ class Consolidation(BaseIndicator):
             candle: Yeni mum verisi (dict)
             
         Returns:
-            IndicatorResult: Güncel Consolidation değeri
+            IndicatorResult: Current Consolidation value
         """
-        # Buffer yönetimi
+        # Buffer management
         if not hasattr(self, '_high_buffer'):
             from collections import deque
-            # Lookback + period kadar veriye ihtiyaç olabilir (Historical avg için)
-            # Ancak historical avg hesaplamak için çok fazla veri lazım.
-            # Buffer'da sadece son period'u tutup, historical avg'yi incremental update etmek daha mantıklı.
-            # Veya buffer'ı yeterince büyük tutmak.
+            # It may be necessary to have data for Lookback + period (for Historical avg).
+            # However, a lot of data is needed to calculate the historical average.
+            # It's more logical to keep only the last period in the buffer and incrementally update the historical average.
+            # Or keep the buffer large enough.
             
             max_len = self.lookback + self.period + 50
             self._high_buffer = deque(maxlen=max_len)
@@ -576,9 +576,9 @@ class Consolidation(BaseIndicator):
                 metadata={'level': 'None'}
             )
             
-        # Hesaplama
-        # Bufferları numpy array'e çevir (son lookback+period kadar)
-        # Tüm buffer'ı kullanmak yerine optimize edilebilir ama şimdilik güvenli yol.
+        # Calculation
+        # Convert buffers to numpy array (for the last lookback+period)
+        # It can be optimized to use the entire buffer instead, but for now, this is the safer approach.
         
         high = np.array(self._high_buffer)
         low = np.array(self._low_buffer)
@@ -633,15 +633,15 @@ class Consolidation(BaseIndicator):
 
     def get_signal(self, score: float) -> SignalType:
         """
-        Konsolidasyon puanından sinyal üret
+        Generate a signal from the consolidation score.
 
         Args:
-            score: Konsolidasyon puanı
+            score: Consolidation score
 
         Returns:
-            SignalType: HOLD (konsolidasyon sırasında bekle)
+            SignalType: HOLD (wait during consolidation)
         """
-        # Yüksek konsolidasyon = bekle (breakout için hazırlan)
+        # High consolidation = wait (prepare for breakout)
         if score >= 75:
             return SignalType.HOLD
         elif score >= 50:
@@ -651,22 +651,22 @@ class Consolidation(BaseIndicator):
 
     def get_trend(self, score: float) -> TrendDirection:
         """
-        Konsolidasyon puanından trend belirle
+        Determine the trend based on the consolidation score.
 
         Args:
-            score: Konsolidasyon puanı
+            score: Consolidation score
 
         Returns:
-            TrendDirection: NEUTRAL (konsolidasyon = trend yok)
+            TrendDirection: NEUTRAL (consolidation = no trend)
         """
-        # Konsolidasyon sırasında trend yok
+        # No trend during consolidation
         if score >= 50:
             return TrendDirection.NEUTRAL
         else:
             return TrendDirection.UNKNOWN
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'period': 20,
             'atr_period': 14,
@@ -687,26 +687,26 @@ __all__ = ['Consolidation']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """Consolidation indikatör testi"""
+    """Consolidation indicator test"""
 
     print("\n" + "="*60)
     print("CONSOLIDATION DETECTOR TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating example OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(150)]
 
-    # Trend -> Konsolidasyon -> Trend simüle et
+    # Trend -> Consolidation -> Simulate trend
     base_price = 100
     prices = [base_price]
 
-    # İlk 30 mum: Uptrend
+    # First 30 candles: Uptrend
     for i in range(29):
         change = np.random.randn() * 1.0 + 0.5
         prices.append(prices[-1] + change)
@@ -731,27 +731,27 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     consol = Consolidation()
-    print(f"   [OK] Oluşturuldu: {consol}")
+    print(f"   [OK] Created: {consol}")
     print(f"   [OK] Kategori: {consol.category.value}")
-    print(f"   [OK] Gerekli periyot: {consol.get_required_periods()}")
+    print(f"   [OK] Required period: {consol.get_required_periods()}")
 
     result = consol(data)
-    print(f"   [OK] Konsolidasyon Puanı: {result.value}")
+    print(f"   [OK] Consolidation Score: {result.value}")
     print(f"   [OK] Seviye: {result.metadata['level']}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
 
     # Test 2: Trend testi
     print("\n3. Trend testi (ilk 30 mum)...")
     trend_data = data.head(50)
     result = consol.calculate(trend_data)
-    print(f"   [OK] Konsolidasyon Puanı: {result.value}")
+    print(f"   [OK] Consolidation Score: {result.value}")
     print(f"   [OK] Seviye: {result.metadata['level']}")
     print(f"   [OK] ATR Score: {result.metadata['atr_score']:.2f}")
     print(f"   [OK] Range Score: {result.metadata['range_score']:.2f}")
@@ -759,10 +759,10 @@ if __name__ == "__main__":
     # Test 3: Konsolidasyon testi
     print("\n4. Konsolidasyon testi (60-90 mum)...")
     consol_data = data.iloc[30:90].reset_index(drop=True)
-    # Yeterli geçmiş veri için baştan ekleme yapmamız gerekiyor
+    # We need to add data from the beginning to have enough historical data.
     consol_data_full = data.head(90)
     result = consol.calculate(consol_data_full)
-    print(f"   [OK] Konsolidasyon Puanı: {result.value}")
+    print(f"   [OK] Consolidation Score: {result.value}")
     print(f"   [OK] Seviye: {result.metadata['level']}")
     print(f"   [OK] ATR Score: {result.metadata['atr_score']:.2f}")
     print(f"   [OK] Range Score: {result.metadata['range_score']:.2f}")
@@ -770,10 +770,10 @@ if __name__ == "__main__":
     print(f"   [OK] Time Score: {result.metadata['time_score']:.2f}")
     print(f"   [OK] Consolidation Bars: {result.metadata['consolidation_bars']}")
 
-    # Test 4: Breakout sonrası
-    print("\n5. Breakout sonrası test (tüm data)...")
+    # Test 4: After breakout
+    print("\n5. Post-breakout test (all data)...")
     result = consol.calculate(data)
-    print(f"   [OK] Konsolidasyon Puanı: {result.value}")
+    print(f"   [OK] Consolidation Score: {result.value}")
     print(f"   [OK] Seviye: {result.metadata['level']}")
     print(f"   [OK] Range %: {result.metadata['range_pct']:.2f}%")
 
@@ -788,33 +788,33 @@ if __name__ == "__main__":
         scores.append(result.value)
         levels.append(result.metadata['level'])
 
-    print(f"   [OK] Toplam ölçüm: {len(scores)}")
+    print(f"   [OK] Total measurements: {len(scores)}")
     print(f"   [OK] Ortalama puan: {np.mean(scores):.2f}")
     print(f"   [OK] Max puan: {max(scores):.2f}")
     print(f"   [OK] Min puan: {min(scores):.2f}")
     print(f"   [OK] Strong: {levels.count('Strong')}, Moderate: {levels.count('Moderate')}")
     print(f"   [OK] Weak: {levels.count('Weak')}, None: {levels.count('None')}")
 
-    # Test 6: Farklı parametreler
-    print("\n7. Farklı parametre testi...")
+    # Test 6: Different parameters
+    print("\n7. Different parameter test...")
     consol_fast = Consolidation(period=10, min_consolidation_bars=5)
     result = consol_fast.calculate(consol_data_full)
-    print(f"   [OK] Fast (10 period) Puanı: {result.value}")
+    print(f"   [OK] Fast (10 period) Score: {result.value}")
 
-    # Test 7: İstatistikler
-    print("\n8. İstatistik testi...")
+    # Test 7: Statistics
+    print("\n8. Statistical test...")
     stats = consol.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 8: Metadata
     print("\n9. Metadata testi...")
     metadata = consol.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Tip: {metadata.indicator_type.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

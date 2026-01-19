@@ -2,22 +2,22 @@
 """
 indicators/momentum/cmo.py - CMO (Chande Momentum Oscillator)
 
-Yazar: SuperBot Team
-Tarih: 2025-11-20
+Author: SuperBot Team
+Date: 2025-11-20
 Versiyon: 1.0.0
 
-Chande Momentum Oscillator (CMO) - RSI benzeri momentum göstergesi.
-RSI'dan farkı, farklı bir normalizasyon kullanmasıdır.
+Chande Momentum Oscillator (CMO) - A momentum indicator similar to RSI.
+The difference from RSI is that it uses a different normalization.
 
-Özellikler:
-- RSI'ya benzer ama farklı hesaplama
-- -100 ile +100 arasında salınır
-- Aşırı alım/satım bölgelerini gösterir
-- CMO > +50: Aşırı alım
-- CMO < -50: Aşırı satım
-- Sıfır çizgisi önemli destek/direnç
+Features:
+- Similar to RSI but with a different calculation
+- Ranges from -100 to +100
+- Shows overbought/oversold regions
+- CMO > +50: Overbought
+- CMO < -50: Oversold
+- Zero line is an important support/resistance
 
-Kullanım:
+Usage:
     from components.indicators import get_indicator_class
 
     CMO = get_indicator_class('cmo')
@@ -25,14 +25,14 @@ Kullanım:
     result = cmo.calculate(data)
     print(result.value['cmo'])
 
-Formül:
+Formula:
     CMO = 100 * (sum_gains - sum_losses) / (sum_gains + sum_losses)
 
-    RSI'dan farkı:
+    Difference from RSI:
     - RSI: 100 * (gains / (gains + losses))
     - CMO: 100 * ((gains - losses) / (gains + losses))
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -65,13 +65,13 @@ class CMO(BaseIndicator):
     """
     Chande Momentum Oscillator
 
-    RSI benzeri ama farklı normalizasyon kullanan momentum göstergesi.
-    -100 ile +100 arasında salınır.
+    Momentum indicator similar to RSI but using a different normalization.
+    It oscillates between -100 and +100.
 
     Args:
-        period: CMO periyodu (varsayılan: 14)
-        logger: Logger instance (opsiyonel)
-        error_handler: Error handler (opsiyonel)
+        period: CMO period (default: 14)
+        logger: Logger instance (optional)
+        error_handler: Error handler (optional)
     """
 
     def __init__(self, period: int = 14, logger=None, error_handler=None):
@@ -88,41 +88,41 @@ class CMO(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.period + 1
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 1:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Period pozitif olmalı"
+                "Period must be positive"
             )
         return True
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        Batch hesaplama (Backtest için)
+        Batch calculation (for backtesting)
 
-        Tüm veriyi vektörel olarak hesaplar.
-        TA-Lib uyumlu: Wilder smoothing (RMA) kullanır
+        Calculates all data vectorially.
+        TA-Lib compatible: Uses Wilder smoothing (RMA).
 
         Args:
             data: OHLCV DataFrame
 
         Returns:
-            pd.DataFrame: CMO değerleri
+            pd.DataFrame: CMO values
         """
         close = data['close']
 
-        # Fiyat farkları
+        # Price differences
         diff = close.diff()
 
-        # Kazanç ve kayıpları ayır
+        # Separate profits and losses
         gain = diff.where(diff > 0, 0)
         loss = -diff.where(diff < 0, 0)
 
-        # TA-Lib uyumlu: Wilder smoothing (RMA) kullan
+        # Compatible with TA-Lib: Use Wilder smoothing (RMA)
         # RMA = EMA with alpha = 1/period
         alpha = 1 / self.period
         avg_gain = gain.ewm(alpha=alpha, adjust=False).mean()
@@ -135,11 +135,11 @@ class CMO(BaseIndicator):
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
         """
-        Warmup buffer - state-based update için gerekli
+        Warmup buffer - required for state-based update.
 
         Args:
             data: OHLCV DataFrame (warmup verisi)
-            symbol: Sembol adı (opsiyonel, multi-symbol desteği için)
+            symbol: Symbol name (optional, for multi-symbol support)
         """
         super().warmup_buffer(data, symbol)
 
@@ -151,7 +151,7 @@ class CMO(BaseIndicator):
             close = data['close'].values
             diff = np.diff(close)
 
-            # Wilder smoothing (RMA) için state hesapla
+            # Calculate state for Wilder smoothing (RMA)
             alpha = 1 / self.period
             gains = np.where(diff > 0, diff, 0)
             losses = np.where(diff < 0, -diff, 0)
@@ -176,10 +176,10 @@ class CMO(BaseIndicator):
 
         Args:
             candle: Yeni mum verisi (dict)
-            symbol: Sembol adı (opsiyonel)
+            symbol: Symbol name (optional)
 
         Returns:
-            IndicatorResult: Güncel CMO değeri
+            IndicatorResult: Current CMO value
         """
         # Support both dict and list/tuple formats
         if isinstance(candle, dict):
@@ -199,12 +199,12 @@ class CMO(BaseIndicator):
             last_close = state['last_close']
             alpha = state['alpha']
 
-            # Fiyat değişimi
+            # Price change
             diff = close_val - last_close
             gain = diff if diff > 0 else 0
             loss = -diff if diff < 0 else 0
 
-            # Wilder smoothing (RMA) güncelle
+            # Update Wilder smoothing (RMA)
             new_avg_gain = alpha * gain + (1 - alpha) * avg_gain
             new_avg_loss = alpha * loss + (1 - alpha) * avg_loss
 
@@ -212,7 +212,7 @@ class CMO(BaseIndicator):
             total = new_avg_gain + new_avg_loss
             cmo_value = 100 * (new_avg_gain - new_avg_loss) / total if total > 0 else 0
 
-            # State güncelle
+            # Update state
             self._cmo_state[buffer_key] = {
                 'avg_gain': new_avg_gain,
                 'avg_loss': new_avg_loss,
@@ -220,12 +220,12 @@ class CMO(BaseIndicator):
                 'alpha': alpha
             }
 
-            # Sinyal ve trend belirleme
+            # Signal and trend determination
             if cmo_value < -50:
-                signal = SignalType.BUY  # Aşırı satım
+                signal = SignalType.BUY  # Oversold
                 trend = TrendDirection.DOWN
             elif cmo_value > 50:
-                signal = SignalType.SELL  # Aşırı alım
+                signal = SignalType.SELL  # Oversold
                 trend = TrendDirection.UP
             else:
                 signal = SignalType.HOLD
@@ -246,7 +246,7 @@ class CMO(BaseIndicator):
                 }
             )
 
-        # Fallback: eski buffer-based hesaplama (backward compat)
+        # Fallback: old buffer-based calculation (backward compatibility)
         self.prices.append(close_val)
 
         if len(self.prices) < self.period + 1:
@@ -259,7 +259,7 @@ class CMO(BaseIndicator):
                 metadata={'insufficient_data': True}
             )
 
-        # Fiyat dizisini numpy array'e çevir
+        # Convert the price list to a numpy array
         prices = np.array(self.prices)
         diff = np.diff(prices)
 
@@ -277,7 +277,7 @@ class CMO(BaseIndicator):
         total = avg_gain + avg_loss
         cmo_value = 100 * (avg_gain - avg_loss) / total if total > 0 else 0
 
-        # Sinyal ve trend belirleme
+        # Signal and trend determination
         if cmo_value < -50:
             signal = SignalType.BUY
             trend = TrendDirection.DOWN
@@ -305,15 +305,15 @@ class CMO(BaseIndicator):
 
     def calculate(self, data: pd.DataFrame) -> IndicatorResult:
         """
-        CMO hesapla (son değer)
+        Calculate CMO (final value)
 
         Args:
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: CMO değeri
+            IndicatorResult: CMO value
         """
-        # Buffer'ları doldur
+        # Fill the buffers
         close_values = data['close'].tail(self.period + 1).values
         self.prices.clear()
         self.prices.extend(close_values)
@@ -328,12 +328,12 @@ class CMO(BaseIndicator):
         cmo_value = valid_values[-1]
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Sinyal ve trend
+        # Signal and trend
         if cmo_value < -50:
-            signal = SignalType.BUY  # Aşırı satım
+            signal = SignalType.BUY  # Oversold
             trend = TrendDirection.DOWN
         elif cmo_value > 50:
-            signal = SignalType.SELL  # Aşırı alım
+            signal = SignalType.SELL  # Oversold
             trend = TrendDirection.UP
         else:
             signal = SignalType.HOLD
@@ -354,7 +354,7 @@ class CMO(BaseIndicator):
         )
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {'period': 14}
 
     def _get_output_names(self) -> list:
@@ -378,9 +378,9 @@ __all__ = ['CMO']
 # ============================================================================
 
 if __name__ == "__main__":
-    """CMO indikatör testi"""
+    """CMO indicator test"""
 
-    # Windows console UTF-8 desteği
+    # Windows console UTF-8 support
     import sys
     import io
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
@@ -389,12 +389,12 @@ if __name__ == "__main__":
     print("🧪 CHANDE MOMENTUM OSCILLATOR (CMO) TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating sample OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(100)]
 
-    # Sinüs dalgası + noise (daha iyi CMO gösterimi için)
+    # Sine wave + noise (for better CMO representation)
     base_price = 100
     sine_wave = 10 * np.sin(np.linspace(0, 4 * np.pi, 100))
     noise = np.random.randn(100) * 2
@@ -409,43 +409,43 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in range(100)]
     })
 
-    print(f"   ✅ {len(data)} mum oluşturuldu")
-    print(f"   ✅ Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   ✅ {len(data)} candles created")
+    print(f"   ✅ Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     cmo = CMO(period=14)
-    print(f"   ✅ Oluşturuldu: {cmo}")
+    print(f"   ✅ Created: {cmo}")
     print(f"   ✅ Kategori: {cmo.category.value}")
-    print(f"   ✅ Gerekli periyot: {cmo.get_required_periods()}")
+    print(f"   ✅ Required period: {cmo.get_required_periods()}")
 
     result = cmo(data)
     print(f"   ✅ CMO: {result.value['cmo']}")
-    print(f"   ✅ Sinyal: {result.signal.value}")
+    print(f"   ✅ Signal: {result.signal.value}")
     print(f"   ✅ Trend: {result.trend.name}")
-    print(f"   ✅ Güç: {result.strength:.2f}")
-    print(f"   ✅ Aşırı Alım: {result.metadata.get('overbought', 'N/A')}")
-    print(f"   ✅ Aşırı Satım: {result.metadata.get('oversold', 'N/A')}")
+    print(f"   ✅ Power: {result.strength:.2f}")
+    print(f"   ✅ Overbought: {result.metadata.get('overbought', 'N/A')}")
+    print(f"   ✅ Oversold: {result.metadata.get('oversold', 'N/A')}")
 
     # Test 2: Batch Calculation
     print("\n3. Batch Calculation Testi...")
     batch_result = cmo.calculate_batch(data)
     print(f"   ✅ Batch result shape: {batch_result.shape}")
-    print(f"   ✅ Son 5 CMO değeri:")
+    print(f"   ✅ Last 5 CMO values:")
     print(batch_result['cmo'].tail())
 
-    # Test 3: Aşırı alım/satım tespiti
-    print("\n4. Aşırı alım/satım testi...")
+    # Test 3: Overbuying/overselling detection
+    print("\n4. Overbuying/overselling test...")
     cmo_values = batch_result['cmo'].dropna().values
     overbought = len(cmo_values[cmo_values > 50])
     oversold = len(cmo_values[cmo_values < -50])
-    print(f"   ✅ Aşırı alım bölgesi: {overbought} bar")
-    print(f"   ✅ Aşırı satım bölgesi: {oversold} bar")
+    print(f"   ✅ Overbought region: {overbought} bar")
+    print(f"   ✅ Oversold region: {oversold} bar")
     print(f"   ✅ Min CMO: {min(cmo_values):.2f}")
     print(f"   ✅ Max CMO: {max(cmo_values):.2f}")
 
-    # Test 4: Update metodu
-    print("\n5. Update metodu testi...")
+    # Test 4: Update method
+    print("\n5. Update method test...")
     cmo2 = CMO(period=14)
     init_data = data.head(50)
     cmo2.calculate(init_data)
@@ -463,13 +463,13 @@ if __name__ == "__main__":
             print(f"   ✅ Bar {i}: CMO={update_result.value['cmo']:.2f}, "
                   f"Signal={update_result.signal.value}")
 
-    # Test 5: Farklı periyotlar
-    print("\n6. Farklı periyot testi...")
+    # Test 5: Different periods
+    print("\n6. Different period test...")
     for period in [9, 14, 20]:
         cmo_test = CMO(period=period)
         result = cmo_test.calculate(data)
         print(f"   ✅ CMO({period}): {result.value['cmo']:.2f}")
 
     print("\n" + "="*60)
-    print("✅ TÜM TESTLER BAŞARILI!")
+    print("✅ ALL TESTS PASSED!")
     print("="*60 + "\n")

@@ -5,18 +5,18 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    Breakout kategorisi indikatörleri
-    Konsolidasyon tespiti, volatilite breakout'ları ve range analizi
+Description:
+    Breakout category indicators
+    Consolidation detection, volatility breakouts, and range analysis
 
-    İçerik (5 indikatör):
+    Content (5 indicators):
     - SqueezeMomentum: TTM Squeeze + momentum histogram
-    - VolatilityBreakout: Bollinger genişlemesi ile breakout tespiti
+    - VolatilityBreakout: Breakout detection using Bollinger expansion.
     - BreakoutScanner: Multi-timeframe breakout analizi
     - RangeBreakout: Konsolidasyon range'i + breakout seviyeleri
-    - Consolidation: Konsolidasyon tespiti ve puanı
+    - Consolidation: Consolidation detection and scoring.
 
-Kullanım:
+Usage:
     from indicators.breakout import (
         SqueezeMomentum,
         VolatilityBreakout,

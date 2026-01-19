@@ -5,17 +5,17 @@ Version: 2.0.0
 Date: 2025-10-14
 Author: SuperBot Team
 
-Açıklama:
-    ATR (Average True Range) - Volatilite göstergesi
-    Fiyat hareketlerinin ortalama genişliğini ölçer
-    Yüksek ATR = Yüksek volatilite
-    Düşük ATR = Düşük volatilite
+Description:
+    ATR (Average True Range) - Volatility indicator
+    Measures the average width of price movements
+    High ATR = High volatility
+    Low ATR = Low volatility
 
-Formül:
+Formula:
     TR = max[(High - Low), abs(High - PrevClose), abs(Low - PrevClose)]
     ATR = RMA(TR, period)
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -37,11 +37,11 @@ class ATR(BaseIndicator):
     """
     Average True Range
 
-    Fiyat hareketlerinin ortalama genişliğini ölçerek volatiliteyi belirler.
-    Stop-loss ve position sizing için kullanılır.
+    It determines volatility by measuring the average width of price movements.
+    It is used for stop-loss and position sizing.
 
     Args:
-        period: ATR periyodu (varsayılan: 14)
+        period: ATR period (default: 14)
     """
 
     def __init__(
@@ -64,15 +64,15 @@ class ATR(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
-        return self.period + 1  # TR hesabı için bir önceki mum gerekli
+        """Minimum required number of periods"""
+        return self.period + 1  # The previous candle is required for the TR calculation
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 1:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Periyot pozitif olmalı"
+                "The period must be positive"
             )
         return True
 
@@ -84,7 +84,7 @@ class ATR(BaseIndicator):
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: ATR değeri
+            IndicatorResult: ATR value
         """
         high = data['high'].values
         low = data['low'].values
@@ -135,7 +135,7 @@ class ATR(BaseIndicator):
         current_price = close[-1]
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Volatilite yüzdesi
+        # Volatility percentage
         volatility_pct = (atr_value / current_price) * 100 if current_price > 0 else 0
 
         # Warmup buffer for update() method
@@ -145,8 +145,8 @@ class ATR(BaseIndicator):
             value=round(atr_value, 8),
             timestamp=timestamp,
             signal=self.get_signal(volatility_pct),
-            trend=TrendDirection.NEUTRAL,  # ATR trend göstermez
-            strength=min(volatility_pct * 10, 100),  # 0-100 arası normalize et
+            trend=TrendDirection.NEUTRAL,  # ATR does not show trend
+            strength=min(volatility_pct * 10, 100),  # Normalize to a range of 0-100
             metadata={
                 'period': self.period,
                 'true_range': round(tr[-1], 8),
@@ -157,7 +157,7 @@ class ATR(BaseIndicator):
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.Series:
         """
-        ⚡ VECTORIZED batch ATR calculation - BACKTEST için
+        ⚡ VECTORIZED batch ATR calculation - for BACKTEST
 
         ATR Formula:
             TR = max[(High - Low), abs(High - PrevClose), abs(Low - PrevClose)]
@@ -194,11 +194,11 @@ class ATR(BaseIndicator):
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
         """
-        Warmup buffer - update() için gerekli
+        Warmup buffer - required for update().
 
         Args:
             data: OHLCV DataFrame (warmup verisi)
-            symbol: Sembol adı (opsiyonel)
+            symbol: Symbol name (optional)
         """
         super().warmup_buffer(data, symbol)
 
@@ -232,7 +232,7 @@ class ATR(BaseIndicator):
             symbol: Symbol identifier (for multi-symbol support)
 
         Returns:
-            IndicatorResult: Güncel ATR değeri
+            IndicatorResult: Current ATR value
         """
         from collections import deque
 
@@ -313,26 +313,26 @@ class ATR(BaseIndicator):
 
     def get_signal(self, volatility_pct: float) -> SignalType:
         """
-        Volatilite yüzdesinden sinyal üret
+        Generate a signal from the volatility percentage.
 
         Args:
-            volatility_pct: Volatilite yüzdesi
+            volatility_pct: Volatility percentage
 
         Returns:
-            SignalType: Volatilite seviyesine göre sinyal
+            SignalType: Signal based on volatility level.
         """
-        # Yüksek volatilite: dikkatli ol
+        # High volatility: be careful
         if volatility_pct > 5.0:
-            return SignalType.SELL  # Yüksek risk
+            return SignalType.SELL  # High risk
         # Normal volatilite
         elif volatility_pct > 2.0:
             return SignalType.HOLD
-        # Düşük volatilite: fırsat olabilir
+        # Low volatility: may be an opportunity
         else:
             return SignalType.BUY
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'period': 14
         }
@@ -350,22 +350,22 @@ __all__ = ['ATR']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """ATR indikatör testi"""
+    """ATR indicator test"""
 
     print("\n" + "="*60)
     print("ATR (AVERAGE TRUE RANGE) TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating example OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(30)]
 
-    # Fiyat hareketini simüle et
+    # Simulate price movement
     base_price = 100
     prices = [base_price]
     for i in range(29):
@@ -381,44 +381,44 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in prices]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     atr = ATR(period=14)
-    print(f"   [OK] Oluşturuldu: {atr}")
+    print(f"   [OK] Created: {atr}")
     print(f"   [OK] Kategori: {atr.category.value}")
-    print(f"   [OK] Gerekli periyot: {atr.get_required_periods()}")
+    print(f"   [OK] Required period: {atr.get_required_periods()}")
 
     result = atr(data)
-    print(f"   [OK] ATR Değeri: {result.value}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] ATR Value: {result.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
+    print(f"   [OK] Power: {result.strength:.2f}")
     print(f"   [OK] Metadata: {result.metadata}")
 
-    # Test 2: Farklı periyotlar
-    print("\n3. Farklı periyot testi...")
+    # Test 2: Different periods
+    print("\n3. Different period test...")
     for period in [7, 14, 21]:
         atr_test = ATR(period=period)
         result = atr_test.calculate(data)
         print(f"   [OK] ATR({period}): {result.value:.4f} | Volatilite: {result.metadata['volatility_pct']:.2f}%")
 
-    # Test 3: İstatistikler
-    print("\n4. İstatistik testi...")
+    # Test 3: Statistics
+    print("\n4. Statistical test...")
     stats = atr.statistics
-    print(f"   [OK] Hesaplama sayısı: {stats['calculation_count']}")
-    print(f"   [OK] Hata sayısı: {stats['error_count']}")
+    print(f"   [OK] Calculation count: {stats['calculation_count']}")
+    print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 4: Metadata
     print("\n5. Metadata testi...")
     metadata = atr.metadata
-    print(f"   [OK] İsim: {metadata.name}")
+    print(f"   [OK] Name: {metadata.name}")
     print(f"   [OK] Kategori: {metadata.category.value}")
     print(f"   [OK] Tip: {metadata.indicator_type.value}")
     print(f"   [OK] Min periyot: {metadata.min_periods}")
-    print(f"   [OK] Volume gerekli: {metadata.requires_volume}")
+    print(f"   [OK] Volume required: {metadata.requires_volume}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

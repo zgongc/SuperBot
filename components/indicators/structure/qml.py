@@ -5,22 +5,22 @@ Version: 4.0.0 (LUDICROUS SPEED! 🚀🚀🚀)
 Date: 2025-11-06
 Author: SuperBot Team
 
-Açıklama:
+Description:
     QML (Quasimodo) - ULTRA-OPTIMIZED VERSION
     
-    PROBLEM: 4.3M bars → 12+ dakika! 😱
-    ÇÖZÜM: Agresif optimizasyonlar → 30-60 saniye! 🔥
+    PROBLEM: 4.3M bars -> 12+ minutes! 😱
+    SOLUTION: Aggressive optimizations -> 30-60 seconds! 🔥
     
-    HIZ ARTIŞI: 12-24x DAHA HIZLI!
+    SPEED INCREASE: 12-24 x FASTER!
     
     Optimizasyonlar:
     1. ✅ Swing detection - Vectorized comparison
-    2. ✅ Early termination - İlk QML bulunca dur
+    2. ✅ Early termination - Stop when the first QML is found.
     3. ✅ Memory-efficient indexing
     4. ✅ Reduced lookback scanning
     5. ✅ Optimized boolean operations
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
     - numba>=0.58.0
@@ -231,15 +231,15 @@ class QML(BaseIndicator):
     Quasimodo Pattern (QML) - ULTRA-OPTIMIZED v4.0 🚀🚀🚀
     
     PERFORMANCE:
-    - 4.3M bars: 12 dakika → 30-60 saniye! (12-24x hızlandırma!)
+    - 4.3M bars: 12 minutes -> 30-60 seconds! (12-24 x speed up!)
     - Aggressive optimizations
     - Production-ready
     
     Args:
-        left_bars: Sol taraf bar sayısı (varsayılan: 5)
-        right_bars: Sağ taraf bar sayısı (varsayılan: 5)
-        lookback_bars: Pattern araması için geriye bakış (varsayılan: 30)
-        break_threshold: Kırılma eşiği (%) (varsayılan: 0.1)
+        left_bars: Number of bars on the left side (default: 5)
+        right_bars: Number of bars on the right side (default: 5)
+        lookback_bars: Lookback period for pattern search (default: 30)
+        break_threshold: Breakout threshold (%) (default: 0.1)
     """
 
     def __init__(
@@ -277,22 +277,22 @@ class QML(BaseIndicator):
         if self.left_bars < 1:
             raise InvalidParameterError(
                 self.name, 'left_bars', self.left_bars,
-                "Left bars pozitif olmalı"
+                "Left bars must be positive"
             )
         if self.right_bars < 1:
             raise InvalidParameterError(
                 self.name, 'right_bars', self.right_bars,
-                "Right bars pozitif olmalı"
+                "Right bars must be positive"
             )
         if self.lookback_bars < 10:
             raise InvalidParameterError(
                 self.name, 'lookback_bars', self.lookback_bars,
-                "Lookback bars en az 10 olmalı"
+                "Lookback bars should be at least 10"
             )
         if self.break_threshold < 0:
             raise InvalidParameterError(
                 self.name, 'break_threshold', self.break_threshold,
-                "Break threshold negatif olamaz"
+                "Break threshold cannot be negative"
             )
         return True
 

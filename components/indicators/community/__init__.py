@@ -5,15 +5,15 @@ Version: 1.0.0
 Date: 2025-12-12
 
 Description:
-    TradingView'dan port edilen topluluk indikatörleri.
+    Community indicators ported from TradingView.
 
-    Bu klasördeki indikatörler:
-    - Orijinal PineScript kodundan Python'a çevrilmiştir
-    - SuperBot indicator sistemine entegre edilmiştir
-    - calculate(), calculate_batch() ve update() methodları uyumludur
+    The indicators in this folder:
+    - Are translated from the original PineScript code to Python
+    - Are integrated into the SuperBot indicator system
+    - The calculate(), calculate_batch() and update() methods are compatible
 
 Available Indicators:
-    - MavilimW: Kivanc Ozbilgic'in WMA tabanlı trend indikatörü
+    - MavilimW: A trend indicator based on WMA by Kivanc Ozbilgic.
 """
 
 from .mavilimw import MavilimW

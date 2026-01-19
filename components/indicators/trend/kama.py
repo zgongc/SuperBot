@@ -5,23 +5,23 @@ Version: 1.0.0
 Date: 2025-11-20
 Author: SuperBot Team
 
-Açıklama:
+Description:
     KAMA (Kaufman Adaptive Moving Average)
-    Perry Kaufman tarafından geliştirilmiş adaptive moving average
-    Volatilite ve trend gücüne göre dinamik smoothing
+    Adaptive moving average developed by Perry Kaufman
+    Dynamic smoothing based on volatility and trend strength
 
-    Kullanım:
+    Usage:
     - Trend following
     - Dynamic support/resistance
     - Entry/Exit signals
     - Adaptive filtering
 
-Formül:
+Formula:
     ER = abs(change) / sum(abs(price changes))  # Efficiency Ratio
     SC = [ER * (fastest - slowest) + slowest]^2  # Smoothing Constant
     KAMA = KAMA_prev + SC * (price - KAMA_prev)
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -52,13 +52,13 @@ class KAMA(BaseIndicator):
     """
     Kaufman Adaptive Moving Average
 
-    Trend gücüne göre kendini ayarlayan moving average.
-    Güçlü trendde hızlı, ranging marketlerde yavaş hareket eder.
+    A moving average that adjusts itself based on trend strength.
+    It moves quickly in strong trends and slowly in ranging markets.
 
     Args:
-        period: ER hesaplama periyodu (varsayılan: 10)
-        fast_period: Hızlı EMA periyodu (varsayılan: 2)
-        slow_period: Yavaş EMA periyodu (varsayılan: 30)
+        period: ER calculation period (default: 10)
+        fast_period: Fast EMA period (default: 2)
+        slow_period: Slow EMA period (default: 30)
     """
 
     def __init__(
@@ -95,34 +95,34 @@ class KAMA(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.period + 1
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 1:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Period pozitif olmalı"
+                "Period must be positive"
             )
         if self.fast_period < 1 or self.fast_period >= self.slow_period:
             raise InvalidParameterError(
                 self.name, 'fast_period', self.fast_period,
-                "Fast period 1 ile slow period arası olmalı"
+                "It should be between the fast period 1 and the slow period."
             )
         return True
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        Batch hesaplama (Backtest için)
+        Batch calculation (for backtesting)
 
-        Tüm veriyi vektörel olarak hesaplar.
+        Calculates all data vectorially.
 
         Args:
             data: OHLCV DataFrame
 
         Returns:
-            pd.DataFrame: KAMA değerleri
+            pd.DataFrame: KAMA values
         """
         close = data['close'].values
         n = len(close)
@@ -131,7 +131,7 @@ class KAMA(BaseIndicator):
         if n < self.period + 1:
             return pd.DataFrame({'kama': kama}, index=data.index)
 
-        # İlk KAMA değeri = ilk close
+        # Initial KAMA value = initial close
         kama[self.period] = close[self.period]
 
         for i in range(self.period + 1, n):
@@ -154,11 +154,11 @@ class KAMA(BaseIndicator):
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
         """
-        Warmup buffer - update() için gerekli
+        Warmup buffer - required for update().
 
         Args:
             data: OHLCV DataFrame (warmup verisi)
-            symbol: Sembol adı (opsiyonel)
+            symbol: Symbol name (optional)
         """
         super().warmup_buffer(data, symbol)
 
@@ -185,7 +185,7 @@ class KAMA(BaseIndicator):
             candle: Yeni mum verisi (dict)
 
         Returns:
-            IndicatorResult: Güncel KAMA değeri
+            IndicatorResult: Current KAMA value
         """
         # Support both dict and list/tuple formats
         if isinstance(candle, dict):
@@ -197,7 +197,7 @@ class KAMA(BaseIndicator):
 
         self.prices.append(close)
 
-        # İlk değer
+        # Initial value
         if self.kama_value is None:
             if len(self.prices) >= self.period + 1:
                 self.kama_value = self.prices[self.period]
@@ -211,7 +211,7 @@ class KAMA(BaseIndicator):
                 metadata={'insufficient_data': True}
             )
 
-        # Yeterli veri yok
+        # Not enough data
         if len(self.prices) < self.period + 1:
             return IndicatorResult(
                 value=0.0,
@@ -235,7 +235,7 @@ class KAMA(BaseIndicator):
         # Smoothing Constant
         sc = (er * (self.fast_sc - self.slow_sc) + self.slow_sc) ** 2
 
-        # KAMA güncelle
+        # KAMA update
         self.kama_value = self.kama_value + sc * (close - self.kama_value)
 
         timestamp = timestamp_val
@@ -260,13 +260,13 @@ class KAMA(BaseIndicator):
 
     def calculate(self, data: pd.DataFrame) -> IndicatorResult:
         """
-        KAMA hesapla (son değer)
+        Calculate KAMA (final value)
 
         Args:
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: KAMA değeri
+            IndicatorResult: KAMA value
         """
         # Populate buffers
         close_values = data['close'].tail(self.period + 1).values
@@ -277,7 +277,7 @@ class KAMA(BaseIndicator):
         batch_result = self.calculate_batch(data)
         kama_series = batch_result['kama'].values
 
-        # Son geçerli değeri bul
+        # Find the last valid value
         valid_kama = kama_series[~np.isnan(kama_series)]
         if len(valid_kama) == 0:
             return None
@@ -294,7 +294,7 @@ class KAMA(BaseIndicator):
         volatility = np.sum(np.abs(np.diff(prices_array)))
         er = change / volatility if volatility > 0 else 0
 
-        # Trend ve sinyal
+        # Trend and signal
         trend = self.get_trend(close, kama_value)
         signal = self.get_signal(close, kama_value)
 
@@ -313,11 +313,11 @@ class KAMA(BaseIndicator):
 
     def get_signal(self, price: float, kama: float) -> SignalType:
         """
-        KAMA'dan sinyal üret
+        Generate a signal from KAMA.
 
         Args:
-            price: Mevcut fiyat
-            kama: KAMA değeri
+            price: Current price
+            kama: KAMA value
 
         Returns:
             SignalType: BUY/SELL/HOLD
@@ -333,8 +333,8 @@ class KAMA(BaseIndicator):
         KAMA'dan trend belirle
 
         Args:
-            price: Mevcut fiyat
-            kama: KAMA değeri
+            price: Current price
+            kama: KAMA value
 
         Returns:
             TrendDirection: UP/DOWN/NEUTRAL
@@ -348,14 +348,14 @@ class KAMA(BaseIndicator):
         return TrendDirection.NEUTRAL
 
     def _calculate_strength(self, price: float, kama: float, er: float) -> float:
-        """Sinyal gücünü hesapla (0-100)"""
-        # ER ve price distance kombinasyonu
+        """Calculate signal strength (0-100)"""
+        # ER and price distance combination
         distance_pct = abs((price - kama) / kama * 100)
         strength = (er * 50) + (min(distance_pct, 5) * 10)
         return min(strength, 100)
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {
             'period': 10,
             'fast_period': 2,
@@ -379,13 +379,13 @@ __all__ = ['KAMA']
 
 
 # ============================================================================
-# KULLANIM ÖRNEĞİ (TEST)
+# USAGE EXAMPLE (TEST)
 # ============================================================================
 
 if __name__ == "__main__":
-    """KAMA indikatör testi"""
+    """KAMA indicator test"""
 
-    # Windows console UTF-8 desteği
+    # Windows console UTF-8 support
     import sys
     import io
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
@@ -394,8 +394,8 @@ if __name__ == "__main__":
     print("KAMA (KAUFMAN ADAPTIVE MA) TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating example OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(100)]
 
@@ -414,32 +414,32 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in range(100)]
     })
 
-    print(f"   [OK] {len(data)} mum oluşturuldu")
-    print(f"   [OK] Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   [OK] {len(data)} candles created")
+    print(f"   [OK] Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     kama = KAMA(period=10, fast_period=2, slow_period=30)
-    print(f"   [OK] Oluşturuldu: {kama}")
+    print(f"   [OK] Created: {kama}")
     print(f"   [OK] Kategori: {kama.category.value}")
-    print(f"   [OK] Gerekli periyot: {kama.get_required_periods()}")
+    print(f"   [OK] Required period: {kama.get_required_periods()}")
 
     result = kama(data)
     print(f"   [OK] KAMA: {result.value['kama']}")
-    print(f"   [OK] Sinyal: {result.signal.value}")
+    print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
-    print(f"   [OK] Güç: {result.strength:.2f}")
+    print(f"   [OK] Power: {result.strength:.2f}")
     print(f"   [OK] ER: {result.metadata['efficiency_ratio']}")
 
     # Test 2: Batch Calculation
     print("\n3. Batch Calculation Testi...")
     batch_result = kama.calculate_batch(data)
     print(f"   [OK] Batch result shape: {batch_result.shape}")
-    print(f"   [OK] Son 5 KAMA değeri:")
+    print(f"   [OK] Last 5 KAMA value:")
     print(batch_result['kama'].tail())
 
-    # Test 3: Update metodu
-    print("\n4. Update metodu testi...")
+    # Test 3: Update method
+    print("\n4. Update method test...")
     kama2 = KAMA(period=10)
     init_data = data.head(50)
     kama2.calculate(init_data)
@@ -458,5 +458,5 @@ if __name__ == "__main__":
                   f"ER={update_result.metadata['efficiency_ratio']:.4f}")
 
     print("\n" + "="*60)
-    print("[BAŞARILI] TÜM TESTLER BAŞARILI!")
+    print("[SUCCESS] ALL TESTS PASSED!")
     print("="*60 + "\n")

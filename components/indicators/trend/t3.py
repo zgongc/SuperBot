@@ -2,21 +2,21 @@
 """
 indicators/trend/t3.py - T3 (Tillson T3 Moving Average)
 
-Yazar: SuperBot Team
-Tarih: 2025-11-20
+Author: SuperBot Team
+Date: 2025-11-20
 Versiyon: 1.0.0
 
 T3 (Tillson T3) - Tillson T3 Hareketli Ortalama.
-Tim Tillson tarafından geliştirilen gelişmiş smoothing algoritması.
+Advanced smoothing algorithm developed by Tim Tillson.
 
-Özellikler:
-- 6 kez EMA uygulayarak ultra-smooth sonuç
-- Volume factor ile ayarlanabilir gecikme/duyarlılık
-- Düşük gecikme ile pürüzsüz trend
-- Fiyat crossover sinyalleri
-- Trend yönü ve gücünü gösterir
+Features:
+- Ultra-smooth results by applying EMA 6 times.
+- Adjustable delay/sensitivity with the volume factor.
+- Smooth trend with low latency.
+- Price crossover signals.
+- Shows trend direction and strength.
 
-Kullanım:
+Usage:
     from components.indicators import get_indicator_class
 
     T3 = get_indicator_class('t3')
@@ -24,7 +24,7 @@ Kullanım:
     result = t3.calculate(data)
     print(result.value['t3'])
 
-Formül:
+Formula:
     c1 = -vfactor^3
     c2 = 3*vfactor^2 + 3*vfactor^3
     c3 = -6*vfactor^2 - 3*vfactor - 3*vfactor^3
@@ -39,7 +39,7 @@ Formül:
 
     T3 = c1*e6 + c2*e5 + c3*e4 + c4*e3
 
-Bağımlılıklar:
+Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
 """
@@ -72,21 +72,21 @@ class T3(BaseIndicator):
     """
     T3 - Tillson T3 Moving Average
 
-    Tim Tillson tarafından geliştirilen gelişmiş trend göstergesi.
-    6 kez EMA uygulanarak pürüzsüz sonuç elde edilir.
+    An advanced trend indicator developed by Tim Tillson.
+    A smooth result is obtained by applying the EMA 6 times.
 
     Args:
-        period: T3 periyodu (varsayılan: 5)
-        vfactor: Volume factor (0-1 arası, varsayılan: 0.7)
-        logger: Logger instance (opsiyonel)
-        error_handler: Error handler (opsiyonel)
+        period: T3 period (default: 5)
+        vfactor: Volume factor (between 0 and 1, default: 0.7)
+        logger: Logger instance (optional)
+        error_handler: Error handler (optional)
     """
 
     def __init__(self, period: int = 5, vfactor: float = 0.7, logger=None, error_handler=None):
         self.period = period
         self.vfactor = vfactor
 
-        # EMA indikatörünü kullan (code reuse)
+        # Use the EMA indicator (code reuse)
         self._ema = EMA(period=period)
 
         super().__init__(
@@ -99,42 +99,42 @@ class T3(BaseIndicator):
         )
 
     def get_required_periods(self) -> int:
-        """Minimum gerekli periyot sayısı"""
+        """Minimum required number of periods"""
         return self.period * 6
 
     def validate_params(self) -> bool:
-        """Parametreleri doğrula"""
+        """Validate parameters"""
         if self.period < 1:
             raise InvalidParameterError(
                 self.name, 'period', self.period,
-                "Period pozitif olmalı"
+                "Period must be positive"
             )
         if not (0 <= self.vfactor <= 1):
             raise InvalidParameterError(
                 self.name, 'vfactor', self.vfactor,
-                "VFactor 0 ile 1 arasında olmalı"
+                "VFactor must be between 0 and 1"
             )
         return True
 
     def calculate_batch(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        Batch hesaplama (Backtest için)
+        Batch calculation (for backtesting)
 
-        Tüm veriyi vektörel olarak hesaplar.
+        Calculates all data vectorially.
 
         Args:
             data: OHLCV DataFrame
 
         Returns:
-            pd.DataFrame: T3 değerleri
+            pd.DataFrame: T3 values
         """
-        # Katsayıları hesapla
+        # Calculate coefficients
         c1 = -self.vfactor ** 3
         c2 = 3 * self.vfactor ** 2 + 3 * self.vfactor ** 3
         c3 = -6 * self.vfactor ** 2 - 3 * self.vfactor - 3 * self.vfactor ** 3
         c4 = 1 + 3 * self.vfactor + self.vfactor ** 3 + 3 * self.vfactor ** 2
 
-        # 6 kez EMA uygula - EMA.calculate_batch kullan (code reuse)
+        # Apply EMA 6 times - use EMA.calculate_batch (code reuse)
         e1 = self._ema.calculate_batch(data)
         e2 = self._ema.calculate_batch(self._create_ema_input(e1, data))
         e3 = self._ema.calculate_batch(self._create_ema_input(e2, data))
@@ -160,11 +160,11 @@ class T3(BaseIndicator):
 
     def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
         """
-        Warmup buffer - update() için gerekli
+        Warmup buffer - required for update().
 
         Args:
             data: OHLCV DataFrame (warmup verisi)
-            symbol: Sembol adı (opsiyonel)
+            symbol: Symbol name (optional)
         """
         super().warmup_buffer(data, symbol)
 
@@ -183,7 +183,7 @@ class T3(BaseIndicator):
             candle: Yeni mum verisi (dict)
 
         Returns:
-            IndicatorResult: T3 değeri
+            IndicatorResult: T3 value
         """
         if not hasattr(self, '_close_buffer'):
             from collections import deque
@@ -218,13 +218,13 @@ class T3(BaseIndicator):
 
     def calculate(self, data: pd.DataFrame) -> IndicatorResult:
         """
-        T3 hesapla (son değer)
+        Calculate T3 (final value)
 
         Args:
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: T3 değeri
+            IndicatorResult: T3 value
         """
         # Batch hesapla
         batch_result = self.calculate_batch(data)
@@ -244,7 +244,7 @@ class T3(BaseIndicator):
         close = data['close'].iloc[-1]
         timestamp = int(data.iloc[-1]['timestamp'])
 
-        # Sinyal belirleme: Fiyat T3'ün üstünde = BUY
+        # Signal determination: Price is above T3 = BUY
         if close > t3_val:
             signal = SignalType.BUY
             trend = TrendDirection.UP
@@ -255,7 +255,7 @@ class T3(BaseIndicator):
             signal = SignalType.HOLD
             trend = TrendDirection.NEUTRAL
 
-        # Güç: Fiyat ile T3 arasındaki yüzde fark
+        # Power: Percentage difference between price and T3.
         strength = min(abs((close - t3_val) / t3_val * 100) * 10, 100)
 
         # Warmup buffer for update() method
@@ -271,7 +271,7 @@ class T3(BaseIndicator):
         )
 
     def _get_default_params(self) -> dict:
-        """Varsayılan parametreler"""
+        """Default parameters"""
         return {'period': 5, 'vfactor': 0.7}
 
     def _get_output_names(self) -> list:
@@ -295,9 +295,9 @@ __all__ = ['T3']
 # ============================================================================
 
 if __name__ == "__main__":
-    """T3 indikatör testi"""
+    """T3 indicator test"""
 
-    # Windows console UTF-8 desteği
+    # Windows console UTF-8 support
     import sys
     import io
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
@@ -306,8 +306,8 @@ if __name__ == "__main__":
     print("🧪 T3 (TILLSON T3 MOVING AVERAGE) TEST")
     print("="*60 + "\n")
 
-    # Örnek veri oluştur
-    print("1. Örnek OHLCV verisi oluşturuluyor...")
+    # Create example data
+    print("1. Creating example OHLCV data...")
     np.random.seed(42)
     timestamps = [1697000000000 + i * 60000 for i in range(200)]
 
@@ -326,46 +326,46 @@ if __name__ == "__main__":
         'volume': [1000 + np.random.randint(0, 500) for _ in range(200)]
     })
 
-    print(f"   ✅ {len(data)} mum oluşturuldu")
-    print(f"   ✅ Fiyat aralığı: {min(prices):.2f} -> {max(prices):.2f}")
+    print(f"   ✅ {len(data)} candles created")
+    print(f"   ✅ Price range: {min(prices):.2f} -> {max(prices):.2f}")
 
-    # Test 1: Temel hesaplama
-    print("\n2. Temel hesaplama testi...")
+    # Test 1: Basic calculation
+    print("\n2. Basic calculation test...")
     t3 = T3(period=5, vfactor=0.7)
-    print(f"   ✅ Oluşturuldu: {t3}")
+    print(f"   ✅ Created: {t3}")
     print(f"   ✅ Kategori: {t3.category.value}")
-    print(f"   ✅ Gerekli periyot: {t3.get_required_periods()}")
+    print(f"   ✅ Required period: {t3.get_required_periods()}")
 
     result = t3(data)
     print(f"   ✅ T3: {result.value['t3']}")
     print(f"   ✅ Son Close: {data['close'].iloc[-1]:.2f}")
-    print(f"   ✅ Sinyal: {result.signal.value}")
+    print(f"   ✅ Signal: {result.signal.value}")
     print(f"   ✅ Trend: {result.trend.name}")
-    print(f"   ✅ Güç: {result.strength:.2f}")
+    print(f"   ✅ Power: {result.strength:.2f}")
 
     # Test 2: Batch Calculation
     print("\n3. Batch Calculation Testi...")
     batch_result = t3.calculate_batch(data)
     print(f"   ✅ Batch result shape: {batch_result.shape}")
-    print(f"   ✅ Son 5 T3 değeri:")
+    print(f"   ✅ Last 5 T3 values:")
     print(batch_result['t3'].tail())
 
-    # Test 3: Farklı periyotlar
-    print("\n4. Farklı periyot testi...")
+    # Test 3: Different periods
+    print("\n4. Different period test...")
     for period in [3, 5, 10]:
         t3_test = T3(period=period, vfactor=0.7)
         result = t3_test.calculate(data)
         print(f"   ✅ T3({period}): {result.value['t3']:.2f}, Signal={result.signal.value}")
 
-    # Test 4: Farklı vfactor değerleri
-    print("\n5. Farklı vfactor testi...")
+    # Test 4: Different vfactor values
+    print("\n5. Different vfactor test...")
     for vf in [0.3, 0.5, 0.7, 0.9]:
         t3_test = T3(period=5, vfactor=vf)
         result = t3_test.calculate(data)
         print(f"   ✅ T3(vf={vf}): {result.value['t3']:.2f}")
 
     # Test 5: Crossover analizi
-    print("\n6. Fiyat-T3 crossover analizi...")
+    print("\n6. Price-T3 crossover analysis...")
     batch_result = t3.calculate_batch(data)
     t3_values = batch_result['t3'].dropna()
     close_values = data['close'].iloc[len(data)-len(t3_values):]
@@ -381,24 +381,24 @@ if __name__ == "__main__":
            (close_prev > t3_prev and close_curr < t3_curr):
             crossovers += 1
 
-    print(f"   ✅ Toplam fiyat-T3 crossover: {crossovers}")
-    print(f"   ✅ Fiyat T3 üstünde: {sum(close_values.values > t3_values.values)}")
-    print(f"   ✅ Fiyat T3 altında: {sum(close_values.values < t3_values.values)}")
+    print(f"   ✅ Total price - T3 crossover: {crossovers}")
+    print(f"   ✅ Price is above T3: {sum(close_values.values > t3_values.values)}")
+    print(f"   ✅ Price below T3: {sum(close_values.values < t3_values.values)}")
 
     # Test 6: Validasyon testi
     print("\n7. Validasyon testi...")
     try:
         invalid_t3 = T3(period=0, vfactor=0.7)
-        print("   ❌ Hata: Geçersiz period kabul edildi!")
+        print("   ❌ Error: Invalid period accepted!")
     except InvalidParameterError as e:
-        print(f"   ✅ Period validasyonu başarılı: {e}")
+        print(f"   ✅ Period validation successful: {e}")
 
     try:
         invalid_t3 = T3(period=5, vfactor=1.5)
-        print("   ❌ Hata: Geçersiz vfactor kabul edildi!")
+        print("   ❌ Error: Invalid vfactor accepted!")
     except InvalidParameterError as e:
-        print(f"   ✅ VFactor validasyonu başarılı: {e}")
+        print(f"   ✅ VFactor validation successful: {e}")
 
     print("\n" + "="*60)
-    print("✅ TÜM TESTLER BAŞARILI!")
+    print("✅ ALL TESTS PASSED!")
     print("="*60 + "\n")

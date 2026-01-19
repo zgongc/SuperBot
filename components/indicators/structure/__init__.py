@@ -5,8 +5,8 @@ Version: 2.1.0
 Date: 2025-10-27
 Author: SuperBot Team
 
-Açıklama:
-    Smart Money Concepts (SMC) yapı indikatörleri
+Description:
+    Smart Money Concepts (SMC) structure indicators
     - BOS (Break of Structure)
     - CHoCH (Change of Character)
     - FVG (Fair Value Gap)
@@ -17,7 +17,7 @@ Açıklama:
     - Liquidity Zones
     - Market Structure (Combined)
 
-Kullanım:
+Usage:
     from components.indicators.structure import BOS, CHoCH, FVG, LVVoid, iFVG, QML
 
 Dependencies:
