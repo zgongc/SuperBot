@@ -1,6 +1,6 @@
 # 🤖 SuperBot Trading System
 
-AI-powered, multi-exchange cryptocurrency trading platform with modular architecture.
+AI-powered, multi-exchange cryptocurrency trading platform with modular architecture. Focused on **backtesting**, **technical analysis** and **portfolio management**.
 
 ## 🚀 Features
 
