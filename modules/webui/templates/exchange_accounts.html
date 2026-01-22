@@ -1,0 +1,358 @@
+{% extends "base.html" %}
+
+{% block title %}Borsa Hesapları - SuperBot{% endblock %}
+
+{# Tüm stiller main.css ve components.css'te: .summary-grid, .summary-card, .accounts-table, .badge.*, .btn-icon, .modal, .empty-state, .loading, .spinner #}
+
+{% block content %}
+<div class="exchanges-container">
+    <div class="page-header">
+        <h1 class="page-title">Stock Accounts</h1>
+        <button class="btn btn-primary" onclick="openCreateModal()">
+            Add Stock Account
+        </button>
+    </div>
+
+    <div class="summary-grid">
+        <div class="summary-card">
+            <div class="summary-card-label">Total Account</div>
+            <div class="summary-card-value" id="total-accounts">0</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-card-label">Active</div>
+            <div class="summary-card-value" id="active-accounts">0</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-card-label">Connected</div>
+            <div class="summary-card-value" id="connected-accounts">0</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-card-label">Portfolyo</div>
+            <div class="summary-card-value" id="total-portfolios">0</div>
+        </div>
+    </div>
+
+    <div class="accounts-table-container">
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Loading...</p>
+        </div>
+
+        <table class="accounts-table" id="accounts-table" style="display: none;">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Borsa</th>
+                    <th>Ortam</th>
+                    <th>Tip</th>
+                    <th>Status</th>
+                    <th>Portfolyo</th>
+                    <th>Last Connection</th>
+                    <th>Operations</th>
+                </tr>
+            </thead>
+            <tbody id="accounts-list"></tbody>
+        </table>
+
+        <div id="empty-state" class="empty-state" style="display: none;">
+            <div class="empty-state-icon">📊</div>
+            <div class="empty-state-text">No stock account has been added yet.</div>
+            <button class="btn btn-primary" onclick="openCreateModal()">Add First Account</button>
+        </div>
+    </div>
+</div>
+
+<!-- Create/Edit Modal -->
+<div class="modal" id="exchange-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title" id="modal-title">Add Stock Account</h2>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+
+        <form id="exchange-form" onsubmit="handleSubmit(event)">
+            <input type="hidden" id="account-id">
+
+            <div class="form-group">
+                <label for="account-name">Account Name *</label>
+                <input type="text" id="account-name" placeholder="example: Binance Main" required>
+                <small style="color: var(--text-muted); font-size: 13px;">This is a name to identify this account.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="exchange">Borsa *</label>
+                <select id="exchange" required onchange="updatePassphraseField()">
+                    <option value="">Select</option>
+                    <option value="binance">Binance</option>
+                    <option value="bybit">Bybit</option>
+                    <option value="okx">OKX</option>
+                    <option value="manual">Manuel</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="environment">Ortam *</label>
+                <select id="environment" required>
+                    <option value="production">Production</option>
+                    <option value="testnet">Testnet</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Hesap Tipleri</label>
+                <div style="display: flex; gap: 1.5rem; margin-top: 8px;">
+                    <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                        <input type="checkbox" id="type-spot" value="spot" checked>
+                        <span>Spot</span>
+                    </label>
+                    <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                        <input type="checkbox" id="type-futures" value="futures">
+                        <span>Futures</span>
+                    </label>
+                    <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                        <input type="checkbox" id="type-margin" value="margin">
+                        <span>Margin</span>
+                    </label>
+                </div>
+                <small style="color: var(--text-muted); font-size: 13px; margin-top: 8px; display: block;">Select the account types that you can use with the same API key.</small>
+            </div>
+
+            <div class="form-group" id="api-key-group">
+                <label for="api-key">API Key</label>
+                <input type="text" id="api-key" placeholder="API key">
+                <small style="color: var(--text-muted); font-size: 13px;">Optional for manual portfolios.</small>
+            </div>
+
+            <div class="form-group" id="api-secret-group">
+                <label for="api-secret">API Secret</label>
+                <input type="password" id="api-secret" placeholder="API secret">
+            </div>
+
+            <div class="form-group" id="passphrase-group" style="display: none;">
+                <label for="passphrase">Passphrase</label>
+                <input type="password" id="passphrase" placeholder="OKX passphrase">
+                <small style="color: var(--text-muted); font-size: 13px;">OKX için gerekli</small>
+            </div>
+
+            <div class="form-group">
+                <label for="notes">Notlar</label>
+                <textarea id="notes" placeholder="Optional notes"></textarea>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Kaydet</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    let currentAccountId = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadAccounts();
+        loadSummary();
+    });
+
+    async function loadAccounts() {
+        const loading = document.getElementById('loading');
+        const table = document.getElementById('accounts-table');
+        const emptyState = document.getElementById('empty-state');
+        const tbody = document.getElementById('accounts-list');
+
+        try {
+            const response = await fetch('/api/exchanges');
+            const data = await response.json();
+
+            loading.style.display = 'none';
+
+            if (data.status === 'success' && data.data.accounts.length > 0) {
+                table.style.display = 'table';
+                emptyState.style.display = 'none';
+
+                tbody.innerHTML = data.data.accounts.map(account => `
+                    <tr>
+                        <td><strong>${account.name}</strong></td>
+                        <td><span class="badge ${account.exchange}">${formatExchange(account.exchange)}</span></td>
+                        <td><span class="badge ${account.environment}">${account.environment}</span></td>
+                        <td>${account.account_type.toUpperCase()}</td>
+                        <td><span class="badge ${account.connection_status}">${account.connection_status}</span></td>
+                        <td>${account.portfolio_count || 0}</td>
+                        <td>${formatDate(account.last_connected_at)}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="btn-icon" onclick="testConnection(${account.id})" title="Test">🔌</button>
+                                <button class="btn-icon" onclick="editAccount(${account.id})" title="Düzenle">✏️</button>
+                                <button class="btn-icon" onclick="deleteAccount(${account.id})" title="Sil">🗑️</button>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('');
+            } else {
+                table.style.display = 'none';
+                emptyState.style.display = 'block';
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            loading.innerHTML = '<p style="color: var(--accent-danger);">Hata: Veriler yüklenemedi</p>';
+        }
+    }
+
+    async function loadSummary() {
+        try {
+            const response = await fetch('/api/exchanges/summary');
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                const s = data.data.summary;
+                document.getElementById('total-accounts').textContent = s.total_accounts;
+                document.getElementById('active-accounts').textContent = s.active_accounts;
+                document.getElementById('connected-accounts').textContent = s.connection_status.connected || 0;
+                document.getElementById('total-portfolios').textContent = s.total_portfolios;
+            }
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    }
+
+    function openCreateModal() {
+        currentAccountId = null;
+        document.getElementById('modal-title').textContent = 'Borsa Hesabı Ekle';
+        document.getElementById('exchange-form').reset();
+        document.getElementById('account-id').value = '';
+        document.getElementById('type-spot').checked = true;
+        document.getElementById('passphrase-group').style.display = 'none';
+        document.getElementById('exchange-modal').classList.add('active');
+    }
+
+    async function editAccount(id) {
+        try {
+            const response = await fetch(`/api/exchanges/${id}`);
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                const account = data.data.account;
+                currentAccountId = id;
+
+                document.getElementById('modal-title').textContent = 'Borsa Hesabını Düzenle';
+                document.getElementById('account-id').value = id;
+                document.getElementById('account-name').value = account.name;
+                document.getElementById('exchange').value = account.exchange;
+                document.getElementById('environment').value = account.environment;
+                document.getElementById('notes').value = account.notes || '';
+
+                const types = account.account_type ? account.account_type.split(',') : ['spot'];
+                document.getElementById('type-spot').checked = types.includes('spot');
+                document.getElementById('type-futures').checked = types.includes('futures');
+                document.getElementById('type-margin').checked = types.includes('margin');
+
+                updatePassphraseField();
+                document.getElementById('exchange-modal').classList.add('active');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Hesap bilgileri yüklenemedi');
+        }
+    }
+
+    async function handleSubmit(event) {
+        event.preventDefault();
+
+        const accountTypes = [];
+        if (document.getElementById('type-spot').checked) accountTypes.push('spot');
+        if (document.getElementById('type-futures').checked) accountTypes.push('futures');
+        if (document.getElementById('type-margin').checked) accountTypes.push('margin');
+
+        const formData = {
+            name: document.getElementById('account-name').value,
+            exchange: document.getElementById('exchange').value,
+            environment: document.getElementById('environment').value,
+            account_type: accountTypes.join(','),
+            api_key: document.getElementById('api-key').value || null,
+            api_secret: document.getElementById('api-secret').value || null,
+            passphrase: document.getElementById('passphrase').value || null,
+            notes: document.getElementById('notes').value || null
+        };
+
+        try {
+            const url = currentAccountId ? `/api/exchanges/${currentAccountId}` : '/api/exchanges';
+            const method = currentAccountId ? 'PUT' : 'POST';
+
+            const response = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                closeModal();
+                loadAccounts();
+                loadSummary();
+            } else {
+                alert(data.error || 'Kaydetme başarısız');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Bir hata oluştu');
+        }
+    }
+
+    async function deleteAccount(id) {
+        const confirmed = await confirm({
+            title: 'Borsa Hesabını Sil?',
+            message: 'Bu işlem geri alınamaz. Bu hesaba bağlı portfolio ve tüm pozisyonlar silinecek.<br><br>Devam etmek istediğinize emin misiniz?',
+            type: 'danger',
+            confirmText: 'Sil',
+            cancelText: 'İptal'
+        });
+        if (!confirmed) return;
+
+        try {
+            const response = await fetch(`/api/exchanges/${id}`, { method: 'DELETE' });
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                loadAccounts();
+                loadSummary();
+            } else {
+                alert(data.error || 'Silme başarısız');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Bir hata oluştu');
+        }
+    }
+
+    async function testConnection(id) {
+        alert('Bağlantı testi henüz uygulanmadı');
+    }
+
+    function closeModal() {
+        document.getElementById('exchange-modal').classList.remove('active');
+    }
+
+    function updatePassphraseField() {
+        const exchange = document.getElementById('exchange').value;
+        const passphraseGroup = document.getElementById('passphrase-group');
+        passphraseGroup.style.display = (exchange === 'okx') ? 'block' : 'none';
+    }
+
+    function formatExchange(exchange) {
+        const names = {
+            binance: 'Binance',
+            bybit: 'Bybit',
+            okx: 'OKX',
+            manual: 'Manuel'
+        };
+        return names[exchange] || exchange;
+    }
+
+    function formatDate(date) {
+        if (!date) return '-';
+        return new Date(date).toLocaleDateString('tr-TR');
+    }
+</script>
+{% endblock %}

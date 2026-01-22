@@ -114,6 +114,9 @@ class ParquetsEngine:
             FileNotFoundError: The required file was not found.
             RuntimeError: Insufficient data
         """
+        # Ensure warmup_candles is integer (may come as float from YAML config)
+        warmup_candles = int(warmup_candles)
+
         if self.logger:
             self.logger.info(f"📂 ParquetsEngine: Loading historical data")
             self.logger.info(f"   Symbol: {symbol}, Timeframe: {timeframe}")

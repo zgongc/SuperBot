@@ -1,0 +1,91 @@
+# ========================================
+# SYMBOLS CONFIGURATION
+# ========================================
+# Symbol yönetimi: config | exchange | file → filter → active_symbols.json
+# Tüm modüller (Scanner, Trading, Backtest) active_symbols.json kullanır
+# ========================================
+
+symbols:
+  # ========================================
+  # SOURCE SELECTION
+  # ========================================
+  # Source: config | exchange | file
+  # - config: Manual list (config_list)
+  # - exchange: Dynamic from Binance API (exchange_filter)
+  # - file: Read from existing JSON file (file_source)
+  source: exchange
+
+  # ========================================
+  # STORAGE OPTIONS
+  # ========================================
+  # Where to store processed symbols
+  storage:
+    # Storage type: json | database
+    # - json: Simple JSON file (default, recommended)
+    # - database: Use infrastructure.yaml database config
+    type: "json"
+
+    # JSON storage (if type = json)
+    json:
+      output_file: "data/json/active_symbols.json"
+
+    # Database storage (if type = database)
+    # Uses infrastructure.yaml database config
+    database:
+      use_infrastructure: true
+      table: "active_symbols"
+
+  # Cache duration (seconds)
+  cache_duration: 600  # 10 minutes
+
+  # ========================================
+  # CONFIG SOURCE (source: config)
+  # ========================================
+  # Manual symbol list (base assets)
+  config_list: ['BTC', 'ETH','BNB', 'SOL']
+
+  # ========================================
+  # EXCHANGE SOURCE (source: exchange)
+  # ========================================
+  # Binance'den dinamik çekme
+  exchange_filter:
+    exchange: "binance"
+    method: top_volume              # top_volume | top_gainers | top_losers | all
+    limit: 50                       # Top N symbols
+    min_volume_24h: 1000000         # Min $1M daily volume
+    status: "TRADING"               # Only trading pairs
+
+  # ========================================
+  # FILE SOURCE (source: file)
+  # ========================================
+  # Başka bir JSON dosyasından okuma (input)
+  # Format: {"asset": ["BTC", "ETH"], "quote_asset": "USDT"}
+  file_source: "data/json/basic_symbols.json"
+
+  # ========================================
+  # EXCLUSIONS (Blacklist)
+  # ========================================
+  # Wildcard patterns (*DOWN, *UP, etc.)
+  exclusion_list:
+    - "*DOWN"      # BTCDOWN, ETHDOWN
+    - "*UP"        # BTCUP, ETHUP
+    - "*BEAR"      # BEAR tokens
+    - "*BULL"      # BULL tokens
+    - "*3S"        # 3x short
+    - "*3L"        # 3x long
+    - "USDCUSDT"   # Stablecoin pairs
+    - "BUSDUSDT"
+    - "TUSDUSDT"
+
+  # ========================================
+  # PRIORITY (Optional)
+  # ========================================
+  # İlk scan edilecek priority symbols (opsiyonel)
+  priority_symbols: [BTC, ETH]
+
+  # ========================================
+  # VALIDATION
+  # ========================================
+  validate_symbols: true   # Binance'de mevcut mu kontrol et
+  min_symbols: 5           # Minimum symbol count (alert)
+  max_symbols: 200         # Maximum symbol count (performance)

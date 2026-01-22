@@ -1,0 +1,79 @@
+{#
+    Strategy Editor - Backtest Settings Partial
+    Backtest dönemi, başlangıç sermayesi ve trading costs
+#}
+<div class="accordion-item">
+    <div class="accordion-header" onclick="toggleAccordion(this)">
+        <div class="accordion-title-section">
+            <div class="accordion-icon">📈</div>
+            <div class="accordion-title-text">
+                <h3>Backtest Settings</h3>
+                <p>Backtest period, initial capital, and settings.</p>
+            </div>
+        </div>
+        <svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+    </div>
+    <div class="accordion-content">
+        <div class="accordion-body">
+            <h4 style="margin: 1.5rem 0 1rem; color: var(--text-primary);">⏱️ Backtest Settings</h4>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Start Date</label>
+                    <input type="datetime-local" class="form-input" id="backtest-start-date" value="2025-01-01T00:00">
+                    <span class="form-hint">Backtest start time</span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">End Date</label>
+                    <input type="datetime-local" class="form-input" id="backtest-end-date" value="2025-01-31T00:00">
+                    <span class="form-hint">Backtest end time</span>
+                </div>
+            </div>
+            <div class="form-grid single">
+                <div class="form-group">
+                    <label class="form-label">Başlangıç Bakiyesi ($)</label>
+                    <input type="number" class="form-input" id="initial-balance" value="10000">
+                </div>
+            </div>
+
+            <h4 style="margin: 1.5rem 0 1rem; color: var(--text-primary);">📂 Data Management</h4>
+            <div class="toggle-group">
+                <label class="toggle-label">Download Klines (Otomatik veri indirme)</label>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="download-klines">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div class="toggle-group">
+                <label class="toggle-label">Update Klines (Backtest öncesi güncelle)</label>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="update-klines">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <h4 style="margin: 1.5rem 0 1rem; color: var(--text-primary);">
+                💰 Trading Costs
+                <span class="form-help" title="For realistic backtesting: These parameters make the backtest results more realistic. Binance Spot Maker Fee: 0.075%, Taker Fee: 0.10%">ℹ️</span>
+            </h4>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Commission (%)</label>
+                    <input type="number" class="form-input" id="commission" value="0.075" min="0" max="1" step="0.001">
+                    <span class="form-hint">Binance maker fee: 0.075%</span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Min Spread (%)</label>
+                    <input type="number" class="form-input" id="min-spread" value="0.01" min="0" max="1" step="0.001">
+                    <span class="form-hint">Minimum bid-ask spread</span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Max Slippage (%)</label>
+                    <input type="number" class="form-input" id="max-slippage" value="0.02" min="0" max="1" step="0.001">
+                    <span class="form-hint">Maximum execution slippage</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

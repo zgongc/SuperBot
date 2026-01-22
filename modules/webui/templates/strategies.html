@@ -1,0 +1,306 @@
+{% extends "base.html" %}
+
+{% block title %}Stratejiler{% endblock %}
+
+{# Tüm stiller main.css, cards.css ve components.css'te #}
+
+{% block content %}
+<div class="page-header page-header-flex">
+    <div class="page-header-content">
+        <h1>Stratejiler</h1>
+        <p>Manage your trading strategies.</p>
+    </div>
+    <a href="/strategies/create" class="btn btn-primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        Yeni Strateji
+    </a>
+</div>
+
+<!-- Filter Tabs -->
+<div class="tabs">
+    <button class="tab active" data-filter="all" onclick="filterStrategies('all')">
+        Tümü (<span id="count-all">0</span>)
+    </button>
+    <button class="tab" data-filter="active" onclick="filterStrategies('active')">
+        Aktif (<span id="count-active">0</span>)
+    </button>
+    <button class="tab" data-filter="inactive" onclick="filterStrategies('inactive')">
+        Pasif (<span id="count-inactive">0</span>)
+    </button>
+</div>
+
+<!-- Loading State -->
+<div id="loading-state" style="padding: 60px 20px; text-align: center; color: var(--text-muted);">
+    Strategies are being loaded...
+</div>
+
+<!-- Empty State -->
+<div id="empty-state" class="card" style="display: none;">
+    <div class="card-body" style="text-align: center; padding: 60px 20px;">
+        <svg style="width: 64px; height: 64px; margin: 0 auto 20px; color: var(--text-muted); opacity: 0.5;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
+        </svg>
+        <h3 style="color: var(--text-primary); margin-bottom: 8px;">No strategy yet.</h3>
+        <p style="color: var(--text-secondary); margin-bottom: 20px;">Start by creating your first strategy.</p>
+        <a href="/strategies/create" class="btn btn-primary">Create New Strategy</a>
+    </div>
+</div>
+
+<!-- Strategies Grid -->
+<div id="strategies-grid" class="grid-2" style="display: none;"></div>
+
+<!-- Confirm Dialog -->
+<div id="confirm-dialog" class="confirm-dialog">
+    <div class="confirm-dialog-content confirm-dialog-danger">
+        <div class="confirm-dialog-icon">⚠️</div>
+        <h3 class="confirm-dialog-title" id="confirm-title">Emin misiniz?</h3>
+        <p class="confirm-dialog-message" id="confirm-message">This operation cannot be undone.</p>
+        <div class="confirm-dialog-actions">
+            <button class="btn btn-secondary" onclick="closeConfirmDialog()">Cancel</button>
+            <button class="btn btn-danger" id="confirm-action-btn" onclick="confirmAction()">Sil</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascriptArea %}
+<script>
+    let allStrategies = [];
+    let currentFilter = 'all';
+    let pendingAction = null;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        loadStrategies();
+    });
+
+    async function loadStrategies() {
+        try {
+            const response = await fetch('/api/strategies/');
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                allStrategies = result.data.strategies;
+                updateCounts();
+                renderStrategies();
+            } else {
+                showToast('Hata', result.message || 'Stratejiler yüklenemedi', 'error');
+            }
+        } catch (error) {
+            console.error('Error loading strategies:', error);
+            showToast('Hata', 'Stratejiler yüklenirken hata oluştu', 'error');
+        } finally {
+            document.getElementById('loading-state').style.display = 'none';
+        }
+    }
+
+    function updateCounts() {
+        const counts = {
+            all: allStrategies.length,
+            active: allStrategies.filter(s => s.status === 'active').length,
+            inactive: allStrategies.filter(s => s.status === 'inactive').length
+        };
+
+        document.getElementById('count-all').textContent = counts.all;
+        document.getElementById('count-active').textContent = counts.active;
+        document.getElementById('count-inactive').textContent = counts.inactive;
+    }
+
+    function filterStrategies(filter) {
+        currentFilter = filter;
+
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.classList.remove('active');
+            if (tab.dataset.filter === filter) {
+                tab.classList.add('active');
+            }
+        });
+
+        renderStrategies();
+    }
+
+    function renderStrategies() {
+        const grid = document.getElementById('strategies-grid');
+        const emptyState = document.getElementById('empty-state');
+
+        let filtered = allStrategies;
+        if (currentFilter !== 'all') {
+            filtered = allStrategies.filter(s => s.status === currentFilter);
+        }
+
+        if (filtered.length === 0) {
+            grid.style.display = 'none';
+            emptyState.style.display = 'block';
+            return;
+        }
+
+        grid.innerHTML = filtered.map(strategy => createStrategyCard(strategy)).join('');
+        grid.style.display = 'grid';
+        emptyState.style.display = 'none';
+    }
+
+    function createStrategyCard(strategy) {
+        const symbolsHtml = strategy.symbols.slice(0, 3).map(symbol =>
+            `<span class="tag">${symbol}</span>`
+        ).join('');
+
+        const moreSymbols = strategy.symbol_count > 3 ?
+            `<span class="tag">+${strategy.symbol_count - 3}</span>` : '';
+
+        const statusClass = strategy.status === 'active' ? 'status-active' : 'status-inactive';
+
+        return `
+            <div class="item-card">
+                <div class="item-header">
+                    <div class="item-title">${strategy.name}</div>
+                    <span class="status ${statusClass}">${strategy.status === 'active' ? 'Aktif' : 'Pasif'}</span>
+                </div>
+
+                <div class="meta">
+                    <span>v${strategy.version}</span>
+                    <span class="meta-separator"></span>
+                    <span>${strategy.symbol_count} sembol</span>
+                </div>
+
+                ${strategy.symbols.length > 0 ? `
+                    <div class="tags-container">
+                        ${symbolsHtml}
+                        ${moreSymbols}
+                    </div>
+                ` : ''}
+
+                <div class="card-actions">
+                    <button class="btn-outline" onclick="viewStrategy('${strategy.id}')">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                            <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                        Görüntüle
+                    </button>
+                    <button class="btn-outline" onclick="editStrategy('${strategy.id}')">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                        Düzenle
+                    </button>
+                    <button class="btn-outline" onclick="toggleStrategy('${strategy.id}', '${strategy.status}')">
+                        ${strategy.status === 'active' ? '⏸' : '▶'} ${strategy.status === 'active' ? 'Durdur' : 'Başlat'}
+                    </button>
+                    <button class="btn-outline" onclick="duplicateStrategy('${strategy.id}')">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2"/>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                        </svg>
+                        Kopyala
+                    </button>
+                    <button class="btn-outline btn-outline-danger" onclick="confirmDelete('${strategy.id}', '${strategy.name}')">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3 6 5 6 21 6"/>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
+                        </svg>
+                        Sil
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    function viewStrategy(strategyId) {
+        window.location.href = `/strategies/${strategyId}`;
+    }
+
+    function editStrategy(strategyId) {
+        window.location.href = `/strategies/edit/${strategyId}`;
+    }
+
+    async function toggleStrategy(strategyId, currentStatus) {
+        const action = currentStatus === 'active' ? 'deactivate' : 'activate';
+
+        try {
+            const response = await fetch(`/api/strategies/${strategyId}/${action}`, {
+                method: 'POST'
+            });
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                showToast('Başarılı', result.message, 'success');
+                loadStrategies();
+            } else {
+                showToast('Hata', result.message || 'İşlem başarısız', 'error');
+            }
+        } catch (error) {
+            console.error('Error toggling strategy:', error);
+            showToast('Hata', 'İşlem sırasında hata oluştu', 'error');
+        }
+    }
+
+    async function duplicateStrategy(strategyId) {
+        try {
+            const response = await fetch(`/api/strategies/${strategyId}/duplicate`, {
+                method: 'POST'
+            });
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                showToast('Başarılı', result.message, 'success');
+                loadStrategies();
+            } else {
+                showToast('Hata', result.message || 'Kopyalama başarısız', 'error');
+            }
+        } catch (error) {
+            console.error('Error duplicating strategy:', error);
+            showToast('Hata', 'Kopyalama sırasında hata oluştu', 'error');
+        }
+    }
+
+    function confirmDelete(strategyId, strategyName) {
+        document.getElementById('confirm-title').textContent = 'Strateji Sil';
+        document.getElementById('confirm-message').textContent =
+            `"${strategyName}" stratejisini silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`;
+
+        pendingAction = () => deleteStrategy(strategyId);
+        document.getElementById('confirm-dialog').classList.add('active');
+    }
+
+    async function deleteStrategy(strategyId) {
+        try {
+            const response = await fetch(`/api/strategies/${strategyId}`, {
+                method: 'DELETE'
+            });
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                showToast('Başarılı', result.message, 'success');
+                loadStrategies();
+            } else {
+                showToast('Hata', result.message || 'Silme başarısız', 'error');
+            }
+        } catch (error) {
+            console.error('Error deleting strategy:', error);
+            showToast('Hata', 'Silme sırasında hata oluştu', 'error');
+        }
+    }
+
+    function confirmAction() {
+        if (pendingAction) {
+            pendingAction();
+            pendingAction = null;
+        }
+        closeConfirmDialog();
+    }
+
+    function closeConfirmDialog() {
+        document.getElementById('confirm-dialog').classList.remove('active');
+        pendingAction = null;
+    }
+
+    document.getElementById('confirm-dialog').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeConfirmDialog();
+        }
+    });
+</script>
+{% endblock %}

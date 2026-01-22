@@ -1,0 +1,343 @@
+<nav class="topnav">
+    <div class="topnav-container">
+        <!-- Left: Menu Toggle + Logo + Navigation -->
+        <div class="topnav-left">
+            <button class="menu-toggle" onclick="toggleOffcanvas()" aria-label="Toggle menu">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </button>
+
+            <a href="/" class="logo">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="currentColor">
+                    <!-- Robot icon -->
+                    <rect x="8" y="6" width="16" height="14" rx="2"/>
+                    <circle cx="13" cy="11" r="1.5"/>
+                    <circle cx="19" cy="11" r="1.5"/>
+                    <path d="M12 15 Q16 17 20 15" stroke="currentColor" stroke-width="2" fill="none"/>
+                    <rect x="12" y="20" width="3" height="6" rx="1"/>
+                    <rect x="17" y="20" width="3" height="6" rx="1"/>
+                    <rect x="14" y="2" width="4" height="4" rx="1"/>
+                </svg>
+                <span class="logo-text">SuperBot</span>
+            </a>
+
+            <!-- Main Navigation (Desktop) -->
+            <nav class="main-nav">
+                <!-- Dropdown: Trading -->
+                <div class="nav-dropdown">
+                    <button class="nav-link dropdown-toggle {% if page == 'trading' or page == 'strategies' or page == 'replay' %}active{% endif %}" onclick="toggleDropdown(this)">
+                        Trading
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </button>
+                    <div class="dropdown-menu">
+                        <a href="/strategies" class="dropdown-item">Strategies</a>
+                        <a href="/trading/replay" class="dropdown-item">Replay Trading</a>
+                        <a href="/trading/live" class="dropdown-item">Live Trading</a>
+                        <a href="/trading/positions" class="dropdown-item">Positions</a>
+                        <a href="/trading/orders" class="dropdown-item">Orders</a>
+                    </div>
+                </div>
+
+                <!-- Dropdown: Backtest -->
+                <div class="nav-dropdown">
+                    <button class="nav-link dropdown-toggle {% if page == 'backtest' %}active{% endif %}" onclick="toggleDropdown(this)">
+                        Backtest
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </button>
+                    <div class="dropdown-menu">
+                        <a href="/backtest/new" class="dropdown-item">New Backtest</a>
+                        <a href="/backtest/results" class="dropdown-item">Results</a>
+                        <a href="/backtest/compare" class="dropdown-item">Compare</a>
+                    </div>
+                </div>
+
+                <!-- Dropdown: Analysis -->
+                <div class="nav-dropdown">
+                    <button class="nav-link dropdown-toggle {% if page == 'analysis' %}active{% endif %}" onclick="toggleDropdown(this)">
+                        Analysis
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </button>
+                    <div class="dropdown-menu">
+                        <a href="/analysis/smc" class="dropdown-item">SMC Analysis</a>
+                        <a href="/analysis" class="dropdown-item">Analysis Results</a>
+                        <a href="/analysis?tab=alerts" class="dropdown-item">Alerts</a>
+                        <a href="/analysis/charts" class="dropdown-item">Charts</a>
+                        <a href="/analysis/patterns" class="dropdown-item">Pattern Analysis</a>
+                    </div>
+                </div>
+
+                <!-- Dropdown: Data -->
+                <div class="nav-dropdown">
+                    <button class="nav-link dropdown-toggle {% if page == 'symbols' or page == 'portfolio' or page == 'data-download' %}active{% endif %}" onclick="toggleDropdown(this)">
+                        Data
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </button>
+                    <div class="dropdown-menu">
+                        <a href="/symbols" class="dropdown-item">Symbols</a>
+                        <a href="/portfolios" class="dropdown-item">Portfolios</a>
+                        <a href="/data/download" class="dropdown-item">Download</a>
+                    </div>
+                </div>
+
+                <!-- Dropdown: Settings -->
+                <div class="nav-dropdown">
+                    <button class="nav-link dropdown-toggle {% if page == 'settings' or page == 'exchange-accounts' %}active{% endif %}" onclick="toggleDropdown(this)">
+                        Settings
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </button>
+                    <div class="dropdown-menu">
+                        <a href="/exchange-accounts" class="dropdown-item">Exchange Accounts</a>
+                        <a href="/settings/general" class="dropdown-item">General</a>
+                        <a href="/settings/scanner" class="dropdown-item">Scanner Config</a>
+                        <a href="/settings/notifications" class="dropdown-item">Notifications</a>
+                        <a href="/settings/api" class="dropdown-item">API Keys</a>
+                    </div>
+                </div>
+            </nav>
+        </div>
+
+        <!-- Right: Notifications + Profile -->
+        <div class="topnav-right">
+            <!-- Notification Bell -->
+            <div class="nav-dropdown notification-dropdown">
+                <button class="notification-bell" onclick="toggleDropdown(this)" aria-label="Notifications">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                    </svg>
+                    <span class="notification-badge" id="notification-badge" style="display: none;">0</span>
+                </button>
+                <div class="dropdown-menu dropdown-menu-right notification-menu">
+                    <div class="dropdown-header">
+                        <div class="notification-header-title">Notifications</div>
+                        <button class="mark-all-read-btn" onclick="markAllAsRead()" style="display: none;">Mark all read</button>
+                    </div>
+                    <div class="dropdown-divider"></div>
+                    <div class="notification-list" id="notification-list">
+                        <div class="notification-empty">No new notifications</div>
+                    </div>
+                    <div class="dropdown-divider"></div>
+                    <a href="/notifications" class="dropdown-item notification-view-all">
+                        View All Notifications
+                    </a>
+                </div>
+            </div>
+
+            <!-- Profile Dropdown -->
+            <div class="nav-dropdown profile-dropdown">
+                <button class="profile-toggle" onclick="toggleDropdown(this)" aria-label="User menu">
+                    <img src="{{ url_for('static', filename='img/profil.png') }}" alt="Profile" class="profile-img">
+                </button>
+                <div class="dropdown-menu dropdown-menu-right">
+                    <div class="dropdown-header">
+                        <div class="profile-name">Admin User</div>
+                        <div class="profile-email">admin@superbot.com</div>
+                    </div>
+                    <div class="dropdown-divider"></div>
+                    <a href="/profile" class="dropdown-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                        Profile
+                    </a>
+                    <a href="/settings" class="dropdown-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M12 1v6m0 6v6M1 12h6m6 0h6"/>
+                        </svg>
+                        Settings
+                    </a>
+                    <button class="dropdown-item theme-toggle-item" id="theme-toggle" onclick="toggleTheme(); event.stopPropagation();">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="theme-icon">
+                            <circle cx="12" cy="12" r="5"/>
+                            <line x1="12" y1="1" x2="12" y2="3"/>
+                            <line x1="12" y1="21" x2="12" y2="23"/>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                            <line x1="1" y1="12" x2="3" y2="12"/>
+                            <line x1="21" y1="12" x2="23" y2="12"/>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                        </svg>
+                        <span class="theme-text">Toggle Theme</span>
+                    </button>
+                    <div class="dropdown-divider"></div>
+                    <a href="/logout" class="dropdown-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                            <polyline points="16 17 21 12 16 7"/>
+                            <line x1="21" y1="12" x2="9" y2="12"/>
+                        </svg>
+                        Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- Offcanvas Menu (Mobile) -->
+<div class="offcanvas" id="offcanvas-menu">
+    <div class="offcanvas-header">
+        <h3 class="offcanvas-title">Menu</h3>
+        <button class="offcanvas-close" onclick="closeOffcanvas()" aria-label="Close menu">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </button>
+    </div>
+
+    <div class="offcanvas-body">
+        <ul class="nav-menu">
+            <!-- Trading Section -->
+            <li class="nav-section-title">Trading</li>
+            <li class="nav-item">
+                <a href="/strategies" class="nav-link {% if page == 'strategies' %}active{% endif %}">
+                    <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                    </svg>
+                    <span>Strategies</span>
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="/trade" class="nav-link {% if page == 'trade' %}active{% endif %}">
+                    <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                    </svg>
+                    <span>Trade</span>
+                </a>
+            </li>
+
+            <!-- Backtest Section -->
+            <li class="nav-section-title">Backtest</li>
+            <li class="nav-item">
+                <a href="/backtest" class="nav-link {% if page == 'backtest' %}active{% endif %}">
+                    <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 3v18h18"/>
+                        <path d="M7 12l3-3 3 3 5-5"/>
+                    </svg>
+                    <span>Backtest</span>
+                </a>
+            </li>
+
+            <!-- Analysis Section -->
+            <li class="nav-section-title">Analysis</li>
+            <li class="nav-item">
+                <a href="/analysis/smc" class="nav-link {% if page == 'smc-analysis' %}active{% endif %}">
+                    <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 3v18h18"/>
+                        <path d="M7 16l4-8 4 4 4-8"/>
+                    </svg>
+                    <span>SMC Analysis</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="/analysis" class="nav-link {% if page == 'analysis' %}active{% endif %}">
+                    <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="20" x2="18" y2="10"/>
+                        <line x1="12" y1="20" x2="12" y2="4"/>
+                        <line x1="6" y1="20" x2="6" y2="14"/>
+                    </svg>
+                    <span>Analysis</span>
+                </a>
+            </li>
+
+            <!-- Data Section -->
+            <li class="nav-section-title">Data</li>
+            <li class="nav-item">
+                <a href="/symbols" class="nav-link {% if page == 'symbols' %}active{% endif %}">
+                    <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 6v6l4 2"/>
+                    </svg>
+                    <span>Symbols</span>
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="/portfolios" class="nav-link {% if page == 'portfolio' %}active{% endif %}">
+                    <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                    </svg>
+                    <span>Portfolios</span>
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="/data/download" class="nav-link {% if page == 'data-download' %}active{% endif %}">
+                    <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    <span>Download</span>
+                </a>
+            </li>
+
+            <!-- Settings Section -->
+            <li class="nav-section-title">Settings</li>
+            <li class="nav-item">
+                <a href="/exchange-accounts" class="nav-link {% if page == 'exchange-accounts' %}active{% endif %}">
+                    <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="4" width="20" height="16" rx="2"/>
+                        <line x1="2" y1="10" x2="22" y2="10"/>
+                    </svg>
+                    <span>Exchange Accounts</span>
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="/settings" class="nav-link {% if page == 'settings' %}active{% endif %}">
+                    <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M12 1v6m0 6v6M1 12h6m6 0h6"/>
+                    </svg>
+                    <span>Settings</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+</div>
+
+<!-- Offcanvas Backdrop -->
+<div class="offcanvas-backdrop" id="offcanvas-backdrop" onclick="closeOffcanvas()"></div>
+
+<script>
+// Dropdown toggle function
+function toggleDropdown(button) {
+    const dropdown = button.closest('.nav-dropdown');
+    const isActive = dropdown.classList.contains('active');
+    
+    // Close all dropdowns
+    document.querySelectorAll('.nav-dropdown.active').forEach(d => d.classList.remove('active'));
+    
+    // Toggle current dropdown
+    if (\!isActive) {
+        dropdown.classList.add('active');
+    }
+}
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', function(event) {
+    if (\!event.target.closest('.nav-dropdown')) {
+        document.querySelectorAll('.nav-dropdown.active').forEach(d => d.classList.remove('active'));
+    }
+});
+</script>

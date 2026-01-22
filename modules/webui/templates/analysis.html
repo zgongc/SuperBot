@@ -1,0 +1,1017 @@
+{% extends "base.html" %}
+
+{% block title %}Analysis Results - SuperBot{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1>Analysis & Alerts</h1>
+        <p>Technical analysis signals, trading opportunities, and alert management</p>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="tabs-container">
+        <button class="tab-btn active" onclick="switchTab('results')">📊 Analysis Results</button>
+        <button class="tab-btn" onclick="switchTab('alerts')">🔔 Alerts</button>
+    </div>
+
+    <!-- Results Tab Content -->
+    <div id="results-tab" class="tab-content active">
+        <!-- Filters Bar -->
+    <div class="filters-bar">
+        <div class="filter-group">
+            <label>Signal</label>
+            <select id="signalFilter" onchange="loadResults()">
+                <option value="">All Signals</option>
+                <option value="BUY">BUY</option>
+                <option value="SELL">SELL</option>
+                <option value="HOLD">HOLD</option>
+                <option value="NEUTRAL">NEUTRAL</option>
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <label>Min Confidence</label>
+            <input type="number" id="minConfidence" min="0" max="100" placeholder="0-100" onchange="loadResults()">
+        </div>
+
+        <div class="filter-group">
+            <label>Symbol</label>
+            <input type="text" id="symbolFilter" placeholder="BTCUSDT" onchange="loadResults()">
+        </div>
+
+        <div class="filter-group">
+            <label>Timeframe</label>
+            <select id="timeframeFilter" onchange="loadResults()">
+                <option value="">All Timeframes</option>
+                <option value="1h">1 Hour</option>
+                <option value="4h">4 Hours</option>
+                <option value="1d">1 Day</option>
+            </select>
+        </div>
+
+        <button class="btn btn-secondary" onclick="resetFilters()">Reset Filters</button>
+    </div>
+
+    <!-- Stats Summary -->
+    <div class="stats-summary">
+        <div class="stat-item">
+            <span class="stat-label">Total Results:</span>
+            <span class="stat-value" id="totalResults">0</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">BUY:</span>
+            <span class="stat-value success" id="buyCount">0</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">SELL:</span>
+            <span class="stat-value danger" id="sellCount">0</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">HOLD:</span>
+            <span class="stat-value warning" id="holdCount">0</span>
+        </div>
+    </div>
+
+    <!-- Results Table -->
+    <div id="results-list" class="table-container">
+        <p>Loading results...</p>
+    </div>
+    </div>
+    <!-- End Results Tab -->
+
+    <!-- Alerts Tab Content -->
+    <div id="alerts-tab" class="tab-content">
+        <!-- Alerts Header -->
+        <div class="alerts-header">
+            <div class="alerts-stats">
+                <div class="stat-card">
+                    <div class="stat-icon">🔔</div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="total-alerts">0</div>
+                        <div class="stat-label">Total Alerts</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="active-alerts">0</div>
+                        <div class="stat-label">Active</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🔕</div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="inactive-alerts">0</div>
+                        <div class="stat-label">Inactive</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🔥</div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="triggered-today">0</div>
+                        <div class="stat-label">Triggered Today</div>
+                    </div>
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="openCreateAlertModal()">+ Create Alert</button>
+        </div>
+
+        <!-- Alert Filters -->
+        <div class="filters-bar" style="margin-top: 20px;">
+            <div class="filter-group">
+                <label>Status</label>
+                <select id="alertStatusFilter" onchange="loadAlerts()">
+                    <option value="">All</option>
+                    <option value="1">Active</option>
+                    <option value="0">Inactive</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Type</label>
+                <select id="alertTypeFilter" onchange="loadAlerts()">
+                    <option value="">All Types</option>
+                    <option value="pattern">Pattern</option>
+                    <option value="signal">Signal</option>
+                    <option value="score">Score</option>
+                    <option value="trend_change">Trend Change</option>
+                    <option value="category_aggregate">Category Aggregate</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Scope</label>
+                <select id="alertScopeFilter" onchange="loadAlerts()">
+                    <option value="">All</option>
+                    <option value="symbol">Symbol</option>
+                    <option value="category">Category</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Search</label>
+                <input type="text" id="alertSearchFilter" placeholder="Search alerts..." onkeyup="loadAlerts()">
+            </div>
+            <button class="btn btn-secondary" onclick="resetAlertFilters()">Reset</button>
+        </div>
+
+        <!-- Alerts List -->
+        <div id="alerts-list" class="table-container" style="margin-top: 20px;">
+            <p>Loading alerts...</p>
+        </div>
+    </div>
+    <!-- End Alerts Tab -->
+
+</div>
+
+<!-- Analysis Detail Modal -->
+<div id="detailModal" class="modal">
+    <div class="modal-content modal-large">
+        <div class="modal-header">
+            <h2 class="modal-title">Analysis Details</h2>
+            <button class="modal-close" onclick="closeDetailModal()">&times;</button>
+        </div>
+        <div id="detailContent">
+            <p>Loading...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Create Alert Modal -->
+<div id="createAlertModal" class="modal">
+    <div class="modal-content modal-large">
+        <div class="modal-header">
+            <h2 class="modal-title">Create Alert</h2>
+            <button class="modal-close" onclick="closeCreateAlertModal()">&times;</button>
+        </div>
+
+        <form id="createAlertForm" onsubmit="return false;">
+            <!-- Step 1: Basic Info -->
+            <div id="alert-step-1" class="alert-step active">
+                <h3>Step 1: Basic Information</h3>
+
+                <div class="form-group">
+                    <label>Alert Name *</label>
+                    <input type="text" id="alert-name" required placeholder="e.g., BTC Pattern Alert">
+                </div>
+
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="alert-description" rows="2" placeholder="Optional description"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Scope *</label>
+                    <select id="alert-scope" required onchange="onScopeChange()">
+                        <option value="">Select scope...</option>
+                        <option value="symbol">Single Symbol</option>
+                        <option value="category">Category</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="symbol-selector" style="display: none;">
+                    <label>Symbol *</label>
+                    <select id="alert-symbol">
+                        <option value="">Loading...</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="category-selector" style="display: none;">
+                    <label>Category *</label>
+                    <select id="alert-category">
+                        <option value="">Loading...</option>
+                    </select>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-primary" onclick="goToStep(2)">Next →</button>
+                </div>
+            </div>
+
+            <!-- Step 2: Alert Type & Conditions -->
+            <div id="alert-step-2" class="alert-step">
+                <h3>Step 2: Alert Type & Conditions</h3>
+
+                <div class="form-group">
+                    <label>Alert Type *</label>
+                    <select id="alert-type" required onchange="onAlertTypeChange()">
+                        <option value="">Select type...</option>
+                        <option value="pattern">Pattern Detection</option>
+                        <option value="signal">Signal Generation</option>
+                        <option value="score">Score Threshold</option>
+                        <option value="trend_change">Trend Change</option>
+                        <option value="category_aggregate">Category Aggregate</option>
+                    </select>
+                </div>
+
+                <!-- Pattern Conditions -->
+                <div id="pattern-conditions" class="condition-group" style="display: none;">
+                    <div class="form-group">
+                        <label>Patterns to Watch</label>
+                        <div class="checkbox-group">
+                            <label><input type="checkbox" value="Head and Shoulders"> Head and Shoulders</label>
+                            <label><input type="checkbox" value="Double Top"> Double Top</label>
+                            <label><input type="checkbox" value="Double Bottom"> Double Bottom</label>
+                            <label><input type="checkbox" value="Triangle"> Triangle</label>
+                            <label><input type="checkbox" value="Wedge"> Wedge</label>
+                            <label><input type="checkbox" value="Flag"> Flag</label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Minimum Confidence (%)</label>
+                        <input type="number" id="pattern-min-confidence" min="0" max="100" value="70">
+                    </div>
+                    <div class="form-group">
+                        <label>Trigger When</label>
+                        <select id="pattern-notify-when">
+                            <option value="any">Any pattern detected</option>
+                            <option value="all">All patterns detected</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Signal Conditions -->
+                <div id="signal-conditions" class="condition-group" style="display: none;">
+                    <div class="form-group">
+                        <label>Signal Type</label>
+                        <select id="signal-type">
+                            <option value="BOTH">BUY or SELL</option>
+                            <option value="BUY">BUY only</option>
+                            <option value="SELL">SELL only</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Minimum Strength (%)</label>
+                        <input type="number" id="signal-min-strength" min="0" max="100" value="60">
+                    </div>
+                    <div class="form-group">
+                        <label>Strategies (optional)</label>
+                        <input type="text" id="signal-strategies" placeholder="Leave empty for all strategies">
+                        <small>Comma-separated, e.g., "RSI, MACD"</small>
+                    </div>
+                </div>
+
+                <!-- Score Conditions -->
+                <div id="score-conditions" class="condition-group" style="display: none;">
+                    <div class="form-group">
+                        <label>Condition</label>
+                        <select id="score-condition">
+                            <option value="above">Above threshold</option>
+                            <option value="below">Below threshold</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Threshold</label>
+                        <input type="number" id="score-threshold" min="0" max="100" value="75">
+                    </div>
+                </div>
+
+                <!-- Trend Change Conditions -->
+                <div id="trend-conditions" class="condition-group" style="display: none;">
+                    <div class="form-group">
+                        <label>Detect Trend Changes</label>
+                        <div class="checkbox-group">
+                            <label><input type="checkbox" value="up_to_down" checked> Uptrend → Downtrend</label>
+                            <label><input type="checkbox" value="down_to_up" checked> Downtrend → Uptrend</label>
+                            <label><input type="checkbox" value="to_sideways" checked> Any → Sideways</label>
+                            <label><input type="checkbox" value="from_sideways" checked> Sideways → Any</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Category Aggregate Conditions -->
+                <div id="aggregate-conditions" class="condition-group" style="display: none;">
+                    <div class="form-group">
+                        <label>Trigger Type</label>
+                        <select id="aggregate-type">
+                            <option value="percentage">Percentage of symbols</option>
+                            <option value="count">Number of symbols</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Threshold</label>
+                        <input type="number" id="aggregate-threshold" min="1" value="50">
+                        <small id="aggregate-help">Enter percentage (1-100) or count</small>
+                    </div>
+                    <div class="form-group">
+                        <label>With Signal Type</label>
+                        <select id="aggregate-signal">
+                            <option value="BUY">BUY signals</option>
+                            <option value="SELL">SELL signals</option>
+                            <option value="BOTH">BUY or SELL</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="goToStep(1)">← Back</button>
+                    <button type="button" class="btn btn-primary" onclick="goToStep(3)">Next →</button>
+                </div>
+            </div>
+
+            <!-- Step 3: Notification Settings -->
+            <div id="alert-step-3" class="alert-step">
+                <h3>Step 3: Notification Settings</h3>
+
+                <div class="form-group">
+                    <label>Notification Channels</label>
+                    <div class="checkbox-group">
+                        <label><input type="checkbox" id="notify-webui" checked> 🌐 WebUI Toast</label>
+                        <label><input type="checkbox" id="notify-telegram"> 📱 Telegram</label>
+                        <label><input type="checkbox" id="notify-email"> 📧 Email</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Cooldown Period (minutes)</label>
+                    <input type="number" id="alert-cooldown" min="0" value="60">
+                    <small>Minimum time between notifications to prevent spam</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Alert Status</label>
+                    <select id="alert-active">
+                        <option value="1">Active (start immediately)</option>
+                        <option value="0">Inactive (manual activation)</option>
+                    </select>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="goToStep(2)">← Back</button>
+                    <button type="button" class="btn btn-primary" onclick="createAlert()">Create Alert</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Load analysis results
+async function loadResults() {
+    const signal = document.getElementById('signalFilter').value;
+    const minConfidence = document.getElementById('minConfidence').value;
+    const symbol = document.getElementById('symbolFilter').value;
+    const timeframe = document.getElementById('timeframeFilter').value;
+
+    // Build query parameters
+    const params = new URLSearchParams();
+    if (signal) params.append('signal', signal);
+    if (minConfidence) params.append('min_confidence', minConfidence);
+    if (symbol) params.append('symbol', symbol.toUpperCase());
+    if (timeframe) params.append('timeframe', timeframe);
+    params.append('limit', '100');
+
+    try {
+        const response = await fetch(`/api/analysis/results?${params.toString()}`);
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            displayResults(data.data.results);
+            updateStats(data.data);
+        } else {
+            showError(data.message);
+        }
+    } catch (error) {
+        showError('Failed to load results: ' + error.message);
+    }
+}
+
+function displayResults(results) {
+    const container = document.getElementById('results-list');
+
+    if (results.length === 0) {
+        container.innerHTML = '<p class="empty-state">No analysis results found. Try adjusting your filters.</p>';
+        return;
+    }
+
+    let html = `
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Symbol</th>
+                    <th>Timeframe</th>
+                    <th>Signal</th>
+                    <th>Confidence</th>
+                    <th>Score</th>
+                    <th>Entry Price</th>
+                    <th>Target</th>
+                    <th>Stop Loss</th>
+                    <th>R:R</th>
+                    <th>Analyzed At</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    results.forEach(result => {
+        const signalClass = result.signal === 'BUY' ? 'success' :
+                           result.signal === 'SELL' ? 'danger' : 'warning';
+        const confidenceClass = result.confidence >= 80 ? 'success' :
+                               result.confidence >= 60 ? 'warning' : 'danger';
+        const analyzedAt = new Date(result.analyzed_at).toLocaleString();
+
+        html += `
+            <tr>
+                <td><strong>${result.symbol}</strong></td>
+                <td>${result.timeframe}</td>
+                <td><span class="badge badge-${signalClass}">${result.signal}</span></td>
+                <td><span class="badge badge-${confidenceClass}">${result.confidence.toFixed(1)}%</span></td>
+                <td>${result.score.toFixed(1)}</td>
+                <td>$${result.entry_price ? result.entry_price.toFixed(2) : '-'}</td>
+                <td>$${result.target_price ? result.target_price.toFixed(2) : '-'}</td>
+                <td>$${result.stop_loss ? result.stop_loss.toFixed(2) : '-'}</td>
+                <td>${result.risk_reward_ratio ? result.risk_reward_ratio.toFixed(2) : '-'}</td>
+                <td><small>${analyzedAt}</small></td>
+                <td>
+                    <button class="btn btn-sm" onclick="showDetail(${result.id})">View</button>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += `
+            </tbody>
+        </table>
+    `;
+
+    container.innerHTML = html;
+}
+
+function updateStats(data) {
+    document.getElementById('totalResults').textContent = data.total;
+    document.getElementById('buyCount').textContent = data.signal_counts.BUY || 0;
+    document.getElementById('sellCount').textContent = data.signal_counts.SELL || 0;
+    document.getElementById('holdCount').textContent = data.signal_counts.HOLD || 0;
+}
+
+async function showDetail(resultId) {
+    // Get the specific result
+    try {
+        const response = await fetch(`/api/analysis/results?limit=100`);
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            const result = data.data.results.find(r => r.id === resultId);
+            if (result) {
+                displayDetail(result);
+            }
+        }
+    } catch (error) {
+        alert('Failed to load details: ' + error.message);
+    }
+}
+
+function displayDetail(result) {
+    const signalClass = result.signal === 'BUY' ? 'success' :
+                       result.signal === 'SELL' ? 'danger' : 'warning';
+
+    let html = `
+        <div class="detail-grid">
+            <div class="detail-section">
+                <h3>Overview</h3>
+                <table class="detail-table">
+                    <tr><th>Symbol:</th><td><strong>${result.symbol}</strong></td></tr>
+                    <tr><th>Timeframe:</th><td>${result.timeframe}</td></tr>
+                    <tr><th>Strategy:</th><td>${result.strategy_name || 'default'}</td></tr>
+                    <tr><th>Signal:</th><td><span class="badge badge-${signalClass}">${result.signal}</span></td></tr>
+                    <tr><th>Confidence:</th><td>${result.confidence.toFixed(2)}%</td></tr>
+                    <tr><th>Score:</th><td>${result.score.toFixed(2)}</td></tr>
+                    <tr><th>Analyzed:</th><td>${new Date(result.analyzed_at).toLocaleString()}</td></tr>
+                </table>
+            </div>
+
+            <div class="detail-section">
+                <h3>Trade Setup</h3>
+                <table class="detail-table">
+                    <tr><th>Entry Price:</th><td>$${result.entry_price ? result.entry_price.toFixed(2) : 'N/A'}</td></tr>
+                    <tr><th>Target Price:</th><td>$${result.target_price ? result.target_price.toFixed(2) : 'N/A'}</td></tr>
+                    <tr><th>Stop Loss:</th><td>$${result.stop_loss ? result.stop_loss.toFixed(2) : 'N/A'}</td></tr>
+                    <tr><th>Risk/Reward:</th><td>${result.risk_reward_ratio ? result.risk_reward_ratio.toFixed(2) : 'N/A'}</td></tr>
+                </table>
+            </div>
+
+            <div class="detail-section">
+                <h3>Indicators</h3>
+                <pre>${JSON.stringify(result.indicators, null, 2)}</pre>
+            </div>
+
+            <div class="detail-section">
+                <h3>Patterns</h3>
+                ${result.patterns && result.patterns.length > 0 ?
+                    '<ul>' + result.patterns.map(p => `<li>${p}</li>`).join('') + '</ul>' :
+                    '<p>No patterns detected</p>'}
+            </div>
+        </div>
+    `;
+
+    document.getElementById('detailContent').innerHTML = html;
+    document.getElementById('detailModal').classList.add('active');
+}
+
+function closeDetailModal() {
+    document.getElementById('detailModal').classList.remove('active');
+}
+
+function resetFilters() {
+    document.getElementById('signalFilter').value = '';
+    document.getElementById('minConfidence').value = '';
+    document.getElementById('symbolFilter').value = '';
+    document.getElementById('timeframeFilter').value = '';
+    loadResults();
+}
+
+function showError(message) {
+    const container = document.getElementById('results-list');
+    container.innerHTML = `<p class="error-message">Error: ${message}</p>`;
+}
+
+// Load results on page load
+document.addEventListener('DOMContentLoaded', () => {
+    loadResults();
+    loadSymbolsForAlerts();
+    loadCategoriesForAlerts();
+
+    // Check URL parameters for quick create and tab switching
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+    const createAlert = urlParams.get('create_alert');
+    const categoryId = urlParams.get('category_id');
+    const symbolId = urlParams.get('symbol_id');
+
+    // Switch to specified tab
+    if (tabParam === 'alerts') {
+        switchTab('alerts');
+    }
+
+    if (createAlert) {
+        // Switch to alerts tab
+        switchTab('alerts');
+        // Open create modal after a short delay
+        setTimeout(() => {
+            openCreateAlertModal();
+            // Pre-select scope and target
+            if (createAlert === 'category' && categoryId) {
+                document.getElementById('alert-scope').value = 'category';
+                onScopeChange();
+                setTimeout(() => {
+                    document.getElementById('alert-category').value = categoryId;
+                }, 100);
+            } else if (createAlert === 'symbol' && symbolId) {
+                document.getElementById('alert-scope').value = 'symbol';
+                onScopeChange();
+                setTimeout(() => {
+                    document.getElementById('alert-symbol').value = symbolId;
+                }, 100);
+            }
+        }, 500);
+    }
+});
+
+// Auto-refresh every 30 seconds
+setInterval(() => {
+    const activeTab = document.querySelector('.tab-btn.active').textContent;
+    if (activeTab.includes('Results')) {
+        loadResults();
+    } else if (activeTab.includes('Alerts')) {
+        loadAlerts();
+    }
+}, 30000);
+
+// ==================== TAB MANAGEMENT ====================
+function switchTab(tabName) {
+    // Hide all tabs
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    // Show selected tab
+    if (tabName === 'results') {
+        document.getElementById('results-tab').classList.add('active');
+        document.querySelector('.tab-btn:first-child').classList.add('active');
+        loadResults();
+    } else if (tabName === 'alerts') {
+        document.getElementById('alerts-tab').classList.add('active');
+        document.querySelector('.tab-btn:last-child').classList.add('active');
+        loadAlerts();
+    }
+}
+
+// ==================== ALERTS MANAGEMENT ====================
+let currentAlertStep = 1;
+
+async function loadAlerts() {
+    const status = document.getElementById('alertStatusFilter')?.value || '';
+    const type = document.getElementById('alertTypeFilter')?.value || '';
+    const scope = document.getElementById('alertScopeFilter')?.value || '';
+    const search = document.getElementById('alertSearchFilter')?.value || '';
+
+    const params = new URLSearchParams();
+    if (status) params.append('is_active', status);
+    if (type) params.append('alert_type', type);
+    if (scope) params.append('scope_type', scope);
+
+    try {
+        const response = await fetch(`/api/alerts?${params.toString()}`);
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            let alerts = data.data.alerts;
+
+            // Client-side search filter
+            if (search) {
+                const searchLower = search.toLowerCase();
+                alerts = alerts.filter(a =>
+                    a.name.toLowerCase().includes(searchLower) ||
+                    (a.description && a.description.toLowerCase().includes(searchLower))
+                );
+            }
+
+            displayAlerts(alerts);
+            updateAlertStats(alerts);
+        } else {
+            showAlertError(data.message);
+        }
+    } catch (error) {
+        showAlertError('Failed to load alerts: ' + error.message);
+    }
+}
+
+function displayAlerts(alerts) {
+    const container = document.getElementById('alerts-list');
+
+    if (alerts.length === 0) {
+        container.innerHTML = '<p class="empty-state">No alerts found. Create your first alert to get started!</p>';
+        return;
+    }
+
+    let html = `
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Status</th>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Scope</th>
+                    <th>Target</th>
+                    <th>Channels</th>
+                    <th>Triggered</th>
+                    <th>Last Triggered</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    alerts.forEach(alert => {
+        const isActive = alert.is_active;
+        const statusBadge = isActive ?
+            '<span class="badge badge-success">Active</span>' :
+            '<span class="badge badge-secondary">Inactive</span>';
+
+        const typeLabels = {
+            'pattern': '🎨 Pattern',
+            'signal': '📈 Signal',
+            'score': '💯 Score',
+            'trend_change': '📊 Trend',
+            'category_aggregate': '📦 Aggregate'
+        };
+
+        const channels = [];
+        if (alert.notify_webui) channels.push('🌐');
+        if (alert.notify_telegram) channels.push('📱');
+        if (alert.notify_email) channels.push('📧');
+
+        const target = alert.scope_type === 'symbol' ?
+            alert.symbol_name || 'N/A' :
+            alert.category_name || 'N/A';
+
+        const lastTriggered = alert.last_triggered_at ?
+            new Date(alert.last_triggered_at).toLocaleString() :
+            'Never';
+
+        html += `
+            <tr>
+                <td>${statusBadge}</td>
+                <td><strong>${alert.name}</strong></td>
+                <td>${typeLabels[alert.alert_type] || alert.alert_type}</td>
+                <td>${alert.scope_type}</td>
+                <td><small>${target}</small></td>
+                <td>${channels.join(' ')}</td>
+                <td><span class="badge badge-info">${alert.trigger_count || 0}</span></td>
+                <td><small>${lastTriggered}</small></td>
+                <td>
+                    <button class="btn btn-sm" onclick="toggleAlertStatus(${alert.id}, ${!isActive})">${isActive ? 'Disable' : 'Enable'}</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteAlert(${alert.id})">Delete</button>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += `
+            </tbody>
+        </table>
+    `;
+
+    container.innerHTML = html;
+}
+
+function updateAlertStats(alerts) {
+    const total = alerts.length;
+    const active = alerts.filter(a => a.is_active).length;
+    const inactive = total - active;
+
+    // Calculate triggered today
+    const today = new Date().setHours(0, 0, 0, 0);
+    const triggeredToday = alerts.filter(a => {
+        if (!a.last_triggered_at) return false;
+        const triggerDate = new Date(a.last_triggered_at).setHours(0, 0, 0, 0);
+        return triggerDate === today;
+    }).length;
+
+    document.getElementById('total-alerts').textContent = total;
+    document.getElementById('active-alerts').textContent = active;
+    document.getElementById('inactive-alerts').textContent = inactive;
+    document.getElementById('triggered-today').textContent = triggeredToday;
+}
+
+function resetAlertFilters() {
+    document.getElementById('alertStatusFilter').value = '';
+    document.getElementById('alertTypeFilter').value = '';
+    document.getElementById('alertScopeFilter').value = '';
+    document.getElementById('alertSearchFilter').value = '';
+    loadAlerts();
+}
+
+function showAlertError(message) {
+    const container = document.getElementById('alerts-list');
+    container.innerHTML = `<p class="error-message">Error: ${message}</p>`;
+}
+
+async function toggleAlertStatus(alertId, newStatus) {
+    try {
+        const response = await fetch(`/api/alerts/${alertId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_active: newStatus })
+        });
+
+        const data = await response.json();
+        if (data.status === 'success') {
+            loadAlerts();
+        } else {
+            alert('Failed to update alert: ' + data.message);
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+async function deleteAlert(alertId) {
+    const confirmed = await confirm({
+        title: 'Alarmı Sil?',
+        message: 'Bu alarm silinecek. Devam etmek istediğinize emin misiniz?',
+        type: 'danger',
+        confirmText: 'Sil',
+        cancelText: 'İptal'
+    });
+    if (!confirmed) return;
+
+    try {
+        const response = await fetch(`/api/alerts/${alertId}`, {
+            method: 'DELETE'
+        });
+
+        const data = await response.json();
+        if (data.status === 'success') {
+            loadAlerts();
+        } else {
+            alert('Failed to delete alert: ' + data.message);
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+// ==================== CREATE ALERT MODAL ====================
+function openCreateAlertModal() {
+    currentAlertStep = 1;
+    document.getElementById('createAlertModal').classList.add('active');
+    document.getElementById('createAlertForm').reset();
+    goToStep(1);
+}
+
+function closeCreateAlertModal() {
+    document.getElementById('createAlertModal').classList.remove('active');
+}
+
+function goToStep(step) {
+    // Hide all steps
+    document.querySelectorAll('.alert-step').forEach(s => {
+        s.classList.remove('active');
+    });
+
+    // Show selected step
+    document.getElementById(`alert-step-${step}`).classList.add('active');
+    currentAlertStep = step;
+}
+
+function onScopeChange() {
+    const scope = document.getElementById('alert-scope').value;
+    const symbolSelector = document.getElementById('symbol-selector');
+    const categorySelector = document.getElementById('category-selector');
+
+    if (scope === 'symbol') {
+        symbolSelector.style.display = 'block';
+        categorySelector.style.display = 'none';
+    } else if (scope === 'category') {
+        symbolSelector.style.display = 'none';
+        categorySelector.style.display = 'block';
+    } else {
+        symbolSelector.style.display = 'none';
+        categorySelector.style.display = 'none';
+    }
+}
+
+function onAlertTypeChange() {
+    const type = document.getElementById('alert-type').value;
+
+    // Hide all condition groups
+    document.querySelectorAll('.condition-group').forEach(g => {
+        g.style.display = 'none';
+    });
+
+    // Show relevant condition group
+    if (type === 'pattern') {
+        document.getElementById('pattern-conditions').style.display = 'block';
+    } else if (type === 'signal') {
+        document.getElementById('signal-conditions').style.display = 'block';
+    } else if (type === 'score') {
+        document.getElementById('score-conditions').style.display = 'block';
+    } else if (type === 'trend_change') {
+        document.getElementById('trend-conditions').style.display = 'block';
+    } else if (type === 'category_aggregate') {
+        document.getElementById('aggregate-conditions').style.display = 'block';
+    }
+}
+
+async function loadSymbolsForAlerts() {
+    try {
+        const response = await fetch('/api/symbols');
+        const data = await response.json();
+        if (data.status === 'success') {
+            const select = document.getElementById('alert-symbol');
+            select.innerHTML = '<option value="">Select symbol...</option>';
+            data.data.symbols.forEach(s => {
+                select.innerHTML += `<option value="${s.id}">${s.symbol}</option>`;
+            });
+        }
+    } catch (error) {
+        console.error('Failed to load symbols:', error);
+    }
+}
+
+async function loadCategoriesForAlerts() {
+    try {
+        const response = await fetch('/api/categories');
+        const data = await response.json();
+        if (data.status === 'success') {
+            const select = document.getElementById('alert-category');
+            select.innerHTML = '<option value="">Select category...</option>';
+            data.data.forEach(c => {
+                select.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+            });
+        }
+    } catch (error) {
+        console.error('Failed to load categories:', error);
+    }
+}
+
+async function createAlert() {
+    // Collect form data
+    const name = document.getElementById('alert-name').value;
+    const description = document.getElementById('alert-description').value;
+    const scope = document.getElementById('alert-scope').value;
+    const alertType = document.getElementById('alert-type').value;
+
+    if (!name || !scope || !alertType) {
+        alert('Please fill in all required fields');
+        return;
+    }
+
+    // Build alert object
+    const alertData = {
+        name: name,
+        description: description || null,
+        scope_type: scope,
+        alert_type: alertType,
+        notify_webui: document.getElementById('notify-webui').checked,
+        notify_telegram: document.getElementById('notify-telegram').checked,
+        notify_email: document.getElementById('notify-email').checked,
+        is_active: parseInt(document.getElementById('alert-active').value),
+        cooldown_minutes: parseInt(document.getElementById('alert-cooldown').value)
+    };
+
+    // Add scope target
+    if (scope === 'symbol') {
+        alertData.symbol_id = parseInt(document.getElementById('alert-symbol').value);
+    } else {
+        alertData.category_id = parseInt(document.getElementById('alert-category').value);
+    }
+
+    // Build conditions based on alert type
+    const conditions = {};
+    if (alertType === 'pattern') {
+        const patterns = Array.from(document.querySelectorAll('#pattern-conditions input[type="checkbox"]:checked'))
+            .map(cb => cb.value);
+        conditions.pattern_names = patterns;
+        conditions.min_confidence = parseFloat(document.getElementById('pattern-min-confidence').value) / 100;
+        conditions.notify_when = document.getElementById('pattern-notify-when').value;
+    } else if (alertType === 'signal') {
+        conditions.signal_type = document.getElementById('signal-type').value;
+        conditions.min_strength = parseFloat(document.getElementById('signal-min-strength').value) / 100;
+        const strategies = document.getElementById('signal-strategies').value;
+        if (strategies) {
+            conditions.strategies = strategies.split(',').map(s => s.trim());
+        }
+    } else if (alertType === 'score') {
+        conditions.condition = document.getElementById('score-condition').value;
+        conditions.threshold = parseFloat(document.getElementById('score-threshold').value);
+    } else if (alertType === 'trend_change') {
+        const changes = Array.from(document.querySelectorAll('#trend-conditions input[type="checkbox"]:checked'))
+            .map(cb => cb.value);
+        conditions.trend_changes = changes;
+    } else if (alertType === 'category_aggregate') {
+        conditions.aggregation_type = document.getElementById('aggregate-type').value;
+        conditions.threshold = parseFloat(document.getElementById('aggregate-threshold').value);
+        conditions.signal_type = document.getElementById('aggregate-signal').value;
+    }
+
+    alertData.conditions = JSON.stringify(conditions);
+
+    // Send to API
+    try {
+        const response = await fetch('/api/alerts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(alertData)
+        });
+
+        const data = await response.json();
+        if (data.status === 'success') {
+            closeCreateAlertModal();
+            switchTab('alerts');
+            loadAlerts();
+            alert('Alert created successfully!');
+        } else {
+            alert('Failed to create alert: ' + data.message);
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+</script>
+
+{# Tüm stiller main.css, cards.css ve components.css'te: .filters-bar, .filter-group, .stats-summary, .data-table, .badge-*, .detail-*, .tabs-container, .tab-btn, .alerts-*, .stat-card, .alert-step, .checkbox-group, .condition-group, .modal-actions #}
+{% endblock %}

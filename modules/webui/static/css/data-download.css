@@ -1,0 +1,519 @@
+/**
+ * SuperBot WebUI - Data Download Page Styles
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * Veri indirme sayfası için özel stiller.
+ * Mevcut component stillerini extend eder.
+ *
+ * Author: SuperBot Team
+ * Date: 2025-12-19
+ */
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   CONTAINER
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.download-container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   SOURCE TOGGLE - Kaynak Seçimi Butonları
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.source-toggle {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.source-toggle button {
+    flex: 1;
+    padding: 12px 20px;
+    border: 2px solid var(--border-primary);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.source-toggle button.active {
+    border-color: var(--accent-primary);
+    background: var(--accent-primary);
+    color: white;
+}
+
+.source-toggle button:hover:not(.active) {
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   SYMBOL INPUT
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.symbol-input-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.symbol-input-container input {
+    flex: 1;
+    padding: 10px 15px;
+    border: 1px solid var(--border-primary);
+    border-radius: 6px;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: 14px;
+    transition: border-color 0.2s;
+}
+
+.symbol-input-container input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(29, 155, 240, 0.1);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   SYMBOL TAGS
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.symbol-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-height: 36px;
+    padding: 10px;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    border: 1px solid var(--border-primary);
+}
+
+.symbol-tag {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: var(--accent-primary);
+    color: white;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.symbol-tag .remove {
+    cursor: pointer;
+    opacity: 0.7;
+    font-size: 16px;
+    line-height: 1;
+    transition: opacity 0.2s;
+}
+
+.symbol-tag .remove:hover {
+    opacity: 1;
+}
+
+.empty-tags {
+    color: var(--text-muted);
+    font-size: 13px;
+    padding: 4px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   CATEGORY SELECT
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.category-select {
+    width: 100%;
+    padding: 10px 15px;
+    border: 1px solid var(--border-primary);
+    border-radius: 6px;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: 14px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.category-select:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(29, 155, 240, 0.1);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   SECTION DIVIDER & TITLE
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.section-divider {
+    border-top: 1px solid var(--border-primary);
+    margin: 25px 0;
+    padding-top: 20px;
+}
+
+.section-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 15px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   TIMEFRAME GRID
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.timeframe-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 10px;
+}
+
+.timeframe-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    background: var(--bg-tertiary);
+    border: 2px solid var(--border-primary);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.timeframe-item:hover {
+    border-color: var(--accent-primary);
+    background: var(--bg-hover);
+}
+
+.timeframe-item.selected {
+    border-color: var(--accent-primary);
+    background: rgba(29, 155, 240, 0.1);
+}
+
+.timeframe-item input {
+    margin: 0;
+    cursor: pointer;
+    accent-color: var(--accent-primary);
+}
+
+.timeframe-item label {
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   QUICK SELECT BUTTONS
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.quick-select {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+
+.quick-select button {
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid var(--border-primary);
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.quick-select button:hover {
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+    background: var(--bg-hover);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   DATE INPUTS
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.date-inputs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.date-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.date-field label {
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.date-field input[type="date"],
+.date-field input[type="datetime-local"] {
+    padding: 10px 15px;
+    border: 1px solid var(--border-primary);
+    border-radius: 6px;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: 14px;
+    transition: border-color 0.2s;
+}
+
+.date-field input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(29, 155, 240, 0.1);
+}
+
+.date-field input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.use-now-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.use-now-checkbox input {
+    margin: 0;
+    cursor: pointer;
+    accent-color: var(--accent-primary);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   SUMMARY BOX
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.summary-box {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    padding: 15px 20px;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-primary);
+}
+
+.summary-row:last-child {
+    border-bottom: none;
+}
+
+.summary-label {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.summary-value {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.summary-value.highlight {
+    color: var(--accent-primary);
+    font-size: 20px;
+    font-weight: 700;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   ACTION BUTTONS
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.action-buttons {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.action-buttons .btn {
+    flex: 1;
+    padding: 14px 20px;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   PROGRESS SECTION
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.progress-section {
+    margin-top: 24px;
+}
+
+.progress-section.hidden {
+    display: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   OVERALL PROGRESS
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.overall-progress {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.overall-progress h4 {
+    margin: 0 0 15px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.overall-stats {
+    display: flex;
+    gap: 30px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.overall-stat {
+    text-align: center;
+}
+
+.overall-stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--accent-primary);
+}
+
+.overall-stat-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   PROGRESS BAR
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.progress-bar-container {
+    height: 8px;
+    background: var(--bg-secondary);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-primary), #2563eb);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   TASK LIST
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.task-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.progress-item {
+    margin-bottom: 15px;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    padding: 15px;
+    border: 1px solid var(--border-primary);
+}
+
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.progress-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.progress-status {
+    font-size: 12px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 12px;
+    text-transform: uppercase;
+}
+
+.progress-status.pending {
+    background: var(--bg-secondary);
+    color: var(--text-muted);
+}
+
+.progress-status.running {
+    background: rgba(249, 168, 37, 0.15);
+    color: var(--accent-warning);
+}
+
+.progress-status.completed {
+    background: rgba(0, 186, 124, 0.15);
+    color: var(--accent-success);
+}
+
+.progress-status.error {
+    background: rgba(249, 24, 128, 0.15);
+    color: var(--accent-danger);
+}
+
+.progress-info {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+    .date-inputs {
+        grid-template-columns: 1fr;
+    }
+
+    .overall-stats {
+        gap: 20px;
+    }
+
+    .action-buttons {
+        flex-direction: column;
+    }
+
+    .source-toggle {
+        flex-direction: column;
+    }
+}

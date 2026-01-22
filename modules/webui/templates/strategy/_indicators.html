@@ -1,0 +1,51 @@
+{#
+    Strategy Editor - Technical Indicators Partial
+    RSI, EMA, Bollinger, Stochastic ve daha fazlası
+#}
+<div class="accordion-item">
+    <div class="accordion-header" onclick="toggleAccordion(this)">
+        <div class="accordion-title-section">
+            <div class="accordion-icon">📊</div>
+            <div class="accordion-title-text">
+                <h3>Technical Indicators</h3>
+                <p>RSI, EMA, Bollinger, Stochastic and more.</p>
+            </div>
+        </div>
+        <svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+    </div>
+    <div class="accordion-content">
+        <div class="accordion-body">
+            <!-- Quick Add Buttons -->
+            <div class="quick-add-indicators" style="margin-bottom: 1rem;">
+                <button type="button" class="quick-add-btn" onclick="addIndicatorFromSearch('rsi')">RSI</button>
+                <button type="button" class="quick-add-btn" onclick="addIndicatorFromSearch('ema')">EMA</button>
+                <button type="button" class="quick-add-btn" onclick="addIndicatorFromSearch('adx')">ADX</button>
+                <button type="button" class="quick-add-btn" onclick="addIndicatorFromSearch('macd')">MACD</button>
+                <button type="button" class="quick-add-btn" onclick="addIndicatorFromSearch('volume_profile')">VOLUME</button>
+                <button type="button" class="quick-add-btn" onclick="addIndicatorFromSearch('bollinger')">BB</button>
+                <button type="button" class="quick-add-btn" onclick="addIndicatorFromSearch('atr')">ATR</button>
+                <button type="button" class="quick-add-btn" onclick="addIndicatorFromSearch('stochastic')">STOCHASTIC</button>
+                <button type="button" class="quick-add-btn" onclick="addIndicatorFromSearch('talib_patterns')" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">🎯 TALIB</button>
+            </div>
+
+            <!-- Indicator Search & Add -->
+            <div class="indicator-search-section">
+                <input type="text" class="form-input" id="indicator-search-input"
+                       placeholder="İndikatör ara (RSI, EMA, MACD...)"
+                       onkeyup="searchIndicators()" onfocus="searchIndicators()">
+
+                <!-- Search Results -->
+                <div class="indicator-search-results" id="indicator-search-results" style="display: none;">
+                    <!-- Populated by searchIndicators() -->
+                </div>
+            </div>
+
+            <!-- Added Indicators Container -->
+            <div class="added-indicators-container" id="added-indicators-container">
+                <!-- Populated dynamically when indicators are added -->
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,23 +1,48 @@
+pyyaml
 python-dotenv
 pandas
 numpy
 python-binance
-pyarrow
-
 psutil
+
 rich
 watchdog
 
+sqlalchemy
+aiosqlite
+asyncpg
+nest_asyncio
+pyarrow
 fastparquet
 redis
+
+cryptography
+pydantic
+scipy
 
 pandas-ta
 ta-lib
 ccxt
 
+# Visualization
+plotly
+kaleido
+
+# Web Framework (Phase 3)
 flask
 flask-cors
 fastapi
 uvicorn[standard]
+waitress
 aiohttp
 
+# Scheduler (Phase 4)
+apscheduler
+joblib
+
+# CLI & Daemon (Master Orchestrator)
+click
+pytz
+
+optuna
+xgboost

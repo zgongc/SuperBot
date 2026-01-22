@@ -1,0 +1,823 @@
+{% extends "base.html" %}
+
+{% block title %}Portfolios - SuperBot{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/cards.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Portfolios</h1>
+    <p>Manage your portfolio holdings across multiple exchanges</p>
+</div>
+
+<!-- Tabs Navigation -->
+<div class="tabs">
+    <button class="tab active" data-tab="portfolios" onclick="switchTab('portfolios')">
+        📊 Portfolyo
+    </button>
+    <button class="tab" data-tab="exchanges" onclick="switchTab('exchanges')">
+        🏦 Borsa
+    </button>
+</div>
+
+<!-- Tab: Portfolios -->
+<div id="tab-portfolios" class="tab-content active">
+    <!-- Portfolio Summary Cards -->
+    <div class="summary-grid">
+        <div class="summary-card">
+            <div class="summary-icon">💰</div>
+            <div class="summary-content">
+                <div class="summary-label">Total Value</div>
+                <div class="summary-value" id="total-portfolio-value">$0.00</div>
+                <div class="summary-change" id="total-portfolio-change">+0.00%</div>
+            </div>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-icon">📊</div>
+            <div class="summary-content">
+                <div class="summary-label">Total Position</div>
+                <div class="summary-value" id="total-positions">0</div>
+            </div>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-icon">💵</div>
+            <div class="summary-content">
+                <div class="summary-label">Total K/Z</div>
+                <div class="summary-value" id="total-pnl">$0.00</div>
+                <div class="summary-change" id="total-pnl-pct">+0.00%</div>
+            </div>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-icon">🏦</div>
+            <div class="summary-content">
+                <div class="summary-label">Connected Exchanges</div>
+                <div class="summary-value" id="total-exchanges">0</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3>Your portfolios.</h3>
+            <div style="font-size: 13px; color: var(--text-muted); font-weight: 400;">
+                Automatically generated from your stock market accounts.
+            </div>
+        </div>
+        <div id="portfolios-grid" class="portfolios-grid">
+            <!-- Loading state -->
+            <div style="padding: 40px; text-align: center; color: var(--text-muted);">
+                Portfolios are loading...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tab: Exchanges -->
+<div id="tab-exchanges" class="tab-content" style="display: none;">
+    <div class="card">
+        <div class="card-header">
+            <h3>Exchange Accounts</h3>
+            <button class="btn btn-primary" onclick="showCreateExchangeModal()">+ Add Exchange</button>
+        </div>
+        <div id="exchanges-grid" class="portfolios-grid">
+            <!-- Loading state -->
+            <div style="padding: 40px; text-align: center; color: var(--text-muted);">
+                Loading exchange accounts...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Position Modal -->
+<div class="modal" id="position-modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Add Position</h2>
+            <button class="modal-close" onclick="closePositionModal()">&times;</button>
+        </div>
+
+        <form id="position-form" onsubmit="handlePositionSubmit(event)">
+            <input type="hidden" id="position-portfolio-id">
+
+            <div class="form-group" style="position: relative;">
+                <label for="position-symbol">Symbol *</label>
+                <input type="text" id="position-symbol" placeholder="Sembol ara... (BTC, ETH, SOL)" required autocomplete="off" oninput="searchSymbols(event)">
+                <div id="symbol-dropdown" class="symbol-dropdown" style="display: none; z-index: 1000;"></div>
+                <small style="color: var(--text-muted); font-size: 13px;">Enter the symbol name, select from the list, or enter it manually.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="position-quantity">Quantity *</label>
+                <input type="number" step="0.00000001" id="position-quantity" placeholder="example: 0.5" required>
+                <small style="color: var(--text-muted); font-size: 13px;">Position amount</small>
+            </div>
+
+            <div class="form-group">
+                <label for="position-entry-price">Input Price *</label>
+                <input type="number" step="0.01" id="position-entry-price" placeholder="example: 42000" required>
+                <small style="color: var(--text-muted); font-size: 13px;">Position opening price</small>
+            </div>
+
+            <div class="form-group">
+                <label for="position-entry-date">Input Date *</label>
+                <input type="datetime-local" id="position-entry-date" required>
+                <small style="color: var(--text-muted); font-size: 13px;">Position opening time</small>
+            </div>
+
+            <div class="form-group">
+                <label for="position-notes">Notlar</label>
+                <textarea id="position-notes" placeholder="Opsiyonel notlar (örn: DCA entry 1)"></textarea>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closePositionModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Add Position</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Exchange Account Modal -->
+<div class="modal" id="exchange-modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title" id="exchange-modal-title">Add Stock Account</h2>
+            <button class="modal-close" onclick="closeExchangeModal()">&times;</button>
+        </div>
+
+        <form id="exchange-form" onsubmit="handleExchangeSubmit(event)">
+            <input type="hidden" id="exchange-account-id">
+
+            <div class="form-group">
+                <label for="exchange-account-name">Account Name *</label>
+                <input type="text" id="exchange-account-name" placeholder="example: Binance Main" required>
+                <small style="color: var(--text-muted); font-size: 13px;">This is a name to identify this account.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="exchange-select">Borsa *</label>
+                <select id="exchange-select" required onchange="updatePassphraseField()">
+                    <option value="">Select</option>
+                    <option value="binance">Binance</option>
+                    <option value="kucoin">KuCoin</option>
+                    <option value="gateio">Gate.io</option>
+                    <option value="manual">Manuel</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="exchange-environment">Ortam *</label>
+                <select id="exchange-environment" required>
+                    <option value="production">Production</option>
+                    <option value="testnet">Testnet</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Hesap Tipleri</label>
+                <div style="display: flex; gap: 1.5rem; margin-top: 8px;">
+                    <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                        <input type="checkbox" id="exchange-type-spot" value="spot" checked>
+                        <span>Spot</span>
+                    </label>
+                    <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                        <input type="checkbox" id="exchange-type-futures" value="futures">
+                        <span>Futures</span>
+                    </label>
+                    <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                        <input type="checkbox" id="exchange-type-margin" value="margin">
+                        <span>Margin</span>
+                    </label>
+                </div>
+                <small style="color: var(--text-muted); font-size: 13px; margin-top: 8px; display: block;">Select the account types that you can use with the same API key.</small>
+            </div>
+
+            <div class="form-group" id="exchange-api-key-group">
+                <label for="exchange-api-key">API Key</label>
+                <input type="text" id="exchange-api-key" placeholder="API key">
+                <small style="color: var(--text-muted); font-size: 13px;">Optional for manual portfolios.</small>
+            </div>
+
+            <div class="form-group" id="exchange-api-secret-group">
+                <label for="exchange-api-secret">API Secret</label>
+                <input type="password" id="exchange-api-secret" placeholder="API secret">
+            </div>
+
+            <div class="form-group" id="exchange-passphrase-group" style="display: none;">
+                <label for="exchange-passphrase">Passphrase</label>
+                <input type="password" id="exchange-passphrase" placeholder="OKX passphrase">
+                <small style="color: var(--text-muted); font-size: 13px;">OKX için gerekli</small>
+            </div>
+
+            <div class="form-group">
+                <label for="exchange-notes">Notlar</label>
+                <textarea id="exchange-notes" placeholder="Optional notes"></textarea>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeExchangeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Kaydet</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{# Tüm stiller main.css ve cards.css'te: .tabs, .tab, .summary-*, .symbol-dropdown, .portfolio-*, .item-badge #}
+
+<script>
+// Tab switching
+function switchTab(tabName) {
+    // Hide all tabs
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.style.display = 'none';
+    });
+
+    // Remove active class from all buttons
+    document.querySelectorAll('.tab').forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    // Show selected tab
+    document.getElementById('tab-' + tabName).style.display = 'block';
+
+    // Add active class to clicked button
+    const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
+    activeBtn.classList.add('active');
+
+    // Load data if needed
+    if (tabName === 'exchanges' && !window.exchangesLoaded) {
+        loadExchanges();
+        window.exchangesLoaded = true;
+    }
+}
+
+// Load portfolios on page load
+document.addEventListener('DOMContentLoaded', () => {
+    loadPortfolios();
+});
+
+async function loadPortfolios() {
+    const grid = document.getElementById('portfolios-grid');
+
+    try {
+        const response = await fetch('/api/portfolios');
+        const data = await response.json();
+
+        if (data.status === 'success' && data.data.portfolios) {
+            const portfolios = data.data.portfolios;
+
+            // Update summary cards
+            updateSummaryCards(portfolios);
+
+            if (portfolios.length === 0) {
+                grid.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px;">
+                        <div style="font-size: 48px; margin-bottom: 16px;">📊</div>
+                        <h3 style="color: var(--text-primary); margin-bottom: 8px;">No Portfolios Yet</h3>
+                        <p style="color: var(--text-muted); margin-bottom: 20px;">Create your first portfolio to start tracking your holdings</p>
+                        <button class="btn btn-primary" onclick="showCreatePortfolioModal()">+ Create Portfolio</button>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = portfolios.map(portfolio => `
+                <div class="portfolio-card ${portfolio.is_primary ? 'primary' : ''}" onclick="viewPortfolio(${portfolio.id})">
+                    <div class="portfolio-card-header">
+                        <h3 class="portfolio-name">${portfolio.name}</h3>
+                        <span class="item-badge ${portfolio.environment || 'production'}">${portfolio.environment || 'production'}</span>
+                    </div>
+
+                    <div class="portfolio-exchange">
+                        ${formatExchange(portfolio.exchange)} - ${(portfolio.account_type || 'spot').toUpperCase()}
+                    </div>
+
+                    <div class="portfolio-stats">
+                        <div class="portfolio-stat">
+                            <div class="portfolio-stat-label">Açık Pozisyonlar</div>
+                            <div class="portfolio-stat-value">${portfolio.position_count || 0}</div>
+                        </div>
+                        <div class="portfolio-stat">
+                            <div class="portfolio-stat-label">Toplam Değer</div>
+                            <div class="portfolio-stat-value">$${(portfolio.total_value || 0).toFixed(2)}</div>
+                        </div>
+                    </div>
+
+                    <div class="portfolio-actions-row" style="display: flex; gap: 8px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border-primary);" onclick="event.stopPropagation();">
+                        <button class="btn btn-sm btn-secondary" onclick="syncPortfolio(${portfolio.id}, ${portfolio.exchange_account_id}); event.stopPropagation();" title="Borsadan pozisyonları senkronize et" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                            🔄 Sync
+                        </button>
+                        <button class="btn btn-sm btn-primary" onclick="showAddPositionModal(${portfolio.id}); event.stopPropagation();" title="Manuel pozisyon ekle" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                            ➕ Pozisyon Ekle
+                        </button>
+                    </div>
+
+                    <div class="portfolio-footer" style="margin-top: 8px;">
+                        <span style="font-size: 11px;">
+                            ${portfolio.last_synced_at ?
+                                `Son sync: ${formatTimeAgo(portfolio.last_synced_at)}` :
+                                'Hiç sync edilmedi'}
+                        </span>
+                        <span style="color: ${portfolio.is_active ? 'var(--color-success)' : 'var(--text-muted)'};">
+                            ${portfolio.is_active ? '● Aktif' : '○ İnaktif'}
+                        </span>
+                    </div>
+                </div>
+            `).join('');
+
+        } else {
+            throw new Error(data.message || 'Failed to load portfolios');
+        }
+
+    } catch (error) {
+        console.error('Error loading portfolios:', error);
+        grid.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--color-danger);">
+                ⚠️ Error loading portfolios: ${error.message}<br>
+                <button class="btn btn-sm btn-primary" onclick="loadPortfolios()" style="margin-top: 10px;">
+                    Retry
+                </button>
+            </div>
+        `;
+    }
+}
+
+function updateSummaryCards(portfolios) {
+    // Calculate totals
+    let totalValue = 0;
+    let totalPositions = 0;
+    let totalPnl = 0;
+    let totalCost = 0;
+    const uniqueExchanges = new Set();
+
+    portfolios.forEach(portfolio => {
+        totalValue += portfolio.total_value || 0;
+        totalPositions += portfolio.position_count || 0;
+        totalPnl += portfolio.unrealized_pnl || 0;
+        totalCost += portfolio.total_cost || 0;
+
+        // Get exchange name from portfolio data
+        if (portfolio.exchange) {
+            uniqueExchanges.add(portfolio.exchange);
+        }
+    });
+
+    // Calculate percentage
+    const pnlPct = totalCost > 0 ? ((totalPnl / totalCost) * 100) : 0;
+    const valuePct = totalCost > 0 ? (((totalValue - totalCost) / totalCost) * 100) : 0;
+
+    // Update DOM
+    document.getElementById('total-portfolio-value').textContent = `$${totalValue.toFixed(2)}`;
+    document.getElementById('total-portfolio-change').textContent = `${valuePct >= 0 ? '+' : ''}${valuePct.toFixed(2)}%`;
+    document.getElementById('total-positions').textContent = totalPositions;
+    document.getElementById('total-pnl').textContent = `$${totalPnl.toFixed(2)}`;
+    document.getElementById('total-pnl-pct').textContent = `${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%`;
+    document.getElementById('total-exchanges').textContent = uniqueExchanges.size;
+
+    // Apply color classes
+    const changeEl = document.getElementById('total-portfolio-change');
+    changeEl.className = 'summary-change ' + (valuePct >= 0 ? 'positive' : 'negative');
+
+    const pnlChangeEl = document.getElementById('total-pnl-pct');
+    pnlChangeEl.className = 'summary-change ' + (pnlPct >= 0 ? 'positive' : 'negative');
+}
+
+function formatExchange(exchange) {
+    if (!exchange) return 'Manual';
+    const exchanges = {
+        'binance': 'Binance',
+        'bybit': 'Bybit',
+        'kucoin': 'KuCoin',
+        'gateio': 'Gate.io',
+        'okx': 'OKX',
+        'manual': 'Manual'
+    };
+    return exchanges[exchange] || exchange;
+}
+
+function formatTimeAgo(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const seconds = Math.floor((now - date) / 1000);
+
+    if (seconds < 60) return 'just now';
+    if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+    if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
+    return Math.floor(seconds / 86400) + 'd ago';
+}
+
+function viewPortfolio(portfolioId) {
+    window.location.href = `/portfolio/${portfolioId}`;
+}
+
+// Modal functions
+// Toast notification helper
+function showToast(message, type = 'info') {
+    if (window.showToast) {
+        window.showToast(message, type);
+    } else {
+        alert(message);
+    }
+}
+
+// Load exchanges
+async function loadExchanges() {
+    const grid = document.getElementById('exchanges-grid');
+
+    // Show loading
+    grid.innerHTML = `
+        <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-muted);">
+            Loading exchange accounts...
+        </div>
+    `;
+
+    try {
+        const response = await fetch('/api/exchanges');
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log('Exchange data:', data); // Debug
+
+        if (data.status === 'success' && data.data && data.data.accounts) {
+            const accounts = data.data.accounts;
+
+            if (accounts.length === 0) {
+                grid.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px;">
+                        <div style="font-size: 48px; margin-bottom: 16px;">🏦</div>
+                        <h3 style="color: var(--text-primary); margin-bottom: 8px;">No Exchange Accounts Yet</h3>
+                        <p style="color: var(--text-muted); margin-bottom: 20px;">Add your exchange account to enable auto-import features</p>
+                        <button class="btn btn-primary" onclick="showCreateExchangeModal()">+ Add Exchange</button>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = accounts.map(account => `
+                <div class="item-card ${account.is_default ? 'active' : ''}" style="position: relative;">
+                    <div class="item-header">
+                        <h3 class="item-title">${account.name}</h3>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <span class="item-badge ${account.environment}">${account.environment}</span>
+                            <button class="btn btn-sm btn-secondary" onclick="editExchange(${account.id}); event.stopPropagation();" title="Düzenle" style="padding: 4px 8px;">✏️</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteExchange(${account.id}, event)" title="Sil" style="padding: 4px 8px;">🗑️</button>
+                        </div>
+                    </div>
+
+                    <div style="font-size: 14px; color: var(--text-muted); margin: 8px 0; cursor: pointer;" onclick="viewExchange(${account.id})">
+                        ${formatExchange(account.exchange)} - ${(account.account_type || 'spot').toUpperCase()}
+                    </div>
+
+                    <div class="item-stats" onclick="viewExchange(${account.id})" style="cursor: pointer;">
+                        <div class="item-stat">
+                            <span class="item-stat-label">Status:</span>
+                            <span class="item-stat-value" style="color: ${account.is_active ? 'var(--color-success)' : 'var(--text-muted)'};">
+                                ${account.is_active ? '● Active' : '○ Inactive'}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 8px; font-size: 12px; color: var(--text-muted); cursor: pointer;" onclick="viewExchange(${account.id})">
+                        ${account.last_connected_at ? `Last connected: ${formatTimeAgo(account.last_connected_at)}` : 'Never connected'}
+                    </div>
+                </div>
+            `).join('');
+
+        } else {
+            throw new Error(data.message || 'Failed to load exchange accounts');
+        }
+
+    } catch (error) {
+        console.error('Error loading exchanges:', error);
+        grid.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--color-danger);">
+                ⚠️ Error loading exchange accounts: ${error.message}<br>
+                <button class="btn btn-sm btn-primary" onclick="loadExchanges()" style="margin-top: 10px;">
+                    Retry
+                </button>
+            </div>
+        `;
+    }
+}
+
+function viewExchange(exchangeId) {
+    // Open edit modal instead of redirecting
+    editExchange(exchangeId);
+}
+
+function showCreateExchangeModal() {
+    // Reset form
+    document.getElementById('exchange-modal-title').textContent = 'Borsa Hesabı Ekle';
+    document.getElementById('exchange-form').reset();
+    document.getElementById('exchange-account-id').value = '';
+    document.getElementById('exchange-type-spot').checked = true;
+    document.getElementById('exchange-passphrase-group').style.display = 'none';
+
+    // Show modal
+    document.getElementById('exchange-modal').style.display = 'flex';
+}
+
+function closeExchangeModal() {
+    document.getElementById('exchange-modal').style.display = 'none';
+}
+
+async function editExchange(id) {
+    try {
+        const response = await fetch(`/api/exchanges/${id}`);
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            const account = data.data.account;
+
+            document.getElementById('exchange-modal-title').textContent = 'Borsa Hesabını Düzenle';
+            document.getElementById('exchange-account-id').value = id;
+            document.getElementById('exchange-account-name').value = account.name;
+            document.getElementById('exchange-select').value = account.exchange;
+            document.getElementById('exchange-environment').value = account.environment;
+            document.getElementById('exchange-notes').value = account.notes || '';
+
+            // Set account types
+            const types = account.account_type ? account.account_type.split(',') : ['spot'];
+            document.getElementById('exchange-type-spot').checked = types.includes('spot');
+            document.getElementById('exchange-type-futures').checked = types.includes('futures');
+            document.getElementById('exchange-type-margin').checked = types.includes('margin');
+
+            // Don't show API credentials for security
+            document.getElementById('exchange-api-key').value = '';
+            document.getElementById('exchange-api-secret').value = '';
+            document.getElementById('exchange-passphrase').value = '';
+
+            updatePassphraseField();
+            document.getElementById('exchange-modal').style.display = 'flex';
+        }
+    } catch (error) {
+        console.error('Error loading exchange:', error);
+        showToast('Hesap bilgileri yüklenemedi', 'error');
+    }
+}
+
+async function handleExchangeSubmit(event) {
+    event.preventDefault();
+
+    const accountTypes = [];
+    if (document.getElementById('exchange-type-spot').checked) accountTypes.push('spot');
+    if (document.getElementById('exchange-type-futures').checked) accountTypes.push('futures');
+    if (document.getElementById('exchange-type-margin').checked) accountTypes.push('margin');
+
+    const accountId = document.getElementById('exchange-account-id').value;
+
+    const formData = {
+        name: document.getElementById('exchange-account-name').value,
+        exchange: document.getElementById('exchange-select').value,
+        environment: document.getElementById('exchange-environment').value,
+        account_type: accountTypes.join(','),
+        api_key: document.getElementById('exchange-api-key').value || null,
+        api_secret: document.getElementById('exchange-api-secret').value || null,
+        passphrase: document.getElementById('exchange-passphrase').value || null,
+        notes: document.getElementById('exchange-notes').value || null
+    };
+
+    try {
+        const url = accountId ? `/api/exchanges/${accountId}` : '/api/exchanges';
+        const method = accountId ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            showToast(accountId ? 'Hesap güncellendi' : 'Hesap eklendi', 'success');
+            closeExchangeModal();
+
+            // Reload exchanges if on Borsa tab
+            window.exchangesLoaded = false;
+            loadExchanges();
+
+            // Reload portfolios since auto-created portfolio needs to show
+            loadPortfolios();
+        } else {
+            showToast(data.error || 'Kaydetme başarısız', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showToast('Bir hata oluştu', 'error');
+    }
+}
+
+async function deleteExchange(id, event) {
+    event.stopPropagation();
+
+    // Show proper confirmation dialog (like in symbols page)
+    const confirmed = await confirmDelete('Exchange Account');
+    if (!confirmed) return;
+
+    try {
+        const response = await fetch(`/api/exchanges/${id}`, { method: 'DELETE' });
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            showToast('✅ Borsa hesabı ve bağlı portfolio başarıyla silindi', 'success');
+
+            // Reload exchanges
+            window.exchangesLoaded = false;
+            loadExchanges();
+        } else {
+            showToast(data.error || 'Borsa hesabı silinemedi', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showToast('Bir hata oluştu', 'error');
+    }
+}
+
+function updatePassphraseField() {
+    const exchange = document.getElementById('exchange-select').value;
+    const passphraseGroup = document.getElementById('exchange-passphrase-group');
+    passphraseGroup.style.display = (exchange === 'okx') ? 'block' : 'none';
+}
+
+// ============================================================================
+// POSITION MANAGEMENT
+// ============================================================================
+
+let searchTimeout = null;
+
+// Live symbol search
+async function searchSymbols(event) {
+    const query = event.target.value.trim();
+    const dropdown = document.getElementById('symbol-dropdown');
+
+    // Clear existing timeout
+    if (searchTimeout) clearTimeout(searchTimeout);
+
+    // Hide dropdown if query is empty
+    if (query.length < 1) {
+        dropdown.style.display = 'none';
+        return;
+    }
+
+    // Debounce: Wait 300ms after user stops typing
+    searchTimeout = setTimeout(async () => {
+        try {
+            const response = await fetch(`/api/symbols/available?search=${encodeURIComponent(query)}&market_type=spot&quote_asset=USDT&limit=50`);
+            const data = await response.json();
+            console.log('Symbol search response:', data);
+
+            if (data.status === 'success' && data.data && data.data.symbols) {
+                const symbols = data.data.symbols;
+                console.log('Found symbols:', symbols.length);
+
+                if (symbols.length > 0) {
+                    dropdown.innerHTML = symbols.map(s => {
+                        const sym = s.symbol || '';
+                        return '<div class="symbol-dropdown-item" data-symbol="' + sym + '">' +
+                            '<span class="symbol-name">' + sym + '</span>' +
+                            '<span class="symbol-info">' + (s.status || 'SPOT') + '</span>' +
+                            '</div>';
+                    }).join('');
+                    // Add click handlers
+                    dropdown.querySelectorAll('.symbol-dropdown-item').forEach(item => {
+                        item.onclick = () => selectSymbol(item.dataset.symbol);
+                    });
+                    dropdown.style.display = 'block';
+                    console.log('Dropdown shown with', symbols.length, 'items');
+                } else {
+                    dropdown.innerHTML = '<div class="symbol-dropdown-empty">Sonuç bulunamadı. Manuel girebilirsiniz.</div>';
+                    dropdown.style.display = 'block';
+                }
+            } else {
+                console.log('No symbols in response or error:', data);
+                dropdown.innerHTML = '<div class="symbol-dropdown-empty">Sonuç bulunamadı. Manuel girebilirsiniz.</div>';
+                dropdown.style.display = 'block';
+            }
+        } catch (error) {
+            console.error('Sembol arama hatası:', error);
+            dropdown.innerHTML = '<div class="symbol-dropdown-empty">Arama hatası. Manuel girebilirsiniz.</div>';
+            dropdown.style.display = 'block';
+        }
+    }, 300);
+}
+
+// Select symbol from dropdown
+function selectSymbol(symbol) {
+    document.getElementById('position-symbol').value = symbol;
+    document.getElementById('symbol-dropdown').style.display = 'none';
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(event) {
+    const dropdown = document.getElementById('symbol-dropdown');
+    const input = document.getElementById('position-symbol');
+    if (dropdown && input && !input.contains(event.target) && !dropdown.contains(event.target)) {
+        dropdown.style.display = 'none';
+    }
+});
+
+// Show Add Position Modal
+async function showAddPositionModal(portfolioId) {
+    document.getElementById('position-portfolio-id').value = portfolioId;
+    document.getElementById('position-form').reset();
+
+    // Set current datetime as default
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    document.getElementById('position-entry-date').value = now.toISOString().slice(0, 16);
+
+    // Clear dropdown
+    document.getElementById('symbol-dropdown').style.display = 'none';
+
+    // Show modal
+    document.getElementById('position-modal').style.display = 'flex';
+}
+
+// Close Position Modal
+function closePositionModal() {
+    document.getElementById('position-modal').style.display = 'none';
+}
+
+// Handle Position Submit
+async function handlePositionSubmit(event) {
+    event.preventDefault();
+
+    const portfolioId = document.getElementById('position-portfolio-id').value;
+    const symbol = document.getElementById('position-symbol').value.trim().toUpperCase();
+    const quantity = parseFloat(document.getElementById('position-quantity').value);
+    const entryPrice = parseFloat(document.getElementById('position-entry-price').value);
+    const entryDate = document.getElementById('position-entry-date').value;
+    const notes = document.getElementById('position-notes').value;
+
+    const formData = {
+        symbol: symbol,  // String olarak gönder (BTC/USDT gibi)
+        quantity: quantity,
+        entry_price: entryPrice,
+        opened_at: new Date(entryDate).toISOString(),
+        notes: notes || null,
+        side: 'LONG',  // Sabit: Sadece LONG
+        position_type: 'SPOT',  // Sabit: Sadece SPOT
+        source: 'manual'  // Manuel ekleme
+    };
+
+    try {
+        const response = await fetch(`/api/portfolios/${portfolioId}/positions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            showToast('✅ Pozisyon başarıyla eklendi', 'success');
+            closePositionModal();
+            loadPortfolios(); // Refresh portfolio cards
+        } else {
+            showToast(data.error || 'Pozisyon eklenemedi', 'error');
+        }
+    } catch (error) {
+        console.error('Pozisyon ekleme hatası:', error);
+        showToast('Bir hata oluştu', 'error');
+    }
+}
+
+// Sync Portfolio from Exchange
+async function syncPortfolio(portfolioId, exchangeAccountId) {
+    try {
+        // Show loading state
+        showToast('🔄 Pozisyonlar senkronize ediliyor...', 'info');
+
+        const response = await fetch(`/api/portfolios/${portfolioId}/sync`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            const count = data.data.synced_count || 0;
+            showToast(`✅ ${count} pozisyon senkronize edildi`, 'success');
+            loadPortfolios(); // Refresh portfolio cards
+        } else {
+            showToast(data.error || 'Senkronizasyon başarısız', 'error');
+        }
+    } catch (error) {
+        console.error('Sync hatası:', error);
+        showToast('Senkronizasyon sırasında hata oluştu', 'error');
+    }
+}
+
+// Initialize flags
+window.exchangesLoaded = false;
+</script>
+{% endblock %}

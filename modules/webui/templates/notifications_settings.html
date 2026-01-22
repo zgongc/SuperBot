@@ -1,0 +1,361 @@
+{% extends "base.html" %}
+
+{% block title %}Notification Settings{% endblock %}
+
+{# Tüm stiller components.css'te: .settings-*, .section-*, .toggle-switch, .toggle-slider, .status-indicator, .test-result, .message-preview #}
+
+{% block content %}
+<div class="settings-container">
+    <div class="settings-header">
+        <h1>Notification Settings</h1>
+        <p>Configure Telegram bot and email notifications for alerts</p>
+    </div>
+
+    <div class="settings-sections">
+        <!-- Telegram Bot Section -->
+        <div class="settings-section">
+            <div class="section-header">
+                <div class="section-title">
+                    <span class="section-icon">📱</span>
+                    <h2>Telegram Bot</h2>
+                </div>
+                <div class="section-toggle">
+                    <span class="status-indicator" id="telegram-status">
+                        <span id="telegram-status-dot">●</span>
+                        <span id="telegram-status-text">Disabled</span>
+                    </span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="telegram-enabled" onchange="toggleTelegram()">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div id="telegram-config">
+                <div class="form-group">
+                    <label for="telegram-bot-token">Bot Token</label>
+                    <input type="password" id="telegram-bot-token" placeholder="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz">
+                    <p class="form-help">Get your bot token from <a href="https://t.me/BotFather" target="_blank">@BotFather</a> on Telegram</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="telegram-chat-id">Chat ID</label>
+                    <input type="text" id="telegram-chat-id" placeholder="123456789">
+                    <p class="form-help">Your Telegram user ID. Send /start to your bot to get it, or use <a href="https://t.me/userinfobot" target="_blank">@userinfobot</a></p>
+                </div>
+
+                <div class="form-actions">
+                    <button class="btn btn-primary" onclick="saveTelegramConfig()">Save Configuration</button>
+                    <button class="btn btn-secondary" onclick="testTelegramConnection()">Test Connection</button>
+                </div>
+
+                <div id="telegram-test-result" class="test-result"></div>
+
+                <div class="message-preview">
+                    <h4>Message Preview:</h4>
+                    <div class="preview-message" id="telegram-preview">
+🔔 <b>Alert Triggered</b>
+
+<b>Symbol:</b> BTCUSDT
+<b>Type:</b> BUY Signal
+<b>Score:</b> 85.5/100
+<b>Timeframe:</b> 1H
+
+<i>Strong bullish momentum detected with RSI confirmation</i>
+
+🔗 <a href="http://127.0.0.1:5000/analysis?result_id=123">View Analysis</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Email Notifications Section -->
+        <div class="settings-section">
+            <div class="section-header">
+                <div class="section-title">
+                    <span class="section-icon">📧</span>
+                    <h2>Email Notifications</h2>
+                </div>
+                <div class="section-toggle">
+                    <span class="status-indicator" id="email-status">
+                        <span id="email-status-dot">●</span>
+                        <span id="email-status-text">Disabled</span>
+                    </span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="email-enabled" onchange="toggleEmail()">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div id="email-config">
+                <div class="form-group">
+                    <label for="email-smtp-server">SMTP Server</label>
+                    <input type="text" id="email-smtp-server" placeholder="smtp.gmail.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="email-smtp-port">SMTP Port</label>
+                    <input type="number" id="email-smtp-port" placeholder="587" value="587">
+                </div>
+
+                <div class="form-group">
+                    <label for="email-username">Email Username</label>
+                    <input type="email" id="email-username" placeholder="your-email@gmail.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="email-password">Email Password</label>
+                    <input type="password" id="email-password" placeholder="App-specific password">
+                    <p class="form-help">For Gmail, use an <a href="https://support.google.com/accounts/answer/185833" target="_blank">App Password</a> instead of your regular password</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="email-recipient">Recipient Email</label>
+                    <input type="email" id="email-recipient" placeholder="alerts@example.com">
+                </div>
+
+                <div class="form-actions">
+                    <button class="btn btn-primary" onclick="saveEmailConfig()">Save Configuration</button>
+                    <button class="btn btn-secondary" onclick="testEmailConnection()">Send Test Email</button>
+                </div>
+
+                <div id="email-test-result" class="test-result"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Load configuration on page load
+document.addEventListener('DOMContentLoaded', loadConfiguration);
+
+async function loadConfiguration() {
+    try {
+        const response = await fetch('/api/settings/notifications');
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            const config = data.data;
+
+            // Telegram config
+            if (config.telegram) {
+                document.getElementById('telegram-enabled').checked = config.telegram.enabled || false;
+                document.getElementById('telegram-bot-token').value = config.telegram.bot_token || '';
+                document.getElementById('telegram-chat-id').value = config.telegram.chat_id || '';
+                updateTelegramStatus(config.telegram.enabled);
+            }
+
+            // Email config
+            if (config.email) {
+                document.getElementById('email-enabled').checked = config.email.enabled || false;
+                document.getElementById('email-smtp-server').value = config.email.smtp_server || '';
+                document.getElementById('email-smtp-port').value = config.email.smtp_port || 587;
+                document.getElementById('email-username').value = config.email.username || '';
+                document.getElementById('email-password').value = config.email.password || '';
+                document.getElementById('email-recipient').value = config.email.recipient || '';
+                updateEmailStatus(config.email.enabled);
+            }
+        }
+    } catch (error) {
+        console.error('Failed to load configuration:', error);
+    }
+}
+
+function toggleTelegram() {
+    const enabled = document.getElementById('telegram-enabled').checked;
+    updateTelegramStatus(enabled);
+}
+
+function toggleEmail() {
+    const enabled = document.getElementById('email-enabled').checked;
+    updateEmailStatus(enabled);
+}
+
+function updateTelegramStatus(enabled) {
+    const statusEl = document.getElementById('telegram-status');
+    const textEl = document.getElementById('telegram-status-text');
+
+    if (enabled) {
+        statusEl.className = 'status-indicator enabled';
+        textEl.textContent = 'Enabled';
+    } else {
+        statusEl.className = 'status-indicator disabled';
+        textEl.textContent = 'Disabled';
+    }
+}
+
+function updateEmailStatus(enabled) {
+    const statusEl = document.getElementById('email-status');
+    const textEl = document.getElementById('email-status-text');
+
+    if (enabled) {
+        statusEl.className = 'status-indicator enabled';
+        textEl.textContent = 'Enabled';
+    } else {
+        statusEl.className = 'status-indicator disabled';
+        textEl.textContent = 'Disabled';
+    }
+}
+
+async function saveTelegramConfig() {
+    const config = {
+        enabled: document.getElementById('telegram-enabled').checked,
+        bot_token: document.getElementById('telegram-bot-token').value,
+        chat_id: document.getElementById('telegram-chat-id').value
+    };
+
+    if (!config.bot_token || !config.chat_id) {
+        showToast('Error', 'Please fill in all required fields', 'error', 3000);
+        return;
+    }
+
+    LoadingSpinner.show();
+
+    try {
+        const response = await fetch('/api/settings/notifications/telegram', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(config)
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            showToast('Success', 'Telegram configuration saved', 'success', 3000);
+        } else {
+            showToast('Error', data.message || 'Failed to save configuration', 'error', 3000);
+        }
+    } catch (error) {
+        showToast('Error', 'Failed to save configuration', 'error', 3000);
+    } finally {
+        LoadingSpinner.hide();
+    }
+}
+
+async function testTelegramConnection() {
+    const botToken = document.getElementById('telegram-bot-token').value;
+    const chatId = document.getElementById('telegram-chat-id').value;
+
+    if (!botToken || !chatId) {
+        showToast('Error', 'Please fill in bot token and chat ID', 'error', 3000);
+        return;
+    }
+
+    const resultEl = document.getElementById('telegram-test-result');
+    resultEl.style.display = 'none';
+
+    LoadingSpinner.show();
+
+    try {
+        const response = await fetch('/api/settings/notifications/telegram/test', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ bot_token: botToken, chat_id: chatId })
+        });
+
+        const data = await response.json();
+
+        resultEl.style.display = 'block';
+
+        if (data.status === 'success') {
+            resultEl.className = 'test-result success';
+            resultEl.textContent = '✓ Connection successful! Test message sent to Telegram.';
+        } else {
+            resultEl.className = 'test-result error';
+            resultEl.textContent = '✗ Connection failed: ' + (data.message || 'Unknown error');
+        }
+    } catch (error) {
+        resultEl.style.display = 'block';
+        resultEl.className = 'test-result error';
+        resultEl.textContent = '✗ Connection failed: ' + error.message;
+    } finally {
+        LoadingSpinner.hide();
+    }
+}
+
+async function saveEmailConfig() {
+    const config = {
+        enabled: document.getElementById('email-enabled').checked,
+        smtp_server: document.getElementById('email-smtp-server').value,
+        smtp_port: parseInt(document.getElementById('email-smtp-port').value),
+        username: document.getElementById('email-username').value,
+        password: document.getElementById('email-password').value,
+        recipient: document.getElementById('email-recipient').value
+    };
+
+    if (!config.smtp_server || !config.username || !config.password || !config.recipient) {
+        showToast('Error', 'Please fill in all required fields', 'error', 3000);
+        return;
+    }
+
+    LoadingSpinner.show();
+
+    try {
+        const response = await fetch('/api/settings/notifications/email', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(config)
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            showToast('Success', 'Email configuration saved', 'success', 3000);
+        } else {
+            showToast('Error', data.message || 'Failed to save configuration', 'error', 3000);
+        }
+    } catch (error) {
+        showToast('Error', 'Failed to save configuration', 'error', 3000);
+    } finally {
+        LoadingSpinner.hide();
+    }
+}
+
+async function testEmailConnection() {
+    const config = {
+        smtp_server: document.getElementById('email-smtp-server').value,
+        smtp_port: parseInt(document.getElementById('email-smtp-port').value),
+        username: document.getElementById('email-username').value,
+        password: document.getElementById('email-password').value,
+        recipient: document.getElementById('email-recipient').value
+    };
+
+    if (!config.smtp_server || !config.username || !config.password || !config.recipient) {
+        showToast('Error', 'Please fill in all required fields', 'error', 3000);
+        return;
+    }
+
+    const resultEl = document.getElementById('email-test-result');
+    resultEl.style.display = 'none';
+
+    LoadingSpinner.show();
+
+    try {
+        const response = await fetch('/api/settings/notifications/email/test', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(config)
+        });
+
+        const data = await response.json();
+
+        resultEl.style.display = 'block';
+
+        if (data.status === 'success') {
+            resultEl.className = 'test-result success';
+            resultEl.textContent = '✓ Email sent successfully! Check your inbox.';
+        } else {
+            resultEl.className = 'test-result error';
+            resultEl.textContent = '✗ Failed to send email: ' + (data.message || 'Unknown error');
+        }
+    } catch (error) {
+        resultEl.style.display = 'block';
+        resultEl.className = 'test-result error';
+        resultEl.textContent = '✗ Failed to send email: ' + error.message;
+    } finally {
+        LoadingSpinner.hide();
+    }
+}
+</script>
+{% endblock %}

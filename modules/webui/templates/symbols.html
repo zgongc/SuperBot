@@ -1,0 +1,1422 @@
+{% extends "base.html" %}
+
+{% block title %}Symbols{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/cards.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Symbols & Categories</h1>
+    <p>Manage trading symbols and organize them into categories</p>
+</div>
+
+    <!-- Tabs -->
+    <div class="tabs-container">
+        <div class="tabs">
+            <button class="tab active" data-tab="symbols">Symbols</button>
+            <button class="tab" data-tab="categories">Categories</button>
+        </div>
+
+        <!-- Symbols Tab -->
+        <div class="tab-content active" id="symbols-tab">
+            <!-- Filters -->
+            <div class="filters-bar">
+                <div class="filter-group">
+                    <label>Market:</label>
+                    <select id="filter-market" onchange="loadSymbols()">
+                        <option value="">All Markets</option>
+                        <option value="SPOT">SPOT</option>
+                        <option value="FUTURES">FUTURES</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Quote:</label>
+                    <select id="filter-quote" onchange="loadSymbols()">
+                        <option value="USDT">USDT</option>
+                        <option value="BUSD">BUSD</option>
+                        <option value="BTC">BTC</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Search:</label>
+                    <input type="text" id="filter-search" placeholder="Symbol name..." onkeyup="loadSymbols()">
+                </div>
+                <div class="filter-group">
+                    <button class="btn btn-primary" onclick="loadSymbols()">Apply Filters</button>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="actions-bar">
+                <div class="actions-left">
+                    <button class="btn btn-primary" onclick="syncSymbols()">
+                        Sync from Exchange
+                    </button>
+                    <button class="btn btn-success" onclick="showAddToCategoryModal()" id="add-to-category-btn" disabled>
+                        Add to Category (<span id="selected-count">0</span>)
+                    </button>
+                    <button class="btn btn-danger" onclick="bulkDeleteSymbols()" id="bulk-delete-btn" disabled>
+                        Delete Selected (<span id="delete-count">0</span>)
+                    </button>
+                    <div style="display: inline-block; margin-left: 10px;">
+                        <button class="btn btn-secondary btn-sm" onclick="selectNone()" title="Clear selection">
+                            Select None
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="invertSelection()" title="Invert selection">
+                            Invert
+                        </button>
+                    </div>
+                </div>
+                <div class="actions-right">
+                    <span id="total-symbols" style="color: var(--text-muted); font-size: 13px;">
+                        Total: 0 symbols
+                    </span>
+                </div>
+            </div>
+
+            <!-- Symbols Table -->
+            <div class="symbols-table">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;">
+                                <input type="checkbox" id="select-all" onchange="toggleSelectAll()">
+                            </th>
+                            <th>Symbol</th>
+                            <th>Market</th>
+                            <th>Base Asset</th>
+                            <th>Quote Asset</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="symbols-list">
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                                Loading symbols...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <div class="pagination">
+                <button class="btn" onclick="previousPage()" id="prev-btn" disabled>Previous</button>
+                <span class="page-info">Page <span id="current-page">1</span> of <span id="total-pages">1</span></span>
+                <button class="btn" onclick="nextPage()" id="next-btn" disabled>Next</button>
+            </div>
+        </div>
+
+        <!-- Categories Tab -->
+        <div class="tab-content" id="categories-tab">
+            <!-- Actions -->
+            <div class="actions-bar">
+                <div class="actions-left">
+                    <button class="btn btn-primary" onclick="showCreateCategoryModal()">
+                        + Create Category
+                    </button>
+                    <button class="btn btn-secondary" onclick="closeCategory()" id="close-category-btn" style="display: none;">
+                        &larr; Back to Categories
+                    </button>
+                </div>
+                <div class="actions-right">
+                    <span id="total-categories" style="color: var(--text-muted); font-size: 13px;">
+                        Total: 0 categories
+                    </span>
+                </div>
+            </div>
+
+            <!-- Categories Grid -->
+            <div id="categories-grid-view">
+                <div class="categories-grid" id="categories-list">
+                    <p style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--text-muted);">
+                        Loading categories...
+                    </p>
+                </div>
+            </div>
+
+            <!-- Category Detail View -->
+            <div id="item-detail-view" style="display: none;">
+                <div class="item-detail">
+                    <div class="item-detail-header">
+                        <h2 class="item-detail-title" id="item-detail-name">Category Name</h2>
+                        <div>
+                            <button class="btn btn-secondary" onclick="exportCategoryToJSON()">
+                                📥 Export JSON
+                            </button>
+                            <button class="btn btn-success" onclick="showAnalyzeCategoryModal()">
+                                <span style="margin-right: 4px;">⚡</span>Analyze Category
+                            </button>
+                            <button class="btn btn-warning" onclick="createAlertForCategory()" style="background: #ff9800; color: white;">
+                                🔔 Create Alert
+                            </button>
+                            <button class="btn btn-primary" onclick="editCurrentCategory()">Edit Category</button>
+                            <button class="btn btn-danger" onclick="deleteCurrentCategory()">Delete Category</button>
+                        </div>
+                    </div>
+                    <p id="item-detail-description" style="color: var(--text-muted); margin-bottom: 12px;"></p>
+
+                    <!-- Analysis Status Info -->
+                    <div id="analysis-status-bar" style="display: none; padding: 12px 16px; background: var(--bg-secondary); border-left: 4px solid var(--accent-primary); border-radius: 6px; margin-bottom: 20px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <span style="font-size: 20px;">📊</span>
+                                <div>
+                                    <div style="font-size: 14px; font-weight: 600; color: var(--text-primary);">Analysis Status</div>
+                                    <div style="font-size: 13px; color: var(--text-muted); margin-top: 2px;" id="analysis-status-text">
+                                        No analysis run yet
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <a href="/analysis" target="_blank" class="btn btn-sm btn-secondary" style="text-decoration: none;">
+                                    View All Results
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Category Analytics Widget -->
+                    <div id="item-analytics" class="item-analytics" style="display: none;">
+                        <h3 class="analytics-title">📊 Category Analytics</h3>
+
+                        <div class="analytics-grid">
+                            <!-- Market Types Card -->
+                            <div class="analytics-card">
+                                <h4 class="card-title">Market Types</h4>
+                                <div class="stats-row">
+                                    <div class="stat-item">
+                                        <span class="item-badge spot">SPOT</span>
+                                        <span class="stat-value" id="spot-count">0</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="item-badge futures">FUTURES</span>
+                                        <span class="stat-value" id="futures-count">0</span>
+                                    </div>
+                                </div>
+                                <!-- Visual bar chart -->
+                                <div class="market-bar">
+                                    <div class="bar-spot" id="spot-bar" style="width: 0%"></div>
+                                    <div class="bar-futures" id="futures-bar" style="width: 0%"></div>
+                                </div>
+                            </div>
+
+                            <!-- Quote Assets Card -->
+                            <div class="analytics-card">
+                                <h4 class="card-title">Quote Assets</h4>
+                                <div class="quote-list" id="quote-list">
+                                    <p style="color: var(--text-muted); text-align: center;">No data</p>
+                                </div>
+                            </div>
+
+                            <!-- Recent Symbols Card -->
+                            <div class="analytics-card analytics-card-wide">
+                                <h4 class="card-title">Recently Added Symbols</h4>
+                                <div class="recent-items" id="recent-items">
+                                    <p style="color: var(--text-muted); text-align: center;">No data</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Category Symbols Actions Bar -->
+                    <div class="actions-bar" style="margin-top: 20px;">
+                        <div class="actions-left">
+                            <button class="btn btn-danger" onclick="bulkRemoveFromCategory()" id="bulk-remove-btn" disabled>
+                                Remove Selected (<span id="category-selected-count">0</span>)
+                            </button>
+                        </div>
+                        <div class="actions-right">
+                            <div class="filter-group">
+                                <input type="text" id="category-symbol-search" placeholder="Search symbols..."
+                                       onkeyup="filterCategorySymbols()" style="width: 250px;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Category Symbols Table -->
+                    <div class="symbols-table">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px;">
+                                        <input type="checkbox" id="category-select-all" onchange="toggleCategorySelectAll()">
+                                    </th>
+                                    <th>Symbol</th>
+                                    <th>Market</th>
+                                    <th>Base Asset</th>
+                                    <th>Quote Asset</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="category-symbols-list">
+                                <tr>
+                                    <td colspan="5" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                                        No symbols in this category
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create/Edit Category Modal -->
+<div class="modal" id="category-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title" id="category-modal-title">Create Category</h2>
+            <button class="modal-close" onclick="closeCategoryModal()">&times;</button>
+        </div>
+        <form id="category-form" onsubmit="saveCategory(event)">
+            <input type="hidden" id="category-id">
+            <div class="form-group">
+                <label>Name *</label>
+                <input type="text" id="category-name" required placeholder="e.g., High Volume">
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="category-description" placeholder="Optional description..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>Category Priority (1-10)</label>
+                <input type="number" id="category-default-priority" class="form-control" min="1" max="10" value="5">
+                <small style="color: var(--text-muted);">Default: 5 - This will be used when adding symbols to this category</small>
+            </div>
+            <div class="form-group">
+                <label>Category Color</label>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px;">
+                    <label class="color-option-radio">
+                        <input type="radio" name="category-default-color" value="#666666" checked>
+                        <span class="color-box" style="background: #666666;" title="Grey (Default)"></span>
+                    </label>
+                    <label class="color-option-radio">
+                        <input type="radio" name="category-default-color" value="#ef4444">
+                        <span class="color-box" style="background: #ef4444;" title="Red"></span>
+                    </label>
+                    <label class="color-option-radio">
+                        <input type="radio" name="category-default-color" value="#f59e0b">
+                        <span class="color-box" style="background: #f59e0b;" title="Orange"></span>
+                    </label>
+                    <label class="color-option-radio">
+                        <input type="radio" name="category-default-color" value="#eab308">
+                        <span class="color-box" style="background: #eab308;" title="Yellow"></span>
+                    </label>
+                    <label class="color-option-radio">
+                        <input type="radio" name="category-default-color" value="#22c55e">
+                        <span class="color-box" style="background: #22c55e;" title="Green"></span>
+                    </label>
+                    <label class="color-option-radio">
+                        <input type="radio" name="category-default-color" value="#3b82f6">
+                        <span class="color-box" style="background: #3b82f6;" title="Blue"></span>
+                    </label>
+                    <label class="color-option-radio">
+                        <input type="radio" name="category-default-color" value="#8b5cf6">
+                        <span class="color-box" style="background: #8b5cf6;" title="Purple"></span>
+                    </label>
+                    <label class="color-option-radio">
+                        <input type="radio" name="category-default-color" value="#ec4899">
+                        <span class="color-box" style="background: #ec4899;" title="Pink"></span>
+                    </label>
+                    <label class="color-option-radio">
+                        <input type="radio" name="category-default-color" value="#06b6d4">
+                        <span class="color-box" style="background: #06b6d4;" title="Cyan"></span>
+                    </label>
+                    <label class="color-option-radio">
+                        <input type="radio" name="category-default-color" value="#14b8a6">
+                        <span class="color-box" style="background: #14b8a6;" title="Teal"></span>
+                    </label>
+                </div>
+                <small style="color: var(--text-muted); margin-top: 8px; display: block;">Default: Grey - This will be used when adding symbols to this category</small>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeCategoryModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add to Category Modal -->
+<div class="modal" id="add-to-category-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Add Symbols to Category</h2>
+            <button class="modal-close" onclick="closeAddToCategoryModal()">&times;</button>
+        </div>
+        <div class="form-group">
+            <label>Select Category *</label>
+            <select id="add-category-select" class="form-control">
+                <option value="">-- Select a category --</option>
+            </select>
+        </div>
+        <p style="color: var(--text-muted); font-size: 13px; margin-top: 15px;">
+            <span id="add-symbols-count">0</span> symbol(s) will be added
+        </p>
+        <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="closeAddToCategoryModal()">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="addSymbolsToCategory()">Add to Category</button>
+        </div>
+    </div>
+</div>
+
+<!-- Analyze Category Modal -->
+<div class="modal" id="analyze-category-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">⚡ Analyze Category</h2>
+            <button class="modal-close" onclick="closeAnalyzeCategoryModal()">&times;</button>
+        </div>
+        <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">
+            Queue analysis for all symbols in this category
+        </p>
+        <form id="analyze-form" onsubmit="analyzeCategory(event)">
+            <div class="form-group">
+                <label>Timeframe *</label>
+                <select id="analyze-timeframe" class="form-control" required>
+                    <option value="">-- Select timeframe --</option>
+                    <option value="1m">1 Minute</option>
+                    <option value="5m">5 Minutes</option>
+                    <option value="15m" selected>15 Minutes</option>
+                    <option value="30m">30 Minutes</option>
+                    <option value="1h">1 Hour</option>
+                    <option value="4h">4 Hours</option>
+                    <option value="1d">1 Day</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Strategy (optional)</label>
+                <input type="text" id="analyze-strategy" class="form-control" placeholder="Leave empty for default strategy">
+                <small style="color: var(--text-muted); margin-top: 4px; display: block;">
+                    If not specified, the first active strategy will be used
+                </small>
+            </div>
+            <div style="background: var(--card-bg); padding: 12px; border-radius: 6px; border: 1px solid var(--border-primary); margin-top: 15px;">
+                <p style="font-size: 13px; color: var(--text-muted); margin: 0;">
+                    <strong style="color: var(--text-primary);"><span id="analyze-symbols-count">0</span> symbols</strong> will be queued for analysis
+                </p>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeAnalyzeCategoryModal()">Cancel</button>
+                <button type="submit" class="btn btn-success">Queue Analysis</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascriptArea %}
+<script>
+// Tab switching
+document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+        tab.classList.add('active');
+        const tabId = tab.getAttribute('data-tab') + '-tab';
+        document.getElementById(tabId).classList.add('active');
+
+        if (tab.getAttribute('data-tab') === 'symbols') {
+            loadSymbols();
+        } else {
+            loadCategories();
+        }
+    });
+});
+
+// State
+let currentPage = 1;
+let totalPages = 1;
+let selectedSymbols = new Set();
+let currentCategory = null;
+let cachedCategories = []; // Cache categories for dropdown
+
+// Load symbols
+async function loadSymbols() {
+    const tbody = document.getElementById('symbols-list');
+    const totalEl = document.getElementById('total-symbols');
+
+    // Show loading state
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                Loading symbols...
+            </td>
+        </tr>
+    `;
+
+    const marketType = document.getElementById('filter-market').value;
+    const quoteAsset = document.getElementById('filter-quote').value;
+    const search = document.getElementById('filter-search').value;
+
+    const params = new URLSearchParams();
+    if (marketType) params.append('market_type', marketType);
+    if (quoteAsset) params.append('quote_asset', quoteAsset);
+    if (search) params.append('search', search);
+    params.append('limit', '5000');
+
+    try {
+        const response = await fetch(`/api/symbols/available?${params}`);
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            renderSymbols(data.data.symbols);
+            totalEl.textContent = `Total: ${data.data.total} symbols`;
+        } else {
+            throw new Error(data.message || 'Failed to load symbols');
+        }
+    } catch (error) {
+        console.error('Error loading symbols:', error);
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 40px; color: var(--color-danger);">
+                    ⚠️ Error loading symbols: ${error.message}<br>
+                    <button class="btn btn-sm btn-primary" onclick="loadSymbols()" style="margin-top: 10px;">
+                        Retry
+                    </button>
+                </td>
+            </tr>
+        `;
+        totalEl.textContent = 'Total: 0 symbols';
+    }
+}
+
+// Render symbols table
+function renderSymbols(symbols) {
+    const tbody = document.getElementById('symbols-list');
+
+    if (symbols.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                    No symbols found
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = symbols.map(symbol => `
+        <tr>
+            <td>
+                <input type="checkbox" class="symbol-checkbox"
+                       data-symbol-id="${symbol.id}"
+                       data-symbol="${symbol.symbol}"
+                       onchange="updateSelectedCount()">
+            </td>
+            <td><strong>${symbol.symbol}</strong></td>
+            <td>
+                <span class="badge badge-${symbol.market_type.toLowerCase()}">${symbol.market_type}</span>
+            </td>
+            <td>${symbol.base_asset}</td>
+            <td>${symbol.quote_asset}</td>
+            <td><span class="badge badge-success">${symbol.status}</span></td>
+        </tr>
+    `).join('');
+}
+
+// Checkbox selection
+function toggleSelectAll() {
+    const selectAll = document.getElementById('select-all');
+    const checkboxes = document.querySelectorAll('.symbol-checkbox');
+
+    checkboxes.forEach(cb => {
+        cb.checked = selectAll.checked;
+    });
+
+    updateSelectedCount();
+}
+
+function updateSelectedCount() {
+    const checkboxes = document.querySelectorAll('.symbol-checkbox:checked');
+    const count = checkboxes.length;
+
+    // Update selected symbols set
+    selectedSymbols.clear();
+    checkboxes.forEach(cb => {
+        selectedSymbols.add(parseInt(cb.dataset.symbolId));
+    });
+
+    // Update UI
+    document.getElementById('selected-count').textContent = count;
+    document.getElementById('delete-count').textContent = count;
+    document.getElementById('add-to-category-btn').disabled = count === 0;
+    document.getElementById('bulk-delete-btn').disabled = count === 0;
+}
+
+// Select none
+function selectNone() {
+    const checkboxes = document.querySelectorAll('.symbol-checkbox');
+    checkboxes.forEach(cb => cb.checked = false);
+    document.getElementById('select-all').checked = false;
+    updateSelectedCount();
+}
+
+// Invert selection
+function invertSelection() {
+    const checkboxes = document.querySelectorAll('.symbol-checkbox');
+    checkboxes.forEach(cb => cb.checked = !cb.checked);
+
+    // Update select-all state
+    const allCheckboxes = document.querySelectorAll('.symbol-checkbox');
+    const checkedCount = document.querySelectorAll('.symbol-checkbox:checked').length;
+    document.getElementById('select-all').checked = checkedCount > 0 && checkedCount === allCheckboxes.length;
+
+    updateSelectedCount();
+}
+
+// Bulk delete symbols
+async function bulkDeleteSymbols() {
+    const checkboxes = document.querySelectorAll('.symbol-checkbox:checked');
+    if (checkboxes.length === 0) return;
+
+    const symbolIds = Array.from(checkboxes).map(cb => parseInt(cb.dataset.symbolId));
+
+    // Get symbol names for display
+    const symbolNames = Array.from(checkboxes).map(cb => {
+        const row = cb.closest('tr');
+        return row.querySelector('td:nth-child(2) strong').textContent;
+    });
+
+    const displayNames = symbolNames.length <= 5
+        ? symbolNames.join(', ')
+        : `${symbolNames.slice(0, 5).join(', ')} and ${symbolNames.length - 5} more`;
+
+    const confirmed = await confirm({
+        title: 'Delete Symbols?',
+        message: `Are you sure you want to permanently delete ${symbolIds.length} symbol${symbolIds.length !== 1 ? 's' : ''}?\n\n${displayNames}\n\nThis action cannot be undone!`,
+        type: 'danger',
+        confirmText: 'Delete',
+        cancelText: 'Cancel'
+    });
+
+    if (!confirmed) return;
+
+    try {
+        const response = await fetch('/api/symbols/bulk-delete', {
+            method: 'DELETE',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ symbol_ids: symbolIds })
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            showSuccess(`${symbolIds.length} symbol${symbolIds.length !== 1 ? 's' : ''} deleted successfully`);
+            loadSymbols(); // Reload table
+        } else {
+            showError(data.message || 'Failed to delete symbols');
+        }
+    } catch (error) {
+        console.error('Bulk delete error:', error);
+        showError('Failed to delete symbols: ' + error.message);
+    }
+}
+
+// Load categories
+async function loadCategories() {
+    try {
+        const response = await fetch('/api/categories');
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            renderCategories(data.data.categories);
+            document.getElementById('total-categories').textContent = `Total: ${data.data.total} categories`;
+        }
+    } catch (error) {
+        console.error('Error loading categories:', error);
+    }
+}
+
+// Render categories grid
+function renderCategories(categories) {
+    // Cache categories for dropdown
+    cachedCategories = categories;
+
+    const grid = document.getElementById('categories-list');
+
+    if (categories.length === 0) {
+        grid.innerHTML = `
+            <p style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--text-muted);">
+                No categories yet. Create one to get started!
+            </p>
+        `;
+        return;
+    }
+
+    grid.innerHTML = categories.map(cat => `
+        <div class="item-card" style="border-left: 4px solid ${cat.default_color || '#3b82f6'};" onclick="viewCategory(${cat.id})">
+            <div class="item-header">
+                <h3 class="item-title" style="color: ${cat.default_color || '#3b82f6'};">${cat.name}</h3>
+                <div class="item-actions" onclick="event.stopPropagation();">
+                    <button class="btn btn-sm btn-primary" onclick="editCategory(${cat.id})">Edit</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteCategory(${cat.id})">Delete</button>
+                </div>
+            </div>
+            <p class="category-description">${cat.description || 'No description'}</p>
+            <div class="item-stats">
+                <div class="item-stat">
+                    <span class="item-stat-label">Symbols</span>
+                    <span class="item-stat-value">${cat.symbol_count || 0}</span>
+                </div>
+            </div>
+        </div>
+    `).join('');
+
+    // Update category dropdown in Add modal
+    loadCategoryDropdown(categories);
+}
+
+// Load category dropdown
+function loadCategoryDropdown(categories) {
+    const select = document.getElementById('add-category-select');
+    select.innerHTML = '<option value="">-- Select a category --</option>';
+
+    categories.forEach(cat => {
+        const option = document.createElement('option');
+        option.value = cat.id;
+        option.textContent = cat.name;
+        select.appendChild(option);
+    });
+}
+
+// View category detail
+async function viewCategory(categoryId) {
+    currentCategory = categoryId;
+
+    try {
+        // Load category info
+        const categoryResponse = await fetch(`/api/categories/${categoryId}`);
+        const categoryData = await categoryResponse.json();
+
+        if (categoryData.status === 'success') {
+            const category = categoryData.data;
+            document.getElementById('item-detail-name').textContent = category.name;
+            document.getElementById('item-detail-description').textContent = category.description || 'No description';
+        }
+
+        // Load category symbols
+        const symbolsResponse = await fetch(`/api/categories/${categoryId}/symbols`);
+        const symbolsData = await symbolsResponse.json();
+
+        if (symbolsData.status === 'success') {
+            const symbols = symbolsData.data.symbols;
+            renderCategorySymbols(symbols);
+            renderCategoryAnalytics(symbols);
+        }
+
+        // Show detail view, hide grid
+        document.getElementById('categories-grid-view').style.display = 'none';
+        document.getElementById('item-detail-view').style.display = 'block';
+        document.getElementById('close-category-btn').style.display = 'inline-block';
+
+    } catch (error) {
+        console.error('Error loading category:', error);
+    }
+}
+
+// Render category symbols
+function renderCategorySymbols(symbols) {
+    const tbody = document.getElementById('category-symbols-list');
+
+    if (symbols.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                    No symbols in this category
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = symbols.map(symbol => `
+        <tr class="category-symbol-row" data-symbol="${symbol.symbol.toLowerCase()}" data-symbol-id="${symbol.id}">
+            <td>
+                <input type="checkbox" class="category-symbol-checkbox" data-symbol-id="${symbol.id}" onchange="updateCategorySelectionCount()">
+            </td>
+            <td><strong>${symbol.symbol}</strong></td>
+            <td><span class="badge badge-${symbol.market_type.toLowerCase()}">${symbol.market_type}</span></td>
+            <td>${symbol.base_asset}</td>
+            <td>${symbol.quote_asset}</td>
+            <td>
+                <button class="btn btn-sm btn-danger"
+                        onclick="removeSymbolFromCategory(${symbol.id})">
+                    Remove
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// Render category analytics
+function renderCategoryAnalytics(symbols) {
+    const analyticsWidget = document.getElementById('item-analytics');
+
+    if (!symbols || symbols.length === 0) {
+        analyticsWidget.style.display = 'none';
+        return;
+    }
+
+    // Show widget
+    analyticsWidget.style.display = 'block';
+
+    // Calculate market types
+    let spotCount = 0;
+    let futuresCount = 0;
+    symbols.forEach(symbol => {
+        if (symbol.market_type === 'SPOT') spotCount++;
+        else if (symbol.market_type === 'FUTURES') futuresCount++;
+    });
+
+    const total = spotCount + futuresCount;
+    const spotPercent = total > 0 ? (spotCount / total * 100).toFixed(1) : 0;
+    const futuresPercent = total > 0 ? (futuresCount / total * 100).toFixed(1) : 0;
+
+    // Update market types
+    document.getElementById('spot-count').textContent = spotCount;
+    document.getElementById('futures-count').textContent = futuresCount;
+    document.getElementById('spot-bar').style.width = spotPercent + '%';
+    document.getElementById('futures-bar').style.width = futuresPercent + '%';
+
+    // Calculate quote assets
+    const quoteAssets = {};
+    symbols.forEach(symbol => {
+        const quote = symbol.quote_asset;
+        quoteAssets[quote] = (quoteAssets[quote] || 0) + 1;
+    });
+
+    // Sort and get top 5
+    const sortedQuotes = Object.entries(quoteAssets)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+
+    // Render quote assets
+    const quoteList = document.getElementById('quote-list');
+    if (sortedQuotes.length === 0) {
+        quoteList.innerHTML = '<p style="color: var(--text-muted); text-align: center;">No data</p>';
+    } else {
+        quoteList.innerHTML = sortedQuotes.map(([quote, count]) => `
+            <div class="quote-item">
+                <span class="quote-name">${quote}</span>
+                <span class="quote-count">${count} symbol${count !== 1 ? 's' : ''}</span>
+            </div>
+        `).join('');
+    }
+
+    // Get recently added symbols (last 5, sorted by created_at)
+    const recentSymbols = [...symbols]
+        .filter(s => s.created_at)
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .slice(0, 5);
+
+    // Render recent symbols
+    const recentContainer = document.getElementById('recent-items');
+    if (recentSymbols.length === 0) {
+        recentContainer.innerHTML = '<p style="color: var(--text-muted); text-align: center;">No data</p>';
+    } else {
+        recentContainer.innerHTML = recentSymbols.map(symbol => `
+            <div class="recent-item-item">
+                <div class="recent-item-info">
+                    <span class="recent-item-name">${symbol.symbol}</span>
+                    <span class="item-badge ${symbol.market_type.toLowerCase()}">${symbol.market_type}</span>
+                </div>
+                <span class="recent-item-time">${getTimeAgo(symbol.created_at)}</span>
+            </div>
+        `).join('');
+    }
+}
+
+// Helper: Format time ago
+function getTimeAgo(dateString) {
+    if (!dateString) return 'Unknown';
+
+    const date = new Date(dateString);
+    const now = new Date();
+    const seconds = Math.floor((now - date) / 1000);
+
+    if (seconds < 60) return 'Just now';
+    if (seconds < 3600) return Math.floor(seconds / 60) + ' min ago';
+    if (seconds < 86400) return Math.floor(seconds / 3600) + ' hours ago';
+    if (seconds < 604800) return Math.floor(seconds / 86400) + ' days ago';
+    if (seconds < 2592000) return Math.floor(seconds / 604800) + ' weeks ago';
+    return Math.floor(seconds / 2592000) + ' months ago';
+}
+
+// Export category to JSON
+async function exportCategoryToJSON() {
+    if (!currentCategory) {
+        showWarning('No category selected');
+        return;
+    }
+
+    try {
+        // Fetch category data
+        const categoryResponse = await fetch(`/api/categories/${currentCategory}`);
+        const categoryData = await categoryResponse.json();
+
+        if (categoryData.status !== 'success') {
+            showError('Failed to load category data');
+            return;
+        }
+
+        // Fetch symbols
+        const symbolsResponse = await fetch(`/api/categories/${currentCategory}/symbols`);
+        const symbolsData = await symbolsResponse.json();
+
+        if (symbolsData.status !== 'success') {
+            showError('Failed to load symbols data');
+            return;
+        }
+
+        // Prepare export data
+        const exportData = {
+            category: categoryData.data,
+            symbols: symbolsData.data.symbols,
+            exported_at: new Date().toISOString(),
+            total_symbols: symbolsData.data.symbols.length
+        };
+
+        // Create blob and download
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `category_${categoryData.data.name}_${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        showSuccess('Category exported successfully');
+
+    } catch (error) {
+        console.error('Export error:', error);
+        showError('Failed to export category: ' + error.message);
+    }
+}
+
+// Toggle category select all
+function toggleCategorySelectAll() {
+    const selectAll = document.getElementById('category-select-all');
+    const checkboxes = document.querySelectorAll('.category-symbol-checkbox');
+
+    checkboxes.forEach(cb => {
+        cb.checked = selectAll.checked;
+    });
+
+    updateCategorySelectionCount();
+}
+
+// Update category selection count
+function updateCategorySelectionCount() {
+    const checkboxes = document.querySelectorAll('.category-symbol-checkbox:checked');
+    const count = checkboxes.length;
+
+    document.getElementById('category-selected-count').textContent = count;
+    document.getElementById('bulk-remove-btn').disabled = count === 0;
+
+    // Update select-all checkbox state
+    const allCheckboxes = document.querySelectorAll('.category-symbol-checkbox');
+    const selectAllCheckbox = document.getElementById('category-select-all');
+    selectAllCheckbox.checked = count > 0 && count === allCheckboxes.length;
+}
+
+// Bulk remove from category
+async function bulkRemoveFromCategory() {
+    if (!currentCategory) return;
+
+    const checkboxes = document.querySelectorAll('.category-symbol-checkbox:checked');
+    if (checkboxes.length === 0) return;
+
+    const symbolIds = Array.from(checkboxes).map(cb => parseInt(cb.dataset.symbolId));
+
+    const confirmed = await confirm({
+        title: 'Remove Symbols?',
+        message: `Remove ${symbolIds.length} symbol${symbolIds.length !== 1 ? 's' : ''} from this category?`,
+        type: 'warning',
+        confirmText: 'Remove',
+        cancelText: 'Cancel'
+    });
+
+    if (!confirmed) return;
+
+    try {
+        const response = await fetch(`/api/categories/${currentCategory}/symbols`, {
+            method: 'DELETE',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ symbol_ids: symbolIds })
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            showSuccess(`${symbolIds.length} symbol${symbolIds.length !== 1 ? 's' : ''} removed from category`);
+            viewCategory(currentCategory); // Reload
+        } else {
+            showError(data.message || 'Failed to remove symbols');
+        }
+    } catch (error) {
+        console.error('Bulk remove error:', error);
+        showError('Failed to remove symbols: ' + error.message);
+    }
+}
+
+// Filter category symbols
+function filterCategorySymbols() {
+    const searchText = document.getElementById('category-symbol-search').value.toLowerCase();
+    const rows = document.querySelectorAll('.category-symbol-row');
+
+    rows.forEach(row => {
+        const symbolName = row.dataset.symbol;
+        if (symbolName.includes(searchText)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+// Close category detail
+function closeCategory() {
+    currentCategory = null;
+    document.getElementById('categories-grid-view').style.display = 'block';
+    document.getElementById('item-detail-view').style.display = 'none';
+    document.getElementById('close-category-btn').style.display = 'none';
+    loadCategories();
+}
+
+// Remove symbol from category
+async function removeSymbolFromCategory(symbolId) {
+    if (!currentCategory) return;
+
+    const confirmed = await confirm({
+        title: 'Remove Symbol?',
+        message: 'Remove this symbol from the category?',
+        type: 'warning',
+        confirmText: 'Remove',
+        cancelText: 'Cancel'
+    });
+    if (!confirmed) return;
+
+    try {
+        const response = await fetch(`/api/categories/${currentCategory}/symbols`, {
+            method: 'DELETE',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ symbol_ids: [symbolId] })
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            showSuccess('Symbol removed from category');
+            viewCategory(currentCategory); // Reload
+        } else {
+            showError(data.message || 'Failed to remove symbol');
+        }
+    } catch (error) {
+        console.error('Error removing symbol:', error);
+        showError('Error removing symbol');
+    }
+}
+
+// Category modal
+function showCreateCategoryModal() {
+    document.getElementById('category-modal-title').textContent = 'Create Category';
+    document.getElementById('category-id').value = '';
+    document.getElementById('category-name').value = '';
+    document.getElementById('category-description').value = '';
+    document.getElementById('category-default-priority').value = 5;
+
+    // Reset color selection to default (grey)
+    const defaultColorRadio = document.querySelector('input[name="category-default-color"][value="#666666"]');
+    if (defaultColorRadio) {
+        defaultColorRadio.checked = true;
+    }
+
+    document.getElementById('category-modal').classList.add('active');
+}
+
+function closeCategoryModal() {
+    document.getElementById('category-modal').classList.remove('active');
+}
+
+async function saveCategory(event) {
+    event.preventDefault();
+
+    const id = document.getElementById('category-id').value;
+    const defaultColorRadio = document.querySelector('input[name="category-default-color"]:checked');
+
+    const data = {
+        name: document.getElementById('category-name').value,
+        description: document.getElementById('category-description').value,
+        default_priority: parseInt(document.getElementById('category-default-priority').value) || 5,
+        default_color: defaultColorRadio ? defaultColorRadio.value : '#666666'
+    };
+
+    const url = id ? `/api/categories/${id}` : '/api/categories';
+    const method = id ? 'PUT' : 'POST';
+
+    try {
+        const response = await fetch(url, {
+            method: method,
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.status === 'success') {
+            showSuccess(id ? 'Category updated successfully' : 'Category created successfully');
+            closeCategoryModal();
+            loadCategories();
+        } else {
+            showError(result.message || 'Failed to save category');
+        }
+    } catch (error) {
+        console.error('Error saving category:', error);
+        showError('Error saving category');
+    }
+}
+
+// Edit category
+async function editCategory(id) {
+    event.stopPropagation();
+
+    try {
+        const response = await fetch(`/api/categories/${id}`);
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            const category = data.data;
+            document.getElementById('category-modal-title').textContent = 'Edit Category';
+            document.getElementById('category-id').value = category.id;
+            document.getElementById('category-name').value = category.name;
+            document.getElementById('category-description').value = category.description || '';
+            document.getElementById('category-default-priority').value = category.default_priority || 5;
+
+            // Set default color radio button
+            const defaultColor = category.default_color || '#666666';
+            const colorRadio = document.querySelector(`input[name="category-default-color"][value="${defaultColor}"]`);
+            if (colorRadio) {
+                colorRadio.checked = true;
+            }
+
+            document.getElementById('category-modal').classList.add('active');
+        }
+    } catch (error) {
+        console.error('Error loading category:', error);
+        showError('Error loading category');
+    }
+}
+
+// Edit current category (from detail view)
+function editCurrentCategory() {
+    if (currentCategory) {
+        editCategory(currentCategory);
+    }
+}
+
+// Delete category
+async function deleteCategory(id) {
+    event.stopPropagation();
+
+    // Show confirmation dialog
+    const confirmed = await confirmDelete('Category');
+    if (!confirmed) return;
+
+    try {
+        const response = await fetch(`/api/categories/${id}`, {
+            method: 'DELETE'
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            showSuccess('Category deleted successfully');
+            if (currentCategory === id) {
+                closeCategory();
+            } else {
+                loadCategories();
+            }
+        } else {
+            showError(data.message || 'Failed to delete category');
+        }
+    } catch (error) {
+        console.error('Error deleting category:', error);
+        showError('Error deleting category');
+    }
+}
+
+// Delete current category (from detail view)
+function deleteCurrentCategory() {
+    if (currentCategory) {
+        deleteCategory(currentCategory);
+    }
+}
+
+// Add to category modal
+async function showAddToCategoryModal() {
+    if (selectedSymbols.size === 0) {
+        showWarning('Please select at least one symbol');
+        return;
+    }
+
+    // Load fresh categories for dropdown
+    try {
+        const response = await fetch('/api/categories');
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            const categories = data.data.categories;
+            cachedCategories = categories; // Update cache
+            loadCategoryDropdown(categories);
+        }
+    } catch (error) {
+        console.error('Error loading categories:', error);
+    }
+
+    document.getElementById('add-symbols-count').textContent = selectedSymbols.size;
+    document.getElementById('add-to-category-modal').classList.add('active');
+}
+
+function closeAddToCategoryModal() {
+    document.getElementById('add-to-category-modal').classList.remove('active');
+    document.getElementById('add-category-select').value = '';
+}
+
+// Add symbols to category
+async function addSymbolsToCategory() {
+    const categoryId = document.getElementById('add-category-select').value;
+
+    if (!categoryId) {
+        showWarning('Please select a category');
+        return;
+    }
+
+    // Find selected category to get its default values
+    const selectedCategory = cachedCategories.find(cat => cat.id == categoryId);
+    const priority = selectedCategory?.default_priority || 5;
+    const color = selectedCategory?.default_color || '#666666';
+
+    try {
+        const response = await fetch(`/api/categories/${categoryId}/symbols`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                symbol_ids: Array.from(selectedSymbols),
+                priority: priority,
+                color: color
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            showSuccess(`Successfully added ${selectedSymbols.size} symbol(s) to category`);
+            closeAddToCategoryModal();
+
+            // Clear selection
+            selectedSymbols.clear();
+            document.getElementById('select-all').checked = false;
+            document.querySelectorAll('.symbol-checkbox').forEach(cb => cb.checked = false);
+            updateSelectedCount();
+        } else {
+            showError(data.message || 'Failed to add symbols');
+        }
+    } catch (error) {
+        console.error('Error adding symbols:', error);
+        showError('Error adding symbols to category');
+    }
+}
+
+// Sync symbols
+async function syncSymbols() {
+    const confirmed = await confirm({
+        title: 'Sync Symbols?',
+        message: 'Sync symbols from exchange? This may take a few moments.',
+        type: 'warning',
+        confirmText: 'Sync',
+        cancelText: 'Cancel'
+    });
+    if (!confirmed) return;
+
+    // Show loading spinner
+    LoadingSpinner.show();
+
+    try {
+        const response = await fetch('/api/symbols/sync', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ market_type: 'both' })
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            showSuccess('Symbols synced successfully!');
+            loadSymbols();
+        } else {
+            showError(data.message || 'Failed to sync symbols');
+        }
+    } catch (error) {
+        console.error('Error syncing symbols:', error);
+        showError('Error syncing symbols');
+    } finally {
+        // Hide loading spinner
+        LoadingSpinner.hide();
+    }
+}
+
+// Pagination
+function previousPage() {
+    // TODO: Implement pagination
+}
+
+function nextPage() {
+    // TODO: Implement pagination
+}
+
+// ========================================
+// ANALYSIS FUNCTIONS
+// ========================================
+
+// Global variable to store category symbols for analysis
+let categorySymbolsForAnalysis = [];
+
+// Show analyze category modal
+async function showAnalyzeCategoryModal() {
+    if (!currentCategory) {
+        showWarning('No category selected');
+        return;
+    }
+
+    try {
+        // Load category symbols
+        const response = await fetch(`/api/categories/${currentCategory}/symbols`);
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            categorySymbolsForAnalysis = data.data.symbols;
+            document.getElementById('analyze-symbols-count').textContent = categorySymbolsForAnalysis.length;
+
+            // Reset form
+            document.getElementById('analyze-timeframe').value = '15m';
+            document.getElementById('analyze-strategy').value = '';
+
+            // Show modal
+            document.getElementById('analyze-category-modal').classList.add('active');
+        } else {
+            showError(data.message || 'Failed to load category symbols');
+        }
+    } catch (error) {
+        console.error('Error loading category symbols:', error);
+        showError('Error loading category symbols');
+    }
+}
+
+// Close analyze category modal
+function closeAnalyzeCategoryModal() {
+    document.getElementById('analyze-category-modal').classList.remove('active');
+}
+
+// Create alert for current category
+function createAlertForCategory() {
+    if (!currentCategory) {
+        showToast('Please select a category first', 'error');
+        return;
+    }
+
+    // Redirect to analysis page with category pre-selected
+    window.open(`/analysis?create_alert=category&category_id=${currentCategory}`, '_blank');
+}
+
+// Analyze category - queue all symbols for analysis
+async function analyzeCategory(event) {
+    event.preventDefault();
+
+    const timeframe = document.getElementById('analyze-timeframe').value;
+    const strategy = document.getElementById('analyze-strategy').value.trim();
+
+    if (!timeframe) {
+        showWarning('Please select a timeframe');
+        return;
+    }
+
+    if (categorySymbolsForAnalysis.length === 0) {
+        showWarning('No symbols in this category');
+        return;
+    }
+
+    try {
+        // Extract symbol IDs
+        const symbolIds = categorySymbolsForAnalysis.map(s => s.id);
+
+        // Queue analysis via API
+        const response = await fetch('/api/analysis/queue', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                symbol_ids: symbolIds,
+                timeframe: timeframe,
+                strategy_name: strategy || null
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            const queuedCount = data.data.queued_count;
+            showSuccess(`Successfully queued ${queuedCount} symbol(s) for analysis! (${timeframe}, ${strategy || 'default strategy'})`);
+            closeAnalyzeCategoryModal();
+
+            // Update analysis status bar
+            updateAnalysisStatusBar(queuedCount, timeframe, strategy);
+        } else {
+            showError(data.message || 'Failed to queue analysis');
+        }
+    } catch (error) {
+        console.error('Error queuing analysis:', error);
+        showError('Error queuing analysis');
+    }
+}
+
+// Update analysis status bar
+function updateAnalysisStatusBar(queuedCount, timeframe, strategy) {
+    const statusBar = document.getElementById('analysis-status-bar');
+    const statusText = document.getElementById('analysis-status-text');
+
+    if (queuedCount > 0) {
+        const strategyText = strategy ? ` with strategy "${strategy}"` : '';
+        const timestamp = new Date().toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        statusText.innerHTML = `
+            <span style="color: var(--success-color); font-weight: 600;">${queuedCount} symbol${queuedCount !== 1 ? 's' : ''} queued</span>
+            for ${timeframe} timeframe${strategyText} • ${timestamp}
+        `;
+        statusBar.style.display = 'block';
+    }
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    loadSymbols();
+});
+</script>
+{% endblock %}

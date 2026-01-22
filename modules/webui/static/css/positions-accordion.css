@@ -1,0 +1,483 @@
+/**
+ * Positions Accordion List - 3commas Style
+ * ========================================
+ */
+
+/* Header */
+.positions-header {
+    display: grid;
+    grid-template-columns: 30px 1fr 1.2fr 1.5fr 0.8fr 1fr 0.7fr 0.8fr;
+    gap: 8px;
+    padding: 10px 12px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-primary);
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+/* Positions List Container */
+.positions-list {
+    background: var(--bg-primary);
+}
+
+/* Position Item (Accordion) */
+.position-item {
+    border-bottom: 1px solid var(--border-primary);
+    transition: background 0.2s;
+}
+
+.position-item:hover {
+    background: var(--bg-hover);
+}
+
+/* Position Header (Collapsed View) */
+.position-header {
+    display: grid;
+    grid-template-columns: 30px 1fr 1.2fr 1.5fr 0.8fr 1fr 0.7fr 0.8fr;
+    gap: 8px;
+    padding: 12px;
+    cursor: pointer;
+    align-items: center;
+    font-size: 12px;
+}
+
+/* Column Styles */
+.pos-col-expand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pos-expand-btn {
+    background: none;
+    border: 1px solid var(--border-primary);
+    border-radius: 3px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+    padding: 0;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pos-expand-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--text-secondary);
+    background: var(--bg-hover);
+}
+
+.pos-expand-btn .chevron-icon {
+    transition: transform 0.2s ease;
+}
+
+.pos-expand-btn.expanded .chevron-icon {
+    transform: rotate(180deg);
+}
+
+/* Parite Column (Symbol + Exchange) */
+.pos-col-parite {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.pos-symbol-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.pos-symbol {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.pos-exchange {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: capitalize;
+}
+
+/* Tarih Column (Date + Time + ID) */
+.pos-col-tarih {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.pos-date {
+    font-size: 12px;
+    color: var(--text-primary);
+}
+
+.pos-time {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.pos-id {
+    font-size: 10px;
+    color: var(--text-muted);
+}
+
+/* Hacim Column (Quantity + Value) */
+.pos-col-hacim {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.pos-quantity {
+    font-size: 12px;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.pos-value {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+/* Durum Column (Status) */
+.pos-col-durum {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.pos-status {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.pos-status.open {
+    color: var(--accent-success);
+}
+
+.pos-status.closed {
+    color: var(--text-muted);
+}
+
+/* Kar Column (PnL + Percentage) */
+.pos-col-kar {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.pos-pnl {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.pos-pnl.positive {
+    color: var(--accent-success);
+}
+
+.pos-pnl.negative {
+    color: var(--accent-danger);
+}
+
+.pos-pnl-pct {
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.pos-pnl-pct.positive {
+    color: var(--accent-success);
+}
+
+.pos-pnl-pct.negative {
+    color: var(--accent-danger);
+}
+
+.pos-col-kaynak {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.pos-col-eylemler {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.pos-action-btn {
+    background: none;
+    border: 1px solid var(--border-primary);
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    transition: all 0.2s;
+}
+
+.pos-action-btn:hover {
+    background: var(--bg-hover);
+    border-color: var(--text-secondary);
+    color: var(--text-primary);
+}
+
+.pos-action-btn.edit {
+    color: var(--accent-primary);
+    border-color: var(--accent-primary);
+}
+
+.pos-action-btn.edit:hover {
+    background: rgba(29, 155, 240, 0.1);
+}
+
+.pos-action-btn.delete {
+    color: var(--accent-danger);
+    border-color: var(--accent-danger);
+}
+
+.pos-action-btn.delete:hover {
+    background: rgba(249, 24, 128, 0.1);
+}
+
+/* Position Details (Expanded View) */
+.position-details {
+    padding: 20px;
+    background: var(--bg-secondary);
+    display: none;
+}
+
+.position-details.expanded {
+    display: block;
+}
+
+/* Notes Section */
+.pos-notes-section {
+    margin-bottom: 20px;
+}
+
+.pos-notes-label {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.pos-notes-text {
+    padding: 10px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.pos-notes-input {
+    width: 100%;
+    padding: 10px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 13px;
+    resize: vertical;
+    min-height: 60px;
+}
+
+/* Entry Summary */
+.pos-entry-summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.pos-summary-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.pos-summary-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.pos-summary-value {
+    font-size: 14px;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+/* Multi-line summary values (like Toplam Pozisyon) */
+.pos-summary-value-primary {
+    font-size: 14px;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.pos-summary-value-secondary {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+/* Entries Table */
+.pos-entries-section {
+    margin-top: 20px;
+}
+
+.pos-entries-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.pos-entries-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.pos-add-entry-btn {
+    background: var(--accent-primary);
+    border: none;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.pos-add-entry-btn:hover {
+    background: var(--accent-primary-hover);
+}
+
+.pos-entries-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--bg-primary);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.pos-entries-table th {
+    background: var(--bg-tertiary);
+    padding: 10px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-primary);
+}
+
+.pos-entries-table td {
+    padding: 10px;
+    font-size: 13px;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-primary);
+}
+
+.pos-entries-table tr:last-child td {
+    border-bottom: none;
+}
+
+.pos-entries-table tr:hover {
+    background: var(--bg-hover);
+}
+
+.entry-action-btns {
+    display: flex;
+    gap: 6px;
+}
+
+.entry-btn {
+    background: none;
+    border: 1px solid var(--border-primary);
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    transition: all 0.2s;
+}
+
+.entry-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.entry-btn.edit {
+    color: var(--accent-primary);
+    border-color: var(--accent-primary);
+}
+
+.entry-btn.delete {
+    color: var(--accent-danger);
+    border-color: var(--accent-danger);
+}
+
+/* Empty State */
+.positions-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+}
+
+.positions-empty-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+.positions-empty-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.positions-empty-text {
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+
+/* Responsive */
+@media (max-width: 1400px) {
+    .positions-header,
+    .position-header {
+        grid-template-columns: 25px 0.9fr 1fr 1.3fr 0.7fr 0.9fr 0.6fr 0.7fr;
+        gap: 6px;
+        font-size: 11px;
+    }
+}
+
+@media (max-width: 1200px) {
+    .positions-header,
+    .position-header {
+        grid-template-columns: 25px 0.8fr 0.9fr 1.2fr 0.6fr 0.8fr 0.5fr 0.6fr;
+        gap: 6px;
+        font-size: 11px;
+    }
+
+    .pos-action-btn {
+        padding: 3px 6px;
+        font-size: 10px;
+    }
+}
+
+@media (max-width: 992px) {
+    .positions-header,
+    .position-header {
+        grid-template-columns: 20px 1fr 1fr 1.2fr 0.6fr 0.8fr 0.5fr 0.6fr;
+        gap: 4px;
+        padding: 8px;
+    }
+
+    .pos-entries-table {
+        font-size: 11px;
+    }
+}

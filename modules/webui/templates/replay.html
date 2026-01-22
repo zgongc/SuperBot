@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block title %}Replay Trading{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/replay.css') }}">
+<script src="https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🎮 Replay Trading</h1>
+    <p>Strategy simulation on historical data.</p>
+</div>
+
+{% include 'replay/_setup.html' %}
+{% include 'replay/_chart.html' %}
+{% include 'replay/_controls.html' %}
+{% include 'replay/_stats.html' %}
+
+{% endblock %}
+
+{% block javascriptArea %}
+<script src="{{ url_for('static', filename='js/replay.js') }}"></script>
+{% endblock %}

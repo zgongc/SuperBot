@@ -107,7 +107,23 @@ logger.info("🚀 Engine starting...")
 """
 path/to/file.py
 SuperBot - Module Name
-...docstring...
+Author: SuperBot Team
+Date: YYYY-MM-DD
+Version: X.Y.Z
+
+Module description (brief and concise)
+
+Features:
+- Feature 1
+- Feature 2
+
+Usage:
+    from module import Class
+    instance = Class()
+
+Dependencies:
+    - python>=3.10
+    - package1>=1.0.0
 """
 
 from __future__ import annotations

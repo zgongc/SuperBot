@@ -1,0 +1,250 @@
+# config/connectors.yaml
+# SuperBot - Exchange Bağlantı Ayarları
+# Yazar: SuperBot Team
+# Tarih: 2025-10-16
+exchanges:
+  primary: binance  # Varsayılan exchange
+  list:
+    - Manuel
+    - Binance
+    - OKX
+    - Bybit
+    - KuCoin
+    - Gate.io
+# ============================================================
+# BINANCE CONNECTOR
+# ============================================================
+# NOT: Bu dosya BOT'un kendi trading işlemleri için kullanılır
+# Database exchange_accounts tablosu ise WebUI portfolio tracking için
+binance:
+  enabled: true
+
+  # Testnet/Production seçimi
+  # testnet: true  -> endpoints.testnet kullanılır (BINANCE_TESTNET_API_KEY)
+  # testnet: false -> endpoints.production kullanılır (BINANCE_API_KEY)
+  testnet: true
+
+  # API credentials - testnet flag'ine göre doğru env variables kullanılır
+  # testnet: true  -> BINANCE_TESTNET_API_KEY, BINANCE_TESTNET_API_SECRET
+  # testnet: false -> BINANCE_API_KEY, BINANCE_API_SECRET
+  # Binance Client, testnet parametresi ile doğru URL'leri otomatik seçer
+  endpoints:
+    testnet:
+      api_key: "${BINANCE_TESTNET_API_KEY}"      # config/.env'den okunur
+      secret_key: "${BINANCE_TESTNET_API_SECRET}" # config/.env'den okunur
+
+    production:
+      api_key: "${BINANCE_API_KEY}"              # config/.env'den okunur
+      secret_key: "${BINANCE_API_SECRET}"         # config/.env'den okunur
+ 
+  # Rate limiting
+  rate_limit:
+    max_requests_per_minute: 1200
+    weight_limit: 1200
+    order_limit: 100
+    
+    # Weight usage tracking
+    track_weight: true
+    alert_threshold: 1000  # 1000'e ulaşınca uyarı
+    
+  # Retry ayarları
+  retry:
+    enabled: true
+    max_attempts: 3
+    backoff_factor: 2  # exponential backoff (1s, 2s, 4s)
+    backoff_max: 10    # max 10 saniye
+    
+  # Timeout ayarları
+  timeout:
+    connect: 10  # saniye
+    read: 30
+    
+  # Connection pool
+  connection_pool:
+    size: 10
+    max_size: 50
+    
+  # Features
+  features:
+    spot_trading: true
+    futures_trading: true
+    margin_trading: false  # şimdilik kapalı
+    
+  # WebSocket ayarları
+  websocket:
+    ping_interval: 20  # saniye (20 saniye)
+    ping_timeout: 10
+    reconnect_delay: 5
+    max_reconnect_attempts: 10
+    
+    # Stream limits
+    max_streams_per_connection: 200
+    
+    # Buffer
+    message_buffer_size: 1000
+
+# ============================================================
+# BYBIT CONNECTOR
+# ============================================================
+bybit:
+  enabled: false  # Phase 7.5+ için
+
+  # Testnet/Production seçimi
+  testnet: true
+
+  # API credentials - testnet flag'ine göre doğru env variables kullanılır
+  endpoints:
+    testnet:
+      api_key: "${BYBIT_TESTNET_API_KEY}"      # config/.env'den okunur
+      secret_key: "${BYBIT_TESTNET_API_SECRET}" # config/.env'den okunur
+
+    production:
+      api_key: "${BYBIT_API_KEY}"              # config/.env'den okunur
+      secret_key: "${BYBIT_API_SECRET}"         # config/.env'den okunur
+
+  # Rate limiting
+  rate_limit:
+    max_requests_per_minute: 1200
+    track_weight: true
+    alert_threshold: 1000
+
+  # Retry ayarları
+  retry:
+    enabled: true
+    max_attempts: 3
+    backoff_factor: 2
+    backoff_max: 10
+
+  # Timeout ayarları
+  timeout:
+    connect: 10
+    read: 30
+
+  # Features
+  features:
+    spot_trading: true
+    futures_trading: true
+    margin_trading: false
+
+# ============================================================
+# OKX CONNECTOR
+# ============================================================
+okx:
+  enabled: false  # Phase 7.5+ için
+
+  # Testnet/Production seçimi
+  testnet: true
+
+  # API credentials - testnet flag'ine göre doğru env variables kullanılır
+  # OKX requires passphrase in addition to api_key and secret
+  endpoints:
+    testnet:
+      api_key: "${OKX_TESTNET_API_KEY}"            # config/.env'den okunur
+      secret_key: "${OKX_TESTNET_API_SECRET}"       # config/.env'den okunur
+      passphrase: "${OKX_TESTNET_PASSPHRASE}"       # config/.env'den okunur
+
+    production:
+      api_key: "${OKX_API_KEY}"                    # config/.env'den okunur
+      secret_key: "${OKX_API_SECRET}"               # config/.env'den okunur
+      passphrase: "${OKX_PASSPHRASE}"               # config/.env'den okunur
+
+  # Rate limiting
+  rate_limit:
+    max_requests_per_minute: 1200
+    track_weight: true
+    alert_threshold: 1000
+
+  # Retry ayarları
+  retry:
+    enabled: true
+    max_attempts: 3
+    backoff_factor: 2
+    backoff_max: 10
+
+  # Timeout ayarları
+  timeout:
+    connect: 10
+    read: 30
+
+  # Features
+  features:
+    spot_trading: true
+    futures_trading: true
+    margin_trading: false
+
+# ============================================================
+# TRADINGVIEW CONNECTOR (Opsiyonel)
+# ============================================================
+tradingview:
+  enabled: false  # Sprint 4+ için
+  
+  # USDT.D dominance için
+  symbols:
+    - "CRYPTOCAP:USDT.D"
+    - "CRYPTOCAP:BTC.D"
+    - "CRYPTOCAP:TOTAL"
+    
+  # Update interval
+  update_interval: 300  # 5 dakika
+
+# ============================================================
+# NEWS API CONNECTOR (Gelecek)
+# ============================================================
+news_api:
+  enabled: false  # Sprint 4+ için
+  
+  # Sources
+  sources:
+    - "cryptopanic"
+    - "coindesk"
+    - "cointelegraph"
+    
+  # Update interval
+  update_interval: 600  # 10 dakika
+  
+  # Sentiment analysis
+  sentiment_analysis: true
+
+# ============================================================
+# MACRO DATA CONNECTOR (Gelecek)
+# ============================================================
+macro_data:
+  enabled: false  # Sprint 4+ için
+  
+  # Data sources
+  sources:
+    - "federal_reserve"
+    - "ecb"
+    - "bls"
+    
+  # Indicators
+  indicators:
+    - "inflation_rate"
+    - "interest_rate"
+    - "unemployment_rate"
+    
+  # Update interval
+  update_interval: 86400  # 24 saat
+
+# ============================================================
+# BAĞLANTI YÖNETİMİ
+# ============================================================
+connection_management:
+  # Health check
+  health_check_interval: 60  # saniye
+  
+  # Auto-reconnect
+  auto_reconnect: true
+  
+  # Failover
+  failover_enabled: false
+  
+  # Connection timeout
+  idle_timeout: 300  # 5 dakika
+  
+  # Circuit breaker
+  circuit_breaker:
+    enabled: true
+    failure_threshold: 5
+    timeout: 60  # saniye
+    half_open_timeout: 30

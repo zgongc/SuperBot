@@ -1,0 +1,357 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Dashboard</h1>
+    <p>Trading system overview and statistics</p>
+</div>
+
+<div class="dashboard-grid">
+    <!-- Stats Cards -->
+    <div class="stats-grid" id="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">📊</div>
+            <div class="stat-content">
+                <div class="stat-label">Total Symbols</div>
+                <div class="stat-value" id="total-symbols">-</div>
+                <div class="stat-change" id="favorites-count">- favorites</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">🔬</div>
+            <div class="stat-content">
+                <div class="stat-label">Analysis Queue</div>
+                <div class="stat-value" id="pending-analysis">-</div>
+                <div class="stat-change" id="completed-analysis">- completed</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">📈</div>
+            <div class="stat-content">
+                <div class="stat-label">Buy Signals</div>
+                <div class="stat-value" id="buy-signals">-</div>
+                <div class="stat-change" id="sell-signals">- sell signals</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">💼</div>
+            <div class="stat-content">
+                <div class="stat-label">Portfolio Value</div>
+                <div class="stat-value" id="portfolio-value">$-</div>
+                <div class="stat-change" id="portfolio-pnl">- P&L</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">💰</div>
+            <div class="stat-content">
+                <div class="stat-label">Account Balance</div>
+                <div class="stat-value" id="account-usdt">-</div>
+                <div class="stat-change" id="account-btc">- BTC</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="card">
+        <div class="card-header">
+            <h3>Quick Actions</h3>
+        </div>
+        <div class="card-body">
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <a href="/favorites" class="btn btn-primary">Manage Favorites</a>
+                <button class="btn btn-secondary" onclick="syncSymbols()">Sync Symbols</button>
+                <a href="/analysis" class="btn btn-secondary">View Analysis</a>
+                <a href="/trade" class="btn btn-success">Trade Opportunities</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Account Balances -->
+    <div class="card">
+        <div class="card-header">
+            <h3>Account Balances</h3>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn btn-primary btn-sm" onclick="syncAccount()">Sync from Exchange</button>
+                <button class="btn btn-secondary btn-sm" onclick="loadAccountBalance()">Refresh</button>
+            </div>
+        </div>
+        <div class="card-body" id="account-balances">
+            <p>Loading...</p>
+        </div>
+    </div>
+
+    <!-- Analysis Status -->
+    <div class="card">
+        <div class="card-header">
+            <h3>Analysis Status</h3>
+            <a href="/analysis" class="btn-link">View All</a>
+        </div>
+        <div class="card-body" id="analysis-status">
+            <p>Loading...</p>
+        </div>
+    </div>
+
+    <!-- Recent Signals -->
+    <div class="card">
+        <div class="card-header">
+            <h3>Recent Trading Signals</h3>
+            <a href="/trade" class="btn-link">View All</a>
+        </div>
+        <div class="card-body" id="recent-signals">
+            <p>Loading...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+// Load dashboard stats
+async function loadDashboardStats() {
+    try {
+        const response = await fetch('/api/stats/overview');
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            const stats = data.data;
+
+            // Update stat cards
+            document.getElementById('total-symbols').textContent = stats.symbols.total;
+            document.getElementById('favorites-count').textContent = `${stats.symbols.favorites} favorites`;
+
+            document.getElementById('pending-analysis').textContent = stats.analysis.pending;
+            document.getElementById('completed-analysis').textContent = `${stats.analysis.completed_total} completed`;
+
+            document.getElementById('buy-signals').textContent = stats.analysis.signals.buy;
+            document.getElementById('sell-signals').textContent = `${stats.analysis.signals.sell} sell signals`;
+
+            document.getElementById('portfolio-value').textContent = `$${stats.portfolio.total_value.toFixed(2)}`;
+            const pnlClass = stats.portfolio.total_pnl >= 0 ? 'positive' : 'negative';
+            const pnlSign = stats.portfolio.total_pnl >= 0 ? '+' : '';
+            document.getElementById('portfolio-pnl').innerHTML =
+                `<span class="${pnlClass}">${pnlSign}$${stats.portfolio.total_pnl.toFixed(2)} P&L</span>`;
+        }
+    } catch (error) {
+        console.error('Failed to load dashboard stats:', error);
+    }
+}
+
+// Sync account from exchange
+async function syncAccount() {
+    try {
+        const container = document.getElementById('account-balances');
+        container.innerHTML = '<p>⏳ Syncing from exchange...</p>';
+
+        const response = await fetch('/api/account/sync', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({account_type: 'SPOT'})
+        });
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            // After successful sync, load the data
+            await loadAccountBalance();
+            await loadDashboardStats(); // Refresh stats too
+        } else {
+            container.innerHTML = `<p class="error-message">Sync failed: ${data.message}</p>`;
+        }
+    } catch (error) {
+        console.error('Failed to sync account:', error);
+        document.getElementById('account-balances').innerHTML =
+            '<p class="error-message">Failed to sync account from exchange</p>';
+    }
+}
+
+// Load account balance
+async function loadAccountBalance() {
+    try {
+        const response = await fetch('/api/account/balance');
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            const balanceData = data.data;
+
+            // Update summary cards
+            document.getElementById('account-usdt').textContent =
+                `${balanceData.summary.total_usdt.toFixed(2)} USDT`;
+            document.getElementById('account-btc').textContent =
+                `${balanceData.summary.total_btc.toFixed(8)} BTC`;
+
+            // Display balance table
+            const container = document.getElementById('account-balances');
+            const balances = balanceData.balances;
+
+            if (balances.length === 0) {
+                container.innerHTML = '<p class="empty-state">No balances available</p>';
+                return;
+            }
+
+            let html = `
+                <div style="margin-bottom: 10px; color: var(--text-secondary); font-size: 14px;">
+                    <strong>Account Type:</strong> ${balanceData.account_type} |
+                    <strong>Assets:</strong> ${balanceData.summary.total_assets} |
+                    <strong>Trade:</strong> ${balanceData.can_trade ? '✅' : '❌'}
+                </div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Asset</th>
+                            <th>Free</th>
+                            <th>Locked</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            balances.forEach(balance => {
+                html += `
+                    <tr>
+                        <td><strong>${balance.asset}</strong></td>
+                        <td>${balance.free.toFixed(8)}</td>
+                        <td>${balance.locked.toFixed(8)}</td>
+                        <td><strong>${balance.total.toFixed(8)}</strong></td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        } else {
+            const container = document.getElementById('account-balances');
+            container.innerHTML = `
+                <div class="empty-state">
+                    <p>${data.message}</p>
+                    <p style="margin-top: 10px;">
+                        <button class="btn btn-primary" onclick="syncAccount()">Sync from Exchange</button>
+                    </p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Failed to load account balance:', error);
+        document.getElementById('account-balances').innerHTML =
+            '<p class="error-message">Failed to load account balance</p>';
+    }
+}
+
+// Load analysis status
+async function loadAnalysisStatus() {
+    try {
+        const response = await fetch('/api/analysis/queue?limit=5');
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            const container = document.getElementById('analysis-status');
+            const queue = data.data.queue;
+
+            if (queue.length === 0) {
+                container.innerHTML = '<p class="empty-state">No analysis in queue</p>';
+                return;
+            }
+
+            let html = '<div class="progress-list">';
+            queue.forEach(item => {
+                const statusClass = item.status === 'completed' ? 'success' :
+                                   item.status === 'failed' ? 'danger' : 'info';
+                html += `
+                    <div class="progress-item">
+                        <div class="progress-header">
+                            <strong>${item.symbol}</strong>
+                            <span class="badge badge-${statusClass}">${item.status}</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${item.progress}%"></div>
+                        </div>
+                        <small>${item.timeframe} - ${item.strategy_name || 'default'}</small>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+    } catch (error) {
+        console.error('Failed to load analysis status:', error);
+    }
+}
+
+// Load recent signals
+async function loadRecentSignals() {
+    try {
+        const response = await fetch('/api/analysis/results?limit=5');
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            const container = document.getElementById('recent-signals');
+            const results = data.data.results;
+
+            if (results.length === 0) {
+                container.innerHTML = '<p class="empty-state">No trading signals yet</p>';
+                return;
+            }
+
+            let html = '<table class="data-table"><thead><tr><th>Symbol</th><th>Signal</th><th>Confidence</th><th>Time</th></tr></thead><tbody>';
+            results.forEach(result => {
+                const signalClass = result.signal === 'BUY' ? 'success' :
+                                   result.signal === 'SELL' ? 'danger' : 'warning';
+                const time = new Date(result.analyzed_at).toLocaleString();
+                html += `
+                    <tr>
+                        <td><strong>${result.symbol}</strong></td>
+                        <td><span class="badge badge-${signalClass}">${result.signal}</span></td>
+                        <td>${result.confidence.toFixed(1)}%</td>
+                        <td><small>${time}</small></td>
+                    </tr>
+                `;
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+    } catch (error) {
+        console.error('Failed to load recent signals:', error);
+    }
+}
+
+// Sync symbols from exchange
+async function syncSymbols() {
+    try {
+        const response = await fetch('/api/symbols/sync', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({market_type: 'both', force: true})
+        });
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            alert(`Synced symbols successfully (SPOT + FUTURES)!`);
+            loadDashboardStats();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    } catch (error) {
+        alert('Failed to sync symbols: ' + error.message);
+    }
+}
+
+// Load all dashboard data
+function loadDashboard() {
+    loadDashboardStats();
+    loadAccountBalance();
+    loadAnalysisStatus();
+    loadRecentSignals();
+}
+
+// Load on page load
+document.addEventListener('DOMContentLoaded', loadDashboard);
+
+// Auto-refresh every 10 seconds
+setInterval(loadDashboard, 10000);
+</script>
+
+{# Tüm stiller main.css'te: .stats-grid, .stat-card, .progress-*, .badge-*, .btn-*, .empty-state, .error-message #}
+{% endblock %}

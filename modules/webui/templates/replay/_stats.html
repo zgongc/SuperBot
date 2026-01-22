@@ -1,0 +1,68 @@
+<!-- Stats Panels -->
+<div class="stats-row" id="stats-panel" style="display: none;">
+    <!-- Account Stats -->
+    <div class="card stats-card">
+        <div class="card-header">
+            <h4>💰 Hesap</h4>
+        </div>
+        <div class="card-body">
+            <div class="stat-item">
+                <span class="stat-label">Balance</span>
+                <span class="stat-value" id="stat-balance">$10,000</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Equity</span>
+                <span class="stat-value" id="stat-equity">$10,000</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">P&L</span>
+                <span class="stat-value" id="stat-pnl">$0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Drawdown</span>
+                <span class="stat-value" id="stat-drawdown">0%</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Indicators with Toggle -->
+    <div class="card stats-card">
+        <div class="card-header">
+            <h4>📊 Indicators</h4>
+            <button class="btn btn-sm btn-link" id="btn-toggle-all-indicators" title="Expand All/Collapse All">
+                👁️
+            </button>
+        </div>
+        <div class="card-body" id="indicators-panel">
+            <!-- To be dynamically filled. -->
+            <p class="empty-state">Select strategy...</p>
+        </div>
+    </div>
+
+    <!-- Positions -->
+    <div class="card stats-card">
+        <div class="card-header">
+            <h4>📈 Pozisyonlar</h4>
+        </div>
+        <div class="card-body" id="positions-panel">
+            <p class="empty-state">No open positions.</p>
+        </div>
+    </div>
+
+    <!-- Trade History -->
+    <div class="card stats-card">
+        <div class="card-header">
+            <h4>📜 Trade History</h4>
+        </div>
+        <div class="card-body" id="trades-panel">
+            <div class="stat-item">
+                <span class="stat-label">Trades</span>
+                <span class="stat-value" id="stat-trades">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Win Rate</span>
+                <span class="stat-value" id="stat-winrate">-</span>
+            </div>
+        </div>
+    </div>
+</div>

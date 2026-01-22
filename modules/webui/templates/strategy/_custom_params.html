@@ -1,0 +1,201 @@
+{#
+    Strategy Editor - Custom Parameters (Filters) Partial
+    Session, time ve day filtreleri
+#}
+<div class="accordion-item">
+    <div class="accordion-header" onclick="toggleAccordion(this)">
+        <div class="accordion-title-section">
+            <div class="accordion-icon">🔍</div>
+            <div class="accordion-title-text">
+                <h3>Filtreler</h3>
+                <p>Session, time and day filters</p>
+            </div>
+        </div>
+        <svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+    </div>
+    <div class="accordion-content">
+        <div class="accordion-body">
+
+            <!-- BASIC FILTERS -->
+            <div class="strategy-section">
+                <div class="section-header">
+                    🔍 BASIC FILTERS
+                </div>
+                <div style="margin-top: 1rem;">
+                    <div class="toggle-group">
+                        <label class="toggle-label">
+                            📰 News Filter
+                            <span style="font-size: 0.8rem; color: var(--text-secondary); display: block;">Trade during news times.</span>
+                        </label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="filter-news" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SESSION FILTER -->
+            <div class="strategy-section" style="margin-top: 1.5rem;">
+                <div class="toggle-group">
+                    <label class="toggle-label section-header" style="margin: 0;">🕐 SESSION FILTER</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="filter-session-enabled" onchange="toggleSessionFilterConfig()">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div id="session-filter-config" class="collapsible-config" style="margin-top: 1rem;">
+                    <div class="info-box" style="margin-bottom: 1rem;">
+                        <div class="info-box-title">💡 Trading Sessions</div>
+                        <div class="info-box-content">
+                            <p style="font-size: 0.875rem;">
+                                <strong>London:</strong> En yüksek hacim (%38) - En iyi fırsatlar ⭐<br>
+                                <strong>New York:</strong> İkinci en yüksek hacim (%25)<br>
+                                <strong>London+NY Overlap:</strong> 13:00-16:00 UTC - En yüksek volatilite ⭐⭐⭐<br>
+                                <strong>Tokyo/Sydney:</strong> Düşük hacim - Daha riskli
+                            </p>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;">
+                        <div class="toggle-group">
+                            <label class="toggle-label">🇦🇺 Sydney (22:00-07:00 UTC)</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="filter-session-sydney">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="toggle-group">
+                            <label class="toggle-label">🇯🇵 Tokyo (00:00-09:00 UTC)</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="filter-session-tokyo">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="toggle-group">
+                            <label class="toggle-label">🇬🇧 London (08:00-16:00 UTC) ⭐</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="filter-session-london">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="toggle-group">
+                            <label class="toggle-label">🇺🇸 New York (13:00-21:00 UTC)</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="filter-session-newyork">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="toggle-group" style="grid-column: 1 / -1;">
+                            <label class="toggle-label">⭐ London+NY Overlap (13:00-16:00 UTC) ⭐⭐⭐</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="filter-session-overlap" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TIME FILTER -->
+            <div class="strategy-section" style="margin-top: 1.5rem;">
+                <div class="toggle-group">
+                    <label class="toggle-label section-header" style="margin: 0;">⏰ TIME FILTER</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="filter-time-enabled" onchange="toggleTimeFilterConfig()">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div id="time-filter-config" class="collapsible-config" style="margin-top: 1rem;">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Start Hour (UTC)</label>
+                            <input type="number" class="form-input" id="filter-time-start" value="8" min="0" max="23">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">End Hour (UTC)</label>
+                            <input type="number" class="form-input" id="filter-time-end" value="21" min="0" max="23">
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-top: 0.75rem;">
+                        <label class="form-label">
+                            Exclude Hours (virgülle ayır)
+                            <span class="form-help" title="Örnek: 12,13 (öğle molası)">ℹ️</span>
+                        </label>
+                        <input type="text" class="form-input" id="filter-time-exclude" placeholder="12,13" value="12,13">
+                    </div>
+                </div>
+            </div>
+
+            <!-- DAY FILTER -->
+            <div class="strategy-section" style="margin-top: 1.5rem;">
+                <div class="toggle-group">
+                    <label class="toggle-label section-header" style="margin: 0;">📅 DAY FILTER</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="filter-day-enabled" onchange="toggleDayFilterConfig()">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div id="day-filter-config" class="collapsible-config" style="margin-top: 1rem;">
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;">
+                        <div class="toggle-group">
+                            <label class="toggle-label">Pazartesi</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="filter-day-monday" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="toggle-group">
+                            <label class="toggle-label">Tuesday</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="filter-day-tuesday" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="toggle-group">
+                            <label class="toggle-label">Wednesday</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="filter-day-wednesday" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="toggle-group">
+                            <label class="toggle-label">Thursday</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="filter-day-thursday" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="toggle-group">
+                            <label class="toggle-label">Cuma</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="filter-day-friday" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="toggle-group">
+                            <label class="toggle-label">Cumartesi</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="filter-day-saturday">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="toggle-group">
+                            <label class="toggle-label">Pazar</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="filter-day-sunday">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>

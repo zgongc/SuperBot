@@ -1,0 +1,366 @@
+{% extends "base.html" %}
+
+{% block title %}Strateji Düzenle{% endblock %}
+
+{# Tüm stiller components.css'te: .creator-*, .wizard-*, .step-*, .template-*, .symbol-*, .summary-*, .form-label, .form-input #}
+
+{% block content %}
+<div class="creator-container">
+    <div class="creator-header">
+        <h1 class="creator-title">Edit Strategy</h1>
+        <p class="creator-subtitle">Update your current strategy.</p>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loading-state" style="padding: 60px 20px; text-align: center; color: var(--text-muted);">
+        Loading strategy...
+    </div>
+
+    <div id="edit-content" style="display: none;">
+    <!-- Wizard Steps -->
+    <div class="wizard-steps">
+        <div class="wizard-step active" data-step="1">
+            <div class="step-circle">1</div>
+            <div class="step-label">Temel Bilgiler</div>
+        </div>
+        <div class="wizard-step" data-step="2">
+            <div class="step-circle">2</div>
+            <div class="step-label">Semboller</div>
+        </div>
+        <div class="wizard-step" data-step="3">
+            <div class="step-circle">3</div>
+            <div class="step-label">Summary</div>
+        </div>
+    </div>
+
+    <!-- Form Card -->
+    <div class="card">
+        <!-- Step 1: Basic Info -->
+        <div class="step-content active" data-step="1">
+            <h2 style="margin-bottom: 1.5rem;">Temel Bilgiler</h2>
+
+            <div class="form-group">
+                <label class="form-label required">Strategy Name</label>
+                <input type="text" id="strategy-name" class="form-input" placeholder="Example: RSI VWAP Strategy">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Versiyon</label>
+                <input type="text" id="strategy-version" class="form-input" value="1.0.0">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea id="strategy-description" class="form-input form-textarea" placeholder="A brief description of the strategy..."></textarea>
+            </div>
+        </div>
+
+        <!-- Step 2: Symbols -->
+        <div class="step-content" data-step="2">
+            <h2 style="margin-bottom: 1.5rem;">Semboller</h2>
+
+            <div class="form-group">
+                <label class="form-label">Selected Symbols</label>
+                <div class="symbol-selector" id="symbol-selector">
+                    <!-- Selected symbols will appear here -->
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Add Symbol</label>
+                <div class="add-symbol-input">
+                    <input type="text" id="symbol-input" class="form-input" placeholder="Example: BTCUSDT" style="flex: 1;">
+                    <button class="btn btn-primary" onclick="addSymbol()" style="flex: none;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        Ekle
+                    </button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Popular Symbols</label>
+                <div class="symbol-selector">
+                    <button class="symbol-tag" onclick="addSymbol('BTCUSDT')" style="cursor: pointer;">
+                        <span>BTCUSDT</span>
+                    </button>
+                    <button class="symbol-tag" onclick="addSymbol('ETHUSDT')" style="cursor: pointer;">
+                        <span>ETHUSDT</span>
+                    </button>
+                    <button class="symbol-tag" onclick="addSymbol('BNBUSDT')" style="cursor: pointer;">
+                        <span>BNBUSDT</span>
+                    </button>
+                    <button class="symbol-tag" onclick="addSymbol('SOLUSDT')" style="cursor: pointer;">
+                        <span>SOLUSDT</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3: Summary -->
+        <div class="step-content" data-step="3">
+            <h2 style="margin-bottom: 1.5rem;">Summary</h2>
+
+            <div class="summary-section">
+                <div class="summary-title">Temel Bilgiler</div>
+                <div class="summary-item">
+                    <span class="summary-label">Strategy Name:</span>
+                    <span class="summary-value" id="summary-name">-</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Versiyon:</span>
+                    <span class="summary-value" id="summary-version">-</span>
+                </div>
+            </div>
+
+            <div class="summary-section">
+                <div class="summary-title">Semboller</div>
+                <div class="symbol-selector" id="summary-symbols">
+                    <!-- Symbols will be shown here -->
+                </div>
+            </div>
+
+            <div class="summary-section">
+                <div class="summary-title">Description</div>
+                <p id="summary-description" style="color: var(--text-secondary);">-</p>
+            </div>
+        </div>
+
+        <!-- Wizard Actions -->
+        <div class="wizard-actions">
+            <button class="btn btn-secondary" id="prev-btn" onclick="prevStep()" style="display: none;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                    <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+                Geri
+            </button>
+            <a href="/strategies" class="btn btn-secondary">Cancel</a>
+            <button class="btn btn-primary" id="next-btn" onclick="nextStep()">
+                İleri
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            </button>
+        </div>
+    </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascriptArea %}
+<script>
+    const strategyId = '{{ strategy_id }}';
+    let currentStep = 1;
+    let selectedSymbols = [];
+    let currentStrategy = null;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        loadStrategy();
+
+        // Allow Enter key to add symbol
+        document.getElementById('symbol-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addSymbol();
+            }
+        });
+    });
+
+    async function loadStrategy() {
+        try {
+            const response = await fetch(`/api/strategies/${strategyId}`);
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                currentStrategy = result.data;
+                prefillForm();
+                document.getElementById('loading-state').style.display = 'none';
+                document.getElementById('edit-content').style.display = 'block';
+            } else {
+                showToast('Hata', result.message || 'Strateji yüklenemedi', 'error');
+                setTimeout(() => window.location.href = '/strategies', 2000);
+            }
+        } catch (error) {
+            console.error('Error loading strategy:', error);
+            showToast('Hata', 'Strateji yüklenirken hata oluştu', 'error');
+            setTimeout(() => window.location.href = '/strategies', 2000);
+        }
+    }
+
+    function prefillForm() {
+        // Pre-fill basic info
+        document.getElementById('strategy-name').value = currentStrategy.name;
+        document.getElementById('strategy-version').value = currentStrategy.version;
+        document.getElementById('strategy-description').value = currentStrategy.description || '';
+
+        // Pre-fill symbols
+        selectedSymbols = currentStrategy.symbols || [];
+        renderSymbols();
+    }
+
+    function addSymbol(symbol = null) {
+        const symbolInput = document.getElementById('symbol-input');
+        const symbolValue = (symbol || symbolInput.value).trim().toUpperCase();
+
+        if (!symbolValue) return;
+        if (selectedSymbols.includes(symbolValue)) {
+            showToast('Uyarı', 'Bu sembol zaten eklenmiş', 'warning');
+            return;
+        }
+
+        selectedSymbols.push(symbolValue);
+        symbolInput.value = '';
+        renderSymbols();
+    }
+
+    function removeSymbol(symbol) {
+        selectedSymbols = selectedSymbols.filter(s => s !== symbol);
+        renderSymbols();
+    }
+
+    function renderSymbols() {
+        const container = document.getElementById('symbol-selector');
+
+        if (selectedSymbols.length === 0) {
+            container.innerHTML = '<span style="color: var(--text-secondary);">Henüz sembol eklenmedi</span>';
+            return;
+        }
+
+        container.innerHTML = selectedSymbols.map(symbol => `
+            <div class="symbol-tag">
+                <span>${symbol}</span>
+                <button class="remove-btn" onclick="removeSymbol('${symbol}')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+        `).join('');
+    }
+
+    function nextStep() {
+        if (!validateStep(currentStep)) return;
+
+        if (currentStep < 3) {
+            currentStep++;
+            updateWizard();
+        } else {
+            updateStrategy();
+        }
+    }
+
+    function prevStep() {
+        if (currentStep > 1) {
+            currentStep--;
+            updateWizard();
+        }
+    }
+
+    function validateStep(step) {
+        if (step === 1) {
+            const name = document.getElementById('strategy-name').value.trim();
+            if (!name) {
+                showToast('Uyarı', 'Strateji adı zorunludur', 'warning');
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function updateWizard() {
+        // Update step indicators
+        document.querySelectorAll('.wizard-step').forEach(step => {
+            const stepNum = parseInt(step.dataset.step);
+            step.classList.remove('active', 'completed');
+
+            if (stepNum === currentStep) {
+                step.classList.add('active');
+            } else if (stepNum < currentStep) {
+                step.classList.add('completed');
+            }
+        });
+
+        // Update content
+        document.querySelectorAll('.step-content').forEach(content => {
+            content.classList.remove('active');
+        });
+        document.querySelector(`.step-content[data-step="${currentStep}"]`).classList.add('active');
+
+        // Update buttons
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+
+        prevBtn.style.display = currentStep === 1 ? 'none' : 'flex';
+
+        if (currentStep === 3) {
+            updateSummary();
+            nextBtn.innerHTML = `
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                Güncelle
+            `;
+        } else {
+            nextBtn.innerHTML = `
+                İleri
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            `;
+        }
+    }
+
+    function updateSummary() {
+        const name = document.getElementById('strategy-name').value || '-';
+        const version = document.getElementById('strategy-version').value || '-';
+        const description = document.getElementById('strategy-description').value || 'Açıklama yok';
+
+        document.getElementById('summary-name').textContent = name;
+        document.getElementById('summary-version').textContent = version;
+        document.getElementById('summary-description').textContent = description;
+
+        const summarySymbols = document.getElementById('summary-symbols');
+        if (selectedSymbols.length === 0) {
+            summarySymbols.innerHTML = '<span style="color: var(--text-secondary);">Sembol yok</span>';
+        } else {
+            summarySymbols.innerHTML = selectedSymbols.map(symbol =>
+                `<span class="symbol-tag">${symbol}</span>`
+            ).join('');
+        }
+    }
+
+    async function updateStrategy() {
+        const data = {
+            name: document.getElementById('strategy-name').value,
+            version: document.getElementById('strategy-version').value || '1.0.0',
+            description: document.getElementById('strategy-description').value,
+            symbols: selectedSymbols
+        };
+
+        try {
+            const response = await fetch(`/api/strategies/${strategyId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                showToast('Başarılı', 'Strateji başarıyla güncellendi', 'success');
+                setTimeout(() => window.location.href = `/strategies/${strategyId}`, 1500);
+            } else {
+                showToast('Hata', result.message || 'Strateji güncellenemedi', 'error');
+            }
+        } catch (error) {
+            console.error('Error updating strategy:', error);
+            showToast('Hata', 'Strateji güncellenirken hata oluştu', 'error');
+        }
+    }
+</script>
+{% endblock %}

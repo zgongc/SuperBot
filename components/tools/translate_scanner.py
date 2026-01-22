@@ -1,22 +1,27 @@
 #!/usr/bin/env python3
 """
-Translation Scanner - Find and Translate Turkish content in Python files
+Translation Scanner - Find and Translate Turkish content in Python/HTML/JS files
 
-Scans Python files for Turkish content (comments, docstrings, strings)
+Scans Python, HTML, and JavaScript files for Turkish content
 and can auto-translate using Ollama (local LLM).
 
 Usage:
-    python components/tools/translate_scanner.py                    # Scan all
+    # Python files (default)
+    python components/tools/translate_scanner.py                    # Scan all .py files
     python components/tools/translate_scanner.py core/              # Scan specific folder
-    python components/tools/translate_scanner.py --report           # Generate markdown report
     python components/tools/translate_scanner.py --translate        # Auto-translate with Ollama
-    python components/tools/translate_scanner.py --translate --dry-run  # Preview changes
 
-    # Translate entire directory:
-    python components/tools/translate_scanner.py modules/backtest/ --translate --ollama-url http://192.168.1.195:11434 --model translategemma:12b
+    # HTML files
+    python components/tools/translate_scanner.py modules/webui/templates/ --html --translate
 
-    # Translate single file:
-    python components/tools/translate_scanner.py components/strategies/helpers/validation.py --translate --ollama-url http://192.168.1.195:11434
+    # JavaScript files
+    python components/tools/translate_scanner.py modules/webui/static/js/ --js --translate
+
+    # Combined flags
+    python components/tools/translate_scanner.py modules/webui/ --html --js --translate --dry-run
+
+    # With options
+    python components/tools/translate_scanner.py --translate --ollama-url http://192.168.1.195:11434 --model translategemma:12b
 """
 
 import re
@@ -445,6 +450,481 @@ English translation (same line count, no triple quotes, no markdown):"""
             return False
 
 
+# ============================================================================
+# HTML Scanner
+# ============================================================================
+
+class HTMLScanner:
+    """Scan HTML/Jinja2 template files for Turkish content."""
+
+    # Patterns for extractable text in HTML
+    # These are SAFE to translate
+    SAFE_PATTERNS = [
+        # Text inside common tags (added small, strong, em, b, i)
+        (r'<(h[1-6]|p|span|div|label|button|a|td|th|li|option|title|small|strong|em|b|i)([^>]*)>([^<]+)</\1>', 'tag_content'),
+        # Placeholder attributes
+        (r'placeholder="([^"]+)"', 'placeholder'),
+        (r"placeholder='([^']+)'", 'placeholder'),
+        # Title attributes
+        (r'title="([^"]+)"', 'title'),
+        (r"title='([^']+)'", 'title'),
+        # Alt attributes for images
+        (r'alt="([^"]+)"', 'alt'),
+        # HTML comments (but not Jinja comments)
+        (r'<!--\s*([^-]+)\s*-->', 'html_comment'),
+    ]
+
+    # Patterns to SKIP (dangerous to translate)
+    SKIP_PATTERNS = [
+        r'\$\{.*?\}',           # Template literals
+        r'\{\{.*?\}\}',         # Jinja2 variables
+        r'\{%.*?%\}',           # Jinja2 blocks
+        r'onclick=',            # Event handlers
+        r'onchange=',
+        r'onsubmit=',
+        r'oninput=',
+        r'data-[a-z]+=',        # Data attributes
+        r'class=',              # CSS classes
+        r'id=',                 # IDs
+        r'href=',               # Links
+        r'src=',                # Sources
+        r'style=',              # Inline styles
+    ]
+
+    def __init__(self, root_path: str = "."):
+        self.root_path = Path(root_path)
+        self.results: Dict[str, List[Tuple[int, str, str, str]]] = {}  # line_num, type, original, extracted
+        self.skip_dirs = {'node_modules', '.git', '__pycache__', 'venv', '.venv'}
+
+    def is_turkish(self, text: str) -> bool:
+        """Check if text contains Turkish content."""
+        if TURKISH_CHARS.search(text):
+            return True
+        if TURKISH_WORD_PATTERN.search(text):
+            return True
+        return False
+
+    def should_skip_line(self, line: str) -> bool:
+        """Check if line contains patterns that shouldn't be translated."""
+        for pattern in self.SKIP_PATTERNS:
+            if re.search(pattern, line, re.IGNORECASE):
+                # Check if there's Turkish content outside these patterns
+                cleaned = re.sub(pattern, '', line, flags=re.IGNORECASE)
+                if not self.is_turkish(cleaned):
+                    return True
+        return False
+
+    def extract_translatable_text(self, line: str, line_num: int) -> List[Tuple[int, str, str, str]]:
+        """
+        Extract translatable text segments from an HTML line.
+
+        Returns:
+            List of (line_num, content_type, full_match, text_to_translate)
+        """
+        findings = []
+
+        for pattern, content_type in self.SAFE_PATTERNS:
+            for match in re.finditer(pattern, line, re.IGNORECASE):
+                # Get the captured group (text content)
+                if content_type == 'tag_content':
+                    text = match.group(3).strip()
+                else:
+                    text = match.group(1).strip()
+
+                if text and self.is_turkish(text):
+                    # Skip if it's a Jinja2 expression
+                    if '{{' in text or '{%' in text:
+                        continue
+                    # Skip if it's mostly code
+                    if text.count('(') > 0 or text.count('{') > 0:
+                        continue
+                    findings.append((line_num, content_type, match.group(0), text))
+
+        return findings
+
+    def scan_file(self, file_path: Path) -> List[Tuple[int, str, str, str]]:
+        """Scan a single HTML file for Turkish content."""
+        findings = []
+
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+                lines = content.split('\n')
+        except (UnicodeDecodeError, IOError):
+            return findings
+
+        # First, remove script and style blocks from content for whole-file scanning
+        clean_content = re.sub(r'<script[^>]*>.*?</script>', '', content, flags=re.DOTALL | re.IGNORECASE)
+        clean_content = re.sub(r'<style[^>]*>.*?</style>', '', clean_content, flags=re.DOTALL | re.IGNORECASE)
+
+        # Scan whole file for multi-line tag content
+        for pattern, content_type in self.SAFE_PATTERNS:
+            # Use DOTALL for multi-line matching
+            for match in re.finditer(pattern, clean_content, re.IGNORECASE | re.DOTALL):
+                if content_type == 'tag_content':
+                    text = match.group(3).strip()
+                else:
+                    text = match.group(1).strip()
+
+                if text and self.is_turkish(text):
+                    # Skip Jinja2 expressions
+                    if '{{' in text or '{%' in text:
+                        continue
+                    # Skip if mostly code
+                    if text.count('(') > 0 or text.count('{') > 0:
+                        continue
+
+                    # Find line number
+                    pos = match.start()
+                    line_num = content[:pos].count('\n') + 1
+
+                    findings.append((line_num, content_type, match.group(0), text))
+
+        # Deduplicate findings (same text might match multiple patterns)
+        seen = set()
+        unique_findings = []
+        for f in findings:
+            key = (f[0], f[3])  # line_num and text
+            if key not in seen:
+                seen.add(key)
+                unique_findings.append(f)
+
+        return unique_findings
+
+    def scan_directory(self, directory: Optional[Path] = None) -> Dict[str, List[Tuple[int, str, str, str]]]:
+        """Scan all HTML files in directory."""
+        if directory is None:
+            directory = self.root_path
+
+        self.results = {}
+
+        for html_file in directory.rglob('*.html'):
+            if any(skip in html_file.parts for skip in self.skip_dirs):
+                continue
+
+            findings = self.scan_file(html_file)
+            if findings:
+                rel_path = str(html_file.relative_to(self.root_path))
+                self.results[rel_path] = findings
+
+        return self.results
+
+    def translate_file(self, file_path: str, translator: OllamaTranslator,
+                       dry_run: bool = False) -> bool:
+        """Translate a single HTML file."""
+        if file_path not in self.results:
+            print(f"[SKIP] No Turkish content in {file_path}")
+            return True
+
+        full_path = self.root_path / file_path
+        findings = self.results[file_path]
+
+        print(f"\n[TRANSLATE HTML] {file_path} ({len(findings)} items)", flush=True)
+
+        # Read file
+        with open(full_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+
+        # Translate each finding
+        translations = {}
+        for i, (line_num, content_type, full_match, text) in enumerate(findings, 1):
+            print(f"  [{i}/{len(findings)}] {text[:40]}...", flush=True)
+
+            translated = translator.translate_line(text, context=f"HTML {content_type}")
+            if translated:
+                translations[full_match] = full_match.replace(text, translated.strip())
+
+        if dry_run:
+            print(f"\n[DRY-RUN] Would modify {file_path}:")
+            for original, new in translations.items():
+                print(f"  {original[:50]}")
+                print(f"  -> {new[:50]}")
+        else:
+            # Backup
+            backup_path = full_path.with_suffix('.html.bak')
+            shutil.copy(full_path, backup_path)
+
+            # Apply translations
+            for original, new in translations.items():
+                content = content.replace(original, new)
+
+            with open(full_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+
+            print(f"[OK] Translated {file_path}")
+
+        return True
+
+    def print_summary(self):
+        """Print summary of HTML findings."""
+        if not self.results:
+            print("[OK] No Turkish content found in HTML files!")
+            return
+
+        total = sum(len(f) for f in self.results.values())
+        print(f"\n[HTML SCAN] Found {total} Turkish items in {len(self.results)} files")
+
+        for file_path, findings in sorted(self.results.items()):
+            print(f"\n  {file_path} ({len(findings)} items)")
+            for line_num, content_type, full_match, text in findings[:3]:
+                print(f"    L{line_num} [{content_type}]: {text[:50]}")
+            if len(findings) > 3:
+                print(f"    ... and {len(findings) - 3} more")
+
+
+# ============================================================================
+# JavaScript Scanner
+# ============================================================================
+
+class JSScanner:
+    """Scan JavaScript files for Turkish content."""
+
+    # Patterns for extractable text in JS
+    SAFE_PATTERNS = [
+        # Single-quoted strings (not in template literals)
+        (r"'([^'\\]*(?:\\.[^'\\]*)*)'", 'string_single'),
+        # Double-quoted strings
+        (r'"([^"\\]*(?:\\.[^"\\]*)*)"', 'string_double'),
+        # Single-line comments
+        (r'//\s*(.+)$', 'comment'),
+        # Multi-line comments
+        (r'/\*\s*(.*?)\s*\*/', 'block_comment'),
+    ]
+
+    # Patterns to SKIP
+    SKIP_PATTERNS = [
+        r'\$\{.*?\}',           # Template literal expressions
+        r'console\.',           # Console calls
+        r'fetch\(',             # Fetch calls
+        r'getElementById',      # DOM methods
+        r'querySelector',
+        r'addEventListener',
+        r'\.classList\.',       # Class manipulation
+        r'\.style\.',           # Style manipulation
+        r'JSON\.',              # JSON operations
+        r'localStorage',        # Storage
+        r'sessionStorage',
+        r'window\.',            # Window object
+        r'document\.',          # Document object
+        r'function\s+\w+',      # Function declarations
+        r'const\s+\w+\s*=',     # Const declarations
+        r'let\s+\w+\s*=',       # Let declarations
+        r'var\s+\w+\s*=',       # Var declarations
+        r'=>',                  # Arrow functions
+        r'import\s+',           # Imports
+        r'export\s+',           # Exports
+    ]
+
+    def __init__(self, root_path: str = "."):
+        self.root_path = Path(root_path)
+        self.results: Dict[str, List[Tuple[int, str, str, str]]] = {}
+        self.skip_dirs = {'node_modules', '.git', '__pycache__', 'venv', '.venv', 'dist', 'build'}
+
+    def is_turkish(self, text: str) -> bool:
+        """Check if text contains Turkish content."""
+        if TURKISH_CHARS.search(text):
+            return True
+        if TURKISH_WORD_PATTERN.search(text):
+            return True
+        return False
+
+    def is_code_string(self, text: str) -> bool:
+        """Check if the string looks like code rather than user-facing text."""
+        code_indicators = [
+            r'^[a-z_][a-z0-9_]*$',   # Variable names
+            r'^[A-Z_]+$',            # Constants
+            r'^\.',                   # Starts with dot
+            r'^#[a-fA-F0-9]+$',      # Hex colors
+            r'^https?://',           # URLs
+            r'^/',                    # Paths
+            r'\.(js|css|html|json)$', # File extensions
+            r'^\d+$',                 # Numbers only
+        ]
+        for pattern in code_indicators:
+            if re.match(pattern, text.strip()):
+                return True
+        return False
+
+    def extract_translatable_text(self, line: str, line_num: int) -> List[Tuple[int, str, str, str]]:
+        """Extract translatable text segments from a JS line."""
+        findings = []
+
+        # Skip lines with dangerous patterns
+        for pattern in self.SKIP_PATTERNS:
+            if re.search(pattern, line):
+                return findings
+
+        for pattern, content_type in self.SAFE_PATTERNS:
+            for match in re.finditer(pattern, line):
+                text = match.group(1).strip()
+
+                if not text:
+                    continue
+
+                # Skip code-like strings
+                if self.is_code_string(text):
+                    continue
+
+                # Skip template literal expressions
+                if '${' in text:
+                    continue
+
+                if self.is_turkish(text):
+                    findings.append((line_num, content_type, match.group(0), text))
+
+        return findings
+
+    def scan_file(self, file_path: Path) -> List[Tuple[int, str, str, str]]:
+        """Scan a single JS file for Turkish content."""
+        findings = []
+
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+        except (UnicodeDecodeError, IOError):
+            return findings
+
+        in_template_literal = False
+
+        for i, line in enumerate(lines, 1):
+            # Track template literals (backticks)
+            backtick_count = line.count('`') - line.count('\\`')
+            if backtick_count % 2 == 1:
+                in_template_literal = not in_template_literal
+
+            # Inside template literals, be more careful
+            if in_template_literal:
+                # Only extract obvious Turkish text, not in ${} expressions
+                clean_line = re.sub(r'\$\{[^}]+\}', '', line)
+                if self.is_turkish(clean_line):
+                    # Find the Turkish text
+                    for match in re.finditer(r'>([^<$]+)<', line):
+                        text = match.group(1).strip()
+                        if text and self.is_turkish(text):
+                            findings.append((i, 'template_literal', match.group(0), text))
+                continue
+
+            # Regular line scanning
+            line_findings = self.extract_translatable_text(line, i)
+            findings.extend(line_findings)
+
+        return findings
+
+    def scan_directory(self, directory: Optional[Path] = None) -> Dict[str, List[Tuple[int, str, str, str]]]:
+        """Scan all JS files in directory."""
+        if directory is None:
+            directory = self.root_path
+
+        self.results = {}
+
+        for js_file in directory.rglob('*.js'):
+            if any(skip in js_file.parts for skip in self.skip_dirs):
+                continue
+
+            findings = self.scan_file(js_file)
+            if findings:
+                rel_path = str(js_file.relative_to(self.root_path))
+                self.results[rel_path] = findings
+
+        return self.results
+
+    def translate_file(self, file_path: str, translator: OllamaTranslator,
+                       dry_run: bool = False, check_syntax: bool = False) -> bool:
+        """Translate a single JS file."""
+        if file_path not in self.results:
+            print(f"[SKIP] No Turkish content in {file_path}")
+            return True
+
+        full_path = self.root_path / file_path
+        findings = self.results[file_path]
+
+        print(f"\n[TRANSLATE JS] {file_path} ({len(findings)} items)", flush=True)
+
+        # Read file
+        with open(full_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+
+        # Translate each finding
+        translations = {}
+        for i, (line_num, content_type, full_match, text) in enumerate(findings, 1):
+            print(f"  [{i}/{len(findings)}] {text[:40]}...", flush=True)
+
+            translated = translator.translate_line(text, context=f"JavaScript {content_type}")
+            if translated:
+                # CRITICAL: Remove newlines from JS string translations
+                # JS single/double quoted strings cannot contain unescaped newlines
+                translated_clean = translated.strip().replace('\n', ' ').replace('\r', '')
+                # Collapse multiple spaces
+                while '  ' in translated_clean:
+                    translated_clean = translated_clean.replace('  ', ' ')
+
+                # Preserve the original quote type
+                new_match = full_match.replace(text, translated_clean)
+                translations[full_match] = new_match
+
+        if dry_run:
+            print(f"\n[DRY-RUN] Would modify {file_path}:")
+            for original, new in translations.items():
+                print(f"  {original[:50]}")
+                print(f"  -> {new[:50]}")
+        else:
+            # Backup
+            backup_path = full_path.with_suffix('.js.bak')
+            shutil.copy(full_path, backup_path)
+
+            # Apply translations
+            for original, new in translations.items():
+                content = content.replace(original, new)
+
+            with open(full_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+
+            # Run syntax check if requested
+            if check_syntax:
+                import subprocess
+                try:
+                    result = subprocess.run(
+                        ['node', '--check', str(full_path)],
+                        capture_output=True,
+                        text=True
+                    )
+                    if result.returncode != 0:
+                        print(f"[SYNTAX ERROR] {file_path}")
+                        print(f"  {result.stderr[:200]}")
+                        # Restore from backup
+                        shutil.copy(backup_path, full_path)
+                        print(f"[RESTORE] Restored from backup")
+                        return False
+                    else:
+                        print(f"[OK] Syntax check passed")
+                except FileNotFoundError:
+                    print(f"[WARN] Node.js not found, skipping syntax check")
+
+            print(f"[OK] Translated {file_path}")
+
+        return True
+
+    def print_summary(self):
+        """Print summary of JS findings."""
+        if not self.results:
+            print("[OK] No Turkish content found in JS files!")
+            return
+
+        total = sum(len(f) for f in self.results.values())
+        print(f"\n[JS SCAN] Found {total} Turkish items in {len(self.results)} files")
+
+        for file_path, findings in sorted(self.results.items()):
+            print(f"\n  {file_path} ({len(findings)} items)")
+            for line_num, content_type, full_match, text in findings[:3]:
+                print(f"    L{line_num} [{content_type}]: {text[:50]}")
+            if len(findings) > 3:
+                print(f"    ... and {len(findings) - 3} more")
+
+
+# ============================================================================
+# Python Scanner (Original)
+# ============================================================================
+
 class TranslationScanner:
     """Scan Python files for Turkish content."""
 
@@ -673,7 +1153,7 @@ class TranslationScanner:
         full_path = self.root_path / file_path
         findings = self.results[file_path]
 
-        print(f"\n[TRANSLATE] {file_path} ({len(findings)} lines)")
+        print(f"\n[TRANSLATE] {file_path} ({len(findings)} lines)", flush=True)
 
         # Read file
         with open(full_path, 'r', encoding='utf-8') as f:
@@ -765,12 +1245,12 @@ class TranslationScanner:
             files = files[:limit]
 
         total = len(files)
-        print(f"\n[START] Translating {total} files...")
+        print(f"\n[START] Translating {total} files...", flush=True)
         if check_syntax:
-            print("[INFO] Syntax checking enabled (--check)")
+            print("[INFO] Syntax checking enabled (--check)", flush=True)
 
         for i, file_path in enumerate(files, 1):
-            print(f"\n[{i}/{total}] Processing {file_path}")
+            print(f"\n[{i}/{total}] Processing {file_path}", flush=True)
             success = self.translate_file(file_path, translator, dry_run, check_syntax)
             results[file_path] = success
 
@@ -919,16 +1399,41 @@ def main():
     import argparse
     import sys
     import io
-    
+
     # Force UTF-8 output for Windows
     if sys.platform == 'win32':
         sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
-    parser = argparse.ArgumentParser(description="Scan and translate Turkish content in Python files")
+    parser = argparse.ArgumentParser(
+        description="Scan and translate Turkish content in Python/HTML/JS files",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Scan Python files (default)
+  python translate_scanner.py modules/
+
+  # Scan HTML files
+  python translate_scanner.py modules/webui/templates/ --html
+
+  # Scan JavaScript files
+  python translate_scanner.py modules/webui/static/js/ --js
+
+  # Translate HTML files with dry-run
+  python translate_scanner.py modules/webui/templates/ --html --translate --dry-run
+
+  # Translate both HTML and JS
+  python translate_scanner.py modules/webui/ --html --js --translate
+        """
+    )
     parser.add_argument("path", nargs="?", default=".", help="Directory or file to scan")
     parser.add_argument("--report", action="store_true", help="Generate markdown report")
     parser.add_argument("--output", "-o", help="Output file for report")
     parser.add_argument("--prompt", help="Generate translation prompt for specific file")
+
+    # File type flags
+    parser.add_argument("--html", action="store_true", help="Scan HTML/Jinja2 template files")
+    parser.add_argument("--js", action="store_true", help="Scan JavaScript files")
+    parser.add_argument("--py", action="store_true", help="Scan Python files (default if no flag specified)")
 
     # Translation options
     parser.add_argument("--translate", action="store_true", help="Auto-translate using Ollama")
@@ -941,35 +1446,12 @@ def main():
 
     args = parser.parse_args()
 
-    # Determine root path
-    if args.file:
-        # Specific file mode (via --file flag in a directory scan)
-        file_path = Path(args.file)
-        if file_path.is_absolute():
-            scanner = TranslationScanner(file_path.parent)
-            findings = scanner.scan_file(file_path)
-            if findings:
-                scanner.results[file_path.name] = findings
-        else:
-            # Relative path from args.path directory
-            scanner = TranslationScanner(args.path)
-            full_path = Path(args.path) / file_path
-            findings = scanner.scan_file(full_path)
-            if findings:
-                scanner.results[str(file_path)] = findings
-    elif Path(args.path).is_file():
-        # Single file mode (via path argument)
-        file_path = Path(args.path)
-        scanner = TranslationScanner(file_path.parent)
-        findings = scanner.scan_file(file_path)
-        if findings:
-            scanner.results[file_path.name] = findings
-    else:
-        # Directory mode
-        scanner = TranslationScanner(args.path)
-        scanner.scan_directory()
+    # If no file type flag specified, default to Python
+    if not args.html and not args.js and not args.py:
+        args.py = True
 
-    # Translation mode
+    # Setup translator if needed
+    translator = None
     if args.translate:
         if not REQUESTS_AVAILABLE:
             print("[ERROR] requests library required for translation. Install: pip install requests")
@@ -981,7 +1463,6 @@ def main():
         )
         translator = OllamaTranslator(config)
 
-        # Check connection
         print(f"[CHECK] Connecting to Ollama at {config.base_url}...")
         if not translator.check_connection():
             print(f"[ERROR] Cannot connect to Ollama at {config.base_url}")
@@ -989,23 +1470,124 @@ def main():
             sys.exit(1)
         print(f"[OK] Connected to Ollama (model: {config.model})")
 
-        # Translate files
-        if scanner.results:
-            scanner.translate_all(translator, args.dry_run, args.limit, args.check)
-        else:
-            print("[INFO] No Turkish content found to translate")
+    # =========================================================================
+    # HTML Mode
+    # =========================================================================
+    if args.html:
+        print(f"\n{'='*60}")
+        print("[HTML] Scanning HTML/Jinja2 templates...")
+        print(f"{'='*60}")
 
-    elif args.prompt:
-        print(scanner.generate_translation_prompt(args.prompt))
-    elif args.report:
-        report = scanner.generate_report()
-        if args.output:
-            Path(args.output).write_text(report, encoding='utf-8')
-            print(f"[OK] Report saved to {args.output}")
+        if Path(args.path).is_file() and args.path.endswith('.html'):
+            # Single file mode - use parent as root
+            file_path = Path(args.path)
+            html_scanner = HTMLScanner(file_path.parent)
+            findings = html_scanner.scan_file(file_path)
+            if findings:
+                html_scanner.results[file_path.name] = findings
         else:
-            print(report)
-    else:
-        scanner.print_summary()
+            # Directory mode
+            html_scanner = HTMLScanner(args.path)
+            html_scanner.scan_directory()
+
+        if args.translate and translator and html_scanner.results:
+            total = len(html_scanner.results)
+            files = list(html_scanner.results.keys())
+            if args.limit:
+                files = files[:args.limit]
+
+            print(f"\n[START] Translating {len(files)} HTML files...", flush=True)
+            for i, file_path in enumerate(files, 1):
+                print(f"\n[{i}/{len(files)}] {file_path}", flush=True)
+                html_scanner.translate_file(file_path, translator, args.dry_run)
+        else:
+            html_scanner.print_summary()
+
+    # =========================================================================
+    # JavaScript Mode
+    # =========================================================================
+    if args.js:
+        print(f"\n{'='*60}")
+        print("[JS] Scanning JavaScript files...")
+        print(f"{'='*60}")
+
+        if Path(args.path).is_file() and args.path.endswith('.js'):
+            # Single file mode - use parent as root
+            file_path = Path(args.path)
+            js_scanner = JSScanner(file_path.parent)
+            findings = js_scanner.scan_file(file_path)
+            if findings:
+                js_scanner.results[file_path.name] = findings
+        else:
+            # Directory mode
+            js_scanner = JSScanner(args.path)
+            js_scanner.scan_directory()
+
+        if args.translate and translator and js_scanner.results:
+            total = len(js_scanner.results)
+            files = list(js_scanner.results.keys())
+            if args.limit:
+                files = files[:args.limit]
+
+            print(f"\n[START] Translating {len(files)} JS files...", flush=True)
+            for i, file_path in enumerate(files, 1):
+                print(f"\n[{i}/{len(files)}] {file_path}", flush=True)
+                js_scanner.translate_file(file_path, translator, args.dry_run, args.check)
+        else:
+            js_scanner.print_summary()
+
+    # =========================================================================
+    # Python Mode (Original)
+    # =========================================================================
+    if args.py:
+        print(f"\n{'='*60}")
+        print("[PY] Scanning Python files...")
+        print(f"{'='*60}")
+
+        # Original Python scanning logic
+        if args.file:
+            file_path = Path(args.file)
+            if file_path.is_absolute():
+                scanner = TranslationScanner(file_path.parent)
+                findings = scanner.scan_file(file_path)
+                if findings:
+                    scanner.results[file_path.name] = findings
+            else:
+                scanner = TranslationScanner(args.path)
+                full_path = Path(args.path) / file_path
+                findings = scanner.scan_file(full_path)
+                if findings:
+                    scanner.results[str(file_path)] = findings
+        elif Path(args.path).is_file():
+            file_path = Path(args.path)
+            scanner = TranslationScanner(file_path.parent)
+            findings = scanner.scan_file(file_path)
+            if findings:
+                scanner.results[file_path.name] = findings
+        else:
+            scanner = TranslationScanner(args.path)
+            scanner.scan_directory()
+
+        if args.translate and translator:
+            if scanner.results:
+                scanner.translate_all(translator, args.dry_run, args.limit, args.check)
+            else:
+                print("[INFO] No Turkish content found in Python files")
+        elif args.prompt:
+            print(scanner.generate_translation_prompt(args.prompt))
+        elif args.report:
+            report = scanner.generate_report()
+            if args.output:
+                Path(args.output).write_text(report, encoding='utf-8')
+                print(f"[OK] Report saved to {args.output}")
+            else:
+                print(report)
+        else:
+            scanner.print_summary()
+
+    print(f"\n{'='*60}")
+    print("[DONE] Scan complete!")
+    print(f"{'='*60}")
 
 
 if __name__ == "__main__":

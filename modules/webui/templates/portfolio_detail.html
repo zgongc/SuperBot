@@ -1,0 +1,2432 @@
+{% extends "base.html" %}
+
+{% block title %}Portfolio Detail - SuperBot{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/cards.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/positions-accordion.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <a href="/portfolios" style="color: var(--text-muted); text-decoration: none; font-size: 14px;">
+                ← Back to Portfolios
+            </a>
+            <h1 id="portfolio-name" style="margin: 8px 0 4px 0;">Loading...</h1>
+            <p id="portfolio-info" style="color: var(--text-muted); margin: 0;"></p>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button class="btn btn-secondary" onclick="updatePrices()" title="Update prices from exchanges.">
+                🔄 Update Prices
+            </button>
+            <button class="btn btn-secondary" onclick="showImportModal()">
+                📥 Import from Stock Exchange
+            </button>
+            <button class="btn btn-primary" onclick="showAddPositionModal()">
+                ➕ Add Position
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Tabs Navigation -->
+<div class="tabs-container">
+    <div class="tabs-header">
+        <button class="tab-btn active" data-tab="positions" onclick="switchTab('positions')">
+            📊 Pozisyonlar
+        </button>
+        <button class="tab-btn" data-tab="statistics" onclick="switchTab('statistics')">
+            📈 Statistics
+        </button>
+        <button class="tab-btn" data-tab="performance" onclick="switchTab('performance')">
+            🎯 Performance
+        </button>
+    </div>
+</div>
+
+<!-- Tab: Positions -->
+<div id="tab-positions" class="tab-content active">
+    <!-- Summary Cards -->
+    <div class="summary-grid" style="margin-bottom: 24px;">
+        <div class="summary-card">
+            <div class="summary-icon">💰</div>
+            <div class="summary-content">
+                <div class="summary-label">Total Value</div>
+                <div class="summary-value" id="total-value">$0.00</div>
+            </div>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-icon">💵</div>
+            <div class="summary-content">
+                <div class="summary-label">Total Cost</div>
+                <div class="summary-value" id="total-cost">$0.00</div>
+            </div>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-icon" id="pnl-icon">📊</div>
+            <div class="summary-content">
+                <div class="summary-label" id="pnl-label">Unrealized P&L</div>
+                <div class="summary-value" id="unrealized-pnl">$0.00</div>
+                <div class="summary-change" id="unrealized-pnl-pct">0.00%</div>
+            </div>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-icon" id="count-icon">📈</div>
+            <div class="summary-content">
+                <div class="summary-label" id="count-label">Open Positions</div>
+                <div class="summary-value" id="positions-count">0</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Positions Table -->
+<div class="card">
+    <div class="card-header">
+        <h3>Pozisyonlar</h3>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <select id="position-filter" onchange="filterPositions()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-primary); background: var(--bg-primary); color: var(--text-primary);">
+                <option value="open">Open Positions</option>
+                <option value="closed">Closed Positions</option>
+                <option value="all">All Positions</option>
+            </select>
+
+            <!-- Export Button -->
+            <button class="btn btn-secondary" id="export-btn" style="padding: 8px 12px; display: flex; align-items: center; gap: 6px;">
+                📥 Export
+            </button>
+
+            <!-- Import Button -->
+            <button class="btn btn-secondary" onclick="document.getElementById('import-file').click()" style="padding: 8px 12px; display: flex; align-items: center; gap: 6px;">
+                📤 Import
+            </button>
+            <input type="file" id="import-file" accept=".json" style="display:none" onchange="window.handleImportFile(event)">
+        </div>
+    </div>
+    <!-- Accordion List Header -->
+    <div class="positions-header">
+        <div class="pos-col-expand"></div>
+        <div class="pos-col-parite">Parite ↕</div>
+        <div class="pos-col-tarih">Date ↕</div>
+        <div class="pos-col-hacim">Volume</div>
+        <div class="pos-col-durum">Status ↕</div>
+        <div class="pos-col-kar">Profit/Loss ↕</div>
+        <div class="pos-col-kaynak">Kaynak</div>
+        <div class="pos-col-eylemler">Eylemler</div>
+    </div>
+
+    <!-- Positions List Container -->
+    <div id="positions-list" class="positions-list">
+        <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+            Loading positions...
+        </div>
+    </div>
+</div>
+</div>
+<!-- End Tab: Positions -->
+
+<!-- Tab: Statistics -->
+<div id="tab-statistics" class="tab-content" style="display: none;">
+    <!-- Portfolio Overview -->
+    <div class="card" style="margin-bottom: 24px;">
+        <div class="card-header">
+            <h3>Portfolio Summary</h3>
+        </div>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-card-label">Total Value</div>
+                <div class="stat-card-value" id="stat-total-value">$0.00</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-label">Total Cost</div>
+                <div class="stat-card-value" id="stat-total-cost">$0.00</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-label">Unrealized K/Z</div>
+                <div class="stat-card-value" id="stat-unrealized-pnl">$0.00</div>
+                <div class="stat-card-change" id="stat-unrealized-pnl-pct">0.00%</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-label">Open Positions</div>
+                <div class="stat-card-value" id="stat-positions-count">0</div>
+            </div>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+        <!-- Token Allocation Pie Chart -->
+        <div class="card">
+            <div class="card-header">
+                <h3>Token Distribution</h3>
+            </div>
+            <div style="padding: 20px; display: flex; flex-direction: column; align-items: center;">
+                <div style="width: 280px; height: 280px; display: flex; align-items: center; justify-content: center;">
+                    <canvas id="allocationChart" width="280" height="280"></canvas>
+                </div>
+                <div id="allocation-legend" class="allocation-legend" style="margin-top: 16px; max-height: 200px; overflow-y: auto; width: 100%;"></div>
+            </div>
+        </div>
+
+        <!-- P&L Breakdown -->
+        <div class="card">
+            <div class="card-header">
+                <h3>Profit/Loss Distribution</h3>
+            </div>
+            <div style="padding: 20px;">
+                <div class="stat-row">
+                    <span class="stat-label">24s K/Z:</span>
+                    <span class="stat-value" id="daily-pnl">$0.00</span>
+                    <span class="stat-pct" id="daily-pnl-pct">0.00%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">30g K/Z:</span>
+                    <span class="stat-value" id="monthly-pnl">$0.00</span>
+                    <span class="stat-pct" id="monthly-pnl-pct">0.00%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Total K/Z:</span>
+                    <span class="stat-value" id="total-pnl-stat">$0.00</span>
+                    <span class="stat-pct" id="total-pnl-pct-stat">0.00%</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- End Tab: Statistics -->
+
+<!-- Tab: Performance -->
+<div id="tab-performance" class="tab-content" style="display: none;">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+        <!-- Trade Performance Metrics -->
+        <div class="card">
+            <div class="card-header">
+                <h3>Operation Performance</h3>
+            </div>
+            <div style="padding: 20px;">
+                <div class="metric-row">
+                    <span class="metric-label">Total Transaction:</span>
+                    <span class="metric-value" id="perf-total-trades">0</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Win Rate:</span>
+                    <span class="metric-value" id="perf-win-rate">0.00%</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Snow Factor:</span>
+                    <span class="metric-value" id="perf-profit-factor">0.00</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Average Earnings:</span>
+                    <span class="metric-value" id="perf-avg-win">$0.00</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Average Loss:</span>
+                    <span class="metric-value" id="perf-avg-loss">$0.00</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Risk/Reward Ratio:</span>
+                    <span class="metric-value" id="perf-risk-reward">0.00</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Risk Metrics -->
+        <div class="card">
+            <div class="card-header">
+                <h3>Risk Metrikleri</h3>
+            </div>
+            <div style="padding: 20px;">
+                <div class="metric-row">
+                    <span class="metric-label">Sharpe Ratio:</span>
+                    <span class="metric-value" id="risk-sharpe">0.00</span>
+                    <span class="metric-hint">>1.0 = iyi</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Sortino Ratio:</span>
+                    <span class="metric-value" id="risk-sortino">0.00</span>
+                    <span class="metric-hint">fall risk</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Max Decrease:</span>
+                    <span class="metric-value" id="risk-max-dd">0.00%</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Max Drop Value:</span>
+                    <span class="metric-value" id="risk-max-dd-val">$0.00</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" style="margin-top: 24px;">
+        <div class="card-header">
+            <h3>Performance Guide</h3>
+        </div>
+        <div style="padding: 20px; color: var(--text-muted); font-size: 14px;">
+            <p><strong>Sharpe Ratio:</strong> >1.0 = İyi, >2.0 = Mükemmel, >3.0 = Olağanüstü</p>
+            <p><strong>Sortino Ratio:</strong> Sharpe'a benzer ama sadece düşüş volatilitesini dikkate alır</p>
+            <p><strong>Snow Factor:</strong> >1.0 = Karlı, >2.0 = Çok İyi, >3.0 = Mükemmel</p>
+            <p><strong>Win Rate:</strong> >50% = Pozitif, >60% = İyi, >70% = Mükemmel</p>
+        </div>
+    </div>
+</div>
+<!-- End Tab: Performance -->
+
+<!-- Add Position Modal (uses portfolios.html modal structure) -->
+<div class="modal" id="position-modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">➕ Add Position</h2>
+            <button class="modal-close" onclick="closeAddPositionModal()">&times;</button>
+        </div>
+
+        <form id="position-form" onsubmit="addPosition(event)">
+            <input type="hidden" id="position-portfolio-id">
+
+            <div class="form-group" style="position: relative;">
+                <label for="position-symbol">Symbol *</label>
+                <input type="text" id="position-symbol" placeholder="Sembol ara... (BTC, ETH, SOL)" required autocomplete="off" oninput="searchSymbols(event)">
+                <div id="symbol-dropdown" class="symbol-dropdown" style="display: none; z-index: 1000;"></div>
+                <small style="color: var(--text-muted); font-size: 13px;">Enter the symbol name, select from the list, or enter it manually.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="position-quantity">Quantity *</label>
+                <input type="number" step="0.00000001" id="position-quantity" placeholder="example: 0.5" required>
+                <small style="color: var(--text-muted); font-size: 13px;">Position amount</small>
+            </div>
+
+            <div class="form-group">
+                <label for="position-entry-price">Input Price *</label>
+                <input type="number" step="0.00000001" id="position-entry-price" placeholder="example: 0.00000568" required>
+                <small style="color: var(--text-muted); font-size: 13px;">Position opening price</small>
+            </div>
+
+            <div class="form-group">
+                <label for="position-entry-date">Input Date *</label>
+                <input type="datetime-local" id="position-entry-date" required>
+                <small style="color: var(--text-muted); font-size: 13px;">Position opening time</small>
+            </div>
+
+            <div class="form-group">
+                <label for="position-notes">Notlar</label>
+                <textarea id="position-notes" placeholder="Opsiyonel notlar (örn: DCA entry 1)"></textarea>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeAddPositionModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Add Position</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Entry Modal (DCA) -->
+<div class="modal" id="entry-modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">➕ Entry Ekle (DCA)</h2>
+            <button class="modal-close" onclick="closeAddEntryModal()">&times;</button>
+        </div>
+
+        <form id="entry-form" onsubmit="addEntry(event)">
+            <input type="hidden" id="entry-position-id">
+
+            <div class="form-group">
+                <label for="entry-quantity">Quantity *</label>
+                <input type="number" step="0.00000001" id="entry-quantity" placeholder="example: 0.25" required>
+                <small style="color: var(--text-muted); font-size: 13px;">Additional purchase amount</small>
+            </div>
+
+            <div class="form-group">
+                <label for="entry-price">Input Price *</label>
+                <input type="number" step="0.00000001" id="entry-price" placeholder="example: 0.00000568" required>
+                <small style="color: var(--text-muted); font-size: 13px;">The price of this entry.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="entry-date">Transaction Date</label>
+                <input type="datetime-local" id="entry-date">
+                <small style="color: var(--text-muted); font-size: 13px;">Optional - If left blank, the current date is used.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="entry-notes">Notlar</label>
+                <textarea id="entry-notes" placeholder="Opsiyonel notlar (örn: DCA entry 2)"></textarea>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeAddEntryModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Entry Ekle</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Position Modal -->
+<div class="modal" id="edit-position-modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">✏️ Edit Position</h2>
+            <button class="modal-close" onclick="closeEditPositionModal()">&times;</button>
+        </div>
+
+        <form id="edit-position-form" onsubmit="updatePosition(event)">
+            <input type="hidden" id="edit-position-id">
+
+            <div class="form-group">
+                <label for="edit-position-symbol">Symbol *</label>
+                <input type="text" id="edit-position-symbol" readonly style="background: var(--bg-tertiary); cursor: not-allowed;">
+                <small style="color: var(--text-muted); font-size: 13px;">Symbol cannot be changed.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="edit-position-quantity">Initial Quantity *</label>
+                <input type="number" step="0.00000001" id="edit-position-quantity" placeholder="example: 255" required>
+                <small style="color: var(--text-muted); font-size: 13px;">Pozisyonun ilk açılış miktarı (DCA eklemeleri hariç)</small>
+            </div>
+
+            <div class="form-group">
+                <label for="edit-position-entry-price">Initial Price *</label>
+                <input type="number" step="0.00000001" id="edit-position-entry-price" placeholder="example: 1.00" required>
+                <small style="color: var(--text-muted); font-size: 13px;">Position's initial opening price</small>
+            </div>
+
+            <div class="form-group">
+                <label for="edit-position-entry-date">Input Date *</label>
+                <input type="datetime-local" id="edit-position-entry-date" required>
+                <small style="color: var(--text-muted); font-size: 13px;">Position opening time</small>
+            </div>
+
+            <div class="form-group">
+                <label for="edit-position-notes">Notlar</label>
+                <textarea id="edit-position-notes" placeholder="Optional notes"></textarea>
+            </div>
+
+            <div class="form-group" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--bg-tertiary); border-radius: 6px; margin-top: 16px;">
+                <div>
+                    <label style="margin: 0; font-weight: 600; color: var(--text-primary);">Position Status</label>
+                    <small style="display: block; color: var(--text-muted); font-size: 12px; margin-top: 2px;">Close or reopen the position.</small>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="edit-position-is-open" checked>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <!-- Exit Price Section (shown when closing position) -->
+            <div id="exit-price-section" style="display: none; margin-top: 12px; padding: 12px; background: var(--bg-tertiary); border-radius: 6px; border-left: 3px solid var(--accent-danger);">
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label for="edit-exit-price">Closing Price</label>
+                    <input type="number" id="edit-exit-price" step="0.00000001" placeholder="Exit price">
+                </div>
+                <div id="exit-pnl-preview" style="padding: 10px; background: var(--bg-primary); border-radius: 4px; font-size: 13px;">
+                    <div style="color: var(--text-muted); margin-bottom: 4px;">💰 Realized P&L:</div>
+                    <div style="display: flex; gap: 12px; align-items: baseline;">
+                        <span id="exit-pnl-value" style="font-size: 18px; font-weight: 600; color: var(--text-primary);">$0.00</span>
+                        <span id="exit-pnl-pct" style="font-size: 14px; color: var(--text-muted);">0.00%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeEditPositionModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Update</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Entry Modal -->
+<div class="modal" id="edit-entry-modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">✏️ Edit Entry</h2>
+            <button class="modal-close" onclick="closeEditEntryModal()">&times;</button>
+        </div>
+
+        <form id="edit-entry-form" onsubmit="updateEntry(event)">
+            <input type="hidden" id="edit-entry-id">
+            <input type="hidden" id="edit-entry-position-id">
+
+            <div class="form-group">
+                <label for="edit-entry-quantity">Quantity *</label>
+                <input type="number" step="0.00000001" id="edit-entry-quantity" placeholder="example: 0.25" required>
+            </div>
+
+            <div class="form-group">
+                <label for="edit-entry-price">Input Price *</label>
+                <input type="number" step="0.00000001" id="edit-entry-price" placeholder="example: 0.00000568" required>
+            </div>
+
+            <div class="form-group">
+                <label for="edit-entry-date">Transaction Date *</label>
+                <input type="datetime-local" id="edit-entry-date" required>
+            </div>
+
+            <div class="form-group">
+                <label for="edit-entry-notes">Notlar</label>
+                <textarea id="edit-entry-notes" placeholder="Optional notes"></textarea>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeEditEntryModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Update</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Import Modal (Placeholder) -->
+<!-- Exchange Import Modal -->
+<div class="modal" id="exchange-import-modal" style="display: none;">
+    <div class="modal-content" style="max-width: 900px;">
+        <div class="modal-header">
+            <h2 class="modal-title">🔄 Import Positions from Exchange</h2>
+            <button class="modal-close" onclick="window.closeExchangeImportModal()">&times;</button>
+        </div>
+
+        <div style="padding: 20px;">
+            <!-- Loading State -->
+            <div id="exchange-import-loading" style="text-align: center; padding: 40px;">
+                <div style="font-size: 48px; margin-bottom: 16px;">⏳</div>
+                <h3>Fetching positions from the stock market...</h3>
+                <p style="color: var(--text-muted); margin-top: 10px;">Please wait.</p>
+            </div>
+
+            <!-- Error State -->
+            <div id="exchange-import-error" style="display: none; text-align: center; padding: 40px;">
+                <div style="font-size: 48px; margin-bottom: 16px;">❌</div>
+                <h3>Error occurred</h3>
+                <p id="exchange-import-error-message" style="color: var(--text-muted); margin-top: 10px;"></p>
+                <button class="btn btn-primary" onclick="window.closeExchangeImportModal()" style="margin-top: 20px;">Okay</button>
+            </div>
+
+            <!-- Success State - Position List -->
+            <div id="exchange-import-content" style="display: none;">
+                <!-- Summary -->
+                <div style="background: var(--bg-secondary); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <p style="margin: 0; color: var(--text-muted); font-size: 13px;">Borsa:</p>
+                            <p style="margin: 5px 0 0 0; font-weight: 600;" id="exchange-import-source">-</p>
+                        </div>
+                        <div>
+                            <p style="margin: 0; color: var(--text-muted); font-size: 13px;">Total Position:</p>
+                            <p style="margin: 5px 0 0 0; font-weight: 600; text-align: right;" id="exchange-import-total">0</p>
+                        </div>
+                        <div>
+                            <p style="margin: 0; color: var(--text-muted); font-size: 13px;">Selected:</p>
+                            <p style="margin: 5px 0 0 0; font-weight: 600; color: var(--accent-primary); text-align: right;" id="exchange-import-selected">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Select All -->
+                <div style="margin-bottom: 15px; padding: 10px; background: var(--bg-tertiary); border-radius: 6px;">
+                    <label style="display: flex; align-items: center; cursor: pointer; user-select: none;">
+                        <input type="checkbox" id="exchange-select-all" onchange="window.toggleExchangeSelectAll()" style="margin-right: 10px; width: 18px; height: 18px; cursor: pointer;">
+                        <span style="font-weight: 600;">Select All / Clear</span>
+                    </label>
+                </div>
+
+                <!-- Positions List -->
+                <div id="exchange-import-positions" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border-primary); border-radius: 8px; padding: 10px;">
+                    <!-- Positions will be inserted here -->
+                </div>
+            </div>
+        </div>
+
+        <div class="form-actions" id="exchange-import-actions" style="display: none;">
+            <button type="button" class="btn btn-secondary" onclick="window.closeExchangeImportModal()">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="window.confirmExchangeImport()" id="confirm-exchange-import-btn">
+                <span id="exchange-import-btn-text">Import Positions</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Import Preview Modal -->
+<div class="modal" id="import-preview-modal" style="display: none;">
+    <div class="modal-content" style="max-width: 900px;">
+        <div class="modal-header">
+            <h2 class="modal-title">📤 Import Pozisyonlar</h2>
+            <button class="modal-close" onclick="window.closeImportPreview()">&times;</button>
+        </div>
+
+        <div style="padding: 20px;">
+            <!-- Summary -->
+            <div style="background: var(--bg-secondary); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <p style="margin: 0; color: var(--text-muted); font-size: 13px;">File:</p>
+                        <p style="margin: 5px 0 0 0; font-weight: 600;" id="import-filename">-</p>
+                    </div>
+                    <div>
+                        <p style="margin: 0; color: var(--text-muted); font-size: 13px;">Total Position:</p>
+                        <p style="margin: 5px 0 0 0; font-weight: 600; text-align: right;" id="import-total-count">0</p>
+                    </div>
+                    <div>
+                        <p style="margin: 0; color: var(--text-muted); font-size: 13px;">Selected:</p>
+                        <p style="margin: 5px 0 0 0; font-weight: 600; color: var(--accent-primary); text-align: right;" id="import-selected-count">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Select All -->
+            <div style="margin-bottom: 15px; padding: 10px; background: var(--bg-tertiary); border-radius: 6px;">
+                <label style="display: flex; align-items: center; cursor: pointer; user-select: none;">
+                    <input type="checkbox" id="select-all-positions" onchange="window.toggleSelectAll()" style="margin-right: 10px; width: 18px; height: 18px; cursor: pointer;">
+                    <span style="font-weight: 600;">Select All / Clear</span>
+                </label>
+            </div>
+
+            <!-- Positions List -->
+            <div id="import-preview-content" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border-primary); border-radius: 8px; padding: 10px;">
+                <!-- Preview content will be inserted here -->
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="window.closeImportPreview()">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="window.confirmImport()" id="confirm-import-btn">
+                <span id="import-btn-text">Import Pozisyonlar</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Export Modal -->
+<div class="modal" id="export-modal" style="display: none;">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h2 class="modal-title">📥 Export Pozisyonlar</h2>
+            <button class="modal-close" onclick="window.closeExportModal()">&times;</button>
+        </div>
+
+        <div style="padding: 20px;">
+            <p style="color: var(--text-muted); margin-bottom: 20px;">Which positions do you want to export?</p>
+
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <button class="btn btn-primary" onclick="window.exportPositions('all')" style="width: 100%; justify-content: center; padding: 15px;">
+                    📦 Tümü (Açık + Kapalı)
+                </button>
+                <button class="btn btn-success" onclick="window.exportPositions('open')" style="width: 100%; justify-content: center; padding: 15px;">
+                    📈 Only Open Positions
+                </button>
+                <button class="btn btn-secondary" onclick="window.exportPositions('closed')" style="width: 100%; justify-content: center; padding: 15px;">
+                    🔒 Only Closed Positions
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const PORTFOLIO_ID = {{ portfolio_id }};
+let currentFilter = 'open';
+
+// Helper: Extract base asset from symbol
+function getBaseAsset(symbol) {
+    if (!symbol) return 'UNKNOWN';
+    // Handle SPOT format (BTC/USDT)
+    if (symbol.includes('/')) {
+        return symbol.split('/')[0];
+    }
+    // Handle futures format (BTCUSDT)
+    return symbol.replace(/USDT$|BUSD$|USDC$|USD$/, '');
+}
+
+// Helper: Parse number (accept both comma and dot as decimal separator)
+function parseNumber(value) {
+    if (typeof value === 'number') return value;
+    if (!value) return 0;
+    // Replace comma with dot, then parse
+    return parseFloat(value.toString().replace(',', '.')) || 0;
+}
+
+// Helper: Format quantity (remove trailing zeros)
+function formatQuantity(value) {
+    // Convert to 8 decimals first, then remove trailing zeros
+    const formatted = parseFloat(value).toFixed(8);
+    return parseFloat(formatted).toString();
+}
+
+// Helper: Format exchange name
+function formatExchange(exchange) {
+    const exchanges = {
+        'binance': 'Binance',
+        'kucoin': 'KuCoin',
+        'gateio': 'Gate.io',
+        'bybit': 'Bybit',
+        'okx': 'OKX',
+        'manual': 'Manuel'
+    };
+    return exchanges[exchange] || exchange;
+}
+
+// Load data on page load
+document.addEventListener('DOMContentLoaded', () => {
+    loadPortfolioDetails();
+    loadPositions();
+});
+
+async function loadPortfolioDetails() {
+    try {
+        const response = await fetch(`/api/portfolios/${PORTFOLIO_ID}`);
+        const data = await response.json();
+
+        if (data.status === 'success' && data.data.portfolio) {
+            const portfolio = data.data.portfolio;
+
+            document.getElementById('portfolio-name').textContent = portfolio.name;
+            document.getElementById('portfolio-info').textContent =
+                `${formatExchange(portfolio.exchange)} - ${portfolio.account_type.toUpperCase()} (${portfolio.environment})`;
+        }
+    } catch (error) {
+        console.error('Error loading portfolio details:', error);
+    }
+}
+
+async function loadPositions() {
+    const container = document.getElementById('positions-list');
+
+    try {
+        // Build URL with filter parameter
+        let url = `/api/portfolios/${PORTFOLIO_ID}/summary`;
+        if (currentFilter && currentFilter !== 'all') {
+            const isOpen = currentFilter === 'open' ? 'true' : 'false';
+            url += `?is_open=${isOpen}`;
+        }
+
+        // Load summary
+        const summaryResponse = await fetch(url);
+        const summaryData = await summaryResponse.json();
+
+        if (summaryData.status === 'success') {
+            const { summary, positions } = summaryData.data;
+
+            // Update summary cards based on filter
+            document.getElementById('total-value').textContent = '$' + (summary.total_value || 0).toFixed(2);
+            document.getElementById('total-cost').textContent = '$' + (summary.total_cost || 0).toFixed(2);
+
+            // Update labels and values based on filter
+            if (currentFilter === 'open') {
+                document.getElementById('pnl-label').textContent = 'Unrealized P&L';
+                document.getElementById('pnl-icon').textContent = '📊';
+                document.getElementById('count-label').textContent = 'Açık Pozisyonlar';
+                document.getElementById('count-icon').textContent = '📈';
+                document.getElementById('unrealized-pnl').textContent = '$' + (summary.total_unrealized_pnl || 0).toFixed(2);
+                document.getElementById('unrealized-pnl-pct').textContent = (summary.unrealized_pnl_pct || 0).toFixed(2) + '%';
+            } else if (currentFilter === 'closed') {
+                document.getElementById('pnl-label').textContent = 'Realized P&L';
+                document.getElementById('pnl-icon').textContent = '💰';
+                document.getElementById('count-label').textContent = 'Kapalı Pozisyonlar';
+                document.getElementById('count-icon').textContent = '🔒';
+                document.getElementById('unrealized-pnl').textContent = '$' + (summary.total_realized_pnl || 0).toFixed(2);
+                document.getElementById('unrealized-pnl-pct').textContent = (summary.realized_pnl_pct || 0).toFixed(2) + '%';
+            } else { // all
+                document.getElementById('pnl-label').textContent = 'Total P&L';
+                document.getElementById('pnl-icon').textContent = '💵';
+                document.getElementById('count-label').textContent = 'Toplam Pozisyonlar';
+                document.getElementById('count-icon').textContent = '📊';
+                const totalPnl = (summary.total_unrealized_pnl || 0) + (summary.total_realized_pnl || 0);
+                document.getElementById('unrealized-pnl').textContent = '$' + totalPnl.toFixed(2);
+                document.getElementById('unrealized-pnl-pct').textContent = (summary.total_pnl_pct || 0).toFixed(2) + '%';
+            }
+
+            document.getElementById('positions-count').textContent = summary.position_count || 0;
+
+            // Color code P&L
+            const pnlElement = document.getElementById('unrealized-pnl');
+            const pnlPctElement = document.getElementById('unrealized-pnl-pct');
+            const pnlValue = parseFloat(pnlElement.textContent.replace('$', ''));
+            if (pnlValue >= 0) {
+                pnlElement.style.color = 'var(--color-success)';
+                pnlPctElement.style.color = 'var(--color-success)';
+            } else {
+                pnlElement.style.color = 'var(--color-danger)';
+                pnlPctElement.style.color = 'var(--color-danger)';
+            }
+
+            // Render positions as accordion
+            if (positions && positions.length > 0) {
+                container.innerHTML = positions.map(pos => {
+                    // Use total_quantity (position + entries) for calculations
+                    const totalQty = pos.total_quantity || pos.quantity;
+                    const avgPrice = pos.average_price || pos.entry_price;
+                    const currentValue = totalQty * (pos.current_price || avgPrice);
+                    const cost = pos.total_cost || (totalQty * avgPrice);
+
+                    // Use realized_pnl for closed positions, unrealized_pnl for open positions
+                    let pnl, pnlPct;
+                    if (!pos.is_open && pos.realized_pnl !== null) {
+                        pnl = pos.realized_pnl;
+                        pnlPct = (pnl / cost * 100);
+                    } else {
+                        pnl = currentValue - cost;
+                        pnlPct = (pnl / cost * 100);
+                    }
+
+                    const pnlClass = pnl >= 0 ? 'positive' : 'negative';
+                    const statusBadge = pnl >= 0 ? 'success' : 'error';
+                    const date = new Date(pos.opened_at);
+
+                    return `
+                        <div class="position-item" data-position-id="${pos.id}">
+                            <!-- Collapsed Header -->
+                            <div class="position-header">
+                                <!-- Expand Button -->
+                                <div class="pos-col-expand">
+                                    <button class="pos-expand-btn" onclick="togglePosition(${pos.id})">
+                                        <svg width="16" height="16" class="chevron-icon" viewBox="0 0 16 16" fill="none">
+                                            <path fill="currentColor" d="M11.88 6.175a.5.5 0 00-.705-.055L8 8.841l-3.175-2.72a.5.5 0 00-.65.759l3.5 3a.5.5 0 00.65 0l3.5-3a.5.5 0 00.055-.705z"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+
+                                <!-- Parite (Symbol + Exchange) -->
+                                <div class="pos-col-parite">
+                                    <div class="pos-symbol-info">
+                                        <span class="pos-symbol">${pos.symbol}</span>
+                                        <span class="pos-exchange">${formatExchange(pos.exchange || 'manual')}</span>
+                                    </div>
+                                </div>
+
+                                <!-- Tarih (Date + Time + ID) -->
+                                <div class="pos-col-tarih">
+                                    <span class="pos-date">${date.toLocaleDateString('tr-TR')}</span>
+                                    <span class="pos-time">${date.toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit'})}</span>
+                                    <span class="pos-id">ID: ${pos.id}</span>
+                                </div>
+
+                                <!-- Hacim (Quantity + Value) -->
+                                <div class="pos-col-hacim">
+                                    <span class="pos-quantity">${formatQuantity(totalQty)} ${getBaseAsset(pos.symbol)}</span>
+                                    <span class="pos-value">${currentValue.toFixed(2)} USDT</span>
+                                </div>
+
+                                <!-- Durum (Status Badge) -->
+                                <div class="pos-col-durum">
+                                    <span class="pos-status ${pos.is_open ? 'open' : 'closed'}">
+                                        ${pos.is_open ? 'Açık' : 'Kapalı'}
+                                    </span>
+                                </div>
+
+                                <!-- Kâr/Zarar (P&L) -->
+                                <div class="pos-col-kar">
+                                    <span class="pos-pnl ${pnlClass}">$${pnl.toFixed(2)}</span>
+                                    <span class="pos-pnl-pct ${pnlClass}">${pnlPct.toFixed(2)}%</span>
+                                </div>
+
+                                <!-- Kaynak -->
+                                <div class="pos-col-kaynak">
+                                    ${pos.source}
+                                </div>
+
+                                <!-- Eylemler -->
+                                <div class="pos-col-eylemler">
+                                    <button class="pos-action-btn edit" onclick="event.stopPropagation(); editPosition(${pos.id})">edit</button>
+                                    <button class="pos-action-btn delete" onclick="event.stopPropagation(); deletePosition(${pos.id})">del</button>
+                                </div>
+                            </div>
+
+                            <!-- Expanded Details -->
+                            <div class="position-details" id="details-${pos.id}">
+                                <!-- Notes -->
+                                ${pos.notes ? `
+                                <div class="pos-notes-section">
+                                    <div class="pos-notes-label">📝 SmartTrade için not:</div>
+                                    <div class="pos-notes-text">${pos.notes}</div>
+                                </div>
+                                ` : ''}
+
+                                <!-- Entry Summary -->
+                                <div class="pos-entry-summary">
+                                    <div class="pos-summary-item">
+                                        <span class="pos-summary-label">Ortalama Fiyat:</span>
+                                        <span class="pos-summary-value">₮ ${avgPrice.toFixed(2)}</span>
+                                    </div>
+                                    <div class="pos-summary-item">
+                                        <span class="pos-summary-label">Toplam Pozisyon:</span>
+                                        <span class="pos-summary-value">
+                                            <div style="display: flex; flex-direction: column; gap: 3px;">
+                                                <span class="pos-summary-value-primary">🔵 ${formatQuantity(totalQty)} ${getBaseAsset(pos.symbol)}</span>
+                                                <span class="pos-summary-value-secondary" style="padding-left: 25px;">${currentValue.toFixed(2)} USDT</span>
+                                            </div>
+                                        </span>
+                                    </div>
+                                    <div class="pos-summary-item">
+                                        <span class="pos-summary-label">İlk Alım:</span>
+                                        <span class="pos-summary-value">${formatQuantity(pos.quantity)} ${getBaseAsset(pos.symbol)} @ ${pos.entry_price.toFixed(2)}</span>
+                                    </div>
+                                    <div class="pos-summary-item">
+                                        <span class="pos-summary-label">Ek Alımlar (DCA):</span>
+                                        <span class="pos-summary-value">${formatQuantity(pos.entries_total_quantity || 0)} ${getBaseAsset(pos.symbol)}</span>
+                                    </div>
+                                </div>
+
+                                <!-- Entries Table -->
+                                <div class="pos-entries-section">
+                                    <div class="pos-entries-header">
+                                        <span class="pos-entries-title">Alım Adımları</span>
+                                        ${pos.is_open !== false ? `
+                                            <button class="pos-add-entry-btn" onclick="showAddEntryModal(${pos.id})">
+                                                + Yeni Entry
+                                            </button>
+                                        ` : `
+                                            <span style="color: var(--text-muted); font-size: 12px; font-style: italic;">Kapalı pozisyon</span>
+                                        `}
+                                    </div>
+                                    <div id="entries-${pos.id}">
+                                        <p style="color: var(--text-muted); font-size: 13px;">Entry'ler yükleniyor...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                container.innerHTML = `
+                    <div class="positions-empty">
+                        <div class="positions-empty-icon">📊</div>
+                        <h3 class="positions-empty-title">Henüz Pozisyon Yok</h3>
+                        <p class="positions-empty-text">İlk pozisyonunuzu manuel olarak ekleyin veya borsadan içe aktarın</p>
+                        <button class="btn btn-primary" onclick="showAddPositionModal()">
+                            + Pozisyon Ekle
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+    } catch (error) {
+        console.error('Error loading positions:', error);
+        container.innerHTML = `
+            <div class="positions-empty">
+                <div class="positions-empty-icon">⚠️</div>
+                <h3 class="positions-empty-title" style="color: var(--accent-danger);">Hata</h3>
+                <p class="positions-empty-text">Pozisyonlar yüklenirken hata oluştu: ${error.message}</p>
+                <button class="btn btn-primary" onclick="loadPositions()">
+                    Tekrar Dene
+                </button>
+            </div>
+        `;
+    }
+}
+
+// Toggle position expand/collapse
+function togglePosition(positionId) {
+    const detailsDiv = document.getElementById(`details-${positionId}`);
+    const expandBtn = event.currentTarget;
+
+    if (detailsDiv.classList.contains('expanded')) {
+        // Collapse
+        detailsDiv.classList.remove('expanded');
+        expandBtn.classList.remove('expanded');
+    } else {
+        // Expand
+        detailsDiv.classList.add('expanded');
+        expandBtn.classList.add('expanded');
+
+        // Load entries for this position
+        loadPositionEntries(positionId);
+    }
+}
+
+// Load entries for a position
+async function loadPositionEntries(positionId) {
+    const entriesContainer = document.getElementById(`entries-${positionId}`);
+
+    try {
+        const response = await fetch(`/api/portfolios/${PORTFOLIO_ID}/positions/${positionId}/entries`);
+        const data = await response.json();
+
+        if (data.status === 'success' && data.data.entries && data.data.entries.length > 0) {
+            const entries = data.data.entries;
+
+            entriesContainer.innerHTML = `
+                <table class="pos-entries-table">
+                    <thead>
+                        <tr>
+                            <th>Al adımları</th>
+                            <th>Tarih</th>
+                            <th>Fiyat</th>
+                            <th>Hacim</th>
+                            <th>Durum</th>
+                            <th>İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${entries.map((entry, index) => `
+                            <tr>
+                                <td>Satın alma adımı ${index + 1}</td>
+                                <td>${formatDate(entry.traded_at || entry.created_at)}</td>
+                                <td>₮ ${parseFloat(entry.entry_price).toFixed(2)}</td>
+                                <td>${formatQuantity(entry.quantity)}</td>
+                                <td>Sahip olunan bakiye</td>
+                                <td>
+                                    <div class="entry-action-btns">
+                                        <button class="entry-btn edit" onclick="editEntry(${positionId}, ${entry.id})" title="Düzenle">
+                                            e
+                                        </button>
+                                        <button class="entry-btn delete" onclick="deleteEntry(${positionId}, ${entry.id})" title="Sil">
+                                            d
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        } else {
+            entriesContainer.innerHTML = `
+                <p style="color: var(--text-muted); font-size: 13px; text-align: center; padding: 20px;">
+                    Henüz entry eklenmemiş. "+ Yeni Entry" butonuna tıklayarak ekleyebilirsiniz.
+                </p>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading entries:', error);
+        entriesContainer.innerHTML = `
+            <p style="color: var(--accent-danger); font-size: 13px; text-align: center; padding: 20px;">
+                Entry'ler yüklenirken hata oluştu: ${error.message}
+            </p>
+        `;
+    }
+}
+
+// Edit position (placeholder)
+async function editPosition(positionId) {
+    try {
+        // Fetch position details from summary
+        const response = await fetch(`/api/portfolios/${PORTFOLIO_ID}/summary`);
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            const position = data.data.positions.find(p => p.id === positionId);
+
+            if (position) {
+                // Populate form
+                document.getElementById('edit-position-id').value = position.id;
+                document.getElementById('edit-position-symbol').value = position.symbol;
+                document.getElementById('edit-position-quantity').value = position.quantity;
+                document.getElementById('edit-position-entry-price').value = position.entry_price;
+                document.getElementById('edit-position-notes').value = position.notes || '';
+                document.getElementById('edit-position-is-open').checked = position.is_open !== false;
+
+                // Format date for datetime-local input (local time, not UTC)
+                if (position.opened_at) {
+                    const date = new Date(position.opened_at);
+                    // Use local time components instead of toISOString (which converts to UTC)
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    const hours = String(date.getHours()).padStart(2, '0');
+                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                    const formattedDate = `${year}-${month}-${day}T${hours}:${minutes}`;
+                    document.getElementById('edit-position-entry-date').value = formattedDate;
+                }
+
+                // Store position data for exit price calculation
+                window.currentEditPosition = position;
+
+                // Setup toggle listener for exit price section
+                const toggleInput = document.getElementById('edit-position-is-open');
+                const exitPriceSection = document.getElementById('exit-price-section');
+                const exitPriceInput = document.getElementById('edit-exit-price');
+
+                // Populate exit price if position is closed and has exit_price
+                if (position.exit_price) {
+                    exitPriceInput.value = position.exit_price;
+                }
+
+                // Initial state
+                if (!toggleInput.checked) {
+                    exitPriceSection.style.display = 'block';
+                    exitPriceInput.required = true;
+
+                    // Calculate and show P&L if exit price exists
+                    if (position.exit_price) {
+                        const pnl = (position.exit_price - position.entry_price) * position.quantity;
+                        const pnlPct = ((position.exit_price - position.entry_price) / position.entry_price) * 100;
+
+                        document.getElementById('exit-pnl-value').textContent = '$' + pnl.toFixed(2);
+                        document.getElementById('exit-pnl-pct').textContent = (pnl >= 0 ? '+' : '') + pnlPct.toFixed(2) + '%';
+                        document.getElementById('exit-pnl-value').style.color = pnl >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)';
+                        document.getElementById('exit-pnl-pct').style.color = pnl >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)';
+                    }
+                } else {
+                    exitPriceSection.style.display = 'none';
+                    exitPriceInput.required = false;
+                }
+
+                // Toggle listener
+                toggleInput.onchange = function(e) {
+                    if (!e.target.checked) {
+                        exitPriceSection.style.display = 'block';
+                        exitPriceInput.required = true;
+                    } else {
+                        exitPriceSection.style.display = 'none';
+                        exitPriceInput.value = '';
+                        exitPriceInput.required = false;
+                    }
+                };
+
+                // Exit price input listener for P&L calculation
+                document.getElementById('edit-exit-price').oninput = function(e) {
+                    const exitPrice = parseFloat(e.target.value);
+                    if (exitPrice && position.entry_price && position.quantity) {
+                        const pnl = (exitPrice - position.entry_price) * position.quantity;
+                        const pnlPct = ((exitPrice - position.entry_price) / position.entry_price) * 100;
+
+                        const pnlValueEl = document.getElementById('exit-pnl-value');
+                        const pnlPctEl = document.getElementById('exit-pnl-pct');
+
+                        pnlValueEl.textContent = '$' + pnl.toFixed(2);
+                        pnlPctEl.textContent = (pnl >= 0 ? '+' : '') + pnlPct.toFixed(2) + '%';
+
+                        if (pnl >= 0) {
+                            pnlValueEl.style.color = 'var(--accent-success)';
+                            pnlPctEl.style.color = 'var(--accent-success)';
+                        } else {
+                            pnlValueEl.style.color = 'var(--accent-danger)';
+                            pnlPctEl.style.color = 'var(--accent-danger)';
+                        }
+                    }
+                };
+
+                // Show modal
+                document.getElementById('edit-position-modal').style.display = 'flex';
+            }
+        }
+    } catch (error) {
+        console.error('Pozisyon yükleme hatası:', error);
+        showToast('Pozisyon bilgileri yüklenemedi', 'error');
+    }
+}
+
+function closeEditPositionModal() {
+    document.getElementById('edit-position-modal').style.display = 'none';
+    document.getElementById('edit-position-form').reset();
+}
+
+async function updatePosition(event) {
+    event.preventDefault();
+
+    const positionId = document.getElementById('edit-position-id').value;
+    const quantity = parseNumber(document.getElementById('edit-position-quantity').value);
+    const entryPrice = parseNumber(document.getElementById('edit-position-entry-price').value);
+    const openedAt = document.getElementById('edit-position-entry-date').value;
+    const notes = document.getElementById('edit-position-notes').value;
+    const isOpen = document.getElementById('edit-position-is-open').checked;
+    const exitPrice = document.getElementById('edit-exit-price').value;
+
+    // Validate exit price if closing position
+    if (!isOpen && (!exitPrice || parseFloat(exitPrice) <= 0)) {
+        showToast('Pozisyon kapatırken kapanış fiyatı girmelisiniz', 'error');
+        return;
+    }
+
+    const bodyData = {
+        quantity: quantity,
+        entry_price: entryPrice,
+        opened_at: openedAt,
+        notes: notes,
+        is_open: isOpen
+    };
+
+    // Add exit price if closing position
+    if (!isOpen && exitPrice) {
+        bodyData.exit_price = parseFloat(exitPrice);
+    }
+
+    try {
+        const response = await fetch(`/api/portfolios/${PORTFOLIO_ID}/positions/${positionId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(bodyData)
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            showToast('Pozisyon başarıyla güncellendi!', 'success');
+            closeEditPositionModal();
+            loadPositions(); // Reload positions to show updated data
+        } else {
+            showToast('Hata: ' + (data.error || 'Bilinmeyen hata'), 'error');
+        }
+    } catch (error) {
+        console.error('Pozisyon güncelleme hatası:', error);
+        showToast('Pozisyon güncellenirken hata oluştu: ' + error.message, 'error');
+    }
+}
+
+// Edit entry
+async function editEntry(positionId, entryId) {
+    try {
+        // Fetch entry details
+        const response = await fetch(`/api/portfolios/${PORTFOLIO_ID}/positions/${positionId}/entries`);
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            const entry = data.data.entries.find(e => e.id === entryId);
+
+            if (entry) {
+                // Populate form
+                document.getElementById('edit-entry-id').value = entry.id;
+                document.getElementById('edit-entry-position-id').value = positionId;
+                document.getElementById('edit-entry-quantity').value = entry.quantity;
+                document.getElementById('edit-entry-price').value = entry.entry_price;
+                document.getElementById('edit-entry-notes').value = entry.notes || '';
+
+                // Format date for datetime-local input (local time, not UTC)
+                if (entry.traded_at || entry.created_at) {
+                    const date = new Date(entry.traded_at || entry.created_at);
+                    // Use local time components instead of toISOString (which converts to UTC)
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    const hours = String(date.getHours()).padStart(2, '0');
+                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                    const formattedDate = `${year}-${month}-${day}T${hours}:${minutes}`;
+                    document.getElementById('edit-entry-date').value = formattedDate;
+                }
+
+                // Show modal
+                document.getElementById('edit-entry-modal').style.display = 'flex';
+            }
+        }
+    } catch (error) {
+        console.error('Entry yükleme hatası:', error);
+        showToast('Entry bilgileri yüklenemedi', 'error');
+    }
+}
+
+function closeEditEntryModal() {
+    document.getElementById('edit-entry-modal').style.display = 'none';
+    document.getElementById('edit-entry-form').reset();
+}
+
+// Update entry
+async function updateEntry(event) {
+    event.preventDefault();
+
+    const entryId = document.getElementById('edit-entry-id').value;
+    const positionId = document.getElementById('edit-entry-position-id').value;
+    const quantity = parseNumber(document.getElementById('edit-entry-quantity').value);
+    const price = parseNumber(document.getElementById('edit-entry-price').value);
+    const tradedAt = document.getElementById('edit-entry-date').value;
+    const notes = document.getElementById('edit-entry-notes').value;
+
+    try {
+        const response = await fetch(`/api/portfolios/${PORTFOLIO_ID}/positions/${positionId}/entries/${entryId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                quantity: quantity,
+                entry_price: price,
+                traded_at: tradedAt,
+                notes: notes
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            showToast('Entry başarıyla güncellendi!', 'success');
+            closeEditEntryModal();
+            loadPositions(); // Reload positions to show updated data
+        } else {
+            showToast('Hata: ' + (data.error || 'Bilinmeyen hata'), 'error');
+        }
+    } catch (error) {
+        console.error('Entry güncelleme hatası:', error);
+        showToast('Entry güncellenirken hata oluştu: ' + error.message, 'error');
+    }
+}
+
+// Delete entry
+async function deleteEntry(positionId, entryId) {
+    const confirmed = await confirm({
+        title: 'Entry Sil',
+        message: 'Bu entry\'yi silmek istediğinizden emin misiniz?',
+        type: 'danger',
+        confirmText: 'Sil',
+        cancelText: 'İptal'
+    });
+
+    if (!confirmed) return;
+
+    try {
+        const response = await fetch(`/api/portfolios/${PORTFOLIO_ID}/positions/${positionId}/entries/${entryId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            showToast('Entry başarıyla silindi', 'success');
+            // Reload entries for this position
+            await loadPositionEntries(positionId);
+            // Reload positions to update totals
+            await loadPositions();
+        } else {
+            showToast(data.error || 'Entry silinirken hata oluştu', 'error');
+        }
+    } catch (error) {
+        console.error('Delete entry error:', error);
+        showToast('Entry silinirken bir hata oluştu', 'error');
+    }
+}
+
+function filterPositions() {
+    currentFilter = document.getElementById('position-filter').value;
+    loadPositions();
+}
+
+// Symbol search functionality
+let searchTimeout = null;
+
+async function searchSymbols(event) {
+    const query = event.target.value.trim();
+    const dropdown = document.getElementById('symbol-dropdown');
+
+    if (searchTimeout) clearTimeout(searchTimeout);
+
+    if (query.length < 1) {
+        dropdown.style.display = 'none';
+        return;
+    }
+
+    searchTimeout = setTimeout(async () => {
+        try {
+            const response = await fetch(`/api/symbols/available?search=${encodeURIComponent(query)}&market_type=spot&quote_asset=USDT&limit=50`);
+            const data = await response.json();
+            console.log('Symbol search response:', data);
+
+            if (data.status === 'success' && data.data && data.data.symbols) {
+                const symbols = data.data.symbols;
+                console.log('Found symbols:', symbols.length);
+
+                if (symbols.length > 0) {
+                    dropdown.innerHTML = symbols.map(s => {
+                        const sym = s.symbol || '';
+                        return '<div class="symbol-dropdown-item" data-symbol="' + sym + '">' +
+                            '<span class="symbol-name">' + sym + '</span>' +
+                            '<span class="symbol-info">' + (s.status || 'SPOT') + '</span>' +
+                            '</div>';
+                    }).join('');
+                    // Add click handlers
+                    dropdown.querySelectorAll('.symbol-dropdown-item').forEach(item => {
+                        item.onclick = () => selectSymbol(item.dataset.symbol);
+                    });
+                    dropdown.style.display = 'block';
+                    console.log('Dropdown shown with', symbols.length, 'items');
+                } else {
+                    dropdown.innerHTML = '<div class="symbol-dropdown-empty">Sonuç bulunamadı. Manuel girebilirsiniz.</div>';
+                    dropdown.style.display = 'block';
+                }
+            } else {
+                console.log('No symbols in response:', data);
+                dropdown.innerHTML = '<div class="symbol-dropdown-empty">Sonuç bulunamadı. Manuel girebilirsiniz.</div>';
+                dropdown.style.display = 'block';
+            }
+        } catch (error) {
+            console.error('Sembol arama hatası:', error);
+            dropdown.innerHTML = '<div class="symbol-dropdown-empty">Arama hatası. Manuel girebilirsiniz.</div>';
+            dropdown.style.display = 'block';
+        }
+    }, 300);
+}
+
+function selectSymbol(symbolName) {
+    document.getElementById('position-symbol').value = symbolName;
+    document.getElementById('symbol-dropdown').style.display = 'none';
+}
+
+async function addPosition(event) {
+    event.preventDefault();
+
+    const portfolioId = document.getElementById('position-portfolio-id').value;
+    const symbol = document.getElementById('position-symbol').value.trim().toUpperCase();
+    const quantity = parseFloat(document.getElementById('position-quantity').value);
+    const entryPrice = parseFloat(document.getElementById('position-entry-price').value);
+    const entryDate = document.getElementById('position-entry-date').value;
+    const notes = document.getElementById('position-notes').value;
+
+    const formData = {
+        symbol: symbol,  // String olarak gönder (BTC/USDT gibi)
+        quantity: quantity,
+        entry_price: entryPrice,
+        opened_at: new Date(entryDate).toISOString(),
+        notes: notes || null,
+        side: 'LONG',  // Sabit: Sadece LONG
+        position_type: 'SPOT',  // Sabit: Sadece SPOT
+        source: 'manual'  // Manuel ekleme
+    };
+
+    try {
+        const response = await fetch(`/api/portfolios/${portfolioId}/positions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            closeAddPositionModal();
+            showToast('✅ Pozisyon başarıyla eklendi', 'success');
+            loadPositions();
+        } else {
+            showToast(data.error || 'Pozisyon eklenemedi', 'error');
+        }
+
+    } catch (error) {
+        console.error('Pozisyon ekleme hatası:', error);
+        showToast('Bir hata oluştu', 'error');
+    }
+}
+
+async function updatePrices() {
+    try {
+        showToast('🔄 Fiyatlar güncelleniyor...', 'info');
+
+        const response = await fetch(`/api/portfolios/${PORTFOLIO_ID}/update-prices`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            const result = data.data;
+            const updated = result.updated_count || 0;
+            const total = result.total_positions || 0;
+            const errors = result.errors || [];
+
+            if (updated > 0) {
+                showToast(`✅ ${updated}/${total} pozisyon fiyatı güncellendi`, 'success');
+
+                // Refresh positions to show new prices
+                loadPositions();
+            } else if (errors.length > 0) {
+                showToast(`⚠️ Fiyat güncellenemedi: ${errors[0]}`, 'warning');
+            } else {
+                showToast('ℹ️ Güncellenecek pozisyon yok', 'info');
+            }
+        } else {
+            showToast(data.error || 'Fiyat güncelleme başarısız', 'error');
+        }
+
+    } catch (error) {
+        console.error('Fiyat güncelleme hatası:', error);
+        showToast('Fiyat güncellenirken hata oluştu', 'error');
+    }
+}
+
+async function deletePosition(positionId) {
+    const confirmed = await confirm({
+        title: 'Pozisyonu Sil',
+        message: 'Bu pozisyonu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
+        type: 'danger',
+        confirmText: 'Sil',
+        cancelText: 'İptal'
+    });
+
+    if (!confirmed) return;
+
+    try {
+        const response = await fetch(`/api/portfolios/${PORTFOLIO_ID}/positions/${positionId}`, {
+            method: 'DELETE'
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            showToast('✅ Pozisyon başarıyla silindi', 'success');
+            loadPositions();
+        } else {
+            showToast(data.message || 'Pozisyon silinemedi', 'error');
+        }
+
+    } catch (error) {
+        console.error('Pozisyon silme hatası:', error);
+        showToast('Pozisyon silinirken hata oluştu: ' + error.message, 'error');
+    }
+}
+
+// Modal functions
+function showAddPositionModal() {
+    document.getElementById('position-portfolio-id').value = PORTFOLIO_ID;
+    document.getElementById('position-form').reset();
+
+    // Set current datetime as default
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    document.getElementById('position-entry-date').value = now.toISOString().slice(0, 16);
+
+    // Clear dropdown
+    document.getElementById('symbol-dropdown').style.display = 'none';
+
+    // Show modal
+    document.getElementById('position-modal').style.display = 'flex';
+}
+
+function closeAddPositionModal() {
+    document.getElementById('position-modal').style.display = 'none';
+}
+
+// ==============================================
+// Exchange Import Functions
+// ==============================================
+
+let exchangeImportData = null;
+
+async function showImportModal() {
+    const modal = document.getElementById('exchange-import-modal');
+    const loading = document.getElementById('exchange-import-loading');
+    const error = document.getElementById('exchange-import-error');
+    const content = document.getElementById('exchange-import-content');
+    const actions = document.getElementById('exchange-import-actions');
+
+    // Show modal with loading state
+    modal.style.display = 'flex';
+    loading.style.display = 'block';
+    error.style.display = 'none';
+    content.style.display = 'none';
+    actions.style.display = 'none';
+
+    try {
+        // Fetch positions from exchange
+        const response = await fetch(`/api/portfolios/${PORTFOLIO_ID}/import-preview`);
+        const result = await response.json();
+
+        if (result.status === 'success' && result.data.assets) {
+            exchangeImportData = result.data.assets;
+
+            if (exchangeImportData.length === 0) {
+                // No positions found
+                document.getElementById('exchange-import-error-message').textContent =
+                    'Borsada pozisyon bulunamadı veya tümü zaten import edilmiş.';
+                error.style.display = 'block';
+                loading.style.display = 'none';
+            } else {
+                // Show positions
+                renderExchangePositions(exchangeImportData);
+                loading.style.display = 'none';
+                content.style.display = 'block';
+                actions.style.display = 'flex';
+            }
+        } else {
+            // Error fetching data
+            document.getElementById('exchange-import-error-message').textContent =
+                result.error || result.data?.message || 'Bilinmeyen hata oluştu';
+            error.style.display = 'block';
+            loading.style.display = 'none';
+        }
+    } catch (err) {
+        console.error('Exchange import error:', err);
+        document.getElementById('exchange-import-error-message').textContent =
+            'Bağlantı hatası: ' + err.message;
+        error.style.display = 'block';
+        loading.style.display = 'none';
+    }
+}
+
+window.closeExchangeImportModal = function() {
+    document.getElementById('exchange-import-modal').style.display = 'none';
+    exchangeImportData = null;
+};
+
+function renderExchangePositions(assets) {
+    const container = document.getElementById('exchange-import-positions');
+    const totalElement = document.getElementById('exchange-import-total');
+    const selectedElement = document.getElementById('exchange-import-selected');
+
+    // Update summary
+    totalElement.textContent = assets.length;
+    selectedElement.textContent = '0';
+
+    // Build HTML
+    let html = '<div style="display: flex; flex-direction: column; gap: 10px;">';
+
+    assets.forEach((asset, index) => {
+        const statusColors = {
+            'new': 'var(--success)',
+            'already_imported': 'var(--text-muted)',
+            'quantity_increased': 'var(--warning)',
+            'quantity_decreased': 'var(--warning)'
+        };
+
+        const statusLabels = {
+            'new': '🆕 Yeni',
+            'already_imported': '✅ Mevcut',
+            'quantity_increased': '📈 Arttı',
+            'quantity_decreased': '📉 Azaldı'
+        };
+
+        const color = statusColors[asset.status] || 'var(--text-primary)';
+        const label = statusLabels[asset.status] || asset.status;
+        const isChecked = asset.status === 'new' || asset.status === 'quantity_increased' || asset.status === 'quantity_decreased';
+
+        html += `
+            <div style="background: var(--bg-secondary); padding: 15px; border-radius: 8px; border: 1px solid var(--border-primary);">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <label style="display: flex; align-items: center; cursor: pointer; user-select: none; flex: 1;">
+                        <input type="checkbox"
+                               class="exchange-position-checkbox"
+                               data-index="${index}"
+                               ${isChecked ? 'checked' : ''}
+                               ${asset.status === 'already_imported' ? 'disabled' : ''}
+                               onchange="updateExchangeSelectedCount()"
+                               style="margin-right: 12px; width: 20px; height: 20px; cursor: pointer;">
+                        <div style="flex: 1;">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
+                                <span style="font-weight: 600; font-size: 16px;">${asset.asset}</span>
+                                <span style="color: var(--text-muted); font-size: 13px;">${asset.symbol}</span>
+                                <span style="color: ${color}; font-size: 12px; font-weight: 600;">${label}</span>
+                            </div>
+                            <div style="display: flex; gap: 20px; font-size: 13px; color: var(--text-muted);">
+                                <span>Borsa: <strong>${asset.exchange_quantity.toFixed(8)}</strong></span>
+                                ${asset.db_quantity !== undefined ?
+                                    `<span>DB: <strong>${asset.db_quantity.toFixed(8)}</strong></span>` : ''}
+                                ${asset.difference !== 0 ?
+                                    `<span>Fark: <strong style="color: ${asset.difference > 0 ? 'var(--success)' : 'var(--error)'}">
+                                        ${asset.difference > 0 ? '+' : ''}${asset.difference.toFixed(8)}
+                                    </strong></span>` : ''}
+                            </div>
+                        </div>
+                    </label>
+                    <div style="text-align: right; margin-left: 15px;">
+                        <div style="font-weight: 600; font-size: 16px;">
+                            $${asset.current_price ? asset.current_price.toLocaleString() : '?'}
+                        </div>
+                        <div style="color: var(--text-muted); font-size: 13px;">
+                            $${asset.current_price && asset.exchange_quantity ?
+                                (asset.current_price * asset.exchange_quantity).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '?'}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    html += '</div>';
+    container.innerHTML = html;
+
+    // Update initial selected count
+    updateExchangeSelectedCount();
+}
+
+window.toggleExchangeSelectAll = function() {
+    const selectAll = document.getElementById('exchange-select-all');
+    const checkboxes = document.querySelectorAll('.exchange-position-checkbox:not(:disabled)');
+
+    checkboxes.forEach(cb => {
+        cb.checked = selectAll.checked;
+    });
+
+    updateExchangeSelectedCount();
+};
+
+function updateExchangeSelectedCount() {
+    const checkboxes = document.querySelectorAll('.exchange-position-checkbox:checked:not(:disabled)');
+    const selectedCount = checkboxes.length;
+
+    document.getElementById('exchange-import-selected').textContent = selectedCount;
+
+    // Update button state
+    const btn = document.getElementById('confirm-exchange-import-btn');
+    if (selectedCount === 0) {
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
+        btn.style.cursor = 'not-allowed';
+    } else {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+    }
+}
+
+window.confirmExchangeImport = async function() {
+    if (!exchangeImportData) return;
+
+    // Get selected positions
+    const checkboxes = document.querySelectorAll('.exchange-position-checkbox:checked:not(:disabled)');
+    const selectedAssets = [];
+
+    checkboxes.forEach(cb => {
+        const index = parseInt(cb.dataset.index);
+        const asset = exchangeImportData[index];
+        selectedAssets.push({
+            asset: asset.asset,
+            symbol: asset.symbol,
+            quantity: asset.exchange_quantity,
+            price: asset.current_price,
+            import_date: new Date().toISOString()
+        });
+    });
+
+    if (selectedAssets.length === 0) {
+        showToast('Lütfen en az bir pozisyon seçin', 'error');
+        return;
+    }
+
+    // Show loading
+    const btn = document.getElementById('confirm-exchange-import-btn');
+    const btnText = document.getElementById('exchange-import-btn-text');
+    const originalText = btnText.textContent;
+    btnText.textContent = 'İçe aktarılıyor...';
+    btn.disabled = true;
+
+    try {
+        const response = await fetch(`/api/portfolios/${PORTFOLIO_ID}/import-from-exchange`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({selected_assets: selectedAssets})
+        });
+
+        const result = await response.json();
+
+        if (result.status === 'success') {
+            const data = result.data;
+            showToast(
+                `✅ Import tamamlandı!\n${data.imported_count} pozisyon eklendi` +
+                (data.skipped_count > 0 ? `, ${data.skipped_count} atlandı` : ''),
+                'success'
+            );
+
+            // Close modal and reload
+            window.closeExchangeImportModal();
+            loadPositions();
+        } else {
+            showToast('Import hatası: ' + (result.error || 'Bilinmeyen hata'), 'error');
+            btnText.textContent = originalText;
+            btn.disabled = false;
+        }
+    } catch (error) {
+        console.error('Import error:', error);
+        showToast('Import başarısız: ' + error.message, 'error');
+        btnText.textContent = originalText;
+        btn.disabled = false;
+    }
+};
+
+function closeImportModal() {
+    // Legacy support - redirect to exchange import
+    showImportModal();
+}
+
+// Entry Modal functions (DCA)
+function showAddEntryModal(positionId) {
+    document.getElementById('entry-position-id').value = positionId;
+    document.getElementById('entry-form').reset();
+
+    // Set current datetime as default
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    document.getElementById('entry-date').value = now.toISOString().slice(0, 16);
+
+    document.getElementById('entry-modal').style.display = 'flex';
+}
+
+function closeAddEntryModal() {
+    document.getElementById('entry-modal').style.display = 'none';
+}
+
+async function addEntry(event) {
+    event.preventDefault();
+
+    const positionId = document.getElementById('entry-position-id').value;
+    const quantity = parseNumber(document.getElementById('entry-quantity').value);
+    const price = parseNumber(document.getElementById('entry-price').value);
+    const tradedAt = document.getElementById('entry-date').value;
+    const notes = document.getElementById('entry-notes').value;
+
+    try {
+        const response = await fetch(`/api/portfolios/${PORTFOLIO_ID}/positions/${positionId}/entries`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                quantity: quantity,
+                price: price,
+                traded_at: tradedAt || null,
+                notes: notes,
+                status: 'filled',
+                source: 'manual'
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            showToast('Entry başarıyla eklendi!', 'success');
+            closeAddEntryModal();
+            loadPositions(); // Refresh positions to show updated average price
+        } else {
+            throw new Error(data.error || 'Entry eklenemedi');
+        }
+    } catch (error) {
+        console.error('Entry ekleme hatası:', error);
+        showToast('Entry eklenirken hata oluştu: ' + error.message, 'error');
+    }
+}
+
+// Helper functions
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+}
+
+function showToast(message, type = 'info') {
+    if (window.showToast) {
+        window.showToast(message, type);
+    } else {
+        alert(message);
+    }
+}
+
+// Close modals on outside click
+window.onclick = function(event) {
+    const addModal = document.getElementById('position-modal');
+    const importModal = document.getElementById('importModal');
+
+    if (event.target === addModal) {
+        closeAddPositionModal();
+    }
+    if (event.target === importModal) {
+        closeImportModal();
+    }
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(event) {
+    const dropdown = document.getElementById('symbol-dropdown');
+    const input = document.getElementById('position-symbol');
+    if (dropdown && input && !input.contains(event.target) && !dropdown.contains(event.target)) {
+        dropdown.style.display = 'none';
+    }
+});
+</script>
+
+{# Tüm stiller components.css'te: .tabs-container, .tabs-header, .tab-btn, .stat-row, .stat-pct, .stats-grid, .stat-card-*, .metric-row, .allocation-legend, .legend-*, .summary-*, .toggle-switch, .symbol-dropdown #}
+
+<!-- Chart.js for Pie Chart -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+// Tab switching
+function switchTab(tabName) {
+    // Hide all tab contents
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.style.display = 'none';
+    });
+
+    // Remove active class from all buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    // Show selected tab
+    document.getElementById('tab-' + tabName).style.display = 'block';
+
+    // Add active class to clicked button
+    document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+
+    // Load data for statistics tab
+    if (tabName === 'statistics' && !window.statisticsLoaded) {
+        loadStatistics();
+        window.statisticsLoaded = true;
+    }
+
+    // Load data for performance tab
+    if (tabName === 'performance' && !window.performanceLoaded) {
+        loadPerformance();
+        window.performanceLoaded = true;
+    }
+}
+
+// Load statistics data
+async function loadStatistics() {
+    const portfolioId = getPortfolioId();
+
+    try {
+        const response = await fetch(`/api/portfolios/${portfolioId}/statistics`);
+        const data = await response.json();
+
+        if (data.status === 'success' && data.data) {
+            const stats = data.data;
+
+            // Update overview stats
+            const overview = stats.overview || {};
+            document.getElementById('stat-total-value').textContent = formatCurrency(overview.total_value);
+            document.getElementById('stat-total-cost').textContent = formatCurrency(overview.total_cost);
+            document.getElementById('stat-unrealized-pnl').textContent = formatCurrency(overview.total_pnl);
+            document.getElementById('stat-unrealized-pnl-pct').textContent = formatPercent(overview.pnl_percentage);
+            document.getElementById('stat-positions-count').textContent = overview.position_count || 0;
+
+            // Color P&L
+            const pnlElement = document.getElementById('stat-unrealized-pnl-pct');
+            pnlElement.className = 'stat-card-change ' + (overview.pnl_percentage >= 0 ? 'positive' : 'negative');
+
+            // Update P&L breakdown
+            document.getElementById('daily-pnl').textContent = formatCurrency(overview.daily_pnl);
+            document.getElementById('daily-pnl-pct').textContent = formatPercent(overview.daily_pnl_pct);
+            document.getElementById('monthly-pnl').textContent = formatCurrency(overview.monthly_pnl);
+            document.getElementById('monthly-pnl-pct').textContent = formatPercent(overview.monthly_pnl_pct);
+            document.getElementById('total-pnl-stat').textContent = formatCurrency(overview.total_pnl);
+            document.getElementById('total-pnl-pct-stat').textContent = formatPercent(overview.pnl_percentage);
+
+            // Color P&L values
+            colorPnL('daily-pnl-pct', overview.daily_pnl_pct);
+            colorPnL('monthly-pnl-pct', overview.monthly_pnl_pct);
+            colorPnL('total-pnl-pct-stat', overview.pnl_percentage);
+
+            // Render pie chart
+            if (stats.allocation && stats.allocation.length > 0) {
+                renderAllocationChart(stats.allocation);
+            }
+        }
+    } catch (error) {
+        console.error('Error loading statistics:', error);
+    }
+}
+
+// Load performance metrics
+async function loadPerformance() {
+    const portfolioId = getPortfolioId();
+
+    try {
+        const response = await fetch(`/api/portfolios/${portfolioId}/performance`);
+        const data = await response.json();
+
+        if (data.status === 'success' && data.data) {
+            const perf = data.data.performance || {};
+            const risk = data.data.risk_metrics || {};
+
+            // Update performance metrics
+            document.getElementById('perf-total-trades').textContent = perf.total_trades || 0;
+            document.getElementById('perf-win-rate').textContent = formatPercent(perf.win_rate);
+            document.getElementById('perf-profit-factor').textContent = formatDecimal(perf.profit_factor);
+            document.getElementById('perf-avg-win').textContent = formatCurrency(perf.average_win);
+            document.getElementById('perf-avg-loss').textContent = formatCurrency(perf.average_loss);
+            document.getElementById('perf-risk-reward').textContent = formatDecimal(perf.risk_reward_ratio);
+
+            // Update risk metrics
+            document.getElementById('risk-sharpe').textContent = formatDecimal(risk.sharpe_ratio);
+            document.getElementById('risk-sortino').textContent = formatDecimal(risk.sortino_ratio);
+            document.getElementById('risk-max-dd').textContent = formatPercent(risk.max_drawdown);
+            document.getElementById('risk-max-dd-val').textContent = formatCurrency(risk.max_drawdown_value);
+        }
+    } catch (error) {
+        console.error('Error loading performance:', error);
+    }
+}
+
+// Render pie chart
+let allocationChart = null;
+
+function renderAllocationChart(allocation) {
+    const canvas = document.getElementById('allocationChart');
+    const ctx = canvas.getContext('2d');
+
+    // Destroy previous chart
+    if (allocationChart) {
+        allocationChart.destroy();
+    }
+
+    // Prepare data
+    const labels = allocation.map(a => a.token);
+    const values = allocation.map(a => a.value);
+    const percentages = allocation.map(a => a.percentage);
+
+    // Color palette
+    const colors = [
+        '#f7931a', // Bitcoin orange
+        '#627eea', // Ethereum blue
+        '#00d395', // Green
+        '#9945ff', // Solana purple
+        '#e84142', // Red
+        '#26a69a', // Teal
+        '#f48fb1', // Pink
+        '#ffd54f', // Yellow
+        '#9575cd', // Purple
+        '#4db6ac'  // Cyan
+    ];
+
+    // Create chart
+    allocationChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: values,
+                backgroundColor: colors,
+                borderWidth: 2,
+                borderColor: '#1a1a1a'
+            }]
+        },
+        options: {
+            responsive: false,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const token = context.label;
+                            const value = context.parsed;
+                            const pct = percentages[context.dataIndex];
+                            return `${token}: $${value.toLocaleString()} (${pct.toFixed(2)}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Render legend
+    const legendContainer = document.getElementById('allocation-legend');
+    legendContainer.innerHTML = allocation.map((item, index) => `
+        <div class="legend-item">
+            <div class="legend-color" style="background: ${colors[index]};"></div>
+            <div class="legend-label">${item.token}</div>
+            <div class="legend-value">${formatCurrency(item.value)}</div>
+            <div class="legend-pct">${formatPercent(item.percentage)}</div>
+        </div>
+    `).join('');
+}
+
+// Helper function to color P&L
+function colorPnL(elementId, value) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.className = 'stat-pct ' + (value >= 0 ? 'positive' : 'negative');
+    }
+}
+
+// Helper: Format currency
+function formatCurrency(value) {
+    if (value === null || value === undefined) return '$0.00';
+    return '$' + Number(value).toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+}
+
+// Helper: Format percent
+function formatPercent(value) {
+    if (value === null || value === undefined) return '0.00%';
+    const num = Number(value);
+    const sign = num >= 0 ? '+' : '';
+    return sign + num.toFixed(2) + '%';
+}
+
+// Helper: Format decimal
+function formatDecimal(value) {
+    if (value === undefined) return '0.00';
+    if (value === null) return '∞';  // null means infinite (no losses)
+    if (value === Infinity) return '∞';
+    return Number(value).toFixed(2);
+}
+
+// Helper: Get portfolio ID from URL
+function getPortfolioId() {
+    const path = window.location.pathname;
+    const match = path.match(/\/portfolio\/(\d+)/);
+    return match ? parseInt(match[1]) : null;
+}
+
+// ============================================
+// Export/Import Functions
+// ============================================
+
+let importData = null;
+
+// Show export modal
+window.showExportModal = function() {
+    const modal = document.getElementById('export-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+    }
+};
+
+// Close export modal
+window.closeExportModal = function() {
+    const modal = document.getElementById('export-modal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+};
+
+// Attach event listener to export button on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const exportBtn = document.getElementById('export-btn');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+            window.showExportModal();
+        });
+    }
+});
+
+// Export positions to JSON file
+window.exportPositions = async function(filter = 'all') {
+    try {
+        const portfolioId = PORTFOLIO_ID;
+        const url = `/api/portfolios/${portfolioId}/export?filter=${filter}`;
+
+        const response = await fetch(url);
+        const result = await response.json();
+
+        if (result.status === 'success') {
+            const data = result.data;
+
+            // Download as JSON file
+            const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+
+            // Create filename with portfolio name and date
+            const portfolioName = data.portfolio.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            const date = new Date().toISOString().split('T')[0];
+            const filterSuffix = filter === 'all' ? '' : `_${filter}`;
+            a.download = `positions_${portfolioName}${filterSuffix}_${date}.json`;
+
+            a.click();
+            URL.revokeObjectURL(url);
+
+            // Show success message
+            const filterText = filter === 'all' ? 'Tüm' : filter === 'open' ? 'Açık' : 'Kapalı';
+            showToast(`${filterText} pozisyonlar export edildi (${data.summary.total_positions} pozisyon)`, 'success');
+
+            // Close modal
+            window.closeExportModal();
+        } else {
+            showToast('Export hatası: ' + (result.error || 'Bilinmeyen hata'), 'error');
+            window.closeExportModal();
+        }
+    } catch (error) {
+        console.error('Export error:', error);
+        showToast('Export başarısız: ' + error.message, 'error');
+        window.closeExportModal();
+    }
+};
+
+// Handle import file selection
+window.handleImportFile = async function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    try {
+        const text = await file.text();
+        importData = JSON.parse(text);
+
+        // Validate JSON structure
+        if (!importData.version || !importData.positions) {
+            showToast('Geçersiz JSON formatı', 'error');
+            return;
+        }
+
+        // Store filename
+        importData.filename = file.name;
+
+        // Show preview modal
+        window.showImportPreview(importData);
+    } catch (error) {
+        console.error('Import file error:', error);
+        showToast('Geçersiz JSON dosyası', 'error');
+    } finally {
+        // Reset file input
+        event.target.value = '';
+    }
+};
+
+// Show import preview modal
+window.showImportPreview = function(data) {
+    // Update summary
+    document.getElementById('import-filename').textContent = data.filename || 'import.json';
+    document.getElementById('import-total-count').textContent = data.positions.length;
+
+    // Build positions list with checkboxes
+    const previewContent = document.getElementById('import-preview-content');
+    let html = '';
+
+    data.positions.forEach((pos, index) => {
+        const statusColor = pos.is_open === false ? 'var(--text-muted)' : 'var(--color-success)';
+        const statusText = pos.is_open === false ? 'Kapalı' : 'Açık';
+        const entriesCount = pos.entries ? pos.entries.length : 0;
+        const exitTargetsCount = pos.exit_targets ? pos.exit_targets.length : 0;
+
+        html += `
+            <div class="position-import-item" style="padding: 12px; border-bottom: 1px solid var(--border-primary); display: flex; align-items: center; gap: 15px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'">
+                <input type="checkbox" class="position-checkbox" data-index="${index}" checked onchange="window.updateImportSelection()" style="width: 18px; height: 18px; cursor: pointer;" onclick="event.stopPropagation()">
+                <div style="flex: 1; display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 10px; align-items: center;">
+                    <div>
+                        <div style="font-weight: 600; font-size: 14px; color: var(--text-primary);">${pos.symbol}</div>
+                        <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">${pos.exchange || 'manual'}</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 12px; color: var(--text-muted);">Miktar</div>
+                        <div style="font-size: 13px; color: var(--text-primary);">${formatQuantity(pos.quantity)}</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 12px; color: var(--text-muted);">Giriş</div>
+                        <div style="font-size: 13px; color: var(--text-primary);">$${pos.entry_price.toFixed(2)}</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <span style="padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; color: ${statusColor}; background: ${statusColor}15;">${statusText}</span>
+                    </div>
+                    <div style="text-align: center; font-size: 11px; color: var(--text-muted);">
+                        ${entriesCount > 0 ? `${entriesCount} DCA` : '-'} ${exitTargetsCount > 0 ? `· ${exitTargetsCount} TP` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    previewContent.innerHTML = html;
+
+    // Select all by default
+    document.getElementById('select-all-positions').checked = true;
+    window.updateImportSelection();
+
+    // Check duplicates first
+    checkDuplicatesAndShow(data);
+};
+
+// Check duplicates and rebuild UI
+async function checkDuplicatesAndShow(data) {
+    const previewContent = document.getElementById('import-preview-content');
+    previewContent.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-muted);">Checking duplicates...</div>';
+
+    try {
+        const symbols = data.positions.map(p => p.symbol);
+        const response = await fetch(`/api/portfolios/${PORTFOLIO_ID}/check-duplicates`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({symbols})
+        });
+
+        const result = await response.json();
+        const duplicates = result.data.duplicates || {};
+
+        let html = '';
+
+        data.positions.forEach((pos, index) => {
+            const statusColor = pos.is_open === false ? 'var(--text-muted)' : 'var(--color-success)';
+            const statusText = pos.is_open === false ? 'Kapalı' : 'Açık';
+            const entriesCount = pos.entries ? pos.entries.length : 0;
+            const exitTargetsCount = pos.exit_targets ? pos.exit_targets.length : 0;
+            const isDuplicate = duplicates[pos.symbol];
+
+            pos.action = isDuplicate ? 'skip' : 'create';
+            pos.duplicate_id = isDuplicate ? isDuplicate.id : null;
+
+            const borderStyle = isDuplicate ? 'border-left: 4px solid #f0ad4e;' : '';
+            const bgStyle = isDuplicate ? 'background: rgba(240, 173, 78, 0.05);' : '';
+
+            html += `
+                <div class="position-import-item" data-index="${index}" style="padding: 12px; border-bottom: 1px solid var(--border-primary); ${borderStyle} ${bgStyle}">
+                    <div style="display: flex; align-items: start; gap: 15px;">
+                        <input type="checkbox" class="position-checkbox" data-index="${index}" ${!isDuplicate ? 'checked' : ''} onchange="window.updateImportSelection()" style="width: 18px; height: 18px; cursor: pointer; margin-top: 8px;">
+
+                        <div style="flex: 1;">
+                            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 10px; align-items: center;">
+                                <div>
+                                    <div style="font-weight: 600; font-size: 14px; color: var(--text-primary);">
+                                        ${pos.symbol}
+                                        ${isDuplicate ? '<span style="margin-left: 6px; padding: 2px 6px; background: #f0ad4e; color: #000; border-radius: 3px; font-size: 10px; font-weight: 700;">DUPLICATE</span>' : ''}
+                                    </div>
+                                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">${pos.exchange || 'manual'}</div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 12px; color: var(--text-muted);">Miktar</div>
+                                    <div style="font-size: 13px; color: var(--text-primary);">${formatQuantity(pos.quantity)}</div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 12px; color: var(--text-muted);">Giriş</div>
+                                    <div style="font-size: 13px; color: var(--text-primary);">$${pos.entry_price.toFixed(2)}</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <span style="padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; color: ${statusColor}; background: ${statusColor}15;">${statusText}</span>
+                                </div>
+                                <div style="text-align: center; font-size: 11px; color: var(--text-muted);">
+                                    ${entriesCount > 0 ? `${entriesCount} DCA` : '-'} ${exitTargetsCount > 0 ? `· ${exitTargetsCount} TP` : ''}
+                                </div>
+                            </div>
+
+                            ${isDuplicate ? `
+                                <div style="padding: 10px; background: var(--bg-secondary); border-radius: 6px; margin-top: 10px;">
+                                    <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">⚠️ Bu pozisyon zaten var. Ne yapmak istersin?</div>
+                                    <div style="display: flex; gap: 8px;">
+                                        <label style="flex: 1; cursor: pointer; padding: 6px; background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: 4px; display: flex; align-items: center; gap: 5px; font-size: 12px;">
+                                            <input type="radio" name="action-${index}" value="skip" checked onchange="window.updatePositionAction(${index}, 'skip')">
+                                            <span>⏭️ Atla</span>
+                                        </label>
+                                        <label style="flex: 1; cursor: pointer; padding: 6px; background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: 4px; display: flex; align-items: center; gap: 5px; font-size: 12px;">
+                                            <input type="radio" name="action-${index}" value="merge" onchange="window.updatePositionAction(${index}, 'merge')">
+                                            <span>🔄 DCA Ekle</span>
+                                        </label>
+                                        <label style="flex: 1; cursor: pointer; padding: 6px; background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: 4px; display: flex; align-items: center; gap: 5px; font-size: 12px;">
+                                            <input type="radio" name="action-${index}" value="replace" onchange="window.updatePositionAction(${index}, 'replace')">
+                                            <span>♻️ Değiştir</span>
+                                        </label>
+                                    </div>
+                                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
+                                        Mevcut: ${formatQuantity(isDuplicate.quantity)} @ $${isDuplicate.entry_price.toFixed(2)}
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        previewContent.innerHTML = html;
+        window.updateImportSelection();
+
+    } catch (error) {
+        console.error('Duplicate check error:', error);
+        previewContent.innerHTML = '<div style="text-align: center; padding: 40px; color: red;">Duplicate kontrolü başarısız</div>';
+    }
+
+    // Show modal
+    document.getElementById('import-preview-modal').style.display = 'flex';
+}
+
+// Update position action
+window.updatePositionAction = function(index, action) {
+    const pos = importData.positions[index];
+    pos.action = action;
+
+    const checkbox = document.querySelector(`.position-checkbox[data-index="${index}"]`);
+    if (action === 'skip') {
+        checkbox.checked = false;
+    } else {
+        checkbox.checked = true;
+    }
+
+    window.updateImportSelection();
+};
+
+// Toggle select all
+window.toggleSelectAll = function() {
+    const selectAll = document.getElementById('select-all-positions').checked;
+    const checkboxes = document.querySelectorAll('.position-checkbox');
+    checkboxes.forEach(cb => cb.checked = selectAll);
+    window.updateImportSelection();
+};
+
+// Update selected count
+window.updateImportSelection = function() {
+    const checkboxes = document.querySelectorAll('.position-checkbox');
+    const selectedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+    document.getElementById('import-selected-count').textContent = selectedCount;
+
+    // Update button text
+    const btnText = document.getElementById('import-btn-text');
+    if (selectedCount === 0) {
+        btnText.textContent = 'Import Pozisyonlar';
+        document.getElementById('confirm-import-btn').disabled = true;
+    } else {
+        btnText.textContent = `${selectedCount} Pozisyon Import Et`;
+        document.getElementById('confirm-import-btn').disabled = false;
+    }
+};
+
+// Close import preview modal
+window.closeImportPreview = function() {
+    document.getElementById('import-preview-modal').style.display = 'none';
+    importData = null;
+};
+
+// Confirm and execute import
+window.confirmImport = async function() {
+    if (!importData) {
+        showToast('Import verisi bulunamadı', 'error');
+        return;
+    }
+
+    // Get selected positions
+    const checkboxes = document.querySelectorAll('.position-checkbox:checked');
+    if (checkboxes.length === 0) {
+        showToast('Lütfen en az bir pozisyon seçin', 'error');
+        return;
+    }
+
+    // Build selected positions array
+    const selectedIndices = Array.from(checkboxes).map(cb => parseInt(cb.dataset.index));
+    const selectedPositions = selectedIndices.map(index => importData.positions[index]);
+
+    // Build import payload
+    const importPayload = {
+        version: importData.version,
+        export_date: importData.export_date,
+        portfolio: importData.portfolio,
+        positions: selectedPositions,
+        summary: {
+            total_positions: selectedPositions.length,
+            open_positions: selectedPositions.filter(p => p.is_open !== false).length,
+            closed_positions: selectedPositions.filter(p => p.is_open === false).length
+        }
+    };
+
+    try {
+        const portfolioId = PORTFOLIO_ID;
+        const response = await fetch(`/api/portfolios/${portfolioId}/import`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(importPayload)
+        });
+
+        const result = await response.json();
+
+        if (result.status === 'success') {
+            const data = result.data;
+            let message = `${data.imported} pozisyon import edildi`;
+
+            if (data.skipped > 0) {
+                message += ` (${data.skipped} atlandı)`;
+            }
+
+            showToast(message, 'success');
+
+            // Close modal
+            window.closeImportPreview();
+
+            // Reload positions
+            loadPositions();
+        } else {
+            showToast('Import hatası: ' + (result.error || 'Bilinmeyen hata'), 'error');
+        }
+    } catch (error) {
+        console.error('Import error:', error);
+        showToast('Import başarısız: ' + error.message, 'error');
+    }
+};
+
+// Initialize flags
+window.statisticsLoaded = false;
+window.performanceLoaded = false;
+</script>
+
+{% endblock %}

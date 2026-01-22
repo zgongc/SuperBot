@@ -1,0 +1,61 @@
+{#
+    Strategy Editor - AI Features Partial
+    Pattern detection, signal enhancement, dynamic exits
+#}
+<div class="accordion-item">
+    <div class="accordion-header" onclick="toggleAccordion(this)">
+        <div class="accordion-title-section">
+            <div class="accordion-icon">🤖</div>
+            <div class="accordion-title-text">
+                <h3>AI Features</h3>
+                <p>Pattern detection, signal enhancement, dynamic exits</p>
+            </div>
+        </div>
+        <svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+    </div>
+    <div class="accordion-content">
+        <div class="accordion-body">
+            <p style="color: var(--text-warning); margin-bottom: 1rem; background: var(--bg-tertiary); padding: 1rem; border-radius: 0.5rem;">
+                ⚠️ AI features have not been trained yet. Model training is required to activate them.
+            </p>
+
+            <!-- Pattern Detection -->
+            <div class="toggle-group">
+                <label class="toggle-label">🔍 Pattern Detection (BOS, CHoCH, FVG, OB)</label>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="ai-pattern-enabled">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <!-- Signal Enhancement -->
+            <div class="toggle-group">
+                <label class="toggle-label">🎯 Signal Enhancement</label>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="ai-signal-enabled">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <!-- Dynamic Exits -->
+            <div class="toggle-group">
+                <label class="toggle-label">🚪 Dynamic Exits</label>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="ai-exit-enabled">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <!-- Regime Detection -->
+            <div class="toggle-group">
+                <label class="toggle-label">🌊 Regime Detection</label>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="ai-regime-enabled">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+    </div>
+</div>

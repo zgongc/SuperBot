@@ -1,0 +1,233 @@
+{#
+    Strategy Editor - Basic Settings Partial
+    Temel Bilgiler: Strateji adı, versiyon, semboller ve timeframe
+#}
+<div class="accordion-item active">
+    <div class="accordion-header" onclick="toggleAccordion(this)">
+        <div class="accordion-title-section">
+            <div class="accordion-icon">📋</div>
+            <div class="accordion-title-text">
+                <h3>Temel Bilgiler</h3>
+                <p>Strategy name, version, symbols, and timeframe</p>
+            </div>
+        </div>
+        <svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+    </div>
+    <div class="accordion-content">
+        <div class="accordion-body">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label required">Strategy Name</label>
+                    <input type="text" class="form-input" id="strategy-name" placeholder="my_strategy">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Versiyon</label>
+                    <input type="text" class="form-input" id="strategy-version" placeholder="1.0.0">
+                </div>
+            </div>
+
+            <div class="form-grid single">
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-textarea" id="strategy-description" placeholder="Strategy description..."></textarea>
+                </div>
+            </div>
+
+            <div class="form-grid single">
+                <div class="form-group">
+                    <label class="form-label">Author</label>
+                    <input type="text" class="form-input" id="strategy-author" placeholder="SuperBot Team">
+                </div>
+            </div>
+
+            <div style="margin-bottom: 1.5rem;"></div>
+
+            <!-- Leverage & Margin Type -->
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Leverage</label>
+                    <input type="number" class="form-input" id="leverage" placeholder="10" min="1" max="125">
+                    <div class="toggle-group" style="padding: 0.5rem 0 0 0;">
+                        <label class="toggle-label" style="font-size: 0.8rem;">Set leverage on server</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="set-default-leverage">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Margin Type</label>
+                    <select class="form-select" id="margin-type">
+                        <option value="isolated">Isolated</option>
+                        <option value="cross">Cross</option>
+                    </select>
+                    <div class="toggle-group" style="padding: 0.5rem 0 0 0;">
+                        <label class="toggle-label" style="font-size: 0.8rem;">Set margin type on server</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="set-margin-type">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trading Direction & Hedge Mode -->
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Trading Direction</label>
+                    <select class="form-select" id="side-method">
+                        <option value="BOTH">Long & Short</option>
+                        <option value="LONG">Only Long</option>
+                        <option value="SHORT">Short only.</option>
+                        <option value="FLAT">Durdur (Flat)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <div class="toggle-group" style="padding: 0;">
+                        <label class="toggle-label">Hedge Mode</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="hedge-mode">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <span class="form-hint">Enable hedge mode (both long and short positions simultaneously)</span>
+                </div>
+            </div>
+
+            <!-- Ana Timeframe -->
+            <div class="form-group">
+                <label class="form-label required">Ana Timeframe</label>
+                <select class="form-select" id="primary-timeframe">
+                    <option value="1m">1m - 1 Minute</option>
+                    <option value="3m">3m - 3 Minutes</option>
+                    <option value="5m">5m - 5 Minutes</option>
+                    <option value="15m">15m - 15 Minutes</option>
+                    <option value="30m">30m - 30 Minutes</option>
+                    <option value="1h">1h - 1 Hour</option>
+                    <option value="2h">2h - 2 Hours</option>
+                    <option value="4h">4h - 4 Hours</option>
+                    <option value="6h">6h - 6 Hours</option>
+                    <option value="8h">8h - 8 Hours</option>
+                    <option value="12h">12h - 12 Hours</option>
+                    <option value="1d">1d - 1 Day</option>
+                    <option value="3d">3d - 3 Days</option>
+                    <option value="1w">1w - 1 Week</option>
+                    <option value="1M">1M - 1 Ay</option>
+                </select>
+                <span class="form-hint">Ana trading timeframe (stratejinin çalışacağı periyot)</span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Warmup Period</label>
+                <input type="number" class="form-input" id="warmup-period" placeholder="100" min="1" max="1000" step="1">
+                <span class="form-hint">Indikatör hesaplamaları için warmup periyodu (örn: EMA 50 için minimum 100 önerilir)</span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Multi-Timeframe Analiz</label>
+                <div class="symbol-tags" id="timeframe-tags"></div>
+                <div class="timeframe-dropdown">
+                    <button type="button" class="form-select" id="timeframe-dropdown-btn" onclick="toggleTimeframeDropdown(event)">
+                        <span>Select timeframe...</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left: auto;">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </button>
+                    <div class="timeframe-dropdown-menu" id="timeframe-dropdown-menu">
+                        <label class="timeframe-option">
+                            <input type="checkbox" value="1m" onchange="toggleTimeframeCheckbox(this)">
+                            <span>1m - 1 Minute</span>
+                        </label>
+                        <label class="timeframe-option">
+                            <input type="checkbox" value="3m" onchange="toggleTimeframeCheckbox(this)">
+                            <span>3m - 3 Minutes</span>
+                        </label>
+                        <label class="timeframe-option">
+                            <input type="checkbox" value="5m" onchange="toggleTimeframeCheckbox(this)">
+                            <span>5m - 5 Minutes</span>
+                        </label>
+                        <label class="timeframe-option">
+                            <input type="checkbox" value="15m" onchange="toggleTimeframeCheckbox(this)">
+                            <span>15m - 15 Minutes</span>
+                        </label>
+                        <label class="timeframe-option">
+                            <input type="checkbox" value="30m" onchange="toggleTimeframeCheckbox(this)">
+                            <span>30m - 30 Minutes</span>
+                        </label>
+                        <label class="timeframe-option">
+                            <input type="checkbox" value="1h" onchange="toggleTimeframeCheckbox(this)">
+                            <span>1h - 1 Hour</span>
+                        </label>
+                        <label class="timeframe-option">
+                            <input type="checkbox" value="2h" onchange="toggleTimeframeCheckbox(this)">
+                            <span>2h - 2 Hours</span>
+                        </label>
+                        <label class="timeframe-option">
+                            <input type="checkbox" value="4h" onchange="toggleTimeframeCheckbox(this)">
+                            <span>4h - 4 Hours</span>
+                        </label>
+                        <label class="timeframe-option">
+                            <input type="checkbox" value="6h" onchange="toggleTimeframeCheckbox(this)">
+                            <span>6h - 6 Hours</span>
+                        </label>
+                        <label class="timeframe-option">
+                            <input type="checkbox" value="8h" onchange="toggleTimeframeCheckbox(this)">
+                            <span>8h - 8 Hours</span>
+                        </label>
+                        <label class="timeframe-option">
+                            <input type="checkbox" value="12h" onchange="toggleTimeframeCheckbox(this)">
+                            <span>12h - 12 Hours</span>
+                        </label>
+                        <label class="timeframe-option">
+                            <input type="checkbox" value="1d" onchange="toggleTimeframeCheckbox(this)">
+                            <span>1d - 1 Day</span>
+                        </label>
+                        <label class="timeframe-option">
+                            <input type="checkbox" value="3d" onchange="toggleTimeframeCheckbox(this)">
+                            <span>3d - 3 Days</span>
+                        </label>
+                        <label class="timeframe-option">
+                            <input type="checkbox" value="1w" onchange="toggleTimeframeCheckbox(this)">
+                            <span>1w - 1 Week</span>
+                        </label>
+                        <label class="timeframe-option">
+                            <input type="checkbox" value="1M" onchange="toggleTimeframeCheckbox(this)">
+                            <span>1M - 1 Ay</span>
+                        </label>
+                    </div>
+                </div>
+                <span class="form-hint">Ek timeframe'ler ekleyerek multi-timeframe analiz yapabilirsiniz</span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label required">Symbol Source</label>
+                <select class="form-select" id="symbol-source" onchange="toggleSymbolSource()">
+                    <option value="strategy">Strategy - Manual symbol list</option>
+                    <option value="file">File - from the data/json/tradable_symbols.json file.</option>
+                    <option value="exchange">Exchange Server - Automatically from Binance.</option>
+                </select>
+                <span class="form-hint">Should the symbols be loaded from a manual list or from a file/exchange?</span>
+            </div>
+
+            <div id="manual-symbols-section">
+                <div class="form-group">
+                    <label class="form-label">Semboller (Manuel)</label>
+                    <div class="symbol-tags" id="symbol-tags"></div>
+                    <div class="add-symbol-input">
+                        <input type="text" class="form-input" id="new-symbol" placeholder="BTC, ETH, SOL...">
+                        <button class="btn btn-secondary" onclick="addSymbol()">Ekle</button>
+                    </div>
+                    <span class="form-hint">Base asset girin (örn: BTC, ETH)</span>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Quote Currency</label>
+                    <input type="text" class="form-input" id="quote-currency" value="USDT" disabled>
+                    <span class="form-hint">Sabit: USDT</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

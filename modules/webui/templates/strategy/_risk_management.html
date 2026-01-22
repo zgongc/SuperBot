@@ -1,0 +1,144 @@
+{#
+    Strategy Editor - Risk Management Partial
+    Risk limitleri ve pozisyon boyutlandırma
+#}
+<div class="accordion-item">
+    <div class="accordion-header" onclick="toggleAccordion(this)">
+        <div class="accordion-title-section">
+            <div class="accordion-icon">⚠️</div>
+            <div class="accordion-title-text">
+                <h3>Risk Management</h3>
+                <p>Risk limits and position sizing.</p>
+            </div>
+        </div>
+        <svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+    </div>
+    <div class="accordion-content">
+        <div class="accordion-body">
+            <!-- ═══════════════════════════════════════════ -->
+            <!-- POSITION SIZING -->
+            <!-- ═══════════════════════════════════════════ -->
+            <div class="section-header" style="margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border-primary); font-weight: 600; color: var(--text-primary);">
+                💰 POSITION SIZING
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">
+                        Boyutlandırma Metodu
+                        <span class="form-help" title="Determines how to calculate the position size.">ℹ️</span>
+                    </label>
+                    <select class="form-select" id="rm-sizing-method" onchange="updateSizingMethodParams(this.value)">
+                        <option value="fixed_usd">💵 Sabit Miktar (Fixed USD)</option>
+                        <option value="fixed_percent">📊 Sermaye Yüzdesi (Fixed %)</option>
+                        <option value="risk_based" selected>🎯 Risk Bazlı (Risk Based) - Önerilen</option>
+                        <option value="kelly">🧮 Kelly Kriteri (Kelly Criterion)</option>
+                        <option value="ai_dynamic">🤖 AI Dinamik (Henüz Hazır Değil)</option>
+                    </select>
+                </div>
+
+                <!-- Dynamic Parameters -->
+                <div id="sizing-method-params">
+                    <!-- JavaScript will fill this. -->
+                </div>
+            </div>
+
+            <!-- ═══════════════════════════════════════════ -->
+            <!-- RISK LIMITS -->
+            <!-- ═══════════════════════════════════════════ -->
+            <div class="section-header" style="margin: 2rem 0 1rem 0; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border-primary); font-weight: 600; color: var(--text-primary);">
+                🎯 RISK LIMITS
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">
+                        Trade Başına Max Risk (%)
+                        <span class="form-help" title="Maximum percentage of capital that can be risked in each transaction.">ℹ️</span>
+                    </label>
+                    <input type="number" class="form-input" id="rm-max-risk-per-trade" value="1.0" min="0.1" max="10" step="0.1">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">
+                        Max Drawdown (%)
+                        <span class="form-help" title="Allowed maximum capital decrease.">ℹ️</span>
+                    </label>
+                    <input type="number" class="form-input" id="rm-max-drawdown" value="10.0" min="1" max="50" step="1">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">
+                        Günlük Max Trade Sayısı
+                        <span class="form-help" title="The maximum number of transactions that can be opened in a day.">ℹ️</span>
+                    </label>
+                    <input type="number" class="form-input" id="rm-max-daily-trades" value="20" min="1" max="100" step="1">
+                </div>
+            </div>
+
+            <!-- ═══════════════════════════════════════════ -->
+            <!-- CORRELATION & POSITION MANAGEMENT -->
+            <!-- ═══════════════════════════════════════════ -->
+            <div class="section-header" style="margin: 2rem 0 1rem 0; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border-primary); font-weight: 600; color: var(--text-primary);">
+                📊 CORRELATION & POSITION MANAGEMENT
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">
+                        Max Korelasyon
+                        <span class="form-help" title="Farklı coinler arasında izin verilen maksimum korelasyon (0-1)">ℹ️</span>
+                    </label>
+                    <input type="number" class="form-input" id="rm-max-correlation" value="0.6" min="0" max="1" step="0.1">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">
+                        Pozisyon Korelasyon Limiti
+                        <span class="form-help" title="Maximum allowed correlation among open positions.">ℹ️</span>
+                    </label>
+                    <input type="number" class="form-input" id="rm-position-correlation-limit" value="0.7" min="0" max="1" step="0.1">
+                </div>
+            </div>
+
+            <!-- ═══════════════════════════════════════════ -->
+            <!-- ADVANCED SETTINGS -->
+            <!-- ═══════════════════════════════════════════ -->
+            <div class="section-header" style="margin: 2rem 0 1rem 0; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border-primary); font-weight: 600; color: var(--text-primary);">
+                🚨 ADVANCED SETTINGS
+            </div>
+
+            <div class="toggle-group">
+                <div>
+                    <label class="toggle-label">Emergency Stop</label>
+                    <div class="form-help-text">Stop all operations in critical situations.</div>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="rm-emergency-stop" checked>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <div class="toggle-group">
+                <div>
+                    <label class="toggle-label">AI Risk Adjustment</label>
+                    <div class="form-help-text">AI ile dinamik risk yönetimi (henüz hazır değil)</div>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="rm-ai-risk-enabled">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <div class="toggle-group">
+                <div>
+                    <label class="toggle-label">Dynamic Position Sizing</label>
+                    <div class="form-help-text">Adjust the position size according to market conditions.</div>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="rm-dynamic-sizing">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+    </div>
+</div>

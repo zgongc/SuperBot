@@ -1,0 +1,269 @@
+{% extends 'base.html' %}
+
+{% block title %}Price Action Analysis{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/smc.css') }}">
+<script src="https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Price Action Analysis</h1>
+    <p>Smart Money Concepts - Market Structure Analysis</p>
+</div>
+
+<!-- Setup Panel -->
+<div class="smc-setup card">
+    <div class="card-header">
+        <h3>Analysis Settings</h3>
+    </div>
+    <div class="card-body">
+        <div class="setup-row">
+            <div class="form-group">
+                <label for="smc-symbol">Symbol</label>
+                <select id="smc-symbol" class="form-control">
+                    <option value="">Loading...</option>
+                </select>
+            </div>
+            <div class="form-group form-group-sm">
+                <label for="smc-timeframe">Timeframe</label>
+                <select id="smc-timeframe" class="form-control">
+                    <option value="1m">1m</option>
+                    <option value="5m" selected>5m</option>
+                    <option value="15m">15m</option>
+                    <option value="30m">30m</option>
+                    <option value="1h">1h</option>
+                    <option value="4h">4h</option>
+                    <option value="1d">1d</option>
+                </select>
+            </div>
+
+            <!-- Data Mode Container -->
+            <div class="form-group form-group-data">
+                <label class="data-mode-label" onclick="toggleDataMode()">
+                    <span class="mode-text" id="data-mode-text">Bar Count</span>
+                    <svg class="toggle-chevron" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+                </label>
+                <!-- Bar Mode (default) -->
+                <div id="bars-mode-inputs">
+                    <input type="number" id="smc-limit" class="form-control" value="500" min="100" max="5000">
+                </div>
+                <!-- Date Mode (hidden by default) -->
+                <div id="date-mode-inputs" class="date-inputs-row" style="display: none;">
+                    <input type="date" id="smc-start-date" class="form-control">
+                    <span class="date-separator">→</span>
+                    <input type="date" id="smc-end-date" class="form-control" disabled>
+                    <label class="use-now-label" title="Until now">
+                        <input type="checkbox" id="end-now" checked onchange="toggleEndDate()">
+                        <span>Now</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <button id="btn-analyze" class="btn btn-primary">Analyze</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Content -->
+<div class="smc-content">
+    <!-- Chart Section -->
+    <div class="smc-chart-container card">
+        <div class="card-header">
+            <h3>Chart</h3>
+        </div>
+        <div class="card-body">
+            <div id="smc-chart" style="width: 100%; height: 500px;"></div>
+        </div>
+    </div>
+
+    <!-- Analysis Results -->
+    <div class="smc-results">
+        <!-- Filter Card -->
+        <div class="smc-filter card">
+            <div class="card-header">
+                <h3>Filter</h3>
+            </div>
+            <div class="card-body">
+                <div class="filter-grid">
+                    <label class="filter-checkbox">
+                        <input type="checkbox" id="show-bos" onchange="updateChartVisibility()">
+                        <span class="filter-item filter-bos">BOS</span>
+                    </label>
+                    <label class="filter-checkbox">
+                        <input type="checkbox" id="show-choch" onchange="updateChartVisibility()">
+                        <span class="filter-item filter-choch">CHoCH</span>
+                    </label>
+                    <label class="filter-checkbox">
+                        <input type="checkbox" id="show-swing" onchange="updateChartVisibility()">
+                        <span class="filter-item filter-swing">Swing</span>
+                    </label>
+                    <label class="filter-checkbox">
+                        <input type="checkbox" id="show-fvg" onchange="updateChartVisibility()">
+                        <span class="filter-item filter-fvg">FVG</span>
+                    </label>
+                    <label class="filter-checkbox">
+                        <input type="checkbox" id="show-gap" checked onchange="updateChartVisibility()">
+                        <span class="filter-item filter-gap">GAP</span>
+                    </label>
+                    <label class="filter-checkbox">
+                        <input type="checkbox" id="show-ob" onchange="updateChartVisibility()">
+                        <span class="filter-item filter-ob">OB</span>
+                    </label>
+                    <label class="filter-checkbox">
+                        <input type="checkbox" id="show-liquidity" onchange="updateChartVisibility()">
+                        <span class="filter-item filter-liquidity">Liq</span>
+                    </label>
+                    <label class="filter-checkbox">
+                        <input type="checkbox" id="show-qml" onchange="updateChartVisibility()">
+                        <span class="filter-item filter-qml">QML</span>
+                    </label>
+                    <label class="filter-checkbox">
+                        <input type="checkbox" id="show-ftr" onchange="updateChartVisibility()">
+                        <span class="filter-item filter-ftr">FTR</span>
+                    </label>
+                    <label class="filter-checkbox">
+                        <input type="checkbox" id="show-levels" onchange="updateChartVisibility()">
+                        <span class="filter-item filter-levels">Levels</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Card -->
+        <div class="smc-stats card">
+            <div class="card-header">
+                <h3>Istatistikler</h3>
+            </div>
+            <div class="card-body">
+                <div class="stats-grid stats-extended">
+                    <div class="stat-item">
+                        <span class="stat-value" id="stat-bos">0</span>
+                        <span class="stat-label">BOS</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="stat-choch">0</span>
+                        <span class="stat-label">CHoCH</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="stat-fvg">0</span>
+                        <span class="stat-label">FVG</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="stat-swing">0</span>
+                        <span class="stat-label">Swing</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="stat-ob">0</span>
+                        <span class="stat-label">OB</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="stat-liquidity">0</span>
+                        <span class="stat-label">Liquidity</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="stat-qml">0</span>
+                        <span class="stat-label">QML</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="stat-ftr">0</span>
+                        <span class="stat-label">FTR</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="stat-gap">0</span>
+                        <span class="stat-label">GAP</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="stat-active-fvg">0</span>
+                        <span class="stat-label">Active FVG</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active FVGs -->
+        <div class="smc-active-fvg card">
+            <div class="card-header">
+                <h3>Active FVG Zones</h3>
+            </div>
+            <div class="card-body">
+                <div id="active-fvg-list" class="fvg-list">
+                    <p class="empty-message">Waiting for analysis...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Formations -->
+        <div class="smc-formations card">
+            <div class="card-header">
+                <h3>Recent Formations</h3>
+                <div class="formation-filters">
+                    <button class="btn btn-sm btn-filter active" data-filter="all">All</button>
+                    <button class="btn btn-sm btn-filter" data-filter="bos">BOS</button>
+                    <button class="btn btn-sm btn-filter" data-filter="choch">CHoCH</button>
+                    <button class="btn btn-sm btn-filter" data-filter="fvg">FVG</button>
+                    <button class="btn btn-sm btn-filter" data-filter="swing">Swing</button>
+                    <button class="btn btn-sm btn-filter" data-filter="ob">OB</button>
+                    <button class="btn btn-sm btn-filter" data-filter="liquidity">Liq</button>
+                    <button class="btn btn-sm btn-filter" data-filter="qml">QML</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="formations-list" class="formations-list">
+                    <p class="empty-message">Waiting for analysis...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Card (below chart) -->
+<div class="smc-summary card">
+    <div class="card-header">
+        <h3>Summary</h3>
+    </div>
+    <div class="card-body">
+        <div class="summary-grid">
+            <div class="summary-item">
+                <span class="summary-label">Trend</span>
+                <span class="summary-value" id="summary-trend">-</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Bias</span>
+                <span class="summary-value" id="summary-bias">-</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Structure</span>
+                <span class="summary-value" id="summary-structure">-</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Swing High</span>
+                <span class="summary-value" id="summary-swing-high">-</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Swing Low</span>
+                <span class="summary-value" id="summary-swing-low">-</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Last Bar Analysis -->
+<div class="smc-last-bar card">
+    <div class="card-header">
+        <h3>Last Bar Analysis</h3>
+    </div>
+    <div class="card-body">
+        <div id="last-bar-info" class="last-bar-grid">
+            <p class="empty-message">Waiting for analysis...</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascriptArea %}
+<script src="{{ url_for('static', filename='js/smc.js') }}"></script>
+{% endblock %}

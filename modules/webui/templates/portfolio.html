@@ -1,0 +1,408 @@
+{% extends "base.html" %}
+
+{% block title %}Portfolio - SuperBot{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Portfolio</h1>
+    <p>Track your holdings, performance, and P&L</p>
+</div>
+
+    <!-- Portfolio Summary Cards -->
+    <div class="summary-grid" id="summary-grid">
+        <div class="summary-card">
+            <div class="summary-icon">💼</div>
+            <div class="summary-content">
+                <div class="summary-label">Total Value</div>
+                <div class="summary-value" id="total-value">$0.00</div>
+            </div>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-icon">💰</div>
+            <div class="summary-content">
+                <div class="summary-label">Total Cost Basis</div>
+                <div class="summary-value" id="total-cost">$0.00</div>
+            </div>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-icon">📊</div>
+            <div class="summary-content">
+                <div class="summary-label">Unrealized P&L</div>
+                <div class="summary-value" id="unrealized-pnl">$0.00</div>
+                <div class="summary-change" id="unrealized-pnl-pct">0.00%</div>
+            </div>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-icon">✅</div>
+            <div class="summary-content">
+                <div class="summary-label">Realized P&L</div>
+                <div class="summary-value" id="realized-pnl">$0.00</div>
+            </div>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-icon">📈</div>
+            <div class="summary-content">
+                <div class="summary-label">Total P&L</div>
+                <div class="summary-value" id="total-pnl">$0.00</div>
+                <div class="summary-change" id="total-pnl-pct">0.00%</div>
+            </div>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-icon">🎯</div>
+            <div class="summary-content">
+                <div class="summary-label">Holdings</div>
+                <div class="summary-value" id="holdings-count">0</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Holdings Table -->
+    <div class="card">
+        <div class="card-header">
+            <h3>Holdings</h3>
+            <button class="btn btn-primary" onclick="showAddHoldingModal()">+ Add Holding</button>
+        </div>
+        <div id="holdings-list" class="table-container">
+            <p>Loading holdings...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Add Holding Modal -->
+<div id="addHoldingModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <span class="close" onclick="closeAddHoldingModal()">&times;</span>
+        <h2>Add/Update Holding</h2>
+        <form id="addHoldingForm" onsubmit="addHolding(event)">
+            <div class="form-group">
+                <label>Symbol</label>
+                <input type="text" id="symbol" placeholder="BTCUSDT" required>
+            </div>
+            <div class="form-group">
+                <label>Base Asset</label>
+                <input type="text" id="base_asset" placeholder="BTC" required>
+            </div>
+            <div class="form-group">
+                <label>Quote Asset</label>
+                <input type="text" id="quote_asset" placeholder="USDT" value="USDT" required>
+            </div>
+            <div class="form-group">
+                <label>Quantity</label>
+                <input type="number" id="quantity" step="0.00000001" placeholder="0.5" required>
+            </div>
+            <div class="form-group">
+                <label>Entry Price</label>
+                <input type="number" id="entry_price" step="0.01" placeholder="34000.00" required>
+            </div>
+            <div class="form-group">
+                <label>Current Price</label>
+                <input type="number" id="current_price" step="0.01" placeholder="35000.00" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Add Holding</button>
+        </form>
+    </div>
+</div>
+
+<!-- Holding Detail Modal -->
+<div id="detailModal" class="modal" style="display: none;">
+    <div class="modal-content modal-large">
+        <span class="close" onclick="closeDetailModal()">&times;</span>
+        <h2>Holding Details</h2>
+        <div id="detailContent">
+            <p>Loading...</p>
+        </div>
+    </div>
+
+<script>
+// Load portfolio data
+async function loadPortfolio() {
+    try {
+        const response = await fetch('/api/portfolio');
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            displaySummary(data.data.summary);
+            displayHoldings(data.data.holdings);
+        } else {
+            showError(data.message);
+        }
+    } catch (error) {
+        showError('Failed to load portfolio: ' + error.message);
+    }
+}
+
+function displaySummary(summary) {
+    document.getElementById('total-value').textContent = `$${summary.total_value.toFixed(2)}`;
+    document.getElementById('total-cost').textContent = `$${summary.total_cost.toFixed(2)}`;
+
+    // Unrealized P&L
+    const unrealizedClass = summary.total_unrealized_pnl >= 0 ? 'positive' : 'negative';
+    const unrealizedSign = summary.total_unrealized_pnl >= 0 ? '+' : '';
+    document.getElementById('unrealized-pnl').innerHTML =
+        `<span class="${unrealizedClass}">${unrealizedSign}$${summary.total_unrealized_pnl.toFixed(2)}</span>`;
+
+    const unrealizedPct = summary.total_cost > 0 ?
+        (summary.total_unrealized_pnl / summary.total_cost * 100) : 0;
+    document.getElementById('unrealized-pnl-pct').innerHTML =
+        `<span class="${unrealizedClass}">${unrealizedSign}${unrealizedPct.toFixed(2)}%</span>`;
+
+    // Realized P&L
+    const realizedClass = summary.total_realized_pnl >= 0 ? 'positive' : 'negative';
+    const realizedSign = summary.total_realized_pnl >= 0 ? '+' : '';
+    document.getElementById('realized-pnl').innerHTML =
+        `<span class="${realizedClass}">${realizedSign}$${summary.total_realized_pnl.toFixed(2)}</span>`;
+
+    // Total P&L
+    const totalPnlClass = summary.total_pnl >= 0 ? 'positive' : 'negative';
+    const totalPnlSign = summary.total_pnl >= 0 ? '+' : '';
+    document.getElementById('total-pnl').innerHTML =
+        `<span class="${totalPnlClass}">${totalPnlSign}$${summary.total_pnl.toFixed(2)}</span>`;
+    document.getElementById('total-pnl-pct').innerHTML =
+        `<span class="${totalPnlClass}">${totalPnlSign}${summary.total_pnl_pct.toFixed(2)}%</span>`;
+
+    document.getElementById('holdings-count').textContent = summary.total_holdings;
+}
+
+function displayHoldings(holdings) {
+    const container = document.getElementById('holdings-list');
+
+    if (holdings.length === 0) {
+        container.innerHTML = '<p class="empty-state">No holdings yet. Click "Add Holding" to get started!</p>';
+        return;
+    }
+
+    let html = `
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Symbol</th>
+                    <th>Quantity</th>
+                    <th>Avg Entry</th>
+                    <th>Current Price</th>
+                    <th>Cost Basis</th>
+                    <th>Current Value</th>
+                    <th>Unrealized P&L</th>
+                    <th>Realized P&L</th>
+                    <th>Weight</th>
+                    <th>Trades</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    holdings.forEach(holding => {
+        const unrealizedPnlClass = holding.unrealized_pnl >= 0 ? 'positive' : 'negative';
+        const unrealizedPnlSign = holding.unrealized_pnl >= 0 ? '+' : '';
+        const realizedPnlClass = holding.realized_pnl >= 0 ? 'positive' : 'negative';
+        const realizedPnlSign = holding.realized_pnl >= 0 ? '+' : '';
+
+        const winRate = holding.total_trades > 0 ?
+            (holding.winning_trades / holding.total_trades * 100) : 0;
+
+        html += `
+            <tr>
+                <td><strong>${holding.symbol}</strong></td>
+                <td>${holding.total_quantity.toFixed(8)}</td>
+                <td>$${holding.average_entry_price.toFixed(2)}</td>
+                <td>$${holding.current_price.toFixed(2)}</td>
+                <td>$${holding.cost_basis.toFixed(2)}</td>
+                <td>$${holding.current_value.toFixed(2)}</td>
+                <td class="${unrealizedPnlClass}">
+                    ${unrealizedPnlSign}$${holding.unrealized_pnl.toFixed(2)}
+                    (${unrealizedPnlSign}${holding.unrealized_pnl_pct.toFixed(2)}%)
+                </td>
+                <td class="${realizedPnlClass}">
+                    ${realizedPnlSign}$${holding.realized_pnl.toFixed(2)}
+                </td>
+                <td>${holding.portfolio_weight ? holding.portfolio_weight.toFixed(2) : '0.00'}%</td>
+                <td>
+                    ${holding.total_trades}
+                    <small>(${holding.winning_trades}W/${holding.losing_trades}L)</small>
+                    <br>
+                    <small class="${winRate >= 50 ? 'positive' : 'negative'}">${winRate.toFixed(0)}% WR</small>
+                </td>
+                <td>
+                    <button class="btn btn-sm" onclick="showDetail(${holding.id})">View</button>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += `
+            </tbody>
+        </table>
+    `;
+
+    container.innerHTML = html;
+}
+
+function showAddHoldingModal() {
+    document.getElementById('addHoldingModal').style.display = 'block';
+}
+
+function closeAddHoldingModal() {
+    document.getElementById('addHoldingModal').style.display = 'none';
+}
+
+async function addHolding(event) {
+    event.preventDefault();
+
+    const symbol = document.getElementById('symbol').value.toUpperCase();
+    const base_asset = document.getElementById('base_asset').value.toUpperCase();
+    const quote_asset = document.getElementById('quote_asset').value.toUpperCase();
+    const quantity = parseFloat(document.getElementById('quantity').value);
+    const entry_price = parseFloat(document.getElementById('entry_price').value);
+    const current_price = parseFloat(document.getElementById('current_price').value);
+
+    try {
+        const response = await fetch('/api/portfolio/update', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                symbol,
+                base_asset,
+                quote_asset,
+                quantity,
+                entry_price,
+                current_price
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            closeAddHoldingModal();
+            loadPortfolio();
+            document.getElementById('addHoldingForm').reset();
+            alert('Holding added/updated successfully!');
+        } else {
+            alert('Error: ' + data.message);
+        }
+    } catch (error) {
+        alert('Failed to add holding: ' + error.message);
+    }
+}
+
+async function showDetail(holdingId) {
+    // Get the specific holding
+    try {
+        const response = await fetch('/api/portfolio');
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            const holding = data.data.holdings.find(h => h.id === holdingId);
+            if (holding) {
+                displayDetail(holding);
+            }
+        }
+    } catch (error) {
+        alert('Failed to load details: ' + error.message);
+    }
+}
+
+function displayDetail(holding) {
+    const unrealizedPnlClass = holding.unrealized_pnl >= 0 ? 'positive' : 'negative';
+    const unrealizedPnlSign = holding.unrealized_pnl >= 0 ? '+' : '';
+    const realizedPnlClass = holding.realized_pnl >= 0 ? 'positive' : 'negative';
+    const realizedPnlSign = holding.realized_pnl >= 0 ? '+' : '';
+
+    const winRate = holding.total_trades > 0 ?
+        (holding.winning_trades / holding.total_trades * 100) : 0;
+
+    let html = `
+        <div class="detail-grid">
+            <div class="detail-section">
+                <h3>Overview</h3>
+                <table class="detail-table">
+                    <tr><th>Symbol:</th><td><strong>${holding.symbol}</strong></td></tr>
+                    <tr><th>Base Asset:</th><td>${holding.base_asset}</td></tr>
+                    <tr><th>Quote Asset:</th><td>${holding.quote_asset}</td></tr>
+                    <tr><th>Total Quantity:</th><td>${holding.total_quantity.toFixed(8)}</td></tr>
+                </table>
+            </div>
+
+            <div class="detail-section">
+                <h3>Pricing</h3>
+                <table class="detail-table">
+                    <tr><th>Avg Entry Price:</th><td>$${holding.average_entry_price.toFixed(2)}</td></tr>
+                    <tr><th>Current Price:</th><td>$${holding.current_price.toFixed(2)}</td></tr>
+                    <tr><th>Price Change:</th><td class="${unrealizedPnlClass}">
+                        ${((holding.current_price - holding.average_entry_price) / holding.average_entry_price * 100).toFixed(2)}%
+                    </td></tr>
+                </table>
+            </div>
+
+            <div class="detail-section">
+                <h3>Valuation</h3>
+                <table class="detail-table">
+                    <tr><th>Cost Basis:</th><td>$${holding.cost_basis.toFixed(2)}</td></tr>
+                    <tr><th>Current Value:</th><td>$${holding.current_value.toFixed(2)}</td></tr>
+                    <tr><th>Portfolio Weight:</th><td>${holding.portfolio_weight ? holding.portfolio_weight.toFixed(2) : '0.00'}%</td></tr>
+                </table>
+            </div>
+
+            <div class="detail-section">
+                <h3>Profit & Loss</h3>
+                <table class="detail-table">
+                    <tr><th>Unrealized P&L:</th><td class="${unrealizedPnlClass}">
+                        ${unrealizedPnlSign}$${holding.unrealized_pnl.toFixed(2)} (${unrealizedPnlSign}${holding.unrealized_pnl_pct.toFixed(2)}%)
+                    </td></tr>
+                    <tr><th>Realized P&L:</th><td class="${realizedPnlClass}">
+                        ${realizedPnlSign}$${holding.realized_pnl.toFixed(2)}
+                    </td></tr>
+                </table>
+            </div>
+
+            <div class="detail-section">
+                <h3>Trading Performance</h3>
+                <table class="detail-table">
+                    <tr><th>Total Trades:</th><td>${holding.total_trades}</td></tr>
+                    <tr><th>Winning Trades:</th><td class="positive">${holding.winning_trades}</td></tr>
+                    <tr><th>Losing Trades:</th><td class="negative">${holding.losing_trades}</td></tr>
+                    <tr><th>Win Rate:</th><td class="${winRate >= 50 ? 'positive' : 'negative'}">
+                        ${winRate.toFixed(2)}%
+                    </td></tr>
+                </table>
+            </div>
+
+            <div class="detail-section">
+                <h3>Timeline</h3>
+                <table class="detail-table">
+                    <tr><th>First Purchase:</th><td>${holding.first_purchase ? new Date(holding.first_purchase).toLocaleString() : 'N/A'}</td></tr>
+                    <tr><th>Last Purchase:</th><td>${holding.last_purchase ? new Date(holding.last_purchase).toLocaleString() : 'N/A'}</td></tr>
+                    <tr><th>Last Sale:</th><td>${holding.last_sale ? new Date(holding.last_sale).toLocaleString() : 'N/A'}</td></tr>
+                </table>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('detailContent').innerHTML = html;
+    document.getElementById('detailModal').style.display = 'block';
+}
+
+function closeDetailModal() {
+    document.getElementById('detailModal').style.display = 'none';
+}
+
+function showError(message) {
+    const container = document.getElementById('holdings-list');
+    container.innerHTML = `<p class="error-message">Error: ${message}</p>`;
+}
+
+// Load portfolio on page load
+document.addEventListener('DOMContentLoaded', loadPortfolio);
+
+// Auto-refresh every 30 seconds
+setInterval(loadPortfolio, 30000);
+</script>
+
+{# Tüm stiller main.css ve components.css'te: .summary-grid, .summary-card, .data-table, .detail-grid, .detail-section, .modal, .btn, .positive, .negative #}
+{% endblock %}

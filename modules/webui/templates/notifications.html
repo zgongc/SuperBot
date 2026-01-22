@@ -1,0 +1,379 @@
+{% extends "base.html" %}
+
+{% block title %}Notifications{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1>Notification History</h1>
+        <p>View all your alert notifications and analysis triggers</p>
+    </div>
+
+    <!-- Filters Bar -->
+    <div class="filters-bar">
+        <div class="filter-group">
+            <label>Status</label>
+            <select id="statusFilter" onchange="loadNotifications()">
+                <option value="">All</option>
+                <option value="unread">Unread</option>
+                <option value="read">Read</option>
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <label>Type</label>
+            <select id="typeFilter" onchange="loadNotifications()">
+                <option value="">All Types</option>
+                <option value="pattern">Pattern</option>
+                <option value="signal">Signal</option>
+                <option value="score">Score</option>
+                <option value="trend_change">Trend Change</option>
+                <option value="category_aggregate">Category Aggregate</option>
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <label>Search</label>
+            <input type="text" id="searchFilter" placeholder="Search alerts..." onkeyup="loadNotifications()">
+        </div>
+
+        <button class="btn btn-secondary" onclick="resetFilters()">Reset</button>
+        <button class="btn btn-danger" onclick="clearAllNotifications()" style="margin-left: auto;">
+            Clear All
+        </button>
+    </div>
+
+    <!-- Stats Summary -->
+    <div class="stats-summary">
+        <div class="stat-item">
+            <span class="stat-label">Total:</span>
+            <span class="stat-value" id="totalCount">0</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Unread:</span>
+            <span class="stat-value warning" id="unreadCount">0</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Today:</span>
+            <span class="stat-value success" id="todayCount">0</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">This Week:</span>
+            <span class="stat-value info" id="weekCount">0</span>
+        </div>
+    </div>
+
+    <!-- Notifications List -->
+    <div id="notifications-container" class="notifications-container">
+        <p>Loading notifications...</p>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination" id="pagination" style="display: none;">
+        <button class="btn btn-secondary" id="prevBtn" onclick="previousPage()" disabled>Previous</button>
+        <span class="page-info" id="pageInfo">Page 1</span>
+        <button class="btn btn-secondary" id="nextBtn" onclick="nextPage()">Next</button>
+    </div>
+</div>
+
+<script>
+let currentPage = 1;
+const pageSize = 20;
+let allNotifications = [];
+let filteredNotifications = [];
+
+// Load notifications
+async function loadNotifications() {
+    try {
+        const response = await fetch(`/api/notifications/history?limit=100`);
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            allNotifications = data.data.notifications || [];
+            applyFilters();
+            updateStats();
+            displayNotifications();
+        } else {
+            showError(data.message);
+        }
+    } catch (error) {
+        showError('Failed to load notifications: ' + error.message);
+    }
+}
+
+function applyFilters() {
+    const statusFilter = document.getElementById('statusFilter').value;
+    const typeFilter = document.getElementById('typeFilter').value;
+    const searchText = document.getElementById('searchFilter').value.toLowerCase();
+
+    filteredNotifications = allNotifications.filter(notification => {
+        // Status filter
+        if (statusFilter === 'unread' && notification.is_read) return false;
+        if (statusFilter === 'read' && !notification.is_read) return false;
+
+        // Type filter
+        if (typeFilter && notification.trigger_type !== typeFilter) return false;
+
+        // Search filter
+        if (searchText) {
+            const searchableText = `${notification.title} ${notification.message}`.toLowerCase();
+            if (!searchableText.includes(searchText)) return false;
+        }
+
+        return true;
+    });
+
+    currentPage = 1; // Reset to first page
+}
+
+function displayNotifications() {
+    const container = document.getElementById('notifications-container');
+
+    if (filteredNotifications.length === 0) {
+        container.innerHTML = '<div class="empty-state">No notifications found. Try adjusting your filters.</div>';
+        document.getElementById('pagination').style.display = 'none';
+        return;
+    }
+
+    // Calculate pagination
+    const totalPages = Math.ceil(filteredNotifications.length / pageSize);
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const pageNotifications = filteredNotifications.slice(startIndex, endIndex);
+
+    // Render notifications
+    let html = '<div class="notification-cards">';
+    pageNotifications.forEach(notification => {
+        html += renderNotificationCard(notification);
+    });
+    html += '</div>';
+
+    container.innerHTML = html;
+
+    // Update pagination
+    updatePagination(totalPages);
+}
+
+function renderNotificationCard(notification) {
+    const unreadClass = notification.is_read ? '' : 'unread';
+    const icon = getNotificationIcon(notification.type || notification.trigger_type);
+    const timeAgo = getTimeAgo(notification.created_at || notification.timestamp || notification.triggered_at);
+    const hasAnalysis = notification.analysis_result_id ? true : false;
+
+    return `
+        <div class="notification-card ${unreadClass}" data-id="${notification.id || notification.notification_id}">
+            <div class="notification-card-header">
+                <div class="notification-card-icon">${icon}</div>
+                <div class="notification-card-meta">
+                    <span class="notification-card-time">${timeAgo}</span>
+                    ${!notification.is_read ? '<span class="notification-unread-badge">New</span>' : ''}
+                </div>
+            </div>
+            <div class="notification-card-body">
+                <h3 class="notification-card-title">${notification.title}</h3>
+                <p class="notification-card-message">${notification.message}</p>
+            </div>
+            <div class="notification-card-actions">
+                ${hasAnalysis ? `<button class="btn btn-sm btn-primary" onclick="openAnalysis(${notification.analysis_result_id})">View Analysis</button>` : ''}
+                ${!notification.is_read ? `<button class="btn btn-sm btn-secondary" onclick="markAsRead(${notification.id || notification.notification_id})">Mark Read</button>` : ''}
+                <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteNotification(${notification.id || notification.notification_id}); return false;">Delete</button>
+            </div>
+        </div>
+    `;
+}
+
+function getNotificationIcon(type) {
+    const icons = {
+        success: '✅',
+        error: '❌',
+        warning: '⚠️',
+        info: 'ℹ️',
+        alert: '🔔',
+        pattern: '🎨',
+        signal: '📈',
+        score: '💯',
+        trend_change: '📊',
+        category_aggregate: '📦'
+    };
+    return icons[type] || icons.alert;
+}
+
+function getTimeAgo(timestamp) {
+    const now = new Date();
+    const time = new Date(timestamp);
+    const diffMs = now - time;
+    const diffMins = Math.floor(diffMs / 60000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+
+    return time.toLocaleDateString() + ' ' + time.toLocaleTimeString();
+}
+
+function updateStats() {
+    const total = allNotifications.length;
+    const unread = allNotifications.filter(n => !n.is_read).length;
+
+    // Calculate today's count
+    const today = new Date().setHours(0, 0, 0, 0);
+    const todayNotifications = allNotifications.filter(n => {
+        const notifDate = new Date(n.created_at || n.timestamp || n.triggered_at).setHours(0, 0, 0, 0);
+        return notifDate === today;
+    }).length;
+
+    // Calculate this week's count
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const weekNotifications = allNotifications.filter(n => {
+        const notifDate = new Date(n.created_at || n.timestamp || n.triggered_at);
+        return notifDate >= weekAgo;
+    }).length;
+
+    document.getElementById('totalCount').textContent = total;
+    document.getElementById('unreadCount').textContent = unread;
+    document.getElementById('todayCount').textContent = todayNotifications;
+    document.getElementById('weekCount').textContent = weekNotifications;
+}
+
+function updatePagination(totalPages) {
+    const pagination = document.getElementById('pagination');
+    const pageInfo = document.getElementById('pageInfo');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+
+    if (totalPages <= 1) {
+        pagination.style.display = 'none';
+        return;
+    }
+
+    pagination.style.display = 'flex';
+    pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+    prevBtn.disabled = currentPage === 1;
+    nextBtn.disabled = currentPage === totalPages;
+}
+
+function previousPage() {
+    if (currentPage > 1) {
+        currentPage--;
+        displayNotifications();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+}
+
+function nextPage() {
+    const totalPages = Math.ceil(filteredNotifications.length / pageSize);
+    if (currentPage < totalPages) {
+        currentPage++;
+        displayNotifications();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+}
+
+async function markAsRead(notificationId) {
+    try {
+        await fetch(`/api/notifications/${notificationId}/read`, {
+            method: 'POST'
+        });
+
+        // Update local state
+        const notification = allNotifications.find(n => (n.id || n.notification_id) === notificationId);
+        if (notification) {
+            notification.is_read = true;
+        }
+
+        updateStats();
+        displayNotifications();
+    } catch (error) {
+        alert('Failed to mark as read: ' + error.message);
+    }
+}
+
+async function deleteNotification(notificationId) {
+    // Use custom confirm dialog from utils.js (returns Promise)
+    const confirmed = await confirm({
+        title: 'Delete Notification',
+        message: 'Are you sure you want to delete this notification? This action cannot be undone.',
+        type: 'danger',
+        confirmText: 'Delete',
+        cancelText: 'Cancel'
+    });
+
+    if (!confirmed) {
+        return false;
+    }
+
+    try {
+        const response = await fetch(`/api/notifications/${notificationId}`, {
+            method: 'DELETE'
+        });
+
+        const result = await response.json();
+        if (result.status === 'success') {
+            // Remove from local state
+            const index = allNotifications.findIndex(n => (n.id || n.notification_id) === notificationId);
+            if (index !== -1) {
+                allNotifications.splice(index, 1);
+            }
+
+            applyFilters();
+            updateStats();
+            displayNotifications();
+        } else {
+            alert('Failed to delete: ' + result.message);
+        }
+    } catch (error) {
+        alert('Failed to delete notification: ' + error.message);
+    }
+}
+
+async function clearAllNotifications() {
+    const confirmed = await confirm({
+        title: 'Clear All Notifications',
+        message: 'Are you sure you want to clear all notifications? This action cannot be undone.',
+        type: 'danger',
+        confirmText: 'Clear All',
+        cancelText: 'Cancel'
+    });
+
+    if (!confirmed) return;
+
+    try {
+        // TODO: Add clear all endpoint
+        allNotifications = [];
+        applyFilters();
+        updateStats();
+        displayNotifications();
+        showToast('Success', 'All notifications cleared', 'success', 3000);
+    } catch (error) {
+        alert('Failed to clear notifications: ' + error.message);
+    }
+}
+
+function openAnalysis(resultId) {
+    window.open(`/analysis?result_id=${resultId}`, '_blank');
+}
+
+function resetFilters() {
+    document.getElementById('statusFilter').value = '';
+    document.getElementById('typeFilter').value = '';
+    document.getElementById('searchFilter').value = '';
+    loadNotifications();
+}
+
+function showError(message) {
+    const container = document.getElementById('notifications-container');
+    container.innerHTML = `<div class="error-message">Error: ${message}</div>`;
+}
+
+// Load on page load
+document.addEventListener('DOMContentLoaded', loadNotifications);
+</script>
+
+{# Tüm stiller main.css ve cards.css'te: .filters-bar, .stats-summary, .notification-*, .pagination, .empty-state, .error-message #}
+{% endblock %}

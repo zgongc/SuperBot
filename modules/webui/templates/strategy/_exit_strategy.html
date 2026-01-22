@@ -1,0 +1,465 @@
+{#
+    Strategy Editor - Exit Strategy Partial
+    Take profit, stop loss, trailing ve break-even
+#}
+<div class="accordion-item">
+    <div class="accordion-header" onclick="toggleAccordion(this)">
+        <div class="accordion-title-section">
+            <div class="accordion-icon">🚪</div>
+            <div class="accordion-title-text">
+                <h3>Exit Strategy</h3>
+                <p>Take profit, stop loss, trailing and break-even</p>
+            </div>
+        </div>
+        <svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+    </div>
+    <div class="accordion-content">
+        <div class="accordion-body">
+            <!-- ═══════════════════════════════════════════ -->
+            <!-- TAKE PROFIT -->
+            <!-- ═══════════════════════════════════════════ -->
+            <div class="section-header" style="margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border-primary); font-weight: 600; color: var(--text-primary);">
+                💰 TAKE PROFIT
+            </div>
+
+            <!-- TP Methods and Parameters Side by Side -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: start;">
+                <div class="form-group" style="margin: 0;">
+                    <label class="form-label">
+                        Metod
+                        <span class="form-help" title="Take profit calculation method">ℹ️</span>
+                    </label>
+                    <select class="form-select" id="es-tp-method" onchange="updateTPMethodParams(this.value)">
+                        <option value="fixed_percent">📊 Fixed Percentage</option>
+                        <option value="fixed_price">💵 Fixed Price</option>
+                        <option value="risk_reward" selected>🎯 Risk/Reward</option>
+                        <option value="atr_based">📈 ATR Based</option>
+                        <option value="fibonacci">🌀 Fibonacci</option>
+                        <option value="dynamic_ai">🤖 AI Dynamic</option>
+                    </select>
+                </div>
+
+                <!-- TP Dynamic Parameters -->
+                <div id="tp-method-params">
+                    <!-- JavaScript will fill this. -->
+                </div>
+            </div>
+
+            <!-- ═══════════════════════════════════════════ -->
+            <!-- STOP LOSS -->
+            <!-- ═══════════════════════════════════════════ -->
+            <div class="section-header" style="margin: 2rem 0 1rem 0; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border-primary); font-weight: 600; color: var(--text-primary);">
+                🛑 STOP LOSS
+            </div>
+
+            <!-- SL Method and Parameters Side by Side -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: start;">
+                <div class="form-group" style="margin: 0;">
+                    <label class="form-label">
+                        Metod
+                        <span class="form-help" title="Stop loss calculation method">ℹ️</span>
+                    </label>
+                    <select class="form-select" id="es-sl-method" onchange="updateSLMethodParams(this.value)">
+                        <option value="fixed_percent" selected>📊 Fixed Percentage</option>
+                        <option value="atr_based">📈 ATR Based</option>
+                        <option value="swing_point">📍 Swing Point</option>
+                        <option value="support_resistance">🎚️ Support/Resistance</option>
+                        <option value="volatility_based">📊 Volatilite</option>
+                        <option value="ai_adaptive">🤖 AI Adaptive</option>
+                    </select>
+                </div>
+
+                <!-- SL Dynamic Parameters -->
+                <div id="sl-method-params">
+                    <!-- JavaScript will fill this. -->
+                </div>
+            </div>
+
+            <!-- ═══════════════════════════════════════════ -->
+            <!-- TRAILING STOP LOSS -->
+            <!-- ═══════════════════════════════════════════ -->
+            <div class="section-header" style="margin: 2rem 0 1rem 0; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border-primary); font-weight: 600; color: var(--text-primary); display: flex; justify-content: space-between; align-items: center;">
+                <span>📉 TRAILING STOP LOSS</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="es-trailing-stop-enabled" onchange="toggleTrailingStopConfig()">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <div id="trailing-stop-config" class="collapsible-config">
+                <div class="params-container" style="margin-top: 1rem;">
+                    <div class="form-help-text" style="margin-bottom: 1rem;">Stop loss'u price with together up pull, protect the profit.</div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">
+                                Callback %
+                                <span class="form-help" title="If the price drops this much from the peak, the position will be closed.">ℹ️</span>
+                            </label>
+                            <input type="number" class="form-input" id="es-trailing-callback" value="0.4" min="0.1" max="5" step="0.1">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">
+                                Aktivasyon Kar %
+                                <span class="form-help" title="When there is so much snow, trailing starts.">ℹ️</span>
+                            </label>
+                            <input type="number" class="form-input" id="es-trailing-activation" value="1.0" min="0" max="10" step="0.1">
+                        </div>
+                    </div>
+
+                    <!-- Example Box -->
+                    <div style="margin-top: 0.75rem; padding: 0.5rem; background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: 0.375rem; font-size: 0.8125rem;">
+                        <div style="font-weight: 600; margin-bottom: 0.25rem;">💡 Example:</div>
+                        <div style="color: var(--text-secondary); line-height: 1.5;">
+                            Giriş: $100, Fiyat $105'e çıktı → SL: $104.58 ($105 - 0.4%)<br>
+                            Fiyat $103'e düştü → SL: $104.58 (sabit, aşağı inmez!)<br>
+                            Fiyat $104.58'e düştü → Pozisyon kapat, $4.58 kar!
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══════════════════════════════════════════ -->
+            <!-- TRAILING TAKE PROFIT -->
+            <!-- ═══════════════════════════════════════════ -->
+            <div class="section-header" style="margin: 2rem 0 1rem 0; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border-primary); font-weight: 600; color: var(--text-primary); display: flex; justify-content: space-between; align-items: center;">
+                <span>📈 TRAILING TAKE PROFIT</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="es-trailing-tp-enabled" onchange="toggleTrailingTPConfig()">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <div id="trailing-tp-config" class="collapsible-config">
+                <div class="params-container" style="margin-top: 1rem;">
+                    <div class="form-help-text" style="margin-bottom: 1rem;">When you reach TP, follow it to get more profit.</div>
+                    <div class="form-group">
+                        <label class="form-label">
+                            Trailing Distance %
+                            <span class="form-help" title="If the price drops this much from the peak, the position will be closed.">ℹ️</span>
+                        </label>
+                        <input type="number" class="form-input" id="es-trailing-distance" value="0.2" min="0.1" max="5" step="0.1">
+                    </div>
+
+                    <!-- Example Box -->
+                    <div style="margin-top: 0.75rem; padding: 0.5rem; background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: 0.375rem; font-size: 0.8125rem;">
+                        <div style="font-weight: 600; margin-bottom: 0.25rem;">💡 Example:</div>
+                        <div style="color: var(--text-secondary); line-height: 1.5;">
+                            Giriş: $100, TP: $110<br>
+                            Fiyat $110'a ulaştı → Trailing TP başladı! 🚀<br>
+                            Fiyat $115'e çıktı → TP: $114.77 ($115 - 0.2%)<br>
+                            Fiyat $114.77'ye düştü → Kapat, $14.77 kar! (Normal TP: $10)
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══════════════════════════════════════════ -->
+            <!-- BREAK-EVEN -->
+            <!-- ═══════════════════════════════════════════ -->
+            <div class="section-header" style="margin: 2rem 0 1rem 0; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border-primary); font-weight: 600; color: var(--text-primary); display: flex; justify-content: space-between; align-items: center;">
+                <span>⚖️ BREAK-EVEN</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="es-breakeven-enabled" onchange="toggleBreakevenConfig()">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <div id="breakeven-config" class="collapsible-config">
+                <div class="params-container" style="margin-top: 1rem;">
+                    <div class="form-help-text" style="margin-bottom: 1rem;">Set the stop loss to the entry price for a specific profit.</div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">
+                                Tetik Kar %
+                                <span class="form-help" title="When there is this much snow, the break-even point becomes active.">ℹ️</span>
+                            </label>
+                            <input type="number" class="form-input" id="es-breakeven-trigger" value="1.0" min="0.1" max="10" step="0.1">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">
+                                Offset %
+                                <span class="form-help" title="Set stop above/below the entry price.">ℹ️</span>
+                            </label>
+                            <input type="number" class="form-input" id="es-breakeven-offset" value="0.1" min="0" max="1" step="0.01">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══════════════════════════════════════════ -->
+            <!-- PARTIAL EXIT -->
+            <!-- ═══════════════════════════════════════════ -->
+            <div class="section-header" style="margin: 2rem 0 1rem 0; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border-primary); font-weight: 600; color: var(--text-primary); display: flex; justify-content: space-between; align-items: center;">
+                <span>📊 PARTIAL EXIT (Kademeli Çıkış)</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="es-partial-enabled" onchange="togglePartialExitConfig()">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <div id="partial-exit-config" class="collapsible-config">
+                <div class="params-container" style="margin-top: 1rem;">
+                    <div class="form-help-text" style="margin-bottom: 1rem;">Close a portion of the position at specific profit levels.</div>
+                    <!-- Plan Title -->
+                    <div style="background: var(--bg-secondary); border: 2px solid var(--border-primary); border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem;">
+                        <div style="font-weight: 600; font-size: 0.9375rem; color: var(--text-primary); margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-primary);">
+                            📊 Gradual Exit Plan
+                        </div>
+
+                        <!-- Seviye 1 -->
+                        <div class="partial-exit-visual-row">
+                            <div class="partial-level-badge">1️⃣</div>
+                            <div class="partial-level-inputs-wrapper">
+                                <div style="position: relative; flex: 1;">
+                                    <input type="number" class="form-input partial-profit-level" id="es-partial-level-1" value="5" min="0.1" max="100" step="0.1" style="padding-right: 2.5rem;">
+                                    <span class="input-suffix">% profit</span>
+                                </div>
+                                <span style="margin: 0 0.5rem; color: var(--text-secondary); font-weight: 600;">→</span>
+                                <div style="position: relative; flex: 1;">
+                                    <input type="number" class="form-input partial-exit-size" id="es-partial-size-1" value="40" min="1" max="100" step="1" style="padding-right: 2.5rem;">
+                                    <span class="input-suffix">% out</span>
+                                </div>
+                            </div>
+                            <div class="partial-progress-bar">
+                                <div class="partial-progress-fill" id="es-partial-bar-1" style="width: 40%;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Seviye 2 -->
+                        <div class="partial-exit-visual-row">
+                            <div class="partial-level-badge">2️⃣</div>
+                            <div class="partial-level-inputs-wrapper">
+                                <div style="position: relative; flex: 1;">
+                                    <input type="number" class="form-input partial-profit-level" id="es-partial-level-2" value="10" min="0.1" max="100" step="0.1" style="padding-right: 2.5rem;">
+                                    <span class="input-suffix">% profit</span>
+                                </div>
+                                <span style="margin: 0 0.5rem; color: var(--text-secondary); font-weight: 600;">→</span>
+                                <div style="position: relative; flex: 1;">
+                                    <input type="number" class="form-input partial-exit-size" id="es-partial-size-2" value="40" min="1" max="100" step="1" style="padding-right: 2.5rem;">
+                                    <span class="input-suffix">% out</span>
+                                </div>
+                            </div>
+                            <div class="partial-progress-bar">
+                                <div class="partial-progress-fill" id="es-partial-bar-2" style="width: 40%;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Seviye 3 -->
+                        <div class="partial-exit-visual-row">
+                            <div class="partial-level-badge">3️⃣</div>
+                            <div class="partial-level-inputs-wrapper">
+                                <div style="position: relative; flex: 1;">
+                                    <input type="number" class="form-input partial-profit-level" id="es-partial-level-3" value="25" min="0.1" max="100" step="0.1" style="padding-right: 2.5rem;">
+                                    <span class="input-suffix">% profit</span>
+                                </div>
+                                <span style="margin: 0 0.5rem; color: var(--text-secondary); font-weight: 600;">→</span>
+                                <div style="position: relative; flex: 1;">
+                                    <input type="number" class="form-input partial-exit-size" id="es-partial-size-3" value="20" min="1" max="100" step="1" style="padding-right: 2.5rem;">
+                                    <span class="input-suffix">% out</span>
+                                </div>
+                            </div>
+                            <div class="partial-progress-bar">
+                                <div class="partial-progress-fill" id="es-partial-bar-3" style="width: 20%;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Divider -->
+                        <div style="border-top: 2px solid var(--border-primary); margin: 1rem 0;"></div>
+
+                        <!-- Total -->
+                        <div class="partial-exit-visual-row" style="background: var(--bg-primary); padding: 0.75rem; border-radius: 0.375rem;">
+                            <div style="font-weight: 700; font-size: 1rem; color: var(--text-primary);">💰 Total:</div>
+                            <div class="partial-progress-bar" style="flex: 1;">
+                                <div class="partial-progress-fill" id="es-partial-bar-total" style="width: 100%; background: linear-gradient(90deg, #10b981, #059669);"></div>
+                            </div>
+                            <div style="font-weight: 700; font-size: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <span id="es-partial-total">100%</span>
+                                <span id="es-partial-check">✅</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══════════════════════════════════════════ -->
+            <!-- AI DYNAMIC EXIT -->
+            <!-- ═══════════════════════════════════════════ -->
+            <div class="section-header" style="margin: 2rem 0 1rem 0; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border-primary); font-weight: 600; color: var(--text-primary); display: flex; justify-content: space-between; align-items: center;">
+                <span>🤖 AI DYNAMIC EXIT (Yapay Zeka Çıkış Optimizasyonu)</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="es-ai-exit-enabled" onchange="toggleAIExitConfig()">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <div id="ai-exit-config" class="collapsible-config">
+                <div class="params-container" style="margin-top: 1rem;">
+                    <div class="form-help-text" style="margin-bottom: 1rem;">
+                        Yapay zeka modeli kullanarak dinamik TP/SL optimizasyonu yapar. Piyasa rejimine (trend, range, volatile) göre hedefleri otomatik ayarlar.
+                    </div>
+
+                    <!-- Model Configuration -->
+                    <div style="background: var(--bg-secondary); border: 2px solid var(--border-primary); border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem;">
+                        <div style="font-weight: 600; font-size: 0.9375rem; color: var(--text-primary); margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-primary);">
+                            🧠 Model Settings
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group" style="flex: 2;">
+                                <label class="form-label">
+                                    Model Yolu
+                                    <span class="label-help" title="Path to the trained AI model file.">ℹ️</span>
+                                </label>
+                                <input type="text" class="form-input" id="ai-exit-model-path" value="data/models/exit_optimizer_v1.pkl" placeholder="data/models/exit_optimizer_v1.pkl">
+                            </div>
+
+                            <div class="form-group" style="flex: 1;">
+                                <label class="form-label">
+                                    Tahmin Ufku (bar)
+                                    <span class="label-help" title="How many bars ahead will it predict?">ℹ️</span>
+                                </label>
+                                <input type="number" class="form-input" id="ai-exit-prediction-horizon" value="50" min="10" max="500" step="10">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Adjustments -->
+                    <div style="background: var(--bg-secondary); border: 2px solid var(--border-primary); border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem;">
+                        <div style="font-weight: 600; font-size: 0.9375rem; color: var(--text-primary); margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-primary);">
+                            ⚙️ Dynamic Adjustments
+                        </div>
+
+                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="ai-exit-dynamic-tp" checked>
+                                <span>🎯 Dynamic Take Profit - The AI model optimizes TP levels.</span>
+                            </label>
+
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="ai-exit-dynamic-sl" checked>
+                                <span>🛡️ Dynamic Stop Loss - The AI model optimizes SL levels.</span>
+                            </label>
+
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="ai-exit-adapt-regime" checked>
+                                <span>📊 Market Regime Adaptation - Adjusts based on Trend/Range/Volatile status.</span>
+                            </label>
+
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="ai-exit-volatility-scaling" checked>
+                                <span>📈 Volatility Scaling - Scales targets based on ATR-based volatility.</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Regime Multipliers -->
+                    <div style="background: var(--bg-secondary); border: 2px solid var(--border-primary); border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem;">
+                        <div style="font-weight: 600; font-size: 0.9375rem; color: var(--text-primary); margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-primary);">
+                            📊 Market Regime Factors
+                        </div>
+                        <div class="form-help-text" style="margin-bottom: 1rem;">
+                            In every market regime, the multipliers to be applied to TP/SL.
+                        </div>
+
+                        <!-- Trending Regime -->
+                        <div style="margin-bottom: 1rem;">
+                            <div style="font-weight: 600; font-size: 0.875rem; color: var(--text-primary); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <span>📈 Trending (Trendli Piyasa)</span>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">TP Multiplier</label>
+                                    <input type="number" class="form-input" id="ai-exit-regime-trending-tp" value="1.5" min="0.1" max="5.0" step="0.1">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">SL Factor</label>
+                                    <input type="number" class="form-input" id="ai-exit-regime-trending-sl" value="0.8" min="0.1" max="5.0" step="0.1">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ranging Regime -->
+                        <div style="margin-bottom: 1rem;">
+                            <div style="font-weight: 600; font-size: 0.875rem; color: var(--text-primary); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <span>↔️ Ranging (Yatay Piyasa)</span>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">TP Multiplier</label>
+                                    <input type="number" class="form-input" id="ai-exit-regime-ranging-tp" value="0.8" min="0.1" max="5.0" step="0.1">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">SL Factor</label>
+                                    <input type="number" class="form-input" id="ai-exit-regime-ranging-sl" value="1.2" min="0.1" max="5.0" step="0.1">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Volatile Regime -->
+                        <div>
+                            <div style="font-weight: 600; font-size: 0.875rem; color: var(--text-primary); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <span>💥 Volatile (Volatil Piyasa)</span>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">TP Multiplier</label>
+                                    <input type="number" class="form-input" id="ai-exit-regime-volatile-tp" value="1.0" min="0.1" max="5.0" step="0.1">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">SL Factor</label>
+                                    <input type="number" class="form-input" id="ai-exit-regime-volatile-sl" value="1.5" min="0.1" max="5.0" step="0.1">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ATR Multiplier Range -->
+                    <div style="background: var(--bg-secondary); border: 2px solid var(--border-primary); border-radius: 0.5rem; padding: 1rem;">
+                        <div style="font-weight: 600; font-size: 0.9375rem; color: var(--text-primary); margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-primary);">
+                            📊 ATR Multiplier Range
+                        </div>
+                        <div class="form-help-text" style="margin-bottom: 1rem;">
+                            Volatility-based scaling ATR factor range.
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">
+                                    Minimum ATR Çarpanı
+                                    <span class="label-help" title="Minimum multiplier to be used with low volatility.">ℹ️</span>
+                                </label>
+                                <input type="number" class="form-input" id="ai-exit-atr-min" value="1.0" min="0.1" max="10.0" step="0.1">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">
+                                    Maksimum ATR Çarpanı
+                                    <span class="label-help" title="Maximum multiplier to be used with high volatility.">ℹ️</span>
+                                </label>
+                                <input type="number" class="form-input" id="ai-exit-atr-max" value="3.0" min="0.1" max="10.0" step="0.1">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Info Box -->
+                    <div class="info-box" style="margin-top: 1rem;">
+                        <div class="info-box-title">💡 How does AI Dynamic Exit work?</div>
+                        <div class="info-box-content">
+                            <p><strong>AI model analyzes the following factors:</strong></p>
+                            <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                                <li>📊 <strong>Piyasa Rejimi:</strong> Trend, range veya volatile duruma göre TP/SL çarpanlarını ayarlar</li>
+                                <li>📈 <strong>Volatilite:</strong> ATR bazlı ölçekleme ile hedefleri dinamik tutar</li>
+                                <li>🎯 <strong>Tahmin:</strong> Belirlenen ufuk kadar ilerisini tahmin ederek optimal çıkış noktası belirler</li>
+                                <li>⚖️ <strong>Risk/Reward Dengesi:</strong> Her pozisyon için optimal risk/reward oranını hesaplar</li>
+                            </ul>
+                            <p style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border-primary);">
+                                <strong>⚠️ Not:</strong> AI exit kullanmak için önceden eğitilmiş bir model gerekir. Model yoksa klasik exit stratejileri kullanılır.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

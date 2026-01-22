@@ -1,0 +1,3489 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Strategy{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/strategy-editor.css') }}">
+{# All styles are in strategy-editor.css: .edit-*, .accordion-*, .form-*, .toggle-*, .indicator-*, .condition-*, .timeframe-* #}
+{% endblock %}
+
+{% block content %}
+<div class="edit-container">
+    <!-- Header -->
+    <div class="edit-header">
+        <h1 class="edit-title">Edit Strategy</h1>
+        <p class="edit-subtitle">Update strategy parameters</p>
+    </div>
+
+    <!-- Accordion Sections -->
+    <div class="accordion">
+
+        {# 1. BASIC - Temel Bilgiler #}
+        {% include 'strategy/_basic.html' %}
+
+        {# 2. BACKTEST AYARLARI #}
+        {% include 'strategy/_backtest.html' %}
+
+        {# 3. TECHNICAL INDICATORS #}
+        {% include 'strategy/_indicators.html' %}
+
+        {# 4. RISK MANAGEMENT #}
+        {% include 'strategy/_risk_management.html' %}
+
+        {# 5. POSITION MANAGEMENT #}
+        {% include 'strategy/_position_management.html' %}
+
+        {# 6. EXIT STRATEGY #}
+        {% include 'strategy/_exit_strategy.html' %}
+
+        {# 7. ENTRY CONDITIONS #}
+        {% include 'strategy/_entry_conditions.html' %}
+
+        {# 8. EXIT CONDITIONS #}
+        {% include 'strategy/_exit_conditions.html' %}
+
+        {# 9. CUSTOM PARAMETERS / FILTERS #}
+        {% include 'strategy/_custom_params.html' %}
+
+        {# 10. AI FEATURES #}
+        {% include 'strategy/_ai_features.html' %}
+
+    </div>
+
+    <!-- Actions -->
+    <div class="form-actions">
+        <a href="/strategies" class="btn btn-secondary">Cancel</a>
+        <button class="btn btn-primary" onclick="saveStrategy()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.5rem;">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                <polyline points="7 3 7 8 15 8"></polyline>
+            </svg>
+            Kaydet
+        </button>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loading-overlay">
+    <div class="loading-spinner"></div>
+</div>
+{% endblock %}
+
+{% block javascriptArea %}
+<script>
+    const strategyId = '{{ strategy_id }}';  // Template ID for new, strategy ID for edit
+    const isNewStrategy = {{ 'true' if is_new else 'false' }};
+    let selectedSymbols = [];
+    let selectedTimeframes = [];
+    let loadedStrategyData = null; // Store loaded strategy data for fields not in UI
+
+    // ========================================
+    // INITIALIZATION
+    // ========================================
+    document.addEventListener('DOMContentLoaded', function() {
+        loadIndicatorRegistry();
+        loadStrategy();
+    });
+
+    // ========================================
+    // LOAD STRATEGY
+    // ========================================
+    async function loadStrategy() {
+        showLoading(true);
+        try {
+            // First, for basic information, use /api/strategies/{id}
+            const basicResponse = await fetch(`/api/strategies/${strategyId}`);
+            const basicResult = await basicResponse.json();
+
+            if (basicResult.status === 'success') {
+                prefillForm(basicResult.data);
+            }
+
+            // Then, for all details, see /api/strategies/{id}/load
+            const loadResponse = await fetch(`/api/strategies/${strategyId}/load`);
+            const loadResult = await loadResponse.json();
+
+            if (loadResult.status === 'success' && loadResult.data) {
+                // Store loaded data globally for save operation
+                loadedStrategyData = loadResult.data;
+
+                // Fill all parameters
+                populateFormFromData(loadResult.data);
+                console.log('✅ Strategy loaded successfully:', loadResult.data);
+            } else {
+                console.warn('⚠️ Strategy load endpoint failed, only basic info loaded');
+            }
+        } catch (error) {
+            console.error('Error loading strategy:', error);
+            console.error('Strategy ID:', strategyId);
+            console.error('Error stack:', error.stack);
+            showToast('Error', `An error occurred while loading the strategy: ${error.message}`, 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    // ========================================
+    // PREFILL FORM
+    // ========================================
+    function prefillForm(strategy) {
+        // Basic
+        document.getElementById('strategy-name').value = strategy.name || '';
+        document.getElementById('strategy-version').value = strategy.version || '1.0.0';
+        document.getElementById('strategy-description').value = strategy.description || '';
+        document.getElementById('strategy-author').value = strategy.author || 'SuperBot Team';
+        document.getElementById('initial-balance').value = strategy.initial_balance || 10000;
+
+        // Trading
+        // Map side_method values: backend returns lowercase (long, short, both, flat)
+        const sideMethodMap = {
+            'long': 'LONG',
+            'short': 'SHORT',
+            'both': 'BOTH',
+            'flat': 'FLAT',
+            'long_short': 'BOTH',  // legacy mapping
+            'long_only': 'LONG',   // legacy mapping
+            'short_only': 'SHORT'  // legacy mapping
+        };
+        const sideMethod = strategy.side_method ? sideMethodMap[strategy.side_method.toLowerCase()] || 'BOTH' : 'BOTH';
+        document.getElementById('side-method').value = sideMethod;
+        document.getElementById('leverage').value = strategy.leverage || 10;
+
+        // Timeframes
+        document.getElementById('primary-timeframe').value = strategy.primary_timeframe || '1h';
+        // Support both 'timeframes' and 'mtf_timeframes' from backend
+        selectedTimeframes = strategy.timeframes || strategy.mtf_timeframes || [];  // No default - user must select
+        renderTimeframes();
+        updateTimeframeCheckboxes();
+
+        // Symbols
+        const symbolSource = strategy.symbol_source || 'strategy';
+        document.getElementById('symbol-source').value = symbolSource;
+        toggleSymbolSource();
+
+        selectedSymbols = strategy.symbols || [];
+        renderSymbols();
+
+        // Backtest Configuration
+        if (strategy.backtest_start_date) {
+            // Convert "2025-01-01 00:00" to "2025-01-01T00:00" for datetime-local
+            const startDate = strategy.backtest_start_date.replace(' ', 'T');
+            document.getElementById('backtest-start-date').value = startDate;
+        } else {
+            // Default: 2025-01-01 00:00
+            document.getElementById('backtest-start-date').value = '2025-01-01T00:00';
+        }
+
+        if (strategy.backtest_end_date) {
+            const endDate = strategy.backtest_end_date.replace(' ', 'T');
+            document.getElementById('backtest-end-date').value = endDate;
+        } else {
+            // Default: 2025-01-31 00:00
+            document.getElementById('backtest-end-date').value = '2025-01-31T00:00';
+        }
+
+        // Data Management
+        document.getElementById('download-klines').checked = strategy.download_klines || false;
+        document.getElementById('update-klines').checked = strategy.update_klines || false;
+    }
+
+    // ========================================
+    // ACCORDION TOGGLE
+    // ========================================
+    function toggleAccordion(header) {
+        const item = header.parentElement;
+        const wasActive = item.classList.contains('active');
+
+        // Close all
+        document.querySelectorAll('.accordion-item').forEach(i => i.classList.remove('active'));
+
+        // Open this one if it wasn't active
+        if (!wasActive) {
+            item.classList.add('active');
+
+            // Scroll accordion header to top (below topnav)
+            setTimeout(() => {
+                const topnavHeight = document.querySelector('.topnav')?.offsetHeight || 60;
+                const headerTop = header.getBoundingClientRect().top + window.pageYOffset;
+                const scrollTo = headerTop - topnavHeight - 10; // 10px padding
+
+                window.scrollTo({
+                    top: scrollTo,
+                    behavior: 'smooth'
+                });
+            }, 300); // Wait for accordion animation to complete
+        }
+    }
+
+    // ========================================
+    // TIMEFRAME MANAGEMENT
+    // ========================================
+    function toggleTimeframeDropdown(event) {
+        event.stopPropagation();
+        const menu = document.getElementById('timeframe-dropdown-menu');
+        menu.classList.toggle('show');
+    }
+
+    function toggleTimeframeCheckbox(checkbox) {
+        const value = checkbox.value;
+
+        if (checkbox.checked) {
+            if (!selectedTimeframes.includes(value)) {
+                selectedTimeframes.push(value);
+            }
+        } else {
+            selectedTimeframes = selectedTimeframes.filter(tf => tf !== value);
+        }
+
+        renderTimeframes();
+    }
+
+    function updateTimeframeCheckboxes() {
+        // Update checkbox states based on selectedTimeframes
+        const checkboxes = document.querySelectorAll('#timeframe-dropdown-menu input[type="checkbox"]');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = selectedTimeframes.includes(checkbox.value);
+        });
+    }
+
+    function renderTimeframes() {
+        const container = document.getElementById('timeframe-tags');
+        // Filter out empty strings or falsy values
+        const validTimeframes = selectedTimeframes.filter(tf => {
+            if (!tf) return false;
+            if (typeof tf !== 'string') return false;
+            return tf.trim().length > 0;
+        });
+        container.innerHTML = validTimeframes.map(tf => `
+            <div class="symbol-tag">
+                <span>${tf}</span>
+                <button type="button" class="remove-btn" onclick="removeTimeframe('${tf}')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+        `).join('');
+
+        updateTimeframeCheckboxes();
+    }
+
+    function removeTimeframe(tf) {
+        selectedTimeframes = selectedTimeframes.filter(t => t !== tf);
+        renderTimeframes();
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+        const dropdown = document.querySelector('.timeframe-dropdown');
+        const menu = document.getElementById('timeframe-dropdown-menu');
+
+        if (dropdown && !dropdown.contains(e.target)) {
+            menu.classList.remove('show');
+        }
+    });
+
+    // ========================================
+    // SYMBOL MANAGEMENT
+    // ========================================
+    function toggleSymbolSource() {
+        const source = document.getElementById('symbol-source').value;
+        const manualSection = document.getElementById('manual-symbols-section');
+
+        if (source === 'strategy') {
+            manualSection.style.display = 'block';
+        } else {
+            manualSection.style.display = 'none';
+        }
+    }
+
+    function renderSymbols() {
+        const container = document.getElementById('symbol-tags');
+        container.innerHTML = selectedSymbols.map(symbol => `
+            <div class="symbol-tag">
+                <span>${symbol}</span>
+                <button class="remove-btn" onclick="removeSymbol('${symbol}')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+        `).join('');
+    }
+
+    function addSymbol() {
+        const input = document.getElementById('new-symbol');
+        const value = input.value.trim().toUpperCase();
+
+        if (value && !selectedSymbols.includes(value)) {
+            selectedSymbols.push(value);
+            renderSymbols();
+            input.value = '';
+        }
+    }
+
+    function removeSymbol(symbol) {
+        selectedSymbols = selectedSymbols.filter(s => s !== symbol);
+        renderSymbols();
+    }
+
+    // ========================================
+    // INDICATOR SEARCH & MANAGEMENT
+    // ========================================
+
+    // Track added indicators with unique IDs to allow duplicates
+    let addedIndicators = [];
+    let indicatorCounter = 0;
+
+    // Track entry and exit conditions
+    let entryConditions = { long: [], short: [] };
+    let exitConditions = { long: [], short: [], stop_loss: [], take_profit: [] };
+
+    // INDICATOR_REGISTRY - 76 indicators from components/indicators/__init__.py
+    // This will be populated via API call to get fresh data
+    let INDICATOR_REGISTRY = null;
+
+    // Load indicator registry on page load
+    function loadIndicatorRegistry() {
+        try {
+            // Load from Jinja2 template variable
+            INDICATOR_REGISTRY = {{ indicator_registry_json|tojson|safe }};
+            console.log(`Loaded ${Object.keys(INDICATOR_REGISTRY).length} indicators from registry`);
+        } catch (error) {
+            console.error('Failed to load indicator registry:', error);
+            // Fallback to empty registry
+            INDICATOR_REGISTRY = {};
+        }
+    }
+
+    function searchIndicators() {
+        const searchInput = document.getElementById('indicator-search-input');
+        const searchResults = document.getElementById('indicator-search-results');
+        const query = searchInput.value.toLowerCase().trim();
+
+        if (!query) {
+            searchResults.style.display = 'none';
+            return;
+        }
+
+        if (!INDICATOR_REGISTRY) {
+            searchResults.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--text-secondary);">Loading...</div';
+            searchResults.style.display = 'block';
+            return;
+        }
+
+        // Filter indicators based on search query
+        const matches = Object.entries(INDICATOR_REGISTRY).filter(([key, data]) => {
+            return key.toLowerCase().includes(query) ||
+                   data.description.toLowerCase().includes(query);
+        });
+
+        if (matches.length === 0) {
+            searchResults.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--text-secondary);">No results found</div>';
+            searchResults.style.display = 'block';
+            return;
+        }
+
+        // Display search results
+        searchResults.innerHTML = matches.slice(0, 10).map(([key, data]) => `
+            <div class="indicator-search-result">
+                <div class="indicator-search-info">
+                    <div class="indicator-search-name">${key}</div>
+                    <div class="indicator-search-desc">${data.description}</div>
+                </div>
+                <button class="indicator-add-btn" onclick="addIndicatorFromSearch('${key}')">Ekle</button>
+            </div>
+        `).join('');
+
+        searchResults.style.display = 'block';
+    }
+
+    function addIndicatorFromSearch(indicatorKey) {
+        const indicator = INDICATOR_REGISTRY[indicatorKey];
+        if (!indicator) {
+            console.error('Indicator not found:', indicatorKey);
+            return;
+        }
+
+        // Generate unique ID to allow duplicates
+        const uniqueId = `indicator-${indicatorKey}-${indicatorCounter++}`;
+
+        // Track added indicator
+        addedIndicators.push({
+            id: uniqueId,
+            key: indicatorKey,
+            params: {...indicator.default_params}
+        });
+
+        // Build parameter inputs from default_params
+        const paramFields = [];
+
+        // Check if indicator has 'period' parameter
+        const hasPeriodParam = indicator.default_params.hasOwnProperty('period');
+        const periodValue = hasPeriodParam ? indicator.default_params.period : '';
+
+        // Add Suffix field first (synced with period if exists) - default empty
+        paramFields.push(`
+            <div class="param-field">
+                <label>Suffix</label>
+                <input type="text" class="param-input"
+                       id="${uniqueId}-suffix"
+                       placeholder="(optional)"
+                       value=""
+                       data-param="_suffix"
+                       data-period-value="${periodValue}"
+                       oninput="updateSuffixAndPeriod('${uniqueId}', ${hasPeriodParam})">
+            </div>
+        `);
+
+        // Add default_params
+        Object.entries(indicator.default_params).forEach(([paramName, paramValue]) => {
+            const step = typeof paramValue === 'number' && paramValue % 1 !== 0 ? '0.01' : '1';
+            const displayName = paramName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+            paramFields.push(`
+                <div class="param-field">
+                    <label>${displayName}</label>
+                    <input type="number" class="param-input"
+                           id="${uniqueId}-${paramName}"
+                           value="${paramValue}"
+                           step="${step}"
+                           data-param="${paramName}"
+                           ${paramName === 'period' ? `oninput="updatePeriodFromParam('${uniqueId}')"` : ''}>
+                </div>
+            `);
+        });
+
+        const paramsHtml = paramFields.join('');
+
+        // Create indicator HTML
+        const indicatorHtml = `
+            <div class="indicator-item" id="${uniqueId}">
+                <button type="button" class="indicator-remove-btn" onclick="removeIndicator('${uniqueId}')">×</button>
+                <div class="indicator-header">
+                    <input type="checkbox" id="${uniqueId}-checkbox" checked onchange="toggleIndicatorParams('${uniqueId}')">
+                    <label for="${uniqueId}-checkbox" id="${uniqueId}-label">${indicatorKey.toUpperCase()}</label>
+                </div>
+                <div class="indicator-params" id="${uniqueId}-params" style="display: block;">
+                    ${paramsHtml || '<div style="padding: 0.5rem; color: var(--text-secondary); font-size: 0.75rem;">No parameters</div>'}
+                </div>
+            </div>
+        `;
+
+        // Add to container
+        document.getElementById('added-indicators-container').insertAdjacentHTML('beforeend', indicatorHtml);
+
+        // Clear search
+        document.getElementById('indicator-search-input').value = '';
+        document.getElementById('indicator-search-results').style.display = 'none';
+
+        // Update all condition dropdowns to include new indicator
+        refreshConditionIndicators();
+    }
+
+    // Refresh indicator dropdowns in all condition rows
+    function refreshConditionIndicators() {
+        const availableIndicators = getAvailableIndicators();
+
+        // Update entry condition indicator dropdowns
+        ['long', 'short'].forEach(side => {
+            const container = document.getElementById(`entry-${side}-conditions`);
+            if (container) {
+                container.querySelectorAll('select[id^="indicator-"]').forEach(select => {
+                    const currentValue = select.value;
+                    select.innerHTML = `
+                        <option value="">Select Indicator</option>
+                        ${availableIndicators.map(ind =>
+                            `<option value="${ind.value}" ${ind.value === currentValue ? 'selected' : ''}>${ind.label}</option>`
+                        ).join('')}
+                    `;
+                });
+            }
+        });
+
+        // Update exit condition indicator dropdowns
+        ['long', 'short', 'stop_loss', 'take_profit'].forEach(category => {
+            const container = document.getElementById(`exit-${category}-conditions`);
+            if (container) {
+                container.querySelectorAll('select[id^="indicator-"]').forEach(select => {
+                    const currentValue = select.value;
+                    select.innerHTML = `
+                        <option value="">Select Indicator</option>
+                        ${availableIndicators.map(ind =>
+                            `<option value="${ind.value}" ${ind.value === currentValue ? 'selected' : ''}>${ind.label}</option>`
+                        ).join('')}
+                    `;
+                });
+            }
+        });
+    }
+
+    // Sync suffix with period and update indicator name
+    function updateSuffixAndPeriod(uniqueId, hasPeriod) {
+        const suffixInput = document.getElementById(`${uniqueId}-suffix`);
+        const label = document.getElementById(`${uniqueId}-label`);
+        const suffixValue = suffixInput.value.trim();
+
+        // Update period if exists
+        if (hasPeriod) {
+            const periodInput = document.getElementById(`${uniqueId}-period`);
+            if (periodInput) {
+                periodInput.value = suffixValue || periodInput.getAttribute('data-original-value') || '14';
+            }
+        }
+
+        // Update indicator label
+        const indicatorKey = label.textContent.split('_')[0];
+        label.textContent = suffixValue ? `${indicatorKey}_${suffixValue}` : indicatorKey;
+
+        // Refresh condition dropdowns to reflect the new indicator name
+        refreshConditionIndicators();
+    }
+
+    // Update suffix when period is manually changed
+    function updatePeriodFromParam(uniqueId) {
+        const periodInput = document.getElementById(`${uniqueId}-period`);
+        const suffixInput = document.getElementById(`${uniqueId}-suffix`);
+        const label = document.getElementById(`${uniqueId}-label`);
+
+        if (periodInput && suffixInput) {
+            // Only update suffix if it's already filled (user is using suffix)
+            if (suffixInput.value) {
+                const periodValue = periodInput.value;
+                suffixInput.value = periodValue;
+
+                // Update indicator label
+                const indicatorKey = label.textContent.split('_')[0];
+                label.textContent = periodValue ? `${indicatorKey}_${periodValue}` : indicatorKey;
+            }
+        }
+    }
+
+    function toggleIndicatorParams(uniqueId) {
+        const checkbox = document.getElementById(`${uniqueId}-checkbox`);
+        const params = document.getElementById(`${uniqueId}-params`);
+
+        if (checkbox && params) {
+            params.style.display = checkbox.checked ? 'block' : 'none';
+        }
+    }
+
+    function removeIndicator(uniqueId) {
+        const element = document.getElementById(uniqueId);
+        if (element) {
+            element.remove();
+            addedIndicators = addedIndicators.filter(ind => ind.id !== uniqueId);
+        }
+    }
+
+    function toggleIndicatorConfig(indicator) {
+        const checkbox = document.getElementById(`ind-${indicator}`);
+        const config = document.getElementById(`config-${indicator}`);
+
+        if (checkbox.checked) {
+            config.classList.add('show');
+        } else {
+            config.classList.remove('show');
+        }
+    }
+
+    // ========================================
+    // RISK MANAGEMENT - SIZING METHOD PARAMS
+    // ========================================
+    const SIZING_METHOD_PARAMS = {
+        'fixed_usd': [
+            {
+                name: 'size_value',
+                label: 'Fixed Amount (USD)',
+                type: 'number',
+                default: 100,
+                min: 10,
+                max: 10000,
+                step: 10,
+                suffix: '$',
+                help: 'Fixed dollar amount for each trade'
+            }
+        ],
+        'fixed_percent': [
+            {
+                name: 'size_value',
+                label: 'Capital Percentage',
+                type: 'number',
+                default: 5,
+                min: 0.1,
+                max: 100,
+                step: 0.1,
+                suffix: '%',
+                help: 'Percentage of current capital'
+            }
+        ],
+        'risk_based': [
+            {
+                name: 'size_value',
+                label: 'Risk Value',
+                type: 'number',
+                default: 1.0,
+                min: 0.1,
+                max: 10,
+                step: 0.1,
+                suffix: '%',
+                help: 'The percentage of capital to be risked in each trade (calculated based on the stop loss)'
+            }
+        ],
+        'kelly': [
+            {
+                name: 'size_value',
+                label: 'Kelly Kesri',
+                type: 'number',
+                default: 0.5,
+                min: 0.1,
+                max: 1.0,
+                step: 0.1,
+                help: 'What percentage of the Kelly formula result will be used (0.5 = half Kelly, recommended)'
+            }
+        ],
+        'ai_dynamic': [
+            {
+                name: 'size_value',
+                label: 'Base Percentage',
+                type: 'number',
+                default: 2.0,
+                min: 0.1,
+                max: 10,
+                step: 0.1,
+                suffix: '%',
+                help: 'Base value to be scaled by the AI (not yet active)'
+            }
+        ]
+    };
+
+    function updateSizingMethodParams(method) {
+        const container = document.getElementById('sizing-method-params');
+        const params = SIZING_METHOD_PARAMS[method];
+
+        if (!params || params.length === 0) {
+            container.innerHTML = '<div style="padding: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">Requires no parameters</div>';
+            return;
+        }
+
+        // Keep the current value (if the field already exists)
+        const existingField = document.getElementById('rm-size-value');
+        const currentValue = existingField ? existingField.value : params[0].default;
+
+        // Convert the field name to a hyphenated ID (size_value -> size-value)
+        const fieldId = 'rm-' + params[0].name.replace(/_/g, '-');
+
+        // Wrap params in form-group to match the grid layout
+        container.innerHTML = `
+            <div class="form-group">
+                <label class="form-label">
+                    ${params[0].label}
+                    ${params[0].help ? `<span class="form-help" title="${params[0].help}">ℹ️</span>` : ''}
+                </label>
+                <input type="${params[0].type}"
+                       class="form-input"
+                       id="${fieldId}"
+                       value="${currentValue}"
+                       min="${params[0].min || ''}"
+                       max="${params[0].max || ''}"
+                       step="${params[0].step || 1}">
+            </div>
+        `;
+    }
+
+    // Initialize default method on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        const defaultMethod = document.getElementById('rm-sizing-method').value;
+        updateSizingMethodParams(defaultMethod);
+    });
+
+    // ========================================
+    // TRAILING CONFIG TOGGLE
+    // ========================================
+    function toggleTrailingConfig() {
+        const checkbox = document.getElementById('trailing-enabled');
+        const config = document.getElementById('trailing-config');
+
+        if (checkbox.checked) {
+            config.classList.add('show');
+        } else {
+            config.classList.remove('show');
+        }
+    }
+
+    // ========================================
+    // PYRAMIDING CONFIG TOGGLE
+    // ========================================
+    function togglePyramidingConfig() {
+        const checkbox = document.getElementById('pm-pyramiding-enabled');
+        const config = document.getElementById('pyramiding-config');
+
+        if (checkbox && config) {
+            if (checkbox.checked) {
+                config.classList.add('show');
+                updatePyramidingExample();
+            } else {
+                config.classList.remove('show');
+            }
+        }
+    }
+
+    // ========================================
+    // PYRAMIDING EXAMPLE UPDATE
+    // ========================================
+    function updatePyramidingExample() {
+        const maxEntries = parseInt(document.getElementById('pm-pyramiding-max-entries')?.value || 3);
+        const scaleFactor = parseFloat(document.getElementById('pm-pyramiding-scale-factor')?.value || 0.5);
+        const exampleDiv = document.getElementById('pyramiding-example');
+
+        if (!exampleDiv) return;
+
+        const baseSize = 100; // Base position size for example
+        let html = '';
+        let total = 0;
+        let currentSize = baseSize;
+
+        // Calculate entries
+        for (let i = 1; i <= maxEntries; i++) {
+            if (i === 1) {
+                html += `<strong >${i}. Entry (Initial):</strong > $${currentSize.toFixed(2)}<br>`;
+                total += currentSize;
+            } else {
+                const prevSize = currentSize;
+                currentSize = prevSize * scaleFactor;
+                html += `<strong >${i}. Input:</strong> $${prevSize.toFixed(2)} x ${scaleFactor} = <span style="color: var(--color-success);">$<span style="color: var(--color-success);">${currentSize.toFixed(2)}</span><br>`;
+                total += currentSize;
+            }
+        }
+
+        html += `<div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border-primary);">`;
+        html += `<strong>Total Positions:</strong> <span style="color: var(--color-success); font-size: 1.1em;">$${total.toFixed(2)}</span>`;
+        html += `</div>`;
+
+        exampleDiv.innerHTML = html;
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        updatePyramidingExample();
+    });
+
+    // ========================================
+    // POSITION TIMEOUT DISPLAY
+    // ========================================
+    function updateTimeoutDisplay() {
+        const timeoutInput = document.getElementById('pm-position-timeout');
+        const display = document.getElementById('pm-timeout-display');
+
+        if (timeoutInput && display) {
+            const seconds = parseInt(timeoutInput.value) || 0;
+
+            if (seconds === 0) {
+                display.textContent = 'Unlimited';
+            } else if (seconds < 60) {
+                display.textContent = `${seconds} saniye`;
+            } else if (seconds < 3600) {
+                const minutes = Math.floor(seconds / 60);
+                display.textContent = `${minutes} minute`;
+            } else {
+                const hours = Math.floor(seconds / 3600);
+                const minutes = Math.floor((seconds % 3600) / 60);
+                display.textContent = minutes > 0
+                    ? `${hours} hours ${minutes} minutes`
+                    : `${hours} hour`;
+            }
+        }
+    }
+
+    // Attach timeout update listener
+    document.addEventListener('DOMContentLoaded', function() {
+        const timeoutInput = document.getElementById('pm-position-timeout');
+        if (timeoutInput) {
+            timeoutInput.addEventListener('input', updateTimeoutDisplay);
+            updateTimeoutDisplay(); // Initial display
+        }
+    });
+
+    // ========================================
+    // EXIT STRATEGY - TP/SL METHOD PARAMS
+    // ========================================
+    const TP_METHOD_PARAMS = {
+        'fixed_percent': [
+            {
+                name: 'take_profit_value',
+                label: 'TP Percentage',
+                type: 'number',
+                default: 2.0,
+                min: 0.1,
+                max: 50,
+                step: 0.1,
+                suffix: '%'
+            }
+        ],
+        'fixed_price': [
+            {
+                name: 'tp_price',
+                label: 'TP Price',
+                type: 'number',
+                default: 50000,
+                min: 0,
+                step: 100,
+                suffix: '$'
+            }
+        ],
+        'risk_reward': [
+            {
+                name: 'tp_risk_reward_ratio',
+                label: 'Risk/Reward Ratio',
+                type: 'number',
+                default: 2.0,
+                min: 0.5,
+                max: 10,
+                step: 0.1,
+                help: 'Example: 2.0 = %1 risk with a %2 profit target'
+            }
+        ],
+        'atr_based': [
+            {
+                name: 'tp_atr_multiplier',
+                label: 'ATR Multiplier',
+                type: 'number',
+                default: 2.0,
+                min: 0.5,
+                max: 10,
+                step: 0.1,
+                help: 'What multiple of the ATR value will the TP distance be?'
+            }
+        ],
+        'fibonacci': [
+            {
+                name: 'take_profit_value',
+                label: 'Fibonacci Level',
+                type: 'select',
+                options: [
+                    { value: 0.382, label: '0.382 (Low)' },
+                    { value: 0.5, label: '0.5 (Orta)' },
+                    { value: 0.618, label: '0.618 (Golden Ratio)' },
+                    { value: 1.0, label: '1.0 (Full Rotation)' },
+                    { value: 1.618, label: '1.618 (Expansion)' },
+                    { value: 2.618, label: '2.618 (Forward Expansion)' }
+                ],
+                default: 1.618
+            }
+        ],
+        'dynamic_ai': [
+            {
+                name: 'take_profit_value',
+                label: 'Baz TP (%)',
+                type: 'number',
+                default: 2.0,
+                min: 0.5,
+                max: 10,
+                step: 0.1,
+                suffix: '%',
+                help: 'Will be adjusted by AI according to market conditions (not yet active)'
+            }
+        ]
+    };
+
+    const SL_METHOD_PARAMS = {
+        'fixed_percent': [
+            {
+                name: 'stop_loss_value',
+                label: 'SL Percentage',
+                type: 'number',
+                default: 1.0,
+                min: 0.1,
+                max: 20,
+                step: 0.1,
+                suffix: '%'
+            }
+        ],
+        'atr_based': [
+            {
+                name: 'sl_atr_multiplier',
+                label: 'ATR Multiplier',
+                type: 'number',
+                default: 1.5,
+                min: 0.5,
+                max: 5,
+                step: 0.1,
+                help: 'What multiple of the ATR value will the SL distance be'
+            }
+        ],
+        'swing_point': [
+            {
+                name: 'stop_loss_value',
+                label: 'Swing Lookback',
+                type: 'number',
+                default: 20,
+                min: 5,
+                max: 100,
+                step: 1,
+                help: 'How many bars to look back to find the swing low/high'
+            }
+        ],
+        'support_resistance': [
+            {
+                name: 'stop_loss_value',
+                label: 'S/R Buffer (%)',
+                type: 'number',
+                default: 0.5,
+                min: 0.1,
+                max: 2,
+                step: 0.1,
+                suffix: '%',
+                help: 'How much safety margin from the Support/Resistance level'
+            }
+        ],
+        'volatility_based': [
+            {
+                name: 'stop_loss_value',
+                label: 'Volatility Factor',
+                type: 'number',
+                default: 2.0,
+                min: 1,
+                max: 5,
+                step: 0.1,
+                help: 'What multiple of the standard deviation the SL distance will be'
+            }
+        ],
+        'ai_adaptive': [
+            {
+                name: 'stop_loss_value',
+                label: 'Baz SL (%)',
+                type: 'number',
+                default: 1.5,
+                min: 0.5,
+                max: 10,
+                step: 0.1,
+                suffix: '%',
+                help: 'Will be adjusted by AI according to market conditions (not yet active)'
+            }
+        ]
+    };
+
+    function updateTPMethodParams(method) {
+        const container = document.getElementById('tp-method-params');
+        const params = TP_METHOD_PARAMS[method];
+
+        if (!params || params.length === 0) {
+            container.innerHTML = '<div style="padding: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; text-align: center;">No parameters</div>';
+            return;
+        }
+
+        // Only display the first parameter (for side-by-side layout)
+        const param = params[0];
+
+        if (param.type === 'select') {
+            container.innerHTML = `
+                <div class="form-group" style="margin: 0;">
+                    <label class="form-label">
+                        ${param.label}
+                        ${param.help ? `<span class="form-help" title="${param.help}">ℹ️</span>` : ''}
+                    </label>
+                    <select class="form-select" id="es-${param.name}">
+                        ${param.options.map(opt => `
+                            <option value="${opt.value}" ${opt.value === param.default ? 'selected' : ''}>
+                                ${opt.label}
+                            </option>
+                        `).join('')}
+                    </select>
+                </div>
+            `;
+        } else {
+            container.innerHTML = `
+                <div class="form-group" style="margin: 0;">
+                    <label class="form-label">
+                        ${param.label}
+                        ${param.help ? `<span class="form-help" title="${param.help}">ℹ️</span>` : ''}
+                    </label>
+                    <div style="position: relative;">
+                        <input type="${param.type}"
+                               class="form-input"
+                               id="es-${param.name}"
+                               value="${param.default}"
+                               min="${param.min || ''}"
+                               max="${param.max || ''}"
+                               step="${param.step || 1}"
+                               style="${param.suffix ? 'padding-right: 3rem;' : ''}">
+                        ${param.suffix ? `<span class="input-suffix">${param.suffix}</span>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    function updateSLMethodParams(method) {
+        const container = document.getElementById('sl-method-params');
+        const params = SL_METHOD_PARAMS[method];
+
+        if (!params || params.length === 0) {
+            container.innerHTML = '<div style="padding: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; text-align: center;">No parameters</div>';
+            return;
+        }
+
+        // Only display the first parameter (for side-by-side layout)
+        const param = params[0];
+
+        container.innerHTML = `
+            <div class="form-group" style="margin: 0;">
+                <label class="form-label">
+                    ${param.label}
+                    ${param.help ? `<span class="form-help" title="${param.help}">ℹ️</span>` : ''}
+                </label>
+                <div style="position: relative;">
+                    <input type="${param.type}"
+                           class="form-input"
+                           id="es-${param.name}"
+                           value="${param.default}"
+                           min="${param.min || ''}"
+                           max="${param.max || ''}"
+                           step="${param.step || 1}"
+                           style="${param.suffix ? 'padding-right: 3rem;' : ''}">
+                    ${param.suffix ? `<span class="input-suffix">${param.suffix}</span>` : ''}
+                </div>
+            </div>
+        `;
+    }
+
+    // Initialize default methods on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        const tpMethod = document.getElementById('es-tp-method');
+        const slMethod = document.getElementById('es-sl-method');
+
+        if (tpMethod) {
+            updateTPMethodParams(tpMethod.value);
+        }
+        if (slMethod) {
+            updateSLMethodParams(slMethod.value);
+        }
+    });
+
+    // ========================================
+    // TRAILING STOP LOSS CONFIG TOGGLE
+    // ========================================
+    function toggleTrailingStopConfig() {
+        const checkbox = document.getElementById('es-trailing-stop-enabled');
+        const config = document.getElementById('trailing-stop-config');
+
+        if (checkbox && config) {
+            if (checkbox.checked) {
+                config.classList.add('show');
+            } else {
+                config.classList.remove('show');
+            }
+        }
+    }
+
+    // ========================================
+    // TRAILING TAKE PROFIT CONFIG TOGGLE
+    // ========================================
+    function toggleTrailingTPConfig() {
+        const checkbox = document.getElementById('es-trailing-tp-enabled');
+        const config = document.getElementById('trailing-tp-config');
+
+        if (checkbox && config) {
+            if (checkbox.checked) {
+                config.classList.add('show');
+            } else {
+                config.classList.remove('show');
+            }
+        }
+    }
+
+    // ========================================
+    // BREAKEVEN CONFIG TOGGLE
+    // ========================================
+    function toggleBreakevenConfig() {
+        const checkbox = document.getElementById('es-breakeven-enabled');
+        const config = document.getElementById('breakeven-config');
+
+        if (checkbox && config) {
+            if (checkbox.checked) {
+                config.classList.add('show');
+            } else {
+                config.classList.remove('show');
+            }
+        }
+    }
+
+    // ========================================
+    // PARTIAL EXIT MANAGEMENT
+    // ========================================
+    function togglePartialExitConfig() {
+        const checkbox = document.getElementById('es-partial-enabled');
+        const config = document.getElementById('partial-exit-config');
+
+        if (checkbox && config) {
+            if (checkbox.checked) {
+                config.classList.add('show');
+            } else {
+                config.classList.remove('show');
+            }
+        }
+    }
+
+    // ========================================
+    // AI DYNAMIC EXIT MANAGEMENT
+    // ========================================
+    function toggleAIExitConfig() {
+        const checkbox = document.getElementById('es-ai-exit-enabled');
+        const config = document.getElementById('ai-exit-config');
+
+        if (checkbox && config) {
+            if (checkbox.checked) {
+                config.classList.add('show');
+            } else {
+                config.classList.remove('show');
+            }
+        }
+    }
+
+    function updatePartialExitTotal() {
+        const size1 = parseFloat(document.getElementById('es-partial-size-1')?.value || 0);
+        const size2 = parseFloat(document.getElementById('es-partial-size-2')?.value || 0);
+        const size3 = parseFloat(document.getElementById('es-partial-size-3')?.value || 0);
+
+        const total = size1 + size2 + size3;
+
+        // Update individual progress bars
+        const bar1 = document.getElementById('es-partial-bar-1');
+        const bar2 = document.getElementById('es-partial-bar-2');
+        const bar3 = document.getElementById('es-partial-bar-3');
+
+        if (bar1) bar1.style.width = `${size1}%`;
+        if (bar2) bar2.style.width = `${size2}%`;
+        if (bar3) bar3.style.width = `${size3}%`;
+
+        // Update total
+        const totalSpan = document.getElementById('es-partial-total');
+        const totalBar = document.getElementById('es-partial-bar-total');
+        const checkSpan = document.getElementById('es-partial-check');
+
+        if (totalSpan) {
+            totalSpan.textContent = `${total}%`;
+        }
+
+        if (totalBar) {
+            totalBar.style.width = `${Math.min(total, 100)}%`;
+        }
+
+        // Update check icon and colors
+        if (checkSpan) {
+            if (total === 100) {
+                checkSpan.textContent = '✅';
+                if (totalSpan) totalSpan.style.color = '#10b981';
+                if (totalBar) totalBar.style.background = 'linear-gradient(90deg, #10b981, #059669)';
+            } else if (total < 100) {
+                checkSpan.textContent = '⚠️';
+                if (totalSpan) totalSpan.style.color = '#f59e0b';
+                if (totalBar) totalBar.style.background = 'linear-gradient(90deg, #f59e0b, #d97706)';
+            } else {
+                checkSpan.textContent = '❌';
+                if (totalSpan) totalSpan.style.color = '#ef4444';
+                if (totalBar) totalBar.style.background = 'linear-gradient(90deg, #ef4444, #dc2626)';
+            }
+        }
+    }
+
+    // Attach partial exit listeners
+    document.addEventListener('DOMContentLoaded', function() {
+        const partialInputs = [
+            'es-partial-size-1', 'es-partial-size-2', 'es-partial-size-3'
+        ];
+
+        partialInputs.forEach(id => {
+            const input = document.getElementById(id);
+            if (input) {
+                input.addEventListener('input', updatePartialExitTotal);
+            }
+        });
+
+        updatePartialExitTotal(); // Initial calculation
+    });
+
+    // ========================================
+    // ENTRY CONDITIONS MANAGEMENT
+    // ========================================
+
+    // Dynamic indicators - will be populated from Technical Parameters
+    // This will be populated when strategy is loaded or when indicators are added
+    let AVAILABLE_INDICATORS = [];
+
+    // Function to get available indicators from the strategy configuration
+    function getAvailableIndicators(isExitCondition = false) {
+        const indicators = [];
+
+        // Add basic price indicators (always available)
+        indicators.push(
+            { value: 'close', label: 'Close' },
+            { value: 'open', label: 'Open' },
+            { value: 'high', label: 'High' },
+            { value: 'low', label: 'Low' },
+            { value: 'volume', label: 'Volume' }
+        );
+
+        // Add built-in exit condition indicators (only for exit conditions)
+        if (isExitCondition) {
+            indicators.push(
+                { value: 'loss_percent', label: '💸 Loss % (Loss Percentage)', isBuiltIn: true },
+                { value: 'profit_percent', label: '💰 Profit % (Profit Percentage)', isBuiltIn: true },
+                { value: 'atr_stop', label: '🎯 ATR Stop', isBuiltIn: true },
+                { value: 'support', label: '📉 Support (Destek)', isBuiltIn: true },
+                { value: 'resistance', label: '📈 Resistance (Resistance)', isBuiltIn: true },
+                { value: 'time_in_position', label: '⏱️ Time in Position (Saniye)', isBuiltIn: true }
+            );
+        }
+
+        // Read from added indicators in Technical Parameters accordion
+        addedIndicators.forEach(indicator => {
+            // Get suffix - first try from DOM element value, then indicator object, then empty
+            const suffixInput = document.getElementById(`${indicator.id}-suffix`);
+            const domSuffix = suffixInput ? suffixInput.value.trim() : null;
+            const suffix = domSuffix !== null && domSuffix !== '' ? domSuffix : (indicator.suffix || '');
+
+            // Generate base indicator value (e.g., "rsi_14" or "rsi" if no suffix)
+            const baseIndicatorValue = suffix ? `${indicator.key}_${suffix}` : indicator.key;
+
+            // Generate base display label (e.g., "RSI-14" or "RSI")
+            const baseDisplayLabel = suffix
+                ? `${indicator.key.toUpperCase()}-${suffix}`
+                : indicator.key.toUpperCase();
+
+            // Check if this indicator has multiple outputs
+            const registryData = INDICATOR_REGISTRY[indicator.key];
+            const outputKeys = registryData?.output_keys || [];
+
+            // Determine if truly multi-output:
+            // - More than 1 output key, OR
+            // - Single output key that differs from indicator key (rare case)
+            // Single output with same name as indicator (e.g., ema has ['ema']) = single-output
+            const isTrulyMultiOutput = outputKeys.length > 1 ||
+                (outputKeys.length === 1 && outputKeys[0] !== indicator.key);
+
+            if (isTrulyMultiOutput) {
+                // Multi-output indicator: add each output as separate option
+                outputKeys.forEach(outputKey => {
+                    indicators.push({
+                        value: `${baseIndicatorValue}_${outputKey}`,
+                        label: `${baseDisplayLabel} (${outputKey.charAt(0).toUpperCase() + outputKey.slice(1)})`
+                    });
+                });
+            } else {
+                // Single-output indicator: add as-is
+                indicators.push({
+                    value: baseIndicatorValue,
+                    label: baseDisplayLabel
+                });
+            }
+        });
+
+        return indicators;
+    }
+
+    // TA-Lib Candlestick Patterns (61 patterns)
+    const TALIB_PATTERNS = [
+        { value: 'CDL2CROWS', label: 'Two Crows' },
+        { value: 'CDL3BLACKCROWS', label: 'Three Black Crows' },
+        { value: 'CDL3INSIDE', label: 'Three Inside Up/Down' },
+        { value: 'CDL3LINESTRIKE', label: 'Three-Line Strike' },
+        { value: 'CDL3OUTSIDE', label: 'Three Outside Up/Down' },
+        { value: 'CDL3STARSINSOUTH', label: 'Three Stars In The South' },
+        { value: 'CDL3WHITESOLDIERS', label: 'Three Advancing White Soldiers' },
+        { value: 'CDLABANDONEDBABY', label: 'Abandoned Baby' },
+        { value: 'CDLADVANCEBLOCK', label: 'Advance Block' },
+        { value: 'CDLBELTHOLD', label: 'Belt-hold' },
+        { value: 'CDLBREAKAWAY', label: 'Breakaway' },
+        { value: 'CDLCLOSINGMARUBOZU', label: 'Closing Marubozu' },
+        { value: 'CDLCONCEALBABYSWALL', label: 'Concealing Baby Swallow' },
+        { value: 'CDLCOUNTERATTACK', label: 'Counterattack' },
+        { value: 'CDLDARKCLOUDCOVER', label: 'Dark Cloud Cover' },
+        { value: 'CDLDOJI', label: 'Doji' },
+        { value: 'CDLDOJISTAR', label: 'Doji Star' },
+        { value: 'CDLDRAGONFLYDOJI', label: 'Dragonfly Doji' },
+        { value: 'CDLENGULFING', label: 'Engulfing Pattern' },
+        { value: 'CDLEVENINGDOJISTAR', label: 'Evening Doji Star' },
+        { value: 'CDLEVENINGSTAR', label: 'Evening Star' },
+        { value: 'CDLGAPSIDESIDEWHITE', label: 'Up/Down-gap side-by-side white lines' },
+        { value: 'CDLGRAVESTONEDOJI', label: 'Gravestone Doji' },
+        { value: 'CDLHAMMER', label: 'Hammer' },
+        { value: 'CDLHANGINGMAN', label: 'Hanging Man' },
+        { value: 'CDLHARAMI', label: 'Harami Pattern' },
+        { value: 'CDLHARAMICROSS', label: 'Harami Cross Pattern' },
+        { value: 'CDLHIGHWAVE', label: 'High-Wave Candle' },
+        { value: 'CDLHIKKAKE', label: 'Hikkake Pattern' },
+        { value: 'CDLHIKKAKEMOD', label: 'Modified Hikkake Pattern' },
+        { value: 'CDLHOMINGPIGEON', label: 'Homing Pigeon' },
+        { value: 'CDLIDENTICAL3CROWS', label: 'Identical Three Crows' },
+        { value: 'CDLINNECK', label: 'In-Neck Pattern' },
+        { value: 'CDLINVERTEDHAMMER', label: 'Inverted Hammer' },
+        { value: 'CDLKICKING', label: 'Kicking' },
+        { value: 'CDLKICKINGBYLENGTH', label: 'Kicking - bull/bear determined by the longer marubozu' },
+        { value: 'CDLLADDERBOTTOM', label: 'Ladder Bottom' },
+        { value: 'CDLLONGLEGGEDDOJI', label: 'Long Legged Doji' },
+        { value: 'CDLLONGLINE', label: 'Long Line Candle' },
+        { value: 'CDLMARUBOZU', label: 'Marubozu' },
+        { value: 'CDLMATCHINGLOW', label: 'Matching Low' },
+        { value: 'CDLMATHOLD', label: 'Mat Hold' },
+        { value: 'CDLMORNINGDOJISTAR', label: 'Morning Doji Star' },
+        { value: 'CDLMORNINGSTAR', label: 'Morning Star' },
+        { value: 'CDLONNECK', label: 'On-Neck Pattern' },
+        { value: 'CDLPIERCING', label: 'Piercing Pattern' },
+        { value: 'CDLRICKSHAWMAN', label: 'Rickshaw Man' },
+        { value: 'CDLRISEFALL3METHODS', label: 'Rising/Falling Three Methods' },
+        { value: 'CDLSEPARATINGLINES', label: 'Separating Lines' },
+        { value: 'CDLSHOOTINGSTAR', label: 'Shooting Star' },
+        { value: 'CDLSHORTLINE', label: 'Short Line Candle' },
+        { value: 'CDLSPINNINGTOP', label: 'Spinning Top' },
+        { value: 'CDLSTALLEDPATTERN', label: 'Stalled Pattern' },
+        { value: 'CDLSTICKSANDWICH', label: 'Stick Sandwich' },
+        { value: 'CDLTAKURI', label: 'Takuri (Dragonfly Doji with very long lower shadow)' },
+        { value: 'CDLTASUKIGAP', label: 'Tasuki Gap' },
+        { value: 'CDLTHRUSTING', label: 'Thrusting Pattern' },
+        { value: 'CDLTRISTAR', label: 'Tristar Pattern' },
+        { value: 'CDLUNIQUE3RIVER', label: 'Unique 3 River' },
+        { value: 'CDLUPSIDEGAP2CROWS', label: 'Upside Gap Two Crows' },
+        { value: 'CDLXSIDEGAP3METHODS', label: 'Upside/Downside Gap Three Methods' }
+    ];
+
+    // Available operators (categorized)
+    const OPERATORS = [
+        // Basic Comparison
+        { value: '>', label: '> (Greater than)', category: 'Comparison' },
+        { value: '<', label: '< (Smaller)', category: 'Comparison' },
+        { value: '>=', label: '>= (Greater Than or Equal To)', category: 'Comparison' },
+        { value: '<=', label: '<= (Less Than or Equal To)', category: 'Comparison' },
+        { value: '==', label: '== (Equal)', category: 'Comparison' },
+
+        // Pattern (Only for talib_patterns indicator)
+        { value: 'pattern', label: 'Pattern (Candlestick Pattern)', category: 'Pattern', patternOnly: true },
+
+        // Trend and Movement
+        { value: 'crossover', label: 'Crossover (Upward Intersection)', category: 'Trend' },
+        { value: 'crossunder', label: 'Crossunder (Below Intersection)', category: 'Trend' },
+        { value: 'rising', label: 'Rising (Yükseliş)', category: 'Trend' },
+        { value: 'falling', label: 'Falling (Düşüş)', category: 'Trend' },
+        { value: 'between', label: 'Between (Arasında)', category: 'Trend' },
+        { value: 'outside', label: 'Outside (Dışında)', category: 'Trend' },
+
+        // Position-based (for Exit)
+        { value: 'triggered', label: 'Triggered (Triggered)', category: 'Position', exitOnly: true },
+        { value: 'profit_percent', label: 'Profit % (Profit Percentage)', category: 'Position', exitOnly: true },
+        { value: 'loss_percent', label: 'Loss % (Loss Percentage)', category: 'Position', exitOnly: true },
+
+        // Price-based
+        { value: 'reached', label: 'Reached (Ulaştı)', category: 'Price' },
+        { value: 'broken', label: 'Broken (Broken)', category: 'Price' }
+    ];
+
+    // Available timeframes
+    const TIMEFRAMES = ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '12h', '1d'];
+
+    // Counter for condition IDs
+    let conditionCounter = { long: 0, short: 0 };
+
+    function addEntryCondition(side) {
+        const container = document.getElementById(`entry-${side}-conditions`);
+        if (!container) return;
+
+        conditionCounter[side]++;
+        const conditionId = `${side}-${conditionCounter[side]}`;
+
+        const conditionRow = document.createElement('div');
+        conditionRow.className = 'condition-row';
+        conditionRow.id = `condition-${conditionId}`;
+
+        const availableIndicators = getAvailableIndicators();
+
+        conditionRow.innerHTML = `
+            <div class="condition-badge">${conditionCounter[side]}</div>
+
+            <!-- Indicator Select -->
+            <select class="condition-select" id="indicator-${conditionId}" onchange="updateOperatorOptions('${conditionId}')">
+                <option value="">Select Indicator</option>
+                ${availableIndicators.map(ind => `<option value="${ind.value}">${ind.label}</option>`).join('')}
+            </select>
+
+            <!-- Operator Select -->
+            <select class="condition-select" id="operator-${conditionId}" onchange="updateConditionThreshold('${conditionId}')">
+                <option value="">Select Operator</option>
+                <optgroup label="📊 Comparison">
+                    ${OPERATORS.filter(op => op.category === 'Comparison' && !op.exitOnly).map(op =>
+                        `<option value="${op.value}">${op.label}</option>`
+                    ).join('')}
+                </optgroup>
+                <optgroup label="📈 Trend and Movement">
+                    ${OPERATORS.filter(op => op.category === 'Trend' && !op.exitOnly).map(op =>
+                        `<option value="${op.value}">${op.label}</option>`
+                    ).join('')}
+                </optgroup>
+                <optgroup label="💰 Position-Based">
+                    ${OPERATORS.filter(op => op.category === 'Position').map(op =>
+                        `<option value="${op.value}">${op.label}</option>`
+                    ).join('')}
+                </optgroup>
+                <optgroup label="💲 Price-Based">
+                    ${OPERATORS.filter(op => op.category === 'Price' && !op.exitOnly).map(op =>
+                        `<option value="${op.value}">${op.label}</option>`
+                    ).join('')}
+                </optgroup>
+            </select>
+
+            <!-- Threshold (can be number or indicator name) -->
+            <div id="threshold-container-${conditionId}" style="flex: 1; display: flex; gap: 0.5rem;">
+                <input type="text" class="condition-input" id="threshold-${conditionId}"
+                       placeholder="Value or Indicator">
+            </div>
+
+            <!-- Timeframe Select (Optional) -->
+            <select class="condition-select" id="timeframe-${conditionId}" style="max-width: 100px;">
+                <option value="">Auto TF</option>
+                ${TIMEFRAMES.map(tf => `<option value="${tf}">${tf}</option>`).join('')}
+            </select>
+
+            <!-- Remove Button -->
+            <button type="button" class="remove-condition-btn" onclick="removeEntryCondition('${conditionId}')">
+                🗑️
+            </button>
+        `;
+
+        container.appendChild(conditionRow);
+        renumberConditions(side);
+    }
+
+    function removeEntryCondition(conditionId) {
+        const conditionRow = document.getElementById(`condition-${conditionId}`);
+        if (conditionRow) {
+            const side = conditionId.split('-')[0]; // 'long' or 'short'
+            conditionRow.remove();
+            renumberConditions(side);
+        }
+    }
+
+    function renumberConditions(side) {
+        const container = document.getElementById(`entry-${side}-conditions`);
+        if (!container) return;
+
+        const rows = container.querySelectorAll('.condition-row');
+        rows.forEach((row, index) => {
+            const badge = row.querySelector('.condition-badge');
+            if (badge) {
+                badge.textContent = index + 1;
+            }
+        });
+    }
+
+    // Update operator options based on selected indicator
+    function updateOperatorOptions(conditionId) {
+        const indicator = document.getElementById(`indicator-${conditionId}`)?.value;
+        const operatorSelect = document.getElementById(`operator-${conditionId}`);
+
+        if (!operatorSelect) return;
+
+        // Check if talib_patterns is selected
+        const isTalibPatterns = indicator && indicator.includes('talib_patterns');
+
+        // Build operator options
+        let optionsHTML = '<option value="">Select Operator</option>';
+
+        // Add Pattern operator only for talib_patterns
+        if (isTalibPatterns) {
+            optionsHTML += `
+                <optgroup label="🎯 Pattern">
+                    <option value="pattern">Pattern (Candlestick Pattern)</option>
+                </optgroup>
+            `;
+        }
+
+        // Add standard operators
+        optionsHTML += `
+            <optgroup label="📊 Comparison">
+                ${OPERATORS.filter(op => op.category === 'Comparison' && !op.exitOnly && !op.patternOnly).map(op =>
+                    `<option value="${op.value}">${op.label}</option>`
+                ).join('')}
+            </optgroup>
+            <optgroup label="📈 Trend and Movement">
+                ${OPERATORS.filter(op => op.category === 'Trend' && !op.exitOnly && !op.patternOnly).map(op =>
+                    `<option value="${op.value}">${op.label}</option>`
+                ).join('')}
+            </optgroup>
+            <optgroup label="💰 Position-Based">
+                ${OPERATORS.filter(op => op.category === 'Position' && !op.patternOnly).map(op =>
+                    `<option value="${op.value}">${op.label}</option>`
+                ).join('')}
+            </optgroup>
+            <optgroup label="💲 Price-Based">
+                ${OPERATORS.filter(op => op.category === 'Price' && !op.exitOnly && !op.patternOnly).map(op =>
+                    `<option value="${op.value}">${op.label}</option>`
+                ).join('')}
+            </optgroup>
+        `;
+
+        operatorSelect.innerHTML = optionsHTML;
+
+        // Trigger threshold update
+        updateConditionThreshold(conditionId);
+    }
+
+    function updateConditionThreshold(conditionId) {
+        const indicator = document.getElementById(`indicator-${conditionId}`)?.value;
+        const operator = document.getElementById(`operator-${conditionId}`)?.value;
+        const thresholdContainer = document.getElementById(`threshold-container-${conditionId}`);
+
+        if (!thresholdContainer) return;
+
+        const availableIndicators = getAvailableIndicators();
+
+        // For pattern operator (talib_patterns only)
+        if (operator === 'pattern') {
+            thresholdContainer.innerHTML = `
+                <select class="condition-select" id="threshold-${conditionId}" style="flex: 1;">
+                    <option value="">Select Pattern</option>
+                    ${TALIB_PATTERNS.map(p => `<option value="${p.value}">${p.label}</option>`).join('')}
+                </select>
+                <select class="condition-select" id="threshold2-${conditionId}" style="width: 120px;">
+                    <option value="0">Any (Herhangi)</option>
+                    <option value="100">Bullish (Uptrend)</option>
+                    <option value="-100">Bearish (Decline)</option>
+                </select>
+            `;
+        }
+        // For crossover/crossunder, allow indicator selection as threshold
+        else if (operator === 'crossover' || operator === 'crossunder') {
+            thresholdContainer.innerHTML = `
+                <select class="condition-select" id="threshold-${conditionId}">
+                    <option value="">Select Target</option>
+                    <optgroup label="🔢 Numerical Value">
+                        <option value="number">Enter a number</option>
+                    </optgroup>
+                    <optgroup label="📊 Indicator">
+                        ${availableIndicators.map(ind => `<option value="${ind.value}">${ind.label}</option>`).join('')}
+                    </optgroup>
+                </select>
+                <input type="number" class="condition-input" id="threshold-number-${conditionId}"
+                       placeholder="Value" step="0.01" style="display: none;">
+            `;
+
+            // Add listener to show number input when "Enter Number" is selected
+            const thresholdSelect = document.getElementById(`threshold-${conditionId}`);
+            const thresholdNumber = document.getElementById(`threshold-number-${conditionId}`);
+
+            if (thresholdSelect && thresholdNumber) {
+                thresholdSelect.addEventListener('change', function() {
+                    if (this.value === 'number') {
+                        thresholdNumber.style.display = 'block';
+                        thresholdSelect.style.display = 'none';
+                    }
+                });
+            }
+        }
+        // For rising/falling, use bars count
+        else if (operator === 'rising' || operator === 'falling') {
+            thresholdContainer.innerHTML = `
+                <input type="number" class="condition-input" id="threshold-${conditionId}"
+                       placeholder="Number of Bars" value="2" min="1" max="10" step="1">
+            `;
+        }
+        // For between/outside, need two values
+        else if (operator === 'between' || operator === 'outside') {
+            thresholdContainer.innerHTML = `
+                <input type="number" class="condition-input" id="threshold-${conditionId}"
+                       placeholder="Lower Value" step="0.01" style="flex: 1;">
+                <span style="color: var(--text-secondary);">-</span>
+                <input type="number" class="condition-input" id="threshold2-${conditionId}"
+                       placeholder="Upper Limit" step="0.01" style="flex: 1;">
+            `;
+        }
+        // For profit_percent, loss_percent - percentage input
+        else if (operator === 'profit_percent' || operator === 'loss_percent') {
+            thresholdContainer.innerHTML = `
+                <input type="number" class="condition-input" id="threshold-${conditionId}"
+                       placeholder="Percentage (%)" value="1.0" min="0" max="100" step="0.1">
+            `;
+        }
+        // For reached, broken - price level input
+        else if (operator === 'reached' || operator === 'broken') {
+            thresholdContainer.innerHTML = `
+                <input type="number" class="condition-input" id="threshold-${conditionId}"
+                       placeholder="Price Level" step="0.01">
+            `;
+        }
+        // Default: number OR indicator selection (for comparison operators)
+        else if (operator && operator !== '') {
+            thresholdContainer.innerHTML = `
+                <select class="condition-select" id="threshold-mode-${conditionId}"
+                        onchange="toggleThresholdMode('${conditionId}')"
+                        style="width: auto; min-width: 80px;">
+                    <option value="number">Number</option>
+                    <option value="indicator">Indicator</option>
+                </select>
+                <div id="threshold-value-${conditionId}" style="flex: 1; display: flex;">
+                    <input type="number" class="condition-input" id="threshold-${conditionId}"
+                           placeholder="Value" step="0.01" style="flex: 1;">
+                </div>
+            `;
+        }
+        // No operator selected yet
+        else {
+            thresholdContainer.innerHTML = `
+                <input type="number" class="condition-input" id="threshold-${conditionId}"
+                       placeholder="Value" step="0.01" style="opacity: 0.5;" disabled>
+            `;
+        }
+    }
+
+    // Toggle between number and indicator threshold
+    function toggleThresholdMode(conditionId) {
+        const mode = document.getElementById(`threshold-mode-${conditionId}`)?.value;
+        const valueContainer = document.getElementById(`threshold-value-${conditionId}`);
+
+        // Check if this is an exit condition based on the conditionId format
+        const isExitCondition = conditionId.startsWith('exit-');
+        const availableIndicators = getAvailableIndicators(isExitCondition);
+
+        if (!valueContainer) return;
+
+        if (mode === 'indicator') {
+            valueContainer.innerHTML = `
+                <select class="condition-select" id="threshold-${conditionId}" style="flex: 1;">
+                    <option value="">Select Indicator</option>
+                    ${availableIndicators.map(ind => `<option value="${ind.value}">${ind.label}</option>`).join('')}
+                </select>
+            `;
+        } else {
+            valueContainer.innerHTML = `
+                <input type="number" class="condition-input" id="threshold-${conditionId}"
+                       placeholder="Value" step="0.01" style="flex: 1;">
+            `;
+        }
+    }
+
+    // Initialize with one condition for each side on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add default entry conditions
+        addEntryCondition('long');
+        addEntryCondition('short');
+
+        // Add default exit conditions
+        addExitCondition('long');
+        addExitCondition('short');
+        addExitCondition('stop_loss');
+        addExitCondition('take_profit');
+    });
+
+    // ========================================
+    // EXIT CONDITIONS MANAGEMENT
+    // ========================================
+
+    // Counter for exit condition IDs
+    let exitConditionCounter = { long: 0, short: 0, stop_loss: 0, take_profit: 0 };
+
+    function addExitCondition(category) {
+        const container = document.getElementById(`exit-${category}-conditions`);
+        if (!container) {
+            return;
+        }
+
+        exitConditionCounter[category]++;
+        const conditionId = `exit-${category}-${exitConditionCounter[category]}`;
+
+        const availableIndicators = getAvailableIndicators(true); // true = exit condition
+
+        const conditionRow = document.createElement('div');
+        conditionRow.className = 'condition-row';
+        conditionRow.id = `condition-${conditionId}`;
+
+        conditionRow.innerHTML = `
+            <div class="condition-badge">${exitConditionCounter[category]}</div>
+
+            <!-- Indicator Select -->
+            <select class="condition-select" id="indicator-${conditionId}" onchange="updateExitOperatorOptions('${conditionId}')">
+                <option value="">Select Indicator</option>
+                ${availableIndicators.map(ind => `<option value="${ind.value}">${ind.label}</option>`).join('')}
+            </select>
+
+            <!-- Operator Select (all operators for exit) -->
+            <select class="condition-select" id="operator-${conditionId}" onchange="updateConditionThreshold('${conditionId}')">
+                <option value="">Select Operator</option>
+                <optgroup label="📊 Comparison">
+                    ${OPERATORS.filter(op => op.category === 'Comparison').map(op =>
+                        `<option value="${op.value}">${op.label}</option>`
+                    ).join('')}
+                </optgroup>
+                <optgroup label="📈 Trend and Movement">
+                    ${OPERATORS.filter(op => op.category === 'Trend').map(op =>
+                        `<option value="${op.value}">${op.label}</option>`
+                    ).join('')}
+                </optgroup>
+                <optgroup label="💰 Position-Based">
+                    ${OPERATORS.filter(op => op.category === 'Position').map(op =>
+                        `<option value="${op.value}">${op.label}</option>`
+                    ).join('')}
+                </optgroup>
+                <optgroup label="💲 Price-Based">
+                    ${OPERATORS.filter(op => op.category === 'Fiyat').map(op =>
+                        `<option value="${op.value}">${op.label}</option>`
+                    ).join('')}
+                </optgroup>
+            </select>
+
+            <!-- Threshold (can be number or indicator name) -->
+            <div id="threshold-container-${conditionId}" style="flex: 1; display: flex; gap: 0.5rem;">
+                <input type="text" class="condition-input" id="threshold-${conditionId}"
+                       placeholder="Value or Indicator">
+            </div>
+
+            <!-- Timeframe Select (Optional) -->
+            <select class="condition-select" id="timeframe-${conditionId}" style="max-width: 100px;">
+                <option value="">Auto TF</option>
+                ${TIMEFRAMES.map(tf => `<option value="${tf}">${tf}</option>`).join('')}
+            </select>
+
+            <!-- Remove Button -->
+            <button type="button" class="remove-condition-btn" onclick="removeExitCondition('${conditionId}')">
+                🗑️
+            </button>
+        `;
+
+        container.appendChild(conditionRow);
+        renumberExitConditions(category);
+    }
+
+    function removeExitCondition(conditionId) {
+        const conditionRow = document.getElementById(`condition-${conditionId}`);
+        if (conditionRow) {
+            // Extract category: 'exit-long-1' -> 'long', 'exit-stop_loss-1' -> 'stop_loss'
+            const parts = conditionId.split('-');
+            const category = parts.slice(1, -1).join('_'); // Handle both 'long' and 'stop_loss'
+            conditionRow.remove();
+            renumberExitConditions(category);
+        }
+    }
+
+    function renumberExitConditions(category) {
+        const container = document.getElementById(`exit-${category}-conditions`);
+        if (!container) return;
+
+        const rows = container.querySelectorAll('.condition-row');
+        rows.forEach((row, index) => {
+            const badge = row.querySelector('.condition-badge');
+            if (badge) {
+                badge.textContent = index + 1;
+            }
+        });
+    }
+
+    // Update exit operator options based on selected indicator
+    function updateExitOperatorOptions(conditionId) {
+        const indicator = document.getElementById(`indicator-${conditionId}`)?.value;
+        const operatorSelect = document.getElementById(`operator-${conditionId}`);
+
+        if (!operatorSelect) return;
+
+        // Check if talib_patterns is selected
+        const isTalibPatterns = indicator && indicator.includes('talib_patterns');
+
+        // Check if built-in exit indicator is selected
+        const isBuiltInExitIndicator = ['loss_percent', 'profit_percent', 'atr_stop', 'support', 'resistance', 'time_in_position'].includes(indicator);
+
+        // Build operator options
+        let optionsHTML = '<option value="">Select Operator</option>';
+
+        // Add Pattern operator only for talib_patterns
+        if (isTalibPatterns) {
+            optionsHTML += `
+                <optgroup label="🎯 Pattern">
+                    <option value="pattern">Pattern (Candlestick Pattern)</option>
+                </optgroup>
+            `;
+        }
+        // Special handling for built-in exit indicators
+        else if (isBuiltInExitIndicator) {
+            if (indicator === 'loss_percent' || indicator === 'profit_percent' || indicator === 'time_in_position') {
+                // Only show comparison operators for percentage and time-based
+                optionsHTML += `
+                    <optgroup label="📊 Comparison">
+                        ${OPERATORS.filter(op => op.category === 'Comparison').map(op =>
+                            `<option value="${op.value}">${op.label}</option>`
+                        ).join('')}
+                    </optgroup>
+                `;
+            } else if (indicator === 'atr_stop') {
+                // Only triggered operator for ATR stop
+                optionsHTML += `
+                    <optgroup label="💰 Position-Based">
+                        <option value="triggered">Triggered (Tetiklendi)</option>
+                    </optgroup>
+                `;
+            } else if (indicator === 'support' || indicator === 'resistance') {
+                // reached/broken operators for support/resistance
+                optionsHTML += `
+                    <optgroup label="💲 Price-Based">
+                        <option value="reached">Reached (Ulaştı)</option>
+                        <option value="broken">Broken (Broken)</option>
+                    </optgroup>
+                `;
+            }
+        }
+        // Add standard operators (all operators available for exit)
+        else {
+            optionsHTML += `
+                <optgroup label="📊 Comparison">
+                    ${OPERATORS.filter(op => op.category === 'Comparison' && !op.patternOnly).map(op =>
+                        `<option value="${op.value}">${op.label}</option>`
+                    ).join('')}
+                </optgroup>
+                <optgroup label="📈 Trend and Movement">
+                    ${OPERATORS.filter(op => op.category === 'Trend' && !op.patternOnly).map(op =>
+                        `<option value="${op.value}">${op.label}</option>`
+                    ).join('')}
+                </optgroup>
+                <optgroup label="💰 Position-Based">
+                    ${OPERATORS.filter(op => op.category === 'Position' && !op.patternOnly).map(op =>
+                        `<option value="${op.value}">${op.label}</option>`
+                    ).join('')}
+                </optgroup>
+                <optgroup label="💲 Price-Based">
+                    ${OPERATORS.filter(op => op.category === 'Price' && !op.patternOnly).map(op =>
+                        `<option value="${op.value}">${op.label}</option>`
+                    ).join('')}
+                </optgroup>
+            `;
+        }
+
+        operatorSelect.innerHTML = optionsHTML;
+
+        // Trigger threshold update
+        updateExitConditionThreshold(conditionId);
+    }
+
+    function updateExitConditionThreshold(conditionId) {
+        // Same logic as updateConditionThreshold, but for exit conditions
+        const indicator = document.getElementById(`indicator-${conditionId}`)?.value;
+        const operator = document.getElementById(`operator-${conditionId}`)?.value;
+        const thresholdContainer = document.getElementById(`threshold-container-${conditionId}`);
+
+        if (!thresholdContainer) return;
+
+        const availableIndicators = getAvailableIndicators(true); // true = exit condition
+
+        // For pattern operator (talib_patterns only)
+        if (operator === 'pattern') {
+            thresholdContainer.innerHTML = `
+                <select class="condition-select" id="threshold-${conditionId}" style="flex: 1;">
+                    <option value="">Select Pattern</option>
+                    ${TALIB_PATTERNS.map(p => `<option value="${p.value}">${p.label}</option>`).join('')}
+                </select>
+                <select class="condition-select" id="threshold2-${conditionId}" style="width: 120px;">
+                    <option value="0">Any (Herhangi)</option>
+                    <option value="100">Bullish (Uptrend)</option>
+                    <option value="-100">Bearish (Decline)</option>
+                </select>
+            `;
+        }
+        // For crossover/crossunder, allow indicator selection as threshold
+        else if (operator === 'crossover' || operator === 'crossunder') {
+            thresholdContainer.innerHTML = `
+                <select class="condition-select" id="threshold-${conditionId}">
+                    <option value="">Select Target</option>
+                    <optgroup label="🔢 Numerical Value">
+                        <option value="number">Enter a number</option>
+                    </optgroup>
+                    <optgroup label="📊 Indicator">
+                        ${availableIndicators.map(ind => `<option value="${ind.value}">${ind.label}</option>`).join('')}
+                    </optgroup>
+                </select>
+                <input type="number" class="condition-input" id="threshold-number-${conditionId}"
+                       placeholder="Value" step="0.01" style="display: none;">
+            `;
+
+            const thresholdSelect = document.getElementById(`threshold-${conditionId}`);
+            const thresholdNumber = document.getElementById(`threshold-number-${conditionId}`);
+
+            if (thresholdSelect && thresholdNumber) {
+                thresholdSelect.addEventListener('change', function() {
+                    if (this.value === 'number') {
+                        thresholdNumber.style.display = 'block';
+                        thresholdSelect.style.display = 'none';
+                    }
+                });
+            }
+        }
+        // For rising/falling, use bars count
+        else if (operator === 'rising' || operator === 'falling') {
+            thresholdContainer.innerHTML = `
+                <input type="number" class="condition-input" id="threshold-${conditionId}"
+                       placeholder="Number of Bars" value="2" min="1" max="10" step="1">
+            `;
+        }
+        // For between/outside, need two values
+        else if (operator === 'between' || operator === 'outside') {
+            thresholdContainer.innerHTML = `
+                <input type="number" class="condition-input" id="threshold-${conditionId}"
+                       placeholder="Lower Value" step="0.01" style="flex: 1;">
+                <span style="color: var(--text-secondary);">-</span>
+                <input type="number" class="condition-input" id="threshold2-${conditionId}"
+                       placeholder="Upper Limit" step="0.01" style="flex: 1;">
+            `;
+        }
+        // For profit_percent, loss_percent indicators - percentage input
+        else if (indicator === 'profit_percent' || indicator === 'loss_percent') {
+            thresholdContainer.innerHTML = `
+                <input type="number" class="condition-input" id="threshold-${conditionId}"
+                       placeholder="Percentage (%)" value="1.0" min="0" max="100" step="0.1">
+            `;
+        }
+        // For time_in_position indicator - seconds input
+        else if (indicator === 'time_in_position') {
+            thresholdContainer.innerHTML = `
+                <input type="number" class="condition-input" id="threshold-${conditionId}"
+                       placeholder="Saniye" value="60" min="1" step="1">
+            `;
+        }
+        // For support/resistance indicators with reached/broken
+        else if ((indicator === 'support' || indicator === 'resistance') && (operator === 'reached' || operator === 'broken')) {
+            thresholdContainer.innerHTML = `
+                <span style="color: var(--text-secondary); padding: 0.5rem;">Threshold is not required</span>
+            `;
+        }
+        // For atr_stop indicator with triggered
+        else if (indicator === 'atr_stop' && operator === 'triggered') {
+            thresholdContainer.innerHTML = `
+                <span style="color: var(--text-secondary); padding: 0.5rem;">Threshold is not required</span>
+            `;
+        }
+        // For profit_percent, loss_percent operators (legacy support)
+        else if (operator === 'profit_percent' || operator === 'loss_percent') {
+            thresholdContainer.innerHTML = `
+                <input type="number" class="condition-input" id="threshold-${conditionId}"
+                       placeholder="Percentage (%)" value="1.0" min="0" max="100" step="0.1">
+            `;
+        }
+        // For reached, broken operators - price level input
+        else if (operator === 'reached' || operator === 'broken') {
+            thresholdContainer.innerHTML = `
+                <input type="number" class="condition-input" id="threshold-${conditionId}"
+                       placeholder="Price Level" step="0.01">
+            `;
+        }
+        // For triggered operator - no threshold needed
+        else if (operator === 'triggered') {
+            thresholdContainer.innerHTML = `
+                <span style="color: var(--text-secondary); padding: 0.5rem;">Threshold is not required</span>
+            `;
+        }
+        // Default: number OR indicator selection (for comparison operators)
+        else if (operator && operator !== '') {
+            thresholdContainer.innerHTML = `
+                <select class="condition-select" id="threshold-mode-${conditionId}"
+                        onchange="toggleThresholdMode('${conditionId}')"
+                        style="width: auto; min-width: 80px;">
+                    <option value="number">Number</option>
+                    <option value="indicator">Indicator</option>
+                </select>
+                <div id="threshold-value-${conditionId}" style="flex: 1; display: flex;">
+                    <input type="number" class="condition-input" id="threshold-${conditionId}"
+                           placeholder="Value" step="0.01" style="flex: 1;">
+                </div>
+            `;
+        }
+        // No operator selected yet
+        else {
+            thresholdContainer.innerHTML = `
+                <input type="number" class="condition-input" id="threshold-${conditionId}"
+                       placeholder="Value" step="0.01" style="opacity: 0.5;" disabled>
+            `;
+        }
+    }
+
+    // Toggle between number and indicator threshold
+    function toggleThresholdMode(conditionId) {
+        const mode = document.getElementById(`threshold-mode-${conditionId}`)?.value;
+        const valueContainer = document.getElementById(`threshold-value-${conditionId}`);
+
+        // Check if this is an exit condition based on the conditionId format
+        const isExitCondition = conditionId.startsWith('exit-');
+        const availableIndicators = getAvailableIndicators(isExitCondition);
+
+        if (!valueContainer) return;
+
+        if (mode === 'indicator') {
+            valueContainer.innerHTML = `
+                <select class="condition-select" id="threshold-${conditionId}" style="flex: 1;">
+                    <option value="">Select Indicator</option>
+                    ${availableIndicators.map(ind => `<option value="${ind.value}">${ind.label}</option>`).join('')}
+                </select>
+            `;
+        } else {
+            valueContainer.innerHTML = `
+                <input type="number" class="condition-input" id="threshold-${conditionId}"
+                       placeholder="Value" step="0.01" style="flex: 1;">
+            `;
+        }
+    }
+
+    // ========================================
+    // FILTER CONFIG TOGGLES
+    // ========================================
+    function toggleSessionFilterConfig() {
+        const checkbox = document.getElementById('filter-session-enabled');
+        const config = document.getElementById('session-filter-config');
+
+        if (checkbox && config) {
+            if (checkbox.checked) {
+                config.classList.add('show');
+            } else {
+                config.classList.remove('show');
+            }
+        }
+    }
+
+    function toggleTimeFilterConfig() {
+        const checkbox = document.getElementById('filter-time-enabled');
+        const config = document.getElementById('time-filter-config');
+
+        if (checkbox && config) {
+            if (checkbox.checked) {
+                config.classList.add('show');
+            } else {
+                config.classList.remove('show');
+            }
+        }
+    }
+
+    function toggleDayFilterConfig() {
+        const checkbox = document.getElementById('filter-day-enabled');
+        const config = document.getElementById('day-filter-config');
+
+        if (checkbox && config) {
+            if (checkbox.checked) {
+                config.classList.add('show');
+            } else {
+                config.classList.remove('show');
+            }
+        }
+    }
+
+    // ========================================
+    // COLLECT CONDITIONS FROM DOM
+    // ========================================
+    function collectConditionsFromDOM() {
+        console.log('📦 Collecting conditions from DOM...');
+
+        const collected = {
+            entry: { long: [], short: [] },
+            exit: { long: [], short: [], stop_loss: [], take_profit: [] }
+        };
+
+        // Collect ENTRY conditions (long/short)
+        ['long', 'short'].forEach(side => {
+            const container = document.getElementById(`entry-${side}-conditions`);
+            if (!container) {
+                console.warn(`⚠️ Entry ${side} container not found`);
+                return;
+            }
+
+            const rows = container.querySelectorAll('.condition-row');
+            console.log(`📋 Found ${rows.length} ${side} entry condition rows`);
+
+            rows.forEach((row, index) => {
+                const conditionId = row.id.replace('condition-', '');
+                const indicator = document.getElementById(`indicator-${conditionId}`)?.value;
+                const operator = document.getElementById(`operator-${conditionId}`)?.value;
+                const thresholdElem = document.getElementById(`threshold-${conditionId}`);
+                const threshold2Elem = document.getElementById(`threshold2-${conditionId}`);
+                const timeframeElem = document.getElementById(`timeframe-${conditionId}`);
+
+                if (!indicator || !operator) {
+                    console.warn(`⚠️ Skipping ${side} row ${index}: missing indicator or operator`);
+                    return;
+                }
+
+                // Build condition array based on operator type
+                let condition;
+
+                // Pattern operator (special case with 2 thresholds)
+                if (operator === 'pattern') {
+                    const pattern = thresholdElem?.value;
+                    const direction = threshold2Elem?.value;
+                    if (pattern) {
+                        condition = [indicator, operator, pattern, parseInt(direction) || 0];
+                    }
+                }
+                // Between/outside operators (need 2 values as array)
+                else if (operator === 'between' || operator === 'outside') {
+                    const minVal = thresholdElem?.value;
+                    const maxVal = threshold2Elem?.value;
+                    if (minVal && maxVal) {
+                        condition = [indicator, operator, [parseFloat(minVal), parseFloat(maxVal)]];
+                    }
+                }
+                // Crossover/crossunder (threshold can be indicator or number)
+                else if (operator === 'crossover' || operator === 'crossunder') {
+                    let thresholdValue = thresholdElem?.value;
+
+                    // If user selected "Sayı Gir" (Enter Number), get value from the number input.
+                    if (thresholdValue === 'number') {
+                        const numberInput = document.getElementById(`threshold-number-${conditionId}`);
+                        if (numberInput && numberInput.value) {
+                            thresholdValue = numberInput.value;
+                        } else {
+                            // No number entered, skip this condition
+                            console.warn(`⚠️ Skipping ${side} row ${index}: 'number' selected but no value entered`);
+                            return;
+                        }
+                    }
+
+                    if (thresholdValue) {
+                        // If threshold is a number, parse it, otherwise keep as string (indicator name)
+                        const parsedThreshold = isNaN(thresholdValue) ? thresholdValue : parseFloat(thresholdValue);
+                        condition = [indicator, operator, parsedThreshold];
+                    }
+                }
+                // Standard operators with numeric threshold OR indicator comparison
+                else {
+                    const thresholdValue = thresholdElem?.value;
+                    if (thresholdValue) {
+                        // Check if threshold is a number or indicator name
+                        const parsedThreshold = isNaN(thresholdValue) ? thresholdValue : parseFloat(thresholdValue);
+                        condition = [indicator, operator, parsedThreshold];
+                    }
+                }
+
+                // Add timeframe if specified
+                if (condition && timeframeElem?.value) {
+                    condition.push(timeframeElem.value);
+                }
+
+                if (condition) {
+                    collected.entry[side].push(condition);
+                    console.log(`  ✓ [${index}] ${side} entry:`, condition);
+                }
+            });
+        });
+
+        // Collect EXIT conditions (long/short/stop_loss/take_profit)
+        ['long', 'short', 'stop_loss', 'take_profit'].forEach(category => {
+            const container = document.getElementById(`exit-${category}-conditions`);
+            if (!container) {
+                console.warn(`⚠️ Exit ${category} container not found`);
+                return;
+            }
+
+            const rows = container.querySelectorAll('.condition-row');
+            console.log(`📋 Found ${rows.length} ${category} exit condition rows`);
+
+            rows.forEach((row, index) => {
+                const conditionId = row.id.replace('condition-', '');
+                const indicator = document.getElementById(`indicator-${conditionId}`)?.value;
+                const operator = document.getElementById(`operator-${conditionId}`)?.value;
+                const thresholdElem = document.getElementById(`threshold-${conditionId}`);
+                const threshold2Elem = document.getElementById(`threshold2-${conditionId}`);
+                const timeframeElem = document.getElementById(`timeframe-${conditionId}`);
+
+                if (!indicator || !operator) {
+                    console.warn(`⚠️ Skipping ${category} row ${index}: missing indicator or operator`);
+                    return;
+                }
+
+                // Build condition array (same logic as entry conditions)
+                let condition;
+
+                if (operator === 'pattern') {
+                    const pattern = thresholdElem?.value;
+                    const direction = threshold2Elem?.value;
+                    if (pattern) {
+                        condition = [indicator, operator, pattern, parseInt(direction) || 0];
+                    }
+                }
+                // Between/outside operators (need 2 values as array)
+                else if (operator === 'between' || operator === 'outside') {
+                    const minVal = thresholdElem?.value;
+                    const maxVal = threshold2Elem?.value;
+                    if (minVal && maxVal) {
+                        condition = [indicator, operator, [parseFloat(minVal), parseFloat(maxVal)]];
+                    }
+                }
+                else if (operator === 'crossover' || operator === 'crossunder') {
+                    let thresholdValue = thresholdElem?.value;
+
+                    // If user selected "Sayı Gir" (Enter Number), get value from the number input
+                    if (thresholdValue === 'number') {
+                        const numberInput = document.getElementById(`threshold-number-${conditionId}`);
+                        if (numberInput && numberInput.value) {
+                            thresholdValue = numberInput.value;
+                        } else {
+                            // No number entered, skip this condition
+                            console.warn(`⚠️ Skipping ${category} row ${index}: 'number' selected but no value entered`);
+                            return;
+                        }
+                    }
+
+                    if (thresholdValue) {
+                        const parsedThreshold = isNaN(thresholdValue) ? thresholdValue : parseFloat(thresholdValue);
+                        condition = [indicator, operator, parsedThreshold];
+                    }
+                }
+                // Standard operators with numeric threshold OR indicator comparison
+                else {
+                    const thresholdValue = thresholdElem?.value;
+                    if (thresholdValue) {
+                        // Check if threshold is a number or indicator name
+                        const parsedThreshold = isNaN(thresholdValue) ? thresholdValue : parseFloat(thresholdValue);
+                        condition = [indicator, operator, parsedThreshold];
+                    }
+                }
+
+                if (condition && timeframeElem?.value) {
+                    condition.push(timeframeElem.value);
+                }
+
+                if (condition) {
+                    collected.exit[category].push(condition);
+                    console.log(`  ✓ [${index}] ${category} exit:`, condition);
+                }
+            });
+        });
+
+        console.log('✅ Collected conditions:', collected);
+        return collected;
+    }
+
+    // ========================================
+    // SAVE STRATEGY
+    // ========================================
+    async function saveStrategy() {
+        showLoading(true);
+
+        // Collect current conditions from DOM before saving
+        const conditions = collectConditionsFromDOM();
+
+        // Update global variables with collected conditions
+        entryConditions = conditions.entry;
+        exitConditions = conditions.exit;
+
+        console.log('💾 Saving with conditions:', { entryConditions, exitConditions });
+
+        const data = {
+            // Basic Information
+            name: document.getElementById('strategy-name').value,
+            version: document.getElementById('strategy-version').value,
+            description: document.getElementById('strategy-description').value,
+            author: document.getElementById('strategy-author')?.value || 'WebUI Generated',
+            warmup_period: parseInt(document.getElementById('warmup-period')?.value || 100),
+
+            // Symbols
+            symbols: selectedSymbols,
+            symbol_source: loadedStrategyData?.symbol_source || 'strategy',
+
+            // Global Trading Config
+            trading_side: document.getElementById('side-method')?.value.toLowerCase() || 'long_short',
+            leverage: parseInt(document.getElementById('leverage')?.value || 1),
+
+            // Timeframes
+            primary_timeframe: document.getElementById('primary-timeframe')?.value || '15m',
+            timeframes: selectedTimeframes.length > 0 ? selectedTimeframes : ['15m'],
+
+            // Margin Config
+            set_default_leverage: document.getElementById('set-default-leverage')?.checked || false,
+            hedge_mode: document.getElementById('hedge-mode')?.checked || false,
+            set_margin_type: document.getElementById('set-margin-type')?.checked || false,
+            margin_type: document.getElementById('margin-type')?.value || 'isolated',
+
+            // Backtest Config
+            backtest_start_date: document.getElementById('backtest-start-date')?.value || '2025-01-01T00:00',
+            backtest_end_date: document.getElementById('backtest-end-date')?.value || '2025-12-31T00:00',
+            initial_balance: parseFloat(document.getElementById('initial-balance')?.value || 10000.0),
+            download_klines: document.getElementById('download-klines')?.checked || false,
+            update_klines: document.getElementById('update-klines')?.checked || false,
+
+            // Backtest Parameters
+            commission: parseFloat(document.getElementById('commission')?.value || 0.075),
+            min_spread: parseFloat(document.getElementById('min-spread')?.value || 0.01),
+            max_slippage: parseFloat(document.getElementById('max-slippage')?.value || 0.02),
+
+            // Risk Management
+            risk_management: {
+                sizing_method: document.getElementById('rm-sizing-method')?.value || 'fixed_usd',
+                size_value: parseFloat(document.getElementById('rm-size-value')?.value || 100),
+                max_risk_per_trade: parseFloat(document.getElementById('rm-max-risk-per-trade')?.value || 1.0),
+                max_drawdown: parseFloat(document.getElementById('rm-max-drawdown')?.value || 10.0),
+                max_daily_trades: parseInt(document.getElementById('rm-max-daily-trades')?.value || 20),
+                max_correlation: parseFloat(document.getElementById('rm-max-correlation')?.value || 0.6),
+                position_correlation_limit: parseFloat(document.getElementById('rm-position-correlation-limit')?.value || 0.7),
+                emergency_stop_enabled: document.getElementById('rm-emergency-stop')?.checked || false,
+                ai_risk_enabled: document.getElementById('rm-ai-risk-enabled')?.checked || false,
+                dynamic_position_sizing: document.getElementById('rm-dynamic-sizing')?.checked || false
+            },
+
+            // Position Management
+            position_management: {
+                max_total_positions: parseInt(document.getElementById('pm-max-total-positions')?.value || 3),
+                max_positions_per_symbol: parseInt(document.getElementById('pm-max-positions-per-symbol')?.value || 1),
+                allow_hedging: document.getElementById('pm-allow-hedging')?.checked || false,
+                position_timeout: parseInt(document.getElementById('pm-position-timeout')?.value || 1800),
+                pyramiding_enabled: document.getElementById('pm-pyramiding-enabled')?.checked || false,
+                pyramiding_max_entries: parseInt(document.getElementById('pm-pyramiding-max-entries')?.value || 3),
+                pyramiding_scale_factor: parseFloat(document.getElementById('pm-pyramiding-scale-factor')?.value || 0.5)
+            },
+
+            // Exit Strategy
+            exit_strategy: {
+                take_profit_method: document.getElementById('es-tp-method')?.value || 'fixed_percent',
+                take_profit_value: (() => {
+                    // Try all possible TP field IDs based on method
+                    const tpField = document.getElementById('es-take_profit_value') ||
+                                   document.getElementById('es-tp_risk_reward_ratio') ||
+                                   document.getElementById('es-tp_atr_multiplier') ||
+                                   document.getElementById('es-tp_price');
+                    return tpField ? parseFloat(tpField.value) : 3.0;
+                })(),
+                stop_loss_method: document.getElementById('es-sl-method')?.value || 'fixed_percent',
+                stop_loss_value: (() => {
+                    // Try all possible SL field IDs based on method
+                    const slField = document.getElementById('es-stop_loss_value') ||
+                                   document.getElementById('es-sl_atr_multiplier');
+                    return slField ? parseFloat(slField.value) : 2.0;
+                })(),
+                trailing_stop_enabled: document.getElementById('es-trailing-stop-enabled')?.checked || false,
+                trailing_activation_profit: parseFloat(document.getElementById('es-trailing-activation')?.value || 1.0),
+                trailing_callback_percent: parseFloat(document.getElementById('es-trailing-callback')?.value || 0.4),
+                trailing_take_profit: document.getElementById('es-trailing-tp-enabled')?.checked || false,
+                trailing_distance: parseFloat(document.getElementById('es-trailing-distance')?.value || 0.2),
+                break_even_enabled: document.getElementById('es-breakeven-enabled')?.checked || false,
+                break_even_trigger_profit_percent: parseFloat(document.getElementById('es-breakeven-trigger')?.value || 1.0),
+                break_even_offset: parseFloat(document.getElementById('es-breakeven-offset')?.value || 0.1),
+                partial_exit_enabled: document.getElementById('es-partial-enabled')?.checked || false,
+                partial_exit_levels: (() => {
+                    const levels = [];
+                    for (let i = 1; i <= 3; i++) {
+                        const levelInput = document.getElementById(`es-partial-level-${i}`);
+                        if (levelInput && levelInput.value) {
+                            levels.push(parseFloat(levelInput.value));
+                        }
+                    }
+                    return levels;
+                })(),
+                partial_exit_sizes: (() => {
+                    const sizes = [];
+                    for (let i = 1; i <= 3; i++) {
+                        const sizeInput = document.getElementById(`es-partial-size-${i}`);
+                        if (sizeInput && sizeInput.value) {
+                            // Convert from percentage (40) to decimal (0.40)
+                            sizes.push(parseFloat(sizeInput.value) / 100);
+                        }
+                    }
+                    return sizes;
+                })()
+            },
+
+            // Technical Indicators
+            indicators: addedIndicators.map(ind => {
+                const params = {};
+                const suffix = document.getElementById(`${ind.id}-suffix`)?.value || '';
+
+                // Collect all parameters from the indicator's params object
+                if (ind.params) {
+                    Object.keys(ind.params).forEach(paramName => {
+                        const input = document.getElementById(`${ind.id}-${paramName}`);
+                        if (input) {
+                            params[paramName] = parseFloat(input.value) || input.value;
+                        }
+                    });
+                }
+
+                return {
+                    key: ind.key,
+                    suffix: suffix,
+                    params: params
+                };
+            }),
+
+            // Entry Conditions
+            entry_conditions: entryConditions,
+
+            // Exit Conditions
+            exit_conditions: exitConditions,
+
+            // Custom Parameters / Filters
+            custom_parameters: {
+                // News Filter
+                news_filter: document.getElementById('filter-news')?.checked || false,
+
+                // Session Filter
+                session_filter: {
+                    enabled: document.getElementById('filter-session-enabled')?.checked || false,
+                    sydney: document.getElementById('filter-session-sydney')?.checked || false,
+                    tokyo: document.getElementById('filter-session-tokyo')?.checked || false,
+                    london: document.getElementById('filter-session-london')?.checked || false,
+                    new_york: document.getElementById('filter-session-newyork')?.checked || false,
+                    london_ny_overlap: document.getElementById('filter-session-overlap')?.checked || false
+                },
+                // Time Filter
+                time_filter: {
+                    enabled: document.getElementById('filter-time-enabled')?.checked || false,
+                    start_hour: parseInt(document.getElementById('filter-time-start')?.value || 8),
+                    end_hour: parseInt(document.getElementById('filter-time-end')?.value || 21),
+                    exclude_hours: (document.getElementById('filter-time-exclude')?.value || '')
+                        .split(',')
+                        .map(h => h.trim())
+                        .filter(h => h !== '')
+                        .map(h => parseInt(h))
+                },
+                // Day Filter
+                day_filter: {
+                    enabled: document.getElementById('filter-day-enabled')?.checked || false,
+                    monday: document.getElementById('filter-day-monday')?.checked || false,
+                    tuesday: document.getElementById('filter-day-tuesday')?.checked || false,
+                    wednesday: document.getElementById('filter-day-wednesday')?.checked || false,
+                    thursday: document.getElementById('filter-day-thursday')?.checked || false,
+                    friday: document.getElementById('filter-day-friday')?.checked || false,
+                    saturday: document.getElementById('filter-day-saturday')?.checked || false,
+                    sunday: document.getElementById('filter-day-sunday')?.checked || false
+                }
+            }
+        };
+
+        try {
+            // Determine the actual strategy ID to use
+            // If creating new strategy, use the user-entered name as the file name
+            const actualStrategyId = isNewStrategy ? data.name : strategyId;
+
+            // Validate strategy name
+            if (!actualStrategyId || actualStrategyId.trim() === '') {
+                showToast('Error', 'Strategy name cannot be empty', 'error');
+                showLoading(false);
+                return;
+            }
+
+            // If creating new strategy, check if file exists first
+            if (isNewStrategy) {
+                const checkResponse = await fetch(`/api/strategies/${actualStrategyId}/exists`);
+                const checkResult = await checkResponse.json();
+
+                if (checkResult.data && checkResult.data.exists) {
+                    const confirmOverwrite = await confirm({
+                        title: 'Dosya Mevcut',
+                        message: `"${actualStrategyId}" adında bir dosya zaten var. Üzerine yazmak istiyor musunuz?`,
+                        type: 'warning',
+                        confirmText: 'Üzerine Yaz',
+                        cancelText: 'İptal'
+                    });
+
+                    if (!confirmOverwrite) {
+                        showLoading(false);
+                        return;
+                    }
+                }
+            }
+
+            // Use POST for new strategies, PUT for updates
+            const endpoint = isNewStrategy ? '/api/strategies/' : `/api/strategies/${actualStrategyId}`;
+            const method = isNewStrategy ? 'POST' : 'PUT';
+
+            const response = await fetch(endpoint, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                const successMessage = isNewStrategy ? 'Strategy created' : 'Strategy updated';
+                showToast('Success', successMessage, 'success');
+                setTimeout(() => window.location.href = `/strategies/${actualStrategyId}`, 500);
+            } else {
+                const errorMessage = isNewStrategy ? 'Creation failed' : 'Update failed';
+                showToast('Error', result.message || errorMessage, 'error');
+            }
+        } catch (error) {
+            console.error('Error saving strategy:', error);
+            showToast('Error', 'An error occurred during saving', 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    // ========================================
+    // LOAD STRATEGY FROM FILE
+    // ========================================
+    async function loadStrategyFromFile() {
+        showLoading(true);
+
+        try {
+            const response = await fetch(`/api/strategies/${strategyId}/load`);
+            const result = await response.json();
+
+            if (result.status === 'success' && result.data) {
+                populateFormFromData(result.data);
+                showToast('Success', 'Strategy loaded', 'success');
+            } else {
+                showToast('Error', result.message || 'Upload failed', 'error');
+            }
+        } catch (error) {
+            console.error('Error loading strategy:', error);
+            showToast('Error', 'An error occurred during loading', 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    function populateFormFromData(data) {
+        console.log('📂 Loading strategy:', data);
+
+        // ════════════════════════════════════════════════════════════
+        // BASIC INFORMATION
+        // ════════════════════════════════════════════════════════════
+        // If creating new strategy, clear name but keep other template fields
+        if (isNewStrategy) {
+            document.getElementById('strategy-name').value = '';
+        } else {
+            document.getElementById('strategy-name').value = data.name || '';
+        }
+
+        document.getElementById('strategy-version').value = data.version || '1.0.0';
+        document.getElementById('strategy-description').value = data.description || '';
+
+        // Yeni alanlar
+        if (document.getElementById('strategy-author')) {
+            document.getElementById('strategy-author').value = data.author || 'Unknown';
+        }
+
+        // ════════════════════════════════════════════════════════════
+        // TRADING CONFIGURATION
+        // ════════════════════════════════════════════════════════════
+        if (document.getElementById('side-method')) {
+            // Backend: 'long_only' → Frontend: 'LONG_ONLY'
+            const sideValue = (data.trading_side || 'long_short').toUpperCase();
+            document.getElementById('side-method').value = sideValue;
+        }
+        if (document.getElementById('leverage')) {
+            document.getElementById('leverage').value = data.leverage || 1;
+        }
+
+        // ════════════════════════════════════════════════════════════
+        // MARGIN CONFIGURATION
+        // ════════════════════════════════════════════════════════════
+        if (document.getElementById('set-default-leverage')) {
+            document.getElementById('set-default-leverage').checked = data.set_default_leverage || false;
+        }
+        if (document.getElementById('hedge-mode')) {
+            document.getElementById('hedge-mode').checked = data.hedge_mode || false;
+        }
+        if (document.getElementById('set-margin-type')) {
+            document.getElementById('set-margin-type').checked = data.set_margin_type || false;
+        }
+        if (document.getElementById('margin-type')) {
+            document.getElementById('margin-type').value = data.margin_type || 'isolated';
+        }
+
+        // ════════════════════════════════════════════════════════════
+        // TIMEFRAME CONFIGURATION
+        // ════════════════════════════════════════════════════════════
+        // Warmup Period
+        if (document.getElementById('warmup-period')) {
+            document.getElementById('warmup-period').value = data.warmup_period || 100;
+        }
+
+        if (document.getElementById('primary-timeframe')) {
+            document.getElementById('primary-timeframe').value = data.primary_timeframe || '15m';
+        }
+
+        // Multi-timeframe checkboxes
+        if (data.timeframes && Array.isArray(data.timeframes)) {
+            // First, clear all checkboxes
+            const checkboxes = document.querySelectorAll('#timeframe-dropdown-menu input[type="checkbox"]');
+            checkboxes.forEach(cb => cb.checked = false);
+
+            // Mark the loaded timeframes
+            data.timeframes.forEach(tf => {
+                const checkbox = document.querySelector(`#timeframe-dropdown-menu input[value="${tf}"]`);
+                if (checkbox) {
+                    checkbox.checked = true;
+                }
+            });
+
+            // Update the selectedTimeframes array (if it exists)
+            if (typeof selectedTimeframes !== 'undefined') {
+                selectedTimeframes = [...data.timeframes];
+            }
+
+            // Update the display
+            if (typeof updateTimeframesDisplay === 'function') {
+                updateTimeframesDisplay();
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════
+        // BACKTEST CONFIGURATION
+        // ════════════════════════════════════════════════════════════
+        if (document.getElementById('backtest-start-date')) {
+            // Convert "2025-01-01 00:00" to "2025-01-01T00:00" for datetime-local
+            const startDate = (data.backtest_start_date || '2025-01-01 00:00').replace(' ', 'T');
+            document.getElementById('backtest-start-date').value = startDate;
+        }
+        if (document.getElementById('backtest-end-date')) {
+            // Convert "2025-12-31 00:00" to "2025-12-31T00:00"
+            const endDate = (data.backtest_end_date || '2025-12-31 00:00').replace(' ', 'T');
+            document.getElementById('backtest-end-date').value = endDate;
+        }
+        if (document.getElementById('initial-balance')) {
+            document.getElementById('initial-balance').value = data.initial_balance || 10000;
+        }
+        if (document.getElementById('download-klines')) {
+            document.getElementById('download-klines').checked = data.download_klines || false;
+        }
+        if (document.getElementById('update-klines')) {
+            document.getElementById('update-klines').checked = data.update_klines || false;
+        }
+        if (document.getElementById('commission')) {
+            document.getElementById('commission').value = data.commission || 0.075;
+        }
+        if (document.getElementById('min-spread')) {
+            document.getElementById('min-spread').value = data.min_spread || 0.01;
+        }
+        if (document.getElementById('max-slippage')) {
+            document.getElementById('max-slippage').value = data.max_slippage || 0.02;
+        }
+
+        // ════════════════════════════════════════════════════════════
+        // SYMBOLS
+        // ════════════════════════════════════════════════════════════
+        if (document.getElementById('symbol-source')) {
+            document.getElementById('symbol-source').value = data.symbol_source || 'strategy';
+            // Toggle UI visibility based on source
+            if (typeof toggleSymbolSource === 'function') {
+                toggleSymbolSource();
+            }
+        }
+
+        if (data.symbols && Array.isArray(data.symbols)) {
+            selectedSymbols = [...data.symbols];
+            renderSymbols();
+        }
+
+        // ════════════════════════════════════════════════════════════
+        // RISK MANAGEMENT
+        // ════════════════════════════════════════════════════════════
+        if (data.risk_management) {
+            const rm = data.risk_management;
+
+            // Position Sizing Method
+            if (document.getElementById('rm-sizing-method')) {
+                document.getElementById('rm-sizing-method').value = rm.position_size_type || 'risk_based';
+                // Trigger parameter update
+                if (typeof updateSizingMethodParams === 'function') {
+                    updateSizingMethodParams(rm.position_size_type || 'risk_based');
+                }
+            }
+
+            // Dynamic sizing parameter (set after updateSizingMethodParams creates the field)
+            setTimeout(() => {
+                if (document.getElementById('rm-size-value')) {
+                    // Backend sends 'size_value', not 'position_size_value'
+                    document.getElementById('rm-size-value').value = rm.size_value || rm.position_size_value || 1.0;
+                }
+            }, 50);
+
+            // Risk Limits
+            if (document.getElementById('rm-max-risk-per-trade')) {
+                document.getElementById('rm-max-risk-per-trade').value = rm.max_loss_per_trade || 1.0;
+            }
+            if (document.getElementById('rm-max-drawdown')) {
+                document.getElementById('rm-max-drawdown').value = rm.max_drawdown || 10.0;
+            }
+            if (document.getElementById('rm-max-daily-trades')) {
+                document.getElementById('rm-max-daily-trades').value = rm.max_daily_trades || 20;
+            }
+
+            // Correlation & Position Management
+            if (document.getElementById('rm-max-correlation')) {
+                document.getElementById('rm-max-correlation').value = rm.max_correlation || 0.6;
+            }
+            if (document.getElementById('rm-position-correlation-limit')) {
+                document.getElementById('rm-position-correlation-limit').value = rm.position_correlation_limit || 0.7;
+            }
+
+            // Max Open Positions (from position_management)
+            if (document.getElementById('pm-max-positions')) {
+                document.getElementById('pm-max-positions').value = rm.max_open_positions || 3;
+            }
+
+            // Advanced Features (checkboxes)
+            if (document.getElementById('rm-emergency-stop')) {
+                document.getElementById('rm-emergency-stop').checked = rm.emergency_stop_enabled !== false;
+            }
+            if (document.getElementById('rm-ai-risk-enabled')) {
+                document.getElementById('rm-ai-risk-enabled').checked = rm.ai_risk_enabled || false;
+            }
+            if (document.getElementById('rm-dynamic-sizing')) {
+                document.getElementById('rm-dynamic-sizing').checked = rm.dynamic_sizing_enabled || false;
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════
+        // POSITION MANAGEMENT
+        // ════════════════════════════════════════════════════════════
+        if (data.position_management) {
+            const pm = data.position_management;
+
+            // Basic settings
+            if (document.getElementById('entry-order-type')) {
+                document.getElementById('entry-order-type').value = pm.entry_order_type || 'market';
+            }
+            if (document.getElementById('exit-order-type')) {
+                document.getElementById('exit-order-type').value = pm.exit_order_type || 'market';
+            }
+            if (document.getElementById('leverage')) {
+                document.getElementById('leverage').value = pm.leverage || 1;
+            }
+
+            // Position limits
+            if (document.getElementById('pm-max-total-positions')) {
+                document.getElementById('pm-max-total-positions').value = pm.max_total_positions || 3;
+            }
+            if (document.getElementById('pm-max-positions-per-symbol')) {
+                document.getElementById('pm-max-positions-per-symbol').value = pm.max_positions_per_symbol || 1;
+            }
+            if (document.getElementById('pm-position-timeout')) {
+                document.getElementById('pm-position-timeout').value = pm.position_timeout || 1800;
+            }
+
+            // Pyramiding
+            if (document.getElementById('pm-pyramiding-enabled')) {
+                document.getElementById('pm-pyramiding-enabled').checked = pm.pyramiding_enabled || false;
+                // Trigger toggle to show/hide config
+                if (typeof togglePyramidingConfig === 'function') {
+                    togglePyramidingConfig();
+                }
+            }
+            if (document.getElementById('pm-pyramiding-max-entries')) {
+                document.getElementById('pm-pyramiding-max-entries').value = pm.max_pyramid_entries || 3;
+            }
+            if (document.getElementById('pm-pyramiding-scale-factor')) {
+                document.getElementById('pm-pyramiding-scale-factor').value = pm.pyramid_scale_factor || 0.5;
+            }
+
+            // TP/SL from position_management (legacy support)
+            if (document.getElementById('trailing-stop-loss')) {
+                document.getElementById('trailing-stop-loss').checked = pm.trailing_stop_loss || false;
+            }
+            if (document.getElementById('stop-loss-value')) {
+                document.getElementById('stop-loss-value').value = pm.stop_loss_value || 1.0;
+            }
+            if (document.getElementById('take-profit-value')) {
+                document.getElementById('take-profit-value').value = pm.take_profit_value || 2.0;
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════
+        // EXIT STRATEGY
+        // ════════════════════════════════════════════════════════════
+        if (data.exit_strategy) {
+            const es = data.exit_strategy;
+            console.log('📊 Loading Exit Strategy:', es);
+
+            // ──────────────────────────────────────
+            // TAKE PROFIT
+            // ──────────────────────────────────────
+            if (document.getElementById('es-tp-method')) {
+                document.getElementById('es-tp-method').value = es.take_profit_method || 'fixed_percent';
+                // Trigger method change to show appropriate parameters
+                if (typeof updateTPMethodParams === 'function') {
+                    updateTPMethodParams(es.take_profit_method || 'fixed_percent');
+                }
+            }
+
+            // Set TP value after updateTPMethodParams creates the field
+            setTimeout(() => {
+                const tpField = document.getElementById('es-take_profit_value') || document.getElementById('es-tp_risk_reward_ratio') || document.getElementById('es-tp_atr_multiplier') || document.getElementById('es-tp_price');
+                if (tpField) {
+                    tpField.value = es.take_profit_value || 2.0;
+                    console.log('✅ TP value loaded:', tpField.id, '=', es.take_profit_value);
+                } else {
+                    console.warn('⚠️ TP field not found');
+                }
+            }, 100);
+
+            // ──────────────────────────────────────
+            // STOP LOSS
+            // ──────────────────────────────────────
+            if (document.getElementById('es-sl-method')) {
+                document.getElementById('es-sl-method').value = es.stop_loss_method || 'fixed_percent';
+                // Trigger method change to show appropriate parameters
+                if (typeof updateSLMethodParams === 'function') {
+                    updateSLMethodParams(es.stop_loss_method || 'fixed_percent');
+                }
+            }
+
+            // Set SL value after updateSLMethodParams creates the field
+            setTimeout(() => {
+                const slField = document.getElementById('es-stop_loss_value') || document.getElementById('es-sl_atr_multiplier');
+                if (slField) {
+                    slField.value = es.stop_loss_value || 1.0;
+                    console.log('✅ SL value loaded:', slField.id, '=', es.stop_loss_value);
+                } else {
+                    console.warn('⚠️ SL field not found');
+                }
+            }, 100);
+
+            // ──────────────────────────────────────
+            // TRAILING STOP LOSS
+            // ──────────────────────────────────────
+            if (document.getElementById('es-trailing-stop-enabled')) {
+                document.getElementById('es-trailing-stop-enabled').checked = es.trailing_stop_enabled || false;
+                // Trigger toggle to show/hide config
+                if (typeof toggleTrailingStopConfig === 'function') {
+                    toggleTrailingStopConfig();
+                }
+            }
+            if (document.getElementById('es-trailing-callback')) {
+                document.getElementById('es-trailing-callback').value = es.trailing_callback_percent || 0.4;
+            }
+            if (document.getElementById('es-trailing-activation')) {
+                document.getElementById('es-trailing-activation').value = es.trailing_activation_profit || 1.0;
+            }
+
+            // ──────────────────────────────────────
+            // TRAILING TAKE PROFIT
+            // ──────────────────────────────────────
+            if (document.getElementById('es-trailing-tp-enabled')) {
+                document.getElementById('es-trailing-tp-enabled').checked = es.trailing_take_profit || false;
+                // Trigger toggle to show/hide config
+                if (typeof toggleTrailingTPConfig === 'function') {
+                    toggleTrailingTPConfig();
+                }
+            }
+            if (document.getElementById('es-trailing-distance')) {
+                document.getElementById('es-trailing-distance').value = es.trailing_distance || 0.2;
+            }
+
+            // ──────────────────────────────────────
+            // BREAK-EVEN
+            // ──────────────────────────────────────
+            if (document.getElementById('es-breakeven-enabled')) {
+                document.getElementById('es-breakeven-enabled').checked = es.break_even_enabled || false;
+                // Trigger toggle to show/hide config
+                if (typeof toggleBreakevenConfig === 'function') {
+                    toggleBreakevenConfig();
+                }
+            }
+            if (document.getElementById('es-breakeven-trigger')) {
+                document.getElementById('es-breakeven-trigger').value = es.break_even_trigger_profit_percent || 1.0;
+            }
+            if (document.getElementById('es-breakeven-offset')) {
+                document.getElementById('es-breakeven-offset').value = es.break_even_offset || 0.1;
+            }
+
+            // ──────────────────────────────────────
+            // PARTIAL EXIT
+            // ──────────────────────────────────────
+            if (document.getElementById('es-partial-enabled')) {
+                document.getElementById('es-partial-enabled').checked = es.partial_exit_enabled || false;
+                // Trigger toggle to show/hide config
+                if (typeof togglePartialExitConfig === 'function') {
+                    togglePartialExitConfig();
+                }
+            }
+
+            // Load partial exit levels and sizes
+            if (es.partial_exit_levels && es.partial_exit_sizes && Array.isArray(es.partial_exit_levels) && Array.isArray(es.partial_exit_sizes)) {
+                console.log('📊 Partial Exit - Levels:', es.partial_exit_levels, 'Sizes:', es.partial_exit_sizes);
+                for (let i = 0; i < Math.min(es.partial_exit_levels.length, es.partial_exit_sizes.length); i++) {
+                    const levelField = document.getElementById(`es-partial-level-${i + 1}`);
+                    const sizeField = document.getElementById(`es-partial-size-${i + 1}`);
+
+                    console.log(`  Level ${i+1}:`, levelField ? levelField.id : 'NOT FOUND', '=', es.partial_exit_levels[i]);
+                    console.log(`  Size ${i+1}:`, sizeField ? sizeField.id : 'NOT FOUND', '=', es.partial_exit_sizes[i]);
+
+                    if (levelField) {
+                        levelField.value = es.partial_exit_levels[i];
+                    }
+                    if (sizeField) {
+                        // Convert from decimal (0.3) to percentage (30)
+                        sizeField.value = es.partial_exit_sizes[i] * 100;
+                    }
+                }
+            } else {
+                console.warn('⚠️ Partial exit data is missing or invalid:', {
+                    levels: es.partial_exit_levels,
+                    sizes: es.partial_exit_sizes
+                });
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════
+        // TECHNICAL INDICATORS
+        // ════════════════════════════════════════════════════════════
+        if (data.indicators && Array.isArray(data.indicators)) {
+            // Clear existing indicators
+            addedIndicators = [];
+            const container = document.getElementById('added-indicators-container');
+            if (container) {
+                container.innerHTML = '';
+            }
+
+            // Add each indicator
+            data.indicators.forEach(indData => {
+                // Get indicator definition from registry
+                const indicatorDef = INDICATOR_REGISTRY[indData.key];
+                if (indicatorDef) {
+                    // Generate unique ID
+                    const uniqueId = `ind-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+                    // Create indicator object with loaded params
+                    const newIndicator = {
+                        id: uniqueId,
+                        key: indData.key,
+                        suffix: indData.suffix || '',
+                        params: indData.params || {},
+                        description: indicatorDef.description,
+                        default_params: indicatorDef.default_params
+                    };
+
+                    addedIndicators.push(newIndicator);
+
+                    // Build parameter inputs HTML
+                    const paramFields = [];
+
+                    // Add Suffix field first
+                    const hasPeriodParam = indData.params.hasOwnProperty('period');
+                    const periodValue = hasPeriodParam ? indData.params.period : '';
+
+                    paramFields.push(`
+                        <div class="param-field">
+                            <label>Suffix</label>
+                            <input type="text" class="param-input"
+                                   id="${uniqueId}-suffix"
+                                   placeholder="(optional)"
+                                   value="${indData.suffix || ''}"
+                                   data-param="_suffix"
+                                   data-period-value="${periodValue}"
+                                   oninput="updateSuffixAndPeriod('${uniqueId}', ${hasPeriodParam})">
+                        </div>
+                    `);
+
+                    // Add all parameters from loaded data
+                    Object.entries(indData.params).forEach(([paramName, paramValue]) => {
+                        const step = typeof paramValue === 'number' && paramValue % 1 !== 0 ? '0.01' : '1';
+                        const displayName = paramName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+                        paramFields.push(`
+                            <div class="param-field">
+                                <label>${displayName}</label>
+                                <input type="number" class="param-input"
+                                       id="${uniqueId}-${paramName}"
+                                       value="${paramValue}"
+                                       step="${step}"
+                                       data-param="${paramName}"
+                                       ${paramName === 'period' ? `oninput="updatePeriodFromParam('${uniqueId}')"` : ''}>
+                            </div>
+                        `);
+                    });
+
+                    const paramsHtml = paramFields.join('');
+
+                    // Create indicator HTML
+                    const indicatorLabel = indData.key.toUpperCase() + (indData.suffix ? '_' + indData.suffix : '');
+                    const indicatorHtml = `
+                        <div class="indicator-item" id="${uniqueId}">
+                            <button type="button" class="indicator-remove-btn" onclick="removeIndicator('${uniqueId}')">×</button>
+                            <div class="indicator-header">
+                                <input type="checkbox" id="${uniqueId}-checkbox" checked onchange="toggleIndicatorParams('${uniqueId}')">
+                                <label for="${uniqueId}-checkbox" id="${uniqueId}-label">${indicatorLabel}</label>
+                            </div>
+                            <div class="indicator-params" id="${uniqueId}-params" style="display: block;">
+                                ${paramsHtml || '<div style="padding: 0.5rem; color: var(--text-secondary); font-size: 0.75rem;">No parameters</div>'}
+                            </div>
+                        </div>
+                    `;
+
+                    // Add to container
+                    container.insertAdjacentHTML('beforeend', indicatorHtml);
+                }
+            });
+
+            // Refresh condition dropdowns to include loaded indicators
+            if (typeof refreshConditionIndicators === 'function') {
+                refreshConditionIndicators();
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════
+        // ENTRY/EXIT CONDITIONS
+        // ════════════════════════════════════════════════════════════
+
+        // IMPORTANT: Refresh condition indicators before loading conditions
+        // This ensures indicator dropdowns are populated before we try to set values
+        if (typeof refreshConditionIndicators === 'function') {
+            refreshConditionIndicators();
+        }
+
+        if (data.entry_conditions) {
+            entryConditions = data.entry_conditions;
+            console.log('📊 Entry conditions loaded:', entryConditions);
+
+            // Clear existing conditions before loading
+            const longContainer = document.getElementById('entry-long-conditions');
+            const shortContainer = document.getElementById('entry-short-conditions');
+            if (longContainer) longContainer.innerHTML = '';
+            if (shortContainer) shortContainer.innerHTML = '';
+
+            // Reset counters
+            conditionCounter['long'] = 0;
+            conditionCounter['short'] = 0;
+
+            // Load LONG entry conditions
+            if (entryConditions.long && Array.isArray(entryConditions.long)) {
+                console.log(`📋 Loading ${entryConditions.long.length} LONG entry conditions...`);
+                entryConditions.long.forEach((condition, index) => {
+                    console.log(`  [${index}] Adding LONG condition:`, condition);
+                    addEntryCondition('long');
+
+                    // Populate condition fields after DOM is ready
+                    setTimeout(() => {
+                        const conditionId = `long-${index + 1}`;
+
+                        // condition format: [indicator, operator, threshold, timeframe?]
+                        const [indicator, operator, threshold, timeframe] = condition;
+                        console.log(`  [${index}] Setting values for ${conditionId}:`, {indicator, operator, threshold, timeframe});
+
+                        // Set indicator
+                        const indicatorSelect = document.getElementById(`indicator-${conditionId}`);
+                        if (indicatorSelect && indicator) {
+                            console.log(`    ✓ Setting indicator to: ${indicator}`);
+                            console.log(`    Available options:`, Array.from(indicatorSelect.options).map(o => o.value));
+                            indicatorSelect.value = indicator;
+                            // Trigger operator options update
+                            updateOperatorOptions(conditionId);
+                        } else {
+                            console.warn(`    ✗ Indicator select not found or indicator is empty:`, indicatorSelect, indicator);
+                        }
+
+                        // Set operator (wait for updateOperatorOptions to finish)
+                        setTimeout(() => {
+                            const operatorSelect = document.getElementById(`operator-${conditionId}`);
+                            if (operatorSelect && operator) {
+                                operatorSelect.value = operator;
+                                // Trigger threshold update
+                                updateConditionThreshold(conditionId);
+                            }
+
+                            // Set threshold (can be number or indicator name)
+                            setTimeout(() => {
+                                const thresholdInput = document.getElementById(`threshold-${conditionId}`);
+                                const thresholdModeSelect = document.getElementById(`threshold-mode-${conditionId}`);
+                                const thresholdNumberInput = document.getElementById(`threshold-number-${conditionId}`);
+
+                                if (threshold !== undefined && threshold !== null) {
+                                    // Special handling for crossover/crossunder operators
+                                    if (operator === 'crossover' || operator === 'crossunder') {
+                                        if (typeof threshold === 'number') {
+                                            // Select "Enter Number" option in dropdown
+                                            if (thresholdInput) {
+                                                thresholdInput.value = 'number';
+                                                // Hide dropdown, show number input
+                                                thresholdInput.style.display = 'none';
+                                                if (thresholdNumberInput) {
+                                                    thresholdNumberInput.style.display = 'block';
+                                                    thresholdNumberInput.value = threshold;
+                                                }
+                                            }
+                                        } else if (typeof threshold === 'string') {
+                                            // Select indicator from dropdown
+                                            if (thresholdInput) {
+                                                thresholdInput.value = threshold;
+                                            }
+                                        }
+                                    } else {
+                                        // Standard handling for comparison operators (>, <, >=, <=, ==, !=)
+                                        if (typeof threshold === 'number') {
+                                            // Number threshold - default mode is already "Number"
+                                            if (thresholdInput) {
+                                                thresholdInput.value = threshold;
+                                            }
+                                        } else if (typeof threshold === 'string') {
+                                            // Indicator threshold - need to switch mode to "Indicator"
+                                            if (thresholdModeSelect) {
+                                                // Switch mode to indicator
+                                                thresholdModeSelect.value = 'indicator';
+                                                // Trigger mode change to create indicator dropdown
+                                                toggleThresholdMode(conditionId);
+                                                // Now set the indicator value (with small delay for DOM update)
+                                                setTimeout(() => {
+                                                    const newThresholdSelect = document.getElementById(`threshold-${conditionId}`);
+                                                    if (newThresholdSelect) {
+                                                        newThresholdSelect.value = threshold;
+                                                    }
+                                                }, 10);
+                                            } else if (thresholdInput) {
+                                                // Fallback for other operator types
+                                                thresholdInput.value = threshold;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Set timeframe
+                                const timeframeSelect = document.getElementById(`timeframe-${conditionId}`);
+                                if (timeframeSelect && timeframe) {
+                                    timeframeSelect.value = timeframe;
+                                }
+                            }, 50);
+                        }, 50);
+                    }, 100);
+                });
+            }
+
+            // Load SHORT entry conditions
+            if (entryConditions.short && Array.isArray(entryConditions.short)) {
+                entryConditions.short.forEach((condition, index) => {
+                    addEntryCondition('short');
+
+                    // Populate condition fields after DOM is ready
+                    setTimeout(() => {
+                        const conditionId = `short-${index + 1}`;
+
+                        // condition format: [indicator, operator, threshold, timeframe?]
+                        const [indicator, operator, threshold, timeframe] = condition;
+
+                        // Set indicator
+                        const indicatorSelect = document.getElementById(`indicator-${conditionId}`);
+                        if (indicatorSelect && indicator) {
+                            indicatorSelect.value = indicator;
+                            // Trigger operator options update
+                            updateOperatorOptions(conditionId);
+                        }
+
+                        // Set operator (wait for updateOperatorOptions to finish)
+                        setTimeout(() => {
+                            const operatorSelect = document.getElementById(`operator-${conditionId}`);
+                            if (operatorSelect && operator) {
+                                operatorSelect.value = operator;
+                                // Trigger threshold update
+                                updateConditionThreshold(conditionId);
+                            }
+
+                            // Set threshold (can be number or indicator name)
+                            setTimeout(() => {
+                                const thresholdInput = document.getElementById(`threshold-${conditionId}`);
+                                const thresholdModeSelect = document.getElementById(`threshold-mode-${conditionId}`);
+                                const thresholdNumberInput = document.getElementById(`threshold-number-${conditionId}`);
+
+                                if (threshold !== undefined && threshold !== null) {
+                                    // Special handling for crossover/crossunder operators
+                                    if (operator === 'crossover' || operator === 'crossunder') {
+                                        if (typeof threshold === 'number') {
+                                            // Select "Enter Number" option in dropdown
+                                            if (thresholdInput) {
+                                                thresholdInput.value = 'number';
+                                                // Hide dropdown, show number input
+                                                thresholdInput.style.display = 'none';
+                                                if (thresholdNumberInput) {
+                                                    thresholdNumberInput.style.display = 'block';
+                                                    thresholdNumberInput.value = threshold;
+                                                }
+                                            }
+                                        } else if (typeof threshold === 'string') {
+                                            // Select indicator from dropdown
+                                            if (thresholdInput) {
+                                                thresholdInput.value = threshold;
+                                            }
+                                        }
+                                    } else {
+                                        // Standard handling for comparison operators (>, <, >=, <=, ==, !=)
+                                        if (typeof threshold === 'number') {
+                                            // Number threshold - default mode is already "Number"
+                                            if (thresholdInput) {
+                                                thresholdInput.value = threshold;
+                                            }
+                                        } else if (typeof threshold === 'string') {
+                                            // Indicator threshold - need to switch mode to "Indicator"
+                                            if (thresholdModeSelect) {
+                                                // Switch mode to indicator
+                                                thresholdModeSelect.value = 'indicator';
+                                                // Trigger mode change to create indicator dropdown
+                                                toggleThresholdMode(conditionId);
+                                                // Now set the indicator value (with small delay for DOM update)
+                                                setTimeout(() => {
+                                                    const newThresholdSelect = document.getElementById(`threshold-${conditionId}`);
+                                                    if (newThresholdSelect) {
+                                                        newThresholdSelect.value = threshold;
+                                                    }
+                                                }, 10);
+                                            } else if (thresholdInput) {
+                                                // Fallback for other operator types
+                                                thresholdInput.value = threshold;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Set timeframe
+                                const timeframeSelect = document.getElementById(`timeframe-${conditionId}`);
+                                if (timeframeSelect && timeframe) {
+                                    timeframeSelect.value = timeframe;
+                                }
+                            }, 50);
+                        }, 50);
+                    }, 100);
+                });
+            }
+        }
+
+        if (data.exit_conditions) {
+            exitConditions = data.exit_conditions;
+
+            // Clear existing exit conditions before loading
+            const stopLossContainer = document.getElementById('exit-stop_loss-conditions');
+            const takeProfitContainer = document.getElementById('exit-take_profit-conditions');
+            const exitLongContainer = document.getElementById('exit-long-conditions');
+            const exitShortContainer = document.getElementById('exit-short-conditions');
+
+            if (stopLossContainer) stopLossContainer.innerHTML = '';
+            if (takeProfitContainer) takeProfitContainer.innerHTML = '';
+            if (exitLongContainer) exitLongContainer.innerHTML = '';
+            if (exitShortContainer) exitShortContainer.innerHTML = '';
+
+            // Reset exit condition counters
+            exitConditionCounter['stop_loss'] = 0;
+            exitConditionCounter['take_profit'] = 0;
+            exitConditionCounter['long'] = 0;
+            exitConditionCounter['short'] = 0;
+
+            // Helper function to populate exit condition fields
+            const populateExitCondition = (conditionType, condition, index) => {
+                setTimeout(() => {
+                    const conditionId = `exit-${conditionType}-${index + 1}`;
+
+                    // condition format: [indicator, operator, threshold, timeframe?]
+                    const [indicator, operator, threshold, timeframe] = condition;
+
+                    // Set indicator
+                    const indicatorSelect = document.getElementById(`indicator-${conditionId}`);
+                    if (indicatorSelect && indicator) {
+                        indicatorSelect.value = indicator;
+                        updateOperatorOptions(conditionId);
+                    }
+
+                    // Set operator
+                    setTimeout(() => {
+                        const operatorSelect = document.getElementById(`operator-${conditionId}`);
+                        if (operatorSelect && operator) {
+                            operatorSelect.value = operator;
+                            updateConditionThreshold(conditionId);
+                        }
+
+                        // Set threshold
+                        setTimeout(() => {
+                            const thresholdInput = document.getElementById(`threshold-${conditionId}`);
+                            const thresholdSelect = document.getElementById(`threshold-select-${conditionId}`);
+                            const thresholdNumberInput = document.getElementById(`threshold-number-${conditionId}`);
+
+                            if (threshold !== undefined && threshold !== null) {
+                                // Special handling for crossover/crossunder operators
+                                if (operator === 'crossover' || operator === 'crossunder') {
+                                    if (typeof threshold === 'number') {
+                                        // Select "Enter Number" option in dropdown
+                                        if (thresholdInput) {
+                                            thresholdInput.value = 'number';
+                                            // Hide dropdown, show number input
+                                            thresholdInput.style.display = 'none';
+                                            if (thresholdNumberInput) {
+                                                thresholdNumberInput.style.display = 'block';
+                                                thresholdNumberInput.value = threshold;
+                                            }
+                                        }
+                                    } else if (typeof threshold === 'string') {
+                                        // Select indicator from dropdown
+                                        if (thresholdInput) {
+                                            thresholdInput.value = threshold;
+                                        }
+                                    }
+                                } else {
+                                    // Standard handling for other operators
+                                    const thresholdModeSelect = document.getElementById(`threshold-mode-${conditionId}`);
+
+                                    if (typeof threshold === 'number') {
+                                        if (thresholdInput) {
+                                            thresholdInput.value = threshold;
+                                        }
+                                    } else if (typeof threshold === 'string') {
+                                        // Indicator threshold - need to switch mode to "Indicator"
+                                        if (thresholdModeSelect) {
+                                            thresholdModeSelect.value = 'indicator';
+                                            toggleThresholdMode(conditionId);
+                                            setTimeout(() => {
+                                                const newThresholdSelect = document.getElementById(`threshold-${conditionId}`);
+                                                if (newThresholdSelect) {
+                                                    newThresholdSelect.value = threshold;
+                                                }
+                                            }, 10);
+                                        } else if (thresholdInput) {
+                                            thresholdInput.value = threshold;
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Set timeframe
+                            const timeframeSelect = document.getElementById(`timeframe-${conditionId}`);
+                            if (timeframeSelect && timeframe) {
+                                timeframeSelect.value = timeframe;
+                            }
+                        }, 50);
+                    }, 50);
+                }, 100);
+            };
+
+            // Load STOP LOSS exit conditions
+            if (exitConditions.stop_loss && Array.isArray(exitConditions.stop_loss)) {
+                exitConditions.stop_loss.forEach((condition, index) => {
+                    addExitCondition('stop_loss');
+                    setTimeout(() => {
+                        populateExitCondition('stop_loss', condition, index);
+                    }, 200 + (index * 100));
+                });
+            }
+
+            // Load TAKE PROFIT exit conditions
+            if (exitConditions.take_profit && Array.isArray(exitConditions.take_profit)) {
+                exitConditions.take_profit.forEach((condition, index) => {
+                    addExitCondition('take_profit');
+                    setTimeout(() => {
+                        populateExitCondition('take_profit', condition, index);
+                    }, 200 + (index * 100));
+                });
+            }
+
+            // Load LONG exit conditions
+            if (exitConditions.long && Array.isArray(exitConditions.long)) {
+                exitConditions.long.forEach((condition, index) => {
+                    setTimeout(() => {
+                        addExitCondition('long');
+                        setTimeout(() => {
+                            populateExitCondition('long', condition, index);
+                        }, 200);
+                    }, index * 350);
+                });
+            }
+
+            // Load SHORT exit conditions
+            if (exitConditions.short && Array.isArray(exitConditions.short)) {
+                exitConditions.short.forEach((condition, index) => {
+                    addExitCondition('short');
+                    setTimeout(() => {
+                        populateExitCondition('short', condition, index);
+                    }, 200 + (index * 100));
+                });
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════
+        // CUSTOM PARAMETERS / FILTERS
+        // ════════════════════════════════════════════════════════════
+        if (data.custom_parameters) {
+            const cp = data.custom_parameters;
+
+            // News Filter
+            if (document.getElementById('filter-news')) {
+                document.getElementById('filter-news').checked = cp.news_filter || false;
+            }
+
+            // Session Filter
+            if (cp.session_filter) {
+                const sf = cp.session_filter;
+                if (document.getElementById('filter-session-enabled')) {
+                    document.getElementById('filter-session-enabled').checked = sf.enabled || false;
+                    toggleSessionFilterConfig();
+                }
+                if (document.getElementById('filter-session-sydney')) {
+                    document.getElementById('filter-session-sydney').checked = sf.sydney || false;
+                }
+                if (document.getElementById('filter-session-tokyo')) {
+                    document.getElementById('filter-session-tokyo').checked = sf.tokyo || false;
+                }
+                if (document.getElementById('filter-session-london')) {
+                    document.getElementById('filter-session-london').checked = sf.london || false;
+                }
+                if (document.getElementById('filter-session-newyork')) {
+                    document.getElementById('filter-session-newyork').checked = sf.new_york || false;
+                }
+                if (document.getElementById('filter-session-overlap')) {
+                    document.getElementById('filter-session-overlap').checked = sf.london_ny_overlap || false;
+                }
+            }
+
+            // Time Filter
+            if (cp.time_filter) {
+                const tf = cp.time_filter;
+                if (document.getElementById('filter-time-enabled')) {
+                    document.getElementById('filter-time-enabled').checked = tf.enabled || false;
+                    toggleTimeFilterConfig();
+                }
+                if (document.getElementById('filter-time-start')) {
+                    document.getElementById('filter-time-start').value = tf.start_hour || 8;
+                }
+                if (document.getElementById('filter-time-end')) {
+                    document.getElementById('filter-time-end').value = tf.end_hour || 21;
+                }
+                if (document.getElementById('filter-time-exclude')) {
+                    const excludeHours = tf.exclude_hours || [];
+                    document.getElementById('filter-time-exclude').value = Array.isArray(excludeHours)
+                        ? excludeHours.join(',')
+                        : '';
+                }
+            }
+
+            // Day Filter
+            if (cp.day_filter) {
+                const df = cp.day_filter;
+                if (document.getElementById('filter-day-enabled')) {
+                    document.getElementById('filter-day-enabled').checked = df.enabled || false;
+                    toggleDayFilterConfig();
+                }
+                if (document.getElementById('filter-day-monday')) {
+                    document.getElementById('filter-day-monday').checked = df.monday || false;
+                }
+                if (document.getElementById('filter-day-tuesday')) {
+                    document.getElementById('filter-day-tuesday').checked = df.tuesday || false;
+                }
+                if (document.getElementById('filter-day-wednesday')) {
+                    document.getElementById('filter-day-wednesday').checked = df.wednesday || false;
+                }
+                if (document.getElementById('filter-day-thursday')) {
+                    document.getElementById('filter-day-thursday').checked = df.thursday || false;
+                }
+                if (document.getElementById('filter-day-friday')) {
+                    document.getElementById('filter-day-friday').checked = df.friday || false;
+                }
+                if (document.getElementById('filter-day-saturday')) {
+                    document.getElementById('filter-day-saturday').checked = df.saturday || false;
+                }
+                if (document.getElementById('filter-day-sunday')) {
+                    document.getElementById('filter-day-sunday').checked = df.sunday || false;
+                }
+            }
+        }
+
+        console.log('✅ Form filling completed');
+    }
+
+    // ========================================
+    // HELPERS
+    // ========================================
+    function showLoading(show) {
+        const overlay = document.getElementById('loading-overlay');
+        if (show) {
+            overlay.classList.add('show');
+        } else {
+            overlay.classList.remove('show');
+        }
+    }
+</script>
+{% endblock %}

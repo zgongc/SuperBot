@@ -1,0 +1,312 @@
+/* ===========================================
+   Replay Trading Page Styles
+   =========================================== */
+
+/* Setup Grid */
+.setup-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.setup-actions {
+    display: flex;
+    gap: 12px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+}
+
+/* Chart Card */
+.chart-card .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.chart-info {
+    display: flex;
+    gap: 8px;
+}
+
+.chart-body {
+    padding: 0 !important;
+}
+
+#chart-container {
+    width: 100%;
+    height: 400px;
+    background: var(--bg-secondary);
+}
+
+/* Oscillator panel - şimdilik devre dışı
+#oscillator-container {
+    width: 100%;
+    min-height: 150px;
+    height: 150px;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border-color);
+    border-radius: 0 0 8px 8px;
+}
+*/
+
+/* Controls Card */
+.controls-card .card-body {
+    padding: 16px;
+}
+
+/* Timeline */
+.timeline-container {
+    margin-bottom: 16px;
+}
+
+.timeline-slider {
+    width: 100%;
+    height: 8px;
+    -webkit-appearance: none;
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
+}
+
+.timeline-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    background: var(--accent-primary);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.timeline-slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    background: var(--accent-primary);
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+}
+
+.timeline-info {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+/* Control Buttons */
+.control-buttons {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.btn-control {
+    width: 48px;
+    height: 48px;
+    font-size: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-tertiary);
+    border: 2px solid var(--border-color);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-control:hover {
+    background: var(--bg-hover);
+    border-color: var(--accent-primary);
+    transform: scale(1.05);
+}
+
+.btn-control.btn-play {
+    width: 64px;
+    height: 64px;
+    font-size: 28px;
+    background: var(--accent-primary);
+    border-color: var(--accent-primary);
+    color: white;
+}
+
+.btn-control.btn-play:hover {
+    background: var(--accent-hover);
+}
+
+.btn-control.btn-play.playing {
+    background: var(--warning-color);
+    border-color: var(--warning-color);
+}
+
+/* Speed Control */
+.speed-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 20px;
+    padding-left: 20px;
+    border-left: 1px solid var(--border-color);
+}
+
+.speed-control label {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.speed-control select {
+    width: 80px;
+}
+
+/* Stats Row */
+.stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.stats-card {
+    min-height: 200px;
+}
+
+.stats-card .card-header {
+    padding: 12px 16px;
+}
+
+.stats-card .card-header h4 {
+    margin: 0;
+    font-size: 14px;
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.stat-item:last-child {
+    border-bottom: none;
+}
+
+.stat-label {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.stat-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.stat-value.positive {
+    color: var(--success-color);
+}
+
+.stat-value.negative {
+    color: var(--danger-color);
+}
+
+/* Indicator Toggle */
+.indicator-toggle-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.indicator-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.indicator-toggle input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--accent-primary);
+}
+
+.indicator-toggle .indicator-label {
+    font-size: 12px;
+    font-weight: 500;
+    user-select: none;
+}
+
+.stats-card .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#btn-toggle-all-indicators {
+    padding: 4px 8px;
+    font-size: 14px;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+#btn-toggle-all-indicators:hover {
+    background: var(--bg-hover);
+    border-color: var(--accent-primary);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .setup-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .control-buttons {
+        gap: 8px;
+    }
+
+    .btn-control {
+        width: 40px;
+        height: 40px;
+        font-size: 16px;
+    }
+
+    .btn-control.btn-play {
+        width: 56px;
+        height: 56px;
+        font-size: 24px;
+    }
+
+    .speed-control {
+        width: 100%;
+        margin-left: 0;
+        padding-left: 0;
+        border-left: none;
+        padding-top: 12px;
+        border-top: 1px solid var(--border-color);
+        justify-content: center;
+    }
+
+    #chart-container {
+        height: 280px;
+    }
+
+    /* Oscillator - şimdilik devre dışı
+    #oscillator-container {
+        height: 120px;
+    }
+    */
+
+    .stats-row {
+        grid-template-columns: 1fr;
+    }
+}

@@ -1,0 +1,88 @@
+# config/analysis.yaml
+analysis:
+  # Swing High/Low detection
+  # TradingView ZigZag karşılığı: Pivot Period = left_bars = right_bars
+  # Short Term: 3, Long Term: 9
+  swing:
+    enabled: true
+    show: false          # WebUI'da başlangıçta göster
+    left_bars: 5         # TradingView ZigZag Short Term Pivot Period
+    right_bars: 5
+
+  # BOS (Break of Structure) detection
+  bos:
+    enabled: true
+    show: true
+    max_levels: 5
+    trend_strength: 2
+
+  # CHoCH (Change of Character) detection
+  choch:
+    enabled: true
+    show: true
+
+  # FVG (Fair Value Gap) detection
+  fvg:
+    enabled: true
+    show: true
+    min_size_pct: 0.06 # Min %0.1 FVG
+    max_age: 100
+    max_box: 12
+
+  # Gap detection (2 mum arasi body bosluk)
+  gap:
+    enabled: true
+    show: false
+    min_size_pct: 0.05  # Min %0.05 gap (~45$ for BTC)
+    max_age: 500
+    max_zones: 100
+
+  # Order Block detection
+  order_blocks:
+    enabled: true
+    show: false
+    strength_threshold: 0.3  # 5m timeframe icin %0.3 uygun
+    max_blocks: 5
+    lookback: 30
+
+  # Liquidity Zone detection
+  liquidity:
+    enabled: true
+    show: false
+    equal_tolerance: 0.1
+    max_zones: 5
+    sweep_lookback: 3
+
+  # QML (Quasimodo) detection - TradingView EmreKb Style
+  # Bullish: trend==-1, h2>h1, l1>l0, h0>h1, close>l1
+  # Bearish: trend==1, l2<l1, h1<h0, l0<l1, close<h1
+  qml:
+    enabled: true
+    show: false
+    left_bars: 13        # ZigZag pivot period (TradingView default: 13)
+    right_bars: 13       # ZigZag pivot period (TradingView default: 13)
+    lookback_bars: 200   # Pattern araması için geriye bakış
+
+  # FTR/FTB (Failed to Return / First Time Back) Zone detection
+  # 3+ momentum candles + 1 opposite candle = FTR zone
+  ftr:
+    enabled: true
+    show: false
+    min_momentum_candles: 3     # Min ardisik momentum mum sayisi
+    min_confirmation_candles: 2 # FTR mumundan sonra en az kac onay mumu (standart: 1)
+    max_ftr_ratio: 0.7          # FTR mumu / momentum mumu max orani (0=devre disi, 0.7=esnek)
+    require_confirmation: false # Onay sart degil, olursa bonus strength
+    max_zones: 20               # Maksimum aktif zone sayisi
+    invalidation_threshold: 0.5 # Zone gecersizlik esigi %
+
+  # Swing Levels (horizontal lines for unbroken swing highs/lows)
+  # Each unbroken swing level is shown as a horizontal line
+  # until price breaks through it (close above for highs, below for lows)
+  levels:
+    enabled: true
+    show: false
+    max_levels: 10  # Max number of unbroken levels to show per type (highs/lows)
+
+  output:
+    include_filled_fvg: false
+    include_broken_swings: false

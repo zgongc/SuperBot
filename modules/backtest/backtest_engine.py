@@ -143,8 +143,8 @@ class BacktestEngine:
         self.config_engine = get_config()
 
         # Components (initialized once)
-        # ParquetsEngine creates its own logger
-        self.parquets_engine = ParquetsEngine()
+        # ParquetsEngine uses config for data path
+        self.parquets_engine = ParquetsEngine(config_engine=self.config_engine)
         self.risk_manager = RiskManager(logger=self.logger)
         # NOTE: PositionManager is created per-run with strategy (see _execute_backtest)
 

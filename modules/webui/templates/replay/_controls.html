@@ -1,0 +1,46 @@
+<!-- Playback Controls -->
+<div class="card controls-card" id="controls-panel" style="display: none;">
+    <div class="card-body">
+        <!-- Timeline Slider -->
+        <div class="timeline-container">
+            <input type="range" id="timeline-slider" class="timeline-slider" min="0" max="100" value="0">
+            <div class="timeline-info">
+                <span id="current-bar">Bar: 0</span>
+                <span id="current-date">-</span>
+                <span id="total-bars">/ 0</span>
+            </div>
+        </div>
+
+        <!-- Control Buttons -->
+        <div class="control-buttons">
+            <button id="btn-step-back" class="btn btn-control" title="Go to the previous trade.">
+                ⏮️
+            </button>
+            <button id="btn-prev" class="btn btn-control" title="10 bar geri">
+                ⏪
+            </button>
+            <button id="btn-play-pause" class="btn btn-control btn-play" title="Play/Pause">
+                ▶️
+            </button>
+            <button id="btn-next" class="btn btn-control" title="10 bar ileri">
+                ⏩
+            </button>
+            <button id="btn-step-forward" class="btn btn-control" title="Go to the next trade.">
+                ⏭️
+            </button>
+
+            <div class="speed-control">
+                <label>Speed:</label>
+                <select id="speed-select" class="form-control">
+                    <option value="0.5">0.5x</option>
+                    <option value="1" selected>1x</option>
+                    <option value="2">2x</option>
+                    <option value="5">5x</option>
+                    <option value="10">10x</option>
+                    <option value="15">15x</option>
+                    <option value="20">20x</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>

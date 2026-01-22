@@ -1,0 +1,657 @@
+{% extends "base.html" %}
+
+{% block title %}Data Download{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/cards.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/data-download.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Data Download</h1>
+    <p>Download historical data from Binance exchange</p>
+</div>
+
+<div class="download-container">
+    <div class="card">
+        <div class="card-header">
+            <h3>Download Settings</h3>
+        </div>
+        <div class="card-body">
+            <!-- Source Selection -->
+            <div class="section-title">Source</div>
+            <div class="source-toggle">
+                <button id="source-manual" class="active" onclick="setSource('manual')">
+                    Manual Selection
+                </button>
+                <button id="source-category" onclick="setSource('category')">
+                    Category
+                </button>
+            </div>
+
+            <!-- Manual Source -->
+            <div id="manual-source">
+                <label class="form-label">Symbols</label>
+                <div class="symbol-input-container">
+                    <input type="text"
+                           id="symbol-input"
+                           placeholder="Enter symbol (e.g. BTCUSDT)"
+                           onkeypress="handleSymbolKeypress(event)">
+                    <button class="btn btn-primary" onclick="addSymbol()">Add</button>
+                </div>
+                <div class="symbol-tags" id="symbol-tags">
+                    <span class="empty-tags">No symbols added yet</span>
+                </div>
+            </div>
+
+            <!-- Category Source -->
+            <div id="category-source" style="display: none;">
+                <label class="form-label">Category</label>
+                <select class="category-select" id="category-select" onchange="loadCategorySymbols()">
+                    <option value="">Select category...</option>
+                </select>
+                <div id="category-info" style="margin-top: 10px; font-size: 13px; color: var(--text-muted);"></div>
+            </div>
+
+            <!-- Timeframes -->
+            <div class="section-divider">
+                <div class="quick-select">
+                    <button onclick="selectTimeframes(['1m', '5m', '15m', '30m', '1h', '4h', '1d', '1w', '1M'])">Common</button>
+                    <button onclick="selectTimeframes(['1m', '5m', '15m', '30m'])">Scalping</button>
+                    <button onclick="selectTimeframes(['1h', '4h', '1d', '1w'])">Swing</button>
+                    <button onclick="selectAllTimeframes()">All</button>
+                    <button onclick="clearTimeframes()">Clear</button>
+                </div>
+                <div class="timeframe-grid">
+                    <div class="timeframe-item" onclick="toggleTimeframe(this, '1m')">
+                        <input type="checkbox" id="tf-1m" value="1m">
+                        <label for="tf-1m">1m</label>
+                    </div>
+                    <div class="timeframe-item" onclick="toggleTimeframe(this, '3m')">
+                        <input type="checkbox" id="tf-3m" value="3m">
+                        <label for="tf-3m">3m</label>
+                    </div>
+                    <div class="timeframe-item" onclick="toggleTimeframe(this, '5m')">
+                        <input type="checkbox" id="tf-5m" value="5m">
+                        <label for="tf-5m">5m</label>
+                    </div>
+                    <div class="timeframe-item" onclick="toggleTimeframe(this, '15m')">
+                        <input type="checkbox" id="tf-15m" value="15m">
+                        <label for="tf-15m">15m</label>
+                    </div>
+                    <div class="timeframe-item" onclick="toggleTimeframe(this, '30m')">
+                        <input type="checkbox" id="tf-30m" value="30m">
+                        <label for="tf-30m">30m</label>
+                    </div>
+                    <div class="timeframe-item" onclick="toggleTimeframe(this, '1h')">
+                        <input type="checkbox" id="tf-1h" value="1h">
+                        <label for="tf-1h">1h</label>
+                    </div>
+                    <div class="timeframe-item" onclick="toggleTimeframe(this, '2h')">
+                        <input type="checkbox" id="tf-2h" value="2h">
+                        <label for="tf-2h">2h</label>
+                    </div>
+                    <div class="timeframe-item" onclick="toggleTimeframe(this, '4h')">
+                        <input type="checkbox" id="tf-4h" value="4h">
+                        <label for="tf-4h">4h</label>
+                    </div>
+                    <div class="timeframe-item" onclick="toggleTimeframe(this, '6h')">
+                        <input type="checkbox" id="tf-6h" value="6h">
+                        <label for="tf-6h">6h</label>
+                    </div>
+                    <div class="timeframe-item" onclick="toggleTimeframe(this, '8h')">
+                        <input type="checkbox" id="tf-8h" value="8h">
+                        <label for="tf-8h">8h</label>
+                    </div>
+                    <div class="timeframe-item" onclick="toggleTimeframe(this, '12h')">
+                        <input type="checkbox" id="tf-12h" value="12h">
+                        <label for="tf-12h">12h</label>
+                    </div>
+                    <div class="timeframe-item" onclick="toggleTimeframe(this, '1d')">
+                        <input type="checkbox" id="tf-1d" value="1d">
+                        <label for="tf-1d">1d</label>
+                    </div>
+                    <div class="timeframe-item" onclick="toggleTimeframe(this, '3d')">
+                        <input type="checkbox" id="tf-3d" value="3d">
+                        <label for="tf-3d">3d</label>
+                    </div>
+                    <div class="timeframe-item" onclick="toggleTimeframe(this, '1w')">
+                        <input type="checkbox" id="tf-1w" value="1w">
+                        <label for="tf-1w">1w</label>
+                    </div>
+                    <div class="timeframe-item" onclick="toggleTimeframe(this, '1M')">
+                        <input type="checkbox" id="tf-1M" value="1M">
+                        <label for="tf-1M">1M</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Date Range -->
+            <div class="section-divider">
+                <div class="date-inputs">
+                    <div class="date-field">
+                        <label for="start-date">Start Date *</label>
+                        <input type="datetime-local" id="start-date" required onchange="updateSummary()">
+                    </div>
+                    <div class="date-field">
+                        <label for="end-date">End Date</label>
+                        <input type="datetime-local" id="end-date">
+                        <label class="use-now-checkbox">
+                            <input type="checkbox" id="use-now" checked onchange="toggleEndDate()">
+                            Use current time
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary -->
+            <div class="section-divider">
+                <div class="section-title">Summary</div>
+                <div class="summary-box">
+                    <div class="summary-row">
+                        <span class="summary-label">Symbols</span>
+                        <span class="summary-value" id="summary-symbols">0</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">Timeframes</span>
+                        <span class="summary-value" id="summary-timeframes">0</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">Date Range</span>
+                        <span class="summary-value" id="summary-dates">Not set</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">Total Download Tasks</span>
+                        <span class="summary-value highlight" id="summary-tasks">0</span>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn btn-secondary" onclick="clearAll()">Clear</button>
+                    <button class="btn btn-primary" id="start-download-btn" onclick="startDownload()" disabled>
+                        Start Download
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress Section -->
+    <div class="progress-section hidden" id="progress-section">
+        <div class="card">
+            <div class="card-header">
+                <h3>Download Status</h3>
+                <button class="btn btn-danger btn-sm" onclick="cancelDownload()" id="cancel-btn">
+                    Cancel
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="overall-progress">
+                    <h4>Overall Progress</h4>
+                    <div class="overall-stats">
+                        <div class="overall-stat">
+                            <div class="overall-stat-value" id="completed-count">0</div>
+                            <div class="overall-stat-label">Completed</div>
+                        </div>
+                        <div class="overall-stat">
+                            <div class="overall-stat-value" id="running-count">0</div>
+                            <div class="overall-stat-label">Running</div>
+                        </div>
+                        <div class="overall-stat">
+                            <div class="overall-stat-value" id="pending-count">0</div>
+                            <div class="overall-stat-label">Pending</div>
+                        </div>
+                        <div class="overall-stat">
+                            <div class="overall-stat-value" id="error-count">0</div>
+                            <div class="overall-stat-label">Error</div>
+                        </div>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="overall-progress-bar" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="task-list" id="task-list">
+                    <!-- Tasks will be displayed here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascriptArea %}
+<script>
+// State
+let selectedSymbols = [];
+let selectedTimeframes = [];
+let currentSource = 'manual';
+let categorySymbols = [];
+let downloadJobId = null;
+let progressInterval = null;
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    loadCategories();
+    setDefaultDates();
+    updateSummary();
+});
+
+// Source toggle
+function setSource(source) {
+    currentSource = source;
+
+    document.getElementById('source-manual').classList.toggle('active', source === 'manual');
+    document.getElementById('source-category').classList.toggle('active', source === 'category');
+
+    document.getElementById('manual-source').style.display = source === 'manual' ? 'block' : 'none';
+    document.getElementById('category-source').style.display = source === 'category' ? 'block' : 'none';
+
+    updateSummary();
+}
+
+// Load categories from API
+async function loadCategories() {
+    try {
+        const response = await fetch('/api/categories');
+        const data = await response.json();
+
+        const select = document.getElementById('category-select');
+        select.innerHTML = '<option value="">Select category...</option>';
+
+        // Handle response format: data.data.categories or data.categories
+        const categories = data.data?.categories || data.categories || [];
+        categories.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat.id;
+            option.textContent = `${cat.name} (${cat.symbol_count || 0} symbols)`;
+            option.dataset.symbolCount = cat.symbol_count || 0;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Failed to load categories:', error);
+        showToast('Error', 'Failed to load categories', 'error');
+    }
+}
+
+// Load category symbols
+async function loadCategorySymbols() {
+    const select = document.getElementById('category-select');
+    const categoryId = select.value;
+    const info = document.getElementById('category-info');
+
+    if (!categoryId) {
+        categorySymbols = [];
+        info.textContent = '';
+        updateSummary();
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/categories/${categoryId}/symbols`);
+        const data = await response.json();
+
+        // API returns symbol objects with {symbol: 'BTCUSDT', id: 1, ...}
+        // Extract just the symbol names
+        const symbols = data.data?.symbols || data.symbols || [];
+        categorySymbols = symbols.map(s => typeof s === 'string' ? s : s.symbol);
+
+        const preview = categorySymbols.slice(0, 5).join(', ');
+        info.textContent = `${categorySymbols.length} symbols: ${preview}${categorySymbols.length > 5 ? '...' : ''}`;
+        updateSummary();
+    } catch (error) {
+        console.error('Failed to load category symbols:', error);
+        showToast('Error', 'Failed to load category symbols', 'error');
+    }
+}
+
+// Symbol management
+function addSymbol() {
+    const input = document.getElementById('symbol-input');
+    const symbol = input.value.trim().toUpperCase();
+
+    if (!symbol) return;
+
+    if (selectedSymbols.includes(symbol)) {
+        showToast('Warning', 'Symbol already added', 'warning');
+        return;
+    }
+
+    selectedSymbols.push(symbol);
+    input.value = '';
+    renderSymbolTags();
+    updateSummary();
+}
+
+function handleSymbolKeypress(event) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        addSymbol();
+    }
+}
+
+function removeSymbol(symbol) {
+    selectedSymbols = selectedSymbols.filter(s => s !== symbol);
+    renderSymbolTags();
+    updateSummary();
+}
+
+function renderSymbolTags() {
+    const container = document.getElementById('symbol-tags');
+
+    if (selectedSymbols.length === 0) {
+        container.innerHTML = '<span class="empty-tags">No symbols added yet</span>';
+        return;
+    }
+
+    container.innerHTML = selectedSymbols.map(symbol => `
+        <span class="symbol-tag">
+            ${symbol}
+            <span class="remove" onclick="removeSymbol('${symbol}')">&times;</span>
+        </span>
+    `).join('');
+}
+
+// Timeframe management
+function toggleTimeframe(element, tf) {
+    const checkbox = element.querySelector('input');
+    checkbox.checked = !checkbox.checked;
+    element.classList.toggle('selected', checkbox.checked);
+
+    if (checkbox.checked && !selectedTimeframes.includes(tf)) {
+        selectedTimeframes.push(tf);
+    } else if (!checkbox.checked) {
+        selectedTimeframes = selectedTimeframes.filter(t => t !== tf);
+    }
+
+    updateSummary();
+}
+
+function selectTimeframes(timeframes) {
+    clearTimeframes();
+    timeframes.forEach(tf => {
+        const checkbox = document.getElementById(`tf-${tf}`);
+        if (checkbox) {
+            checkbox.checked = true;
+            checkbox.closest('.timeframe-item').classList.add('selected');
+            selectedTimeframes.push(tf);
+        }
+    });
+    updateSummary();
+}
+
+function selectAllTimeframes() {
+    const allTfs = ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d', '3d', '1w', '1M'];
+    selectTimeframes(allTfs);
+}
+
+function clearTimeframes() {
+    selectedTimeframes = [];
+    document.querySelectorAll('.timeframe-item').forEach(item => {
+        item.classList.remove('selected');
+        item.querySelector('input').checked = false;
+    });
+    updateSummary();
+}
+
+// Date management
+function setDefaultDates() {
+    const now = new Date();
+    // Start of month: 1st of current month, 00:00
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0);
+
+    // Format for datetime-local: YYYY-MM-DDTHH:mm
+    document.getElementById('start-date').value = formatDateTimeLocal(startOfMonth);
+    document.getElementById('end-date').value = formatDateTimeLocal(now);
+    toggleEndDate();
+}
+
+function formatDateTimeLocal(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function formatDisplayDate(dateStr) {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${day}.${month}.${year} ${hours}:${minutes}`;
+}
+
+function toggleEndDate() {
+    const useNow = document.getElementById('use-now').checked;
+    const endDateInput = document.getElementById('end-date');
+
+    endDateInput.disabled = useNow;
+    if (useNow) {
+        endDateInput.value = formatDateTimeLocal(new Date());
+    }
+    updateSummary();
+}
+
+// Summary
+function updateSummary() {
+    const symbols = currentSource === 'manual' ? selectedSymbols : categorySymbols;
+    const symbolCount = symbols.length;
+    const tfCount = selectedTimeframes.length;
+    const taskCount = symbolCount * tfCount;
+
+    document.getElementById('summary-symbols').textContent = symbolCount;
+    document.getElementById('summary-timeframes').textContent = tfCount;
+    document.getElementById('summary-tasks').textContent = taskCount;
+
+    const startDate = document.getElementById('start-date').value;
+    const endDate = document.getElementById('use-now').checked ? 'Now' : formatDisplayDate(document.getElementById('end-date').value);
+    document.getElementById('summary-dates').textContent = startDate ? `${formatDisplayDate(startDate)} → ${endDate}` : 'Not set';
+
+    // Enable/disable download button
+    const canDownload = symbolCount > 0 && tfCount > 0 && startDate;
+    document.getElementById('start-download-btn').disabled = !canDownload;
+}
+
+// Clear all
+function clearAll() {
+    selectedSymbols = [];
+    selectedTimeframes = [];
+    categorySymbols = [];
+
+    renderSymbolTags();
+    clearTimeframes();
+    document.getElementById('category-select').value = '';
+    document.getElementById('category-info').textContent = '';
+    setDefaultDates();
+    updateSummary();
+}
+
+// Download
+async function startDownload() {
+    const symbols = currentSource === 'manual' ? selectedSymbols : categorySymbols;
+    const startDateValue = document.getElementById('start-date').value;
+    const endDateValue = document.getElementById('use-now').checked ? null : document.getElementById('end-date').value;
+
+    // Convert datetime-local to date string (YYYY-MM-DD)
+    const startDate = startDateValue ? startDateValue.split('T')[0] : null;
+    const endDate = endDateValue ? endDateValue.split('T')[0] : null;
+
+    if (symbols.length === 0) {
+        showToast('Error', 'Select at least one symbol', 'error');
+        return;
+    }
+
+    if (selectedTimeframes.length === 0) {
+        showToast('Error', 'Select at least one timeframe', 'error');
+        return;
+    }
+
+    if (!startDate) {
+        showToast('Error', 'Set a start date', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/data/download/start', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                symbols: symbols,
+                timeframes: selectedTimeframes,
+                start_date: startDate,
+                end_date: endDate
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+            showToast('Error', data.error, 'error');
+            return;
+        }
+
+        // Handle response format: data.data.job_id or data.job_id
+        const responseData = data.data || data;
+        downloadJobId = responseData.job_id;
+        showProgressSection(responseData.tasks);
+        startProgressPolling();
+        showToast('Success', 'Download started', 'success');
+
+    } catch (error) {
+        console.error('Failed to start download:', error);
+        showToast('Error', 'Failed to start download', 'error');
+    }
+}
+
+function showProgressSection(tasks) {
+    document.getElementById('progress-section').classList.remove('hidden');
+    document.getElementById('start-download-btn').disabled = true;
+
+    renderTaskList(tasks);
+    updateOverallProgress(tasks);
+}
+
+function renderTaskList(tasks) {
+    const container = document.getElementById('task-list');
+
+    const statusLabels = {
+        'pending': 'Pending',
+        'running': 'Running',
+        'completed': 'Completed',
+        'error': 'Error'
+    };
+
+    container.innerHTML = tasks.map(task => `
+        <div class="progress-item" id="task-${task.id}">
+            <div class="progress-header">
+                <span class="progress-title">${task.symbol} / ${task.timeframe}</span>
+                <span class="progress-status ${task.status}">${statusLabels[task.status] || task.status}</span>
+            </div>
+            <div class="progress-bar-container">
+                <div class="progress-bar" style="width: ${task.progress || 0}%"></div>
+            </div>
+            <div class="progress-info">
+                <span>${task.message || 'Waiting...'}</span>
+                <span>${task.progress || 0}%</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+function updateOverallProgress(tasks) {
+    const completed = tasks.filter(t => t.status === 'completed').length;
+    const running = tasks.filter(t => t.status === 'running').length;
+    const pending = tasks.filter(t => t.status === 'pending').length;
+    const errors = tasks.filter(t => t.status === 'error').length;
+
+    document.getElementById('completed-count').textContent = completed;
+    document.getElementById('running-count').textContent = running;
+    document.getElementById('pending-count').textContent = pending;
+    document.getElementById('error-count').textContent = errors;
+
+    const total = tasks.length;
+    const progressPct = total > 0 ? ((completed + errors) / total * 100) : 0;
+    document.getElementById('overall-progress-bar').style.width = `${progressPct}%`;
+
+    // Check if all done
+    if (pending === 0 && running === 0) {
+        stopProgressPolling();
+        document.getElementById('cancel-btn').style.display = 'none';
+        document.getElementById('start-download-btn').disabled = false;
+
+        if (errors === 0) {
+            showToast('Success', 'All downloads completed!', 'success');
+        } else {
+            showToast('Warning', `Downloads completed with ${errors} errors`, 'warning');
+        }
+    }
+}
+
+function startProgressPolling() {
+    if (progressInterval) clearInterval(progressInterval);
+
+    progressInterval = setInterval(async () => {
+        try {
+            const response = await fetch(`/api/data/download/status/${downloadJobId}`);
+            const data = await response.json();
+
+            // Handle response format: data.data.tasks or data.tasks
+            const responseData = data.data || data;
+            if (responseData.tasks) {
+                renderTaskList(responseData.tasks);
+                updateOverallProgress(responseData.tasks);
+            }
+        } catch (error) {
+            console.error('Failed to get progress:', error);
+        }
+    }, 1000);
+}
+
+function stopProgressPolling() {
+    if (progressInterval) {
+        clearInterval(progressInterval);
+        progressInterval = null;
+    }
+}
+
+async function cancelDownload() {
+    if (!downloadJobId) return;
+
+    try {
+        await fetch(`/api/data/download/cancel/${downloadJobId}`, {
+            method: 'POST'
+        });
+
+        stopProgressPolling();
+
+        // Hide and reset progress section
+        document.getElementById('progress-section').classList.add('hidden');
+        document.getElementById('task-list').innerHTML = '';
+        document.getElementById('cancel-btn').style.display = 'block';
+        document.getElementById('start-download-btn').disabled = false;
+
+        // Reset counters
+        document.getElementById('completed-count').textContent = '0';
+        document.getElementById('running-count').textContent = '0';
+        document.getElementById('pending-count').textContent = '0';
+        document.getElementById('error-count').textContent = '0';
+        document.getElementById('overall-progress-bar').style.width = '0%';
+
+        downloadJobId = null;
+        showToast('Cancelled', 'Download cancelled', 'warning');
+
+    } catch (error) {
+        console.error('Failed to cancel download:', error);
+        showToast('Error', 'Failed to cancel download', 'error');
+    }
+}
+</script>
+{% endblock %}

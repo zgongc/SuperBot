@@ -1,0 +1,738 @@
+{% extends "base.html" %}
+
+{% block title %}Favorites - SuperBot{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1>⭐ Favorites</h1>
+        <p>Manage your favorite symbols for quick analysis and trading</p>
+    </div>
+
+    <!-- Actions Bar -->
+    <div class="actions-bar">
+        <div style="display: flex; gap: 10px;">
+            <button class="btn btn-success" onclick="showSymbolBrowserModal()">
+                📚 Browse Symbols
+            </button>
+            <button class="btn btn-secondary" onclick="syncSymbols()">
+                🔄 Sync from Exchange
+            </button>
+        </div>
+        <div class="filters">
+            <select id="sortBy" onchange="loadFavorites()">
+                <option value="priority">Sort by Priority</option>
+                <option value="added_at">Sort by Date Added</option>
+                <option value="view_count">Sort by Views</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Favorites Table -->
+    <div id="favorites-list" class="table-container">
+        <p>Loading favorites...</p>
+    </div>
+</div>
+
+<!-- Edit Favorite Modal -->
+<div id="editFavoriteModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <span class="close" onclick="closeEditModal()">&times;</span>
+        <h2>Edit Favorite</h2>
+        <form id="editFavoriteForm" onsubmit="updateFavorite(event)">
+            <input type="hidden" id="edit_fav_id">
+            <div class="form-group">
+                <label>Symbol</label>
+                <input type="text" id="edit_symbol" readonly style="background: #f5f5f5; cursor: not-allowed;">
+            </div>
+            <div class="form-group">
+                <label>Base Asset</label>
+                <input type="text" id="edit_base_asset" readonly style="background: #f5f5f5; cursor: not-allowed;">
+            </div>
+            <div class="form-group">
+                <label>Priority (1-10)</label>
+                <input type="number" id="edit_priority" min="1" max="10" required>
+            </div>
+            <div class="form-group">
+                <label>Tags (comma-separated)</label>
+                <input type="text" id="edit_tags" placeholder="scalping, high-volume">
+            </div>
+            <div class="form-group">
+                <label>Notes</label>
+                <textarea id="edit_notes" rows="3" placeholder="Your notes..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>Color</label>
+                <div class="color-palette">
+                    <label class="color-option">
+                        <input type="radio" name="edit_color" value="#FF5733">
+                        <span class="color-box" style="background: #FF5733;"></span>
+                    </label>
+                    <label class="color-option">
+                        <input type="radio" name="edit_color" value="#33FF57">
+                        <span class="color-box" style="background: #33FF57;"></span>
+                    </label>
+                    <label class="color-option">
+                        <input type="radio" name="edit_color" value="#3357FF">
+                        <span class="color-box" style="background: #3357FF;"></span>
+                    </label>
+                    <label class="color-option">
+                        <input type="radio" name="edit_color" value="#FF33F5">
+                        <span class="color-box" style="background: #FF33F5;"></span>
+                    </label>
+                    <label class="color-option">
+                        <input type="radio" name="edit_color" value="#FFD733">
+                        <span class="color-box" style="background: #FFD733;"></span>
+                    </label>
+                    <label class="color-option">
+                        <input type="radio" name="edit_color" value="#33FFF5">
+                        <span class="color-box" style="background: #33FFF5;"></span>
+                    </label>
+                    <label class="color-option">
+                        <input type="radio" name="edit_color" value="#FF8C33">
+                        <span class="color-box" style="background: #FF8C33;"></span>
+                    </label>
+                    <label class="color-option">
+                        <input type="radio" name="edit_color" value="#8C33FF">
+                        <span class="color-box" style="background: #8C33FF;"></span>
+                    </label>
+                    <label class="color-option">
+                        <input type="radio" name="edit_color" value="#FF3388">
+                        <span class="color-box" style="background: #FF3388;"></span>
+                    </label>
+                    <label class="color-option">
+                        <input type="radio" name="edit_color" value="#666666">
+                        <span class="color-box" style="background: #666666;"></span>
+                    </label>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Update Favorite</button>
+        </form>
+    </div>
+</div>
+
+<!-- Symbol Browser Modal -->
+<div id="symbolBrowserModal" class="modal" style="display: none;">
+    <div class="modal-content modal-large">
+        <span class="close" onclick="closeSymbolBrowser()">&times;</span>
+        <h2>📚 Browse Exchange Symbols</h2>
+
+        <!-- Filters -->
+        <div class="browser-filters">
+            <div class="filter-group">
+                <label>Market Type</label>
+                <select id="marketTypeFilter">
+                    <option value="" selected>All Markets</option>
+                    <option value="SPOT">Spot</option>
+                    <option value="FUTURES">Futures</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Quote Asset</label>
+                <select id="quoteAssetFilter">
+                    <option value="USDT" selected>USDT</option>
+                    <option value="BUSD">BUSD</option>
+                    <option value="BTC">BTC</option>
+                    <option value="ETH">ETH</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Search Symbol</label>
+                <input type="text" id="searchSymbol" placeholder="BTC, ETH..." onkeyup="if(event.key==='Enter') loadAvailableSymbols()">
+            </div>
+
+            <button class="btn btn-primary" onclick="loadAvailableSymbols()">Search</button>
+        </div>
+
+        <!-- Bulk Actions Bar -->
+        <div class="bulk-actions-bar">
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <label style="display: flex; align-items: center; gap: 5px;">
+                    <input type="checkbox" id="selectAllSymbols" onchange="toggleSelectAll()">
+                    Select All
+                </label>
+                <span id="selectedCount">0 selected</span>
+            </div>
+
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 5px;">
+                    <label>Priority:</label>
+                    <input type="number" id="bulkPriority" value="5" min="1" max="10" style="width: 60px;">
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
+                    <label>Tags:</label>
+                    <select id="bulkTagsSelect" style="width: 150px;" onchange="handleTagSelection()">
+                        <option value="">Select or add tag...</option>
+                        <option value="__NEW__">+ Add New Tag</option>
+                    </select>
+                    <input type="text"
+                           id="newTagInput"
+                           placeholder="New tag name..."
+                           style="width: 150px; display: none;"
+                           onkeypress="handleNewTagKeypress(event)"
+                           onblur="hideNewTagInput()">
+                    <div id="selectedTagsDisplay" style="display: flex; gap: 5px; flex-wrap: wrap;"></div>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 5px;">
+                    <label>Color:</label>
+                    <div class="color-selector-compact" id="bulkColorSelector">
+                        <div class="selected-color-box" onclick="toggleColorPalette()" id="selectedColorBox" style="background: #666666;"></div>
+                        <div class="color-palette-dropdown" id="colorPaletteDropdown" style="display: none;">
+                            <div class="color-option-small" data-color="#FF5733" style="background: #FF5733;"></div>
+                            <div class="color-option-small" data-color="#33FF57" style="background: #33FF57;"></div>
+                            <div class="color-option-small" data-color="#3357FF" style="background: #3357FF;"></div>
+                            <div class="color-option-small" data-color="#FF33F5" style="background: #FF33F5;"></div>
+                            <div class="color-option-small" data-color="#FFD733" style="background: #FFD733;"></div>
+                            <div class="color-option-small" data-color="#33FFF5" style="background: #33FFF5;"></div>
+                            <div class="color-option-small" data-color="#FF8C33" style="background: #FF8C33;"></div>
+                            <div class="color-option-small" data-color="#8C33FF" style="background: #8C33FF;"></div>
+                            <div class="color-option-small" data-color="#FF3388" style="background: #FF3388;"></div>
+                            <div class="color-option-small" data-color="#666666" style="background: #666666;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn btn-success" onclick="addSelectedToFavorites()">
+                    Add Selected to Favorites (<span id="addCount">0</span>)
+                </button>
+            </div>
+        </div>
+
+        <!-- Symbols Table -->
+        <div id="availableSymbolsList" class="symbols-browser-table">
+            <p>Click "Search" to load symbols...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+// Load favorites on page load
+document.addEventListener('DOMContentLoaded', loadFavorites);
+
+async function loadFavorites() {
+    const sortBy = document.getElementById('sortBy').value;
+
+    try {
+        const response = await fetch(`/api/favorites?sort_by=${sortBy}`);
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            displayFavorites(data.data.favorites);
+        } else {
+            showError(data.message);
+        }
+    } catch (error) {
+        showError('Failed to load favorites: ' + error.message);
+    }
+}
+
+function displayFavorites(favorites) {
+    const container = document.getElementById('favorites-list');
+
+    if (favorites.length === 0) {
+        container.innerHTML = '<p class="empty-state">No favorites yet. Click "Add Favorite" to get started!</p>';
+        return;
+    }
+
+    let html = `
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Symbol</th>
+                    <th>Priority</th>
+                    <th>Tags</th>
+                    <th>Notes</th>
+                    <th>Added</th>
+                    <th>Views</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    favorites.forEach(fav => {
+        const tags = fav.tags ? fav.tags.join(', ') : '';
+        const color = fav.color || '#666';
+        const addedDate = new Date(fav.added_at).toLocaleDateString();
+
+        html += `
+            <tr style="border-left: 3px solid ${color}">
+                <td><strong>${fav.symbol}</strong></td>
+                <td><span class="priority-badge">${fav.priority}/10</span></td>
+                <td><small>${tags}</small></td>
+                <td><small>${fav.notes || '-'}</small></td>
+                <td>${addedDate}</td>
+                <td>${fav.view_count}</td>
+                <td>
+                    <button class="btn btn-sm btn-primary" onclick="showEditFavoriteModal(${fav.id}, '${fav.symbol}', '${fav.base_asset}', ${fav.priority}, '${tags}', '${fav.notes || ''}', '${color}')">Edit</button>
+                    <button class="btn btn-sm" onclick="queueAnalysis('${fav.symbol}')">Analyze</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteFavorite(${fav.id})">Delete</button>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += `
+            </tbody>
+        </table>
+    `;
+
+    container.innerHTML = html;
+}
+
+function showEditFavoriteModal(id, symbol, base_asset, priority, tags, notes, color) {
+    document.getElementById('edit_fav_id').value = id;
+    document.getElementById('edit_symbol').value = symbol;
+    document.getElementById('edit_base_asset').value = base_asset;
+    document.getElementById('edit_priority').value = priority;
+    document.getElementById('edit_tags').value = tags;
+    document.getElementById('edit_notes').value = notes;
+
+    // Select the matching color radio button
+    const colorRadios = document.querySelectorAll('input[name="edit_color"]');
+    colorRadios.forEach(radio => {
+        if (radio.value === color) {
+            radio.checked = true;
+        }
+    });
+
+    document.getElementById('editFavoriteModal').style.display = 'block';
+}
+
+function closeEditModal() {
+    document.getElementById('editFavoriteModal').style.display = 'none';
+}
+
+async function updateFavorite(event) {
+    event.preventDefault();
+
+    const id = document.getElementById('edit_fav_id').value;
+    const priority = parseInt(document.getElementById('edit_priority').value);
+    const tagsStr = document.getElementById('edit_tags').value;
+    const tags = tagsStr ? tagsStr.split(',').map(t => t.trim()) : [];
+    const notes = document.getElementById('edit_notes').value;
+
+    // Get selected color from radio buttons
+    const selectedColor = document.querySelector('input[name="edit_color"]:checked');
+    const color = selectedColor ? selectedColor.value : '#666666';
+
+    try {
+        const response = await fetch(`/api/favorites/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                priority,
+                tags,
+                notes,
+                color
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            closeEditModal();
+            loadFavorites();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    } catch (error) {
+        alert('Failed to update favorite: ' + error.message);
+    }
+}
+
+async function deleteFavorite(id) {
+    const confirmed = await confirm({
+        title: 'Favoriyi Sil?',
+        message: 'Bu favori silinecek. Devam etmek istediğinize emin misiniz?',
+        type: 'danger',
+        confirmText: 'Sil',
+        cancelText: 'İptal'
+    });
+    if (!confirmed) return;
+
+    try {
+        const response = await fetch(`/api/favorites/${id}`, {
+            method: 'DELETE'
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            loadFavorites();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    } catch (error) {
+        alert('Failed to delete favorite: ' + error.message);
+    }
+}
+
+async function queueAnalysis(symbol) {
+    try {
+        const response = await fetch('/api/analysis/queue', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                symbols: [symbol],
+                timeframe: '1h',
+                strategy_name: 'default'
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            alert(`${symbol} queued for analysis!`);
+        } else {
+            alert('Error: ' + data.message);
+        }
+    } catch (error) {
+        alert('Failed to queue analysis: ' + error.message);
+    }
+}
+
+function showError(message) {
+    const container = document.getElementById('favorites-list');
+    container.innerHTML = `<p class="error-message">Error: ${message}</p>`;
+}
+
+// ============================================================================
+// TAG MANAGEMENT
+// ============================================================================
+
+let availableTags = [];
+let selectedTags = [];
+
+function loadAvailableTags() {
+    // Get unique tags from existing favorites
+    fetch('/api/favorites')
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const allTags = new Set();
+                data.data.favorites.forEach(fav => {
+                    if (fav.tags && Array.isArray(fav.tags)) {
+                        fav.tags.forEach(tag => allTags.add(tag));
+                    }
+                });
+                availableTags = Array.from(allTags);
+                updateTagDropdown();
+            }
+        });
+}
+
+function updateTagDropdown() {
+    const select = document.getElementById('bulkTagsSelect');
+    // Keep first two options
+    select.innerHTML = '<option value="">Select or add tag...</option><option value="__NEW__">+ Add New Tag</option>';
+
+    // Add existing tags
+    availableTags.forEach(tag => {
+        const option = document.createElement('option');
+        option.value = tag;
+        option.textContent = tag;
+        select.appendChild(option);
+    });
+}
+
+function handleTagSelection() {
+    const select = document.getElementById('bulkTagsSelect');
+    const value = select.value;
+
+    if (value === '__NEW__') {
+        // Show new tag input
+        document.getElementById('newTagInput').style.display = 'inline-block';
+        document.getElementById('newTagInput').focus();
+        select.value = '';
+    } else if (value && !selectedTags.includes(value)) {
+        // Add existing tag
+        selectedTags.push(value);
+        updateSelectedTagsDisplay();
+        select.value = '';
+    }
+}
+
+function handleNewTagKeypress(event) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        const input = document.getElementById('newTagInput');
+        const tag = input.value.trim();
+
+        if (tag && !selectedTags.includes(tag)) {
+            // Add to available tags if new
+            if (!availableTags.includes(tag)) {
+                availableTags.push(tag);
+                updateTagDropdown();
+            }
+            selectedTags.push(tag);
+            updateSelectedTagsDisplay();
+        }
+
+        input.value = '';
+        input.style.display = 'none';
+    } else if (event.key === 'Escape') {
+        hideNewTagInput();
+    }
+}
+
+function hideNewTagInput() {
+    setTimeout(() => {
+        const input = document.getElementById('newTagInput');
+        input.value = '';
+        input.style.display = 'none';
+    }, 200);
+}
+
+function updateSelectedTagsDisplay() {
+    const display = document.getElementById('selectedTagsDisplay');
+    display.innerHTML = selectedTags.map(tag => `
+        <span class="tag-badge">
+            ${tag}
+            <span class="remove-tag" onclick="removeTag('${tag}')">&times;</span>
+        </span>
+    `).join('');
+}
+
+function removeTag(tag) {
+    selectedTags = selectedTags.filter(t => t !== tag);
+    updateSelectedTagsDisplay();
+}
+
+// ============================================================================
+// COLOR SELECTOR
+// ============================================================================
+
+let selectedColor = '#666666';
+
+function toggleColorPalette() {
+    const dropdown = document.getElementById('colorPaletteDropdown');
+    dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+}
+
+// Close color palette when clicking outside
+document.addEventListener('click', function(event) {
+    const colorSelector = document.getElementById('bulkColorSelector');
+    const dropdown = document.getElementById('colorPaletteDropdown');
+    if (colorSelector && !colorSelector.contains(event.target)) {
+        dropdown.style.display = 'none';
+    }
+});
+
+// Color selection
+document.addEventListener('DOMContentLoaded', function() {
+    const colorOptions = document.querySelectorAll('.color-option-small');
+    colorOptions.forEach(option => {
+        option.addEventListener('click', function() {
+            const color = this.getAttribute('data-color');
+            selectedColor = color;
+            document.getElementById('selectedColorBox').style.background = color;
+            document.getElementById('colorPaletteDropdown').style.display = 'none';
+        });
+    });
+
+    // Load tags on page load
+    loadAvailableTags();
+});
+
+// ============================================================================
+// Symbol Browser Functions
+// ============================================================================
+
+function showSymbolBrowserModal() {
+    document.getElementById('symbolBrowserModal').style.display = 'flex';
+    loadAvailableSymbols();
+}
+
+function closeSymbolBrowser() {
+    document.getElementById('symbolBrowserModal').style.display = 'none';
+}
+
+async function syncSymbols() {
+    const confirmed = await confirm({
+        title: 'Sembolleri Senkronize Et?',
+        message: 'Binance\'den tüm SPOT ve FUTURES sembolleri indirilecek. Devam etmek istiyor musunuz?',
+        type: 'warning',
+        confirmText: 'Senkronize Et',
+        cancelText: 'İptal'
+    });
+    if (!confirmed) return;
+
+    try {
+        const response = await fetch('/api/symbols/sync', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                market_type: 'both',
+                force: true
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            alert(`Success! Synced ${data.data.symbols_count} symbols from exchange.`);
+            // Auto-open browser if in modal
+            if (document.getElementById('symbolBrowserModal').style.display === 'flex') {
+                loadAvailableSymbols();
+            }
+        } else {
+            alert('Error: ' + data.message);
+        }
+    } catch (error) {
+        alert('Failed to sync symbols: ' + error.message);
+    }
+}
+
+async function loadAvailableSymbols() {
+    const marketType = document.getElementById('marketTypeFilter').value;
+    const quoteAsset = document.getElementById('quoteAssetFilter').value;
+    const search = document.getElementById('searchSymbol').value;
+
+    const params = new URLSearchParams();
+    if (marketType) params.append('market_type', marketType);
+    if (quoteAsset) params.append('quote_asset', quoteAsset);
+    if (search) params.append('search', search);
+    params.append('limit', '5000');
+
+    try {
+        const response = await fetch(`/api/symbols/available?${params.toString()}`);
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            displayAvailableSymbols(data.data.symbols);
+        } else {
+            document.getElementById('availableSymbolsList').innerHTML =
+                `<p class="error-message">Error: ${data.message}</p>`;
+        }
+    } catch (error) {
+        document.getElementById('availableSymbolsList').innerHTML =
+            `<p class="error-message">Failed to load symbols: ${error.message}</p>`;
+    }
+}
+
+function displayAvailableSymbols(symbols) {
+    const container = document.getElementById('availableSymbolsList');
+
+    if (symbols.length === 0) {
+        container.innerHTML = '<p class="empty-state">No symbols found. Try syncing from exchange first.</p>';
+        return;
+    }
+
+    let html = `
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th>
+                    <th>Symbol</th>
+                    <th>Market</th>
+                    <th>Base</th>
+                    <th>Quote</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    symbols.forEach(symbol => {
+        html += `
+            <tr>
+                <td><input type="checkbox" class="symbol-checkbox"
+                    data-symbol="${symbol.symbol}"
+                    data-base-asset="${symbol.base_asset}"
+                    data-quote-asset="${symbol.quote_asset}"
+                    data-market-type="${symbol.market_type}"
+                    onchange="updateSelectedCount()"></td>
+                <td><strong>${symbol.symbol}</strong></td>
+                <td><span class="badge badge-${symbol.market_type === 'SPOT' ? 'info' : 'warning'}">${symbol.market_type}</span></td>
+                <td>${symbol.base_asset}</td>
+                <td>${symbol.quote_asset}</td>
+                <td><span class="badge badge-success">${symbol.status}</span></td>
+            </tr>
+        `;
+    });
+
+    html += `
+            </tbody>
+        </table>
+    `;
+
+    container.innerHTML = html;
+    updateSelectedCount();
+}
+
+function toggleSelectAll() {
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    const checkboxes = document.querySelectorAll('.symbol-checkbox');
+
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAllCheckbox.checked;
+    });
+
+    updateSelectedCount();
+}
+
+function updateSelectedCount() {
+    const checkboxes = document.querySelectorAll('.symbol-checkbox:checked');
+    const count = checkboxes.length;
+    document.getElementById('selectedCount').textContent = `${count} selected`;
+    document.getElementById('addCount').textContent = count;
+}
+
+async function addSelectedToFavorites() {
+    const checkboxes = document.querySelectorAll('.symbol-checkbox:checked');
+
+    if (checkboxes.length === 0) {
+        alert('Please select at least one symbol');
+        return;
+    }
+
+    const priority = parseInt(document.getElementById('bulkPriority').value);
+
+    const symbols = Array.from(checkboxes).map(cb => ({
+        symbol: cb.dataset.symbol,
+        base_asset: cb.dataset.baseAsset,
+        quote_asset: cb.dataset.quoteAsset,
+        market_type: cb.dataset.marketType,
+        priority: priority,
+        tags: selectedTags,
+        color: selectedColor
+    }));
+
+    try {
+        const response = await fetch('/api/favorites/bulk-add', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ symbols: symbols })
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            alert(`Success! Added ${data.data.added_count} symbols to favorites.\n` +
+                  (data.data.failed_count > 0 ? `Failed: ${data.data.failed_count}` : ''));
+            closeSymbolBrowser();
+            loadFavorites();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    } catch (error) {
+        alert('Failed to add favorites: ' + error.message);
+    }
+}
+</script>
+
+{# Tüm stiller main.css'te: .modal-large, .symbols-browser-table, .color-palette, .color-option, .color-box, .color-selector-compact, .color-palette-dropdown, .tag-badge, .browser-filters, .bulk-actions-bar, .priority-badge #}
+{% endblock %}

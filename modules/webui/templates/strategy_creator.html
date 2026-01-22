@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}Yeni Strateji{% endblock %}
+
+{# Tüm stiller components.css'te: .creator-*, .wizard-*, .step-*, .template-*, .symbol-*, .summary-*, .form-label, .form-input #}
+
+{% block content %}
+<div class="creator-container">
+    <div class="creator-header">
+        <h1 class="creator-title">Create New Strategy</h1>
+        <p class="creator-subtitle">Start by selecting a template.</p>
+    </div>
+
+    <!-- Template Selection -->
+    <div class="card">
+        <h2 style="margin-bottom: 1.5rem;">Select Template</h2>
+        <div class="template-grid" id="template-grid">
+            <!-- Templates will be loaded here -->
+        </div>
+    </div>
+
+    <div style="margin-top: 1.5rem; text-align: center;">
+        <a href="/strategies" class="btn btn-secondary">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            Geri
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascriptArea %}
+<script>
+    let templates = [];
+
+    document.addEventListener('DOMContentLoaded', function() {
+        loadTemplates();
+    });
+
+    async function loadTemplates() {
+        try {
+            // Load both basic templates and all templates
+            const [basicResponse, allResponse] = await Promise.all([
+                fetch('/api/strategies/templates/basic'),
+                fetch('/api/strategies/templates')
+            ]);
+
+            const basicResult = await basicResponse.json();
+            const allResult = await allResponse.json();
+
+            const basicTemplates = basicResult.status === 'success' ? basicResult.data.templates : [];
+            const allTemplates = allResult.status === 'success' ? allResult.data.templates : [];
+
+            // Combine and deduplicate by ID
+            const templateMap = new Map();
+
+            // Add basic templates first (priority)
+            basicTemplates.forEach(t => templateMap.set(t.id, t));
+
+            // Add other templates
+            allTemplates.forEach(t => {
+                if (!templateMap.has(t.id)) {
+                    templateMap.set(t.id, t);
+                }
+            });
+
+            templates = Array.from(templateMap.values());
+            renderTemplates();
+
+        } catch (error) {
+            console.error('Error loading templates:', error);
+            showToast('Hata', 'Şablonlar yüklenirken hata oluştu', 'error');
+        }
+    }
+
+    function renderTemplates() {
+        const grid = document.getElementById('template-grid');
+
+        if (templates.length === 0) {
+            grid.innerHTML = '<p style="color: var(--text-secondary); text-align: center;">Şablon bulunamadı</p>';
+            return;
+        }
+
+        const templateCards = templates.map(template => {
+            // Determine icon based on template name
+            let icon = '';
+            if (template.id.includes('empty')) {
+                icon = `
+                    <svg class="template-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                        <line x1="9" y1="9" x2="15" y2="9"/>
+                        <line x1="9" y1="15" x2="15" y2="15"/>
+                    </svg>
+                `;
+            } else if (template.id.includes('rsi')) {
+                icon = `
+                    <svg class="template-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 3v18h18"/>
+                        <path d="M18 9l-3 3-3-3-5 5"/>
+                    </svg>
+                `;
+            } else {
+                icon = `
+                    <svg class="template-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
+                        <path d="M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                    </svg>
+                `;
+            }
+
+            return `
+                <div class="template-card" data-template="${template.id}" onclick="selectTemplate('${template.id}')">
+                    ${icon}
+                    <div class="template-name">${template.name}</div>
+                    <div class="template-desc">${template.description || 'Strateji şablonu'}</div>
+                </div>
+            `;
+        }).join('');
+
+        grid.innerHTML = templateCards;
+    }
+
+    function selectTemplate(templateId) {
+        // Navigate to new strategy page with template parameter
+        window.location.href = `/strategies/new/?load=${templateId}`;
+    }
+</script>
+{% endblock %}
