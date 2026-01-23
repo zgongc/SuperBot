@@ -90,3 +90,22 @@ def register_routes(bp):
 
         except Exception as e:
             return error_response(str(e), 500)
+
+    @bp.route('/patterns/config', methods=['GET'])
+    def get_patterns_config():
+        """
+        GET /api/patterns/config - Get pattern filter config
+
+        Returns:
+            {
+                "hammer": {"name": "Hammer", "type": "bullish", "enabled": true, ...},
+                ...
+            }
+        """
+        try:
+            service = get_patterns_service()
+            result = run_async(service.get_config())
+            return success_response(result)
+
+        except Exception as e:
+            return error_response(str(e), 500)

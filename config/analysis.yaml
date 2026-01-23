@@ -86,3 +86,41 @@ analysis:
   output:
     include_filled_fvg: false
     include_broken_swings: false
+
+  # Candlestick Pattern Detection
+  # Only patterns with 'true' will be detected and shown
+  candlestick:
+    # Single candle - Bullish
+    hammer: true
+    inverted_hammer: true
+    dragonfly_doji: true
+    marubozu_bullish: true
+
+    # Single candle - Bearish
+    hanging_man: true
+    shooting_star: true
+    gravestone_doji: true
+    marubozu_bearish: true
+
+    # Single candle - Neutral
+    doji: true
+    longlegged_doji: true
+    spinning_top: true
+
+    # Multi candle - Bullish (2-bar)
+    engulfing_bullish: true
+    harami_bullish: true
+    piercing_line: true
+
+    # Multi candle - Bearish (2-bar)
+    engulfing_bearish: true
+    harami_bearish: true
+    dark_cloud_cover: true
+
+    # Multi candle - Bullish (3-bar)
+    morning_star: true
+    three_white_soldiers: true
+
+    # Multi candle - Bearish (3-bar)
+    evening_star: true
+    three_black_crows: true

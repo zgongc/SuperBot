@@ -9,12 +9,93 @@ let volumeSeries = null;
 let analysisData = null;
 let currentFilter = 'all';
 let isDateMode = false;
+let patternConfig = {};
 
 // Initialize
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadConfig();
     initChart();
     loadSymbols();
 });
+
+/**
+ * Load pattern config from API
+ */
+async function loadConfig() {
+    try {
+        const response = await fetch('/api/patterns/config');
+        const data = await response.json();
+
+        if (data.status === 'success' && data.data) {
+            patternConfig = data.data;
+
+            // Build filter checkboxes
+            buildFilterCheckboxes(patternConfig);
+        }
+    } catch (error) {
+        console.error('Failed to load config:', error);
+    }
+}
+
+/**
+ * Build filter checkboxes from config
+ */
+function buildFilterCheckboxes(config) {
+    const container = document.getElementById('pattern-filters');
+    if (!container) return;
+
+    // Group patterns by type
+    const bullish = [];
+    const bearish = [];
+    const neutral = [];
+
+    for (const [code, info] of Object.entries(config)) {
+        const item = { code, ...info };
+        if (info.type === 'bullish') bullish.push(item);
+        else if (info.type === 'bearish') bearish.push(item);
+        else neutral.push(item);
+    }
+
+    let html = '';
+
+    // Bullish patterns
+    html += '<div class="filter-group"><div class="filter-group-title bullish">Bullish</div><div class="filter-items">';
+    bullish.forEach(p => {
+        html += `
+            <label class="filter-checkbox">
+                <input type="checkbox" id="filter-${p.code}" ${p.enabled ? 'checked' : ''} disabled>
+                <span class="filter-item filter-bullish" title="${p.description}">${p.name}</span>
+            </label>
+        `;
+    });
+    html += '</div></div>';
+
+    // Bearish patterns
+    html += '<div class="filter-group"><div class="filter-group-title bearish">Bearish</div><div class="filter-items">';
+    bearish.forEach(p => {
+        html += `
+            <label class="filter-checkbox">
+                <input type="checkbox" id="filter-${p.code}" ${p.enabled ? 'checked' : ''} disabled>
+                <span class="filter-item filter-bearish" title="${p.description}">${p.name}</span>
+            </label>
+        `;
+    });
+    html += '</div></div>';
+
+    // Neutral patterns
+    html += '<div class="filter-group"><div class="filter-group-title neutral">Neutral</div><div class="filter-items">';
+    neutral.forEach(p => {
+        html += `
+            <label class="filter-checkbox">
+                <input type="checkbox" id="filter-${p.code}" ${p.enabled ? 'checked' : ''} disabled>
+                <span class="filter-item filter-neutral" title="${p.description}">${p.name}</span>
+            </label>
+        `;
+    });
+    html += '</div></div>';
+
+    container.innerHTML = html;
+}
 
 /**
  * Initialize LightweightCharts
@@ -79,37 +160,46 @@ function initChart() {
 }
 
 /**
- * Load available symbols
+ * Load available symbols from data/parquets folder
  */
 async function loadSymbols() {
+    const select = document.getElementById('pattern-symbol');
+
     try {
-        const response = await fetch('/api/favorites');
+        // Get symbols from data/parquets folder (downloaded data)
+        const response = await fetch('/api/data/symbols');
         const data = await response.json();
 
-        const select = document.getElementById('pattern-symbol');
-        select.innerHTML = '<option value="">Select symbol...</option>';
-
-        if (data.status === 'success' && data.data.favorites) {
-            data.data.favorites.forEach(fav => {
-                const option = document.createElement('option');
-                option.value = fav.symbol;
-                option.textContent = fav.symbol;
-                select.appendChild(option);
+        if (data.status === 'success' && data.data.symbols && data.data.symbols.length > 0) {
+            select.innerHTML = '<option value="">Select symbol...</option>';
+            data.data.symbols.forEach(symbol => {
+                select.innerHTML += `<option value="${symbol}">${symbol}</option>`;
             });
+            // Pre-select BTCUSDT if available
+            if (select.querySelector('option[value="BTCUSDT"]')) {
+                select.value = 'BTCUSDT';
+            } else {
+                // Otherwise select first symbol
+                select.selectedIndex = 1;
+            }
+        } else {
+            // Fallback to common symbols if no data downloaded
+            select.innerHTML = `
+                <option value="">Select a symbol...</option>
+                <option value="BTCUSDT" selected>BTCUSDT</option>
+                <option value="ETHUSDT">ETHUSDT</option>
+                <option value="BNBUSDT">BNBUSDT</option>
+                <option value="SOLUSDT">SOLUSDT</option>
+            `;
         }
-
-        // Add some defaults if no favorites
-        if (select.options.length <= 1) {
-            ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT'].forEach(sym => {
-                const option = document.createElement('option');
-                option.value = sym;
-                option.textContent = sym;
-                select.appendChild(option);
-            });
-        }
-
     } catch (error) {
         console.error('Failed to load symbols:', error);
+        // Fallback
+        select.innerHTML = `
+            <option value="">Select a symbol...</option>
+            <option value="BTCUSDT" selected>BTCUSDT</option>
+            <option value="ETHUSDT">ETHUSDT</option>
+        `;
     }
 }
 

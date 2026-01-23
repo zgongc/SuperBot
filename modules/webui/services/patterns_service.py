@@ -8,6 +8,7 @@ from typing import Dict, Any, Optional, List
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 import pandas as pd
+import yaml
 
 
 def get_utc_offset() -> int:
@@ -18,6 +19,20 @@ def get_utc_offset() -> int:
         return config.get('system', {}).get('utc_offset', 3)
     except Exception:
         return 3  # Default UTC+3
+
+
+def load_candlestick_config() -> Dict[str, bool]:
+    """Load candlestick pattern config from config/analysis.yaml"""
+    config_path = Path("config/analysis.yaml")
+    if config_path.exists():
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = yaml.safe_load(f)
+                return config.get('analysis', {}).get('candlestick', {})
+        except Exception:
+            pass
+    # Default: all patterns enabled
+    return {}
 
 
 class PatternsService:
@@ -192,10 +207,19 @@ class PatternsService:
                 'timeframe': timeframe
             }
 
+        # Load pattern filter config
+        pattern_config = load_candlestick_config()
+
         # Detect patterns
         detector = self._get_detector()
         detector.reset()
-        patterns = detector.detect(df)
+        all_patterns = detector.detect(df)
+
+        # Filter patterns based on config (only show patterns where config is True)
+        if pattern_config:
+            patterns = [p for p in all_patterns if pattern_config.get(p.name, True)]
+        else:
+            patterns = all_patterns
 
         # Cache
         cache_key = f"{symbol}_{timeframe}"
@@ -303,3 +327,20 @@ class PatternsService:
     async def get_pattern_info(self) -> Dict[str, Any]:
         """Get all pattern definitions"""
         return self.PATTERN_INFO
+
+    async def get_config(self) -> Dict[str, Any]:
+        """Get candlestick pattern config with pattern info"""
+        config = load_candlestick_config()
+
+        # Build config with pattern info
+        result = {}
+        for pattern_code, info in self.PATTERN_INFO.items():
+            result[pattern_code] = {
+                'name': info['name'],
+                'type': info['type'],
+                'enabled': config.get(pattern_code, True),
+                'description': info['description'],
+                'bars': info['bars']
+            }
+
+        return result
