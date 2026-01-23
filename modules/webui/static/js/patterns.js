@@ -10,6 +10,7 @@ let analysisData = null;
 let currentFilter = 'all';
 let isDateMode = false;
 let patternConfig = {};
+let patternVisibility = {};  // Tracks which patterns are visible on chart
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
@@ -28,6 +29,11 @@ async function loadConfig() {
 
         if (data.status === 'success' && data.data) {
             patternConfig = data.data;
+
+            // Initialize visibility from config (enabled = visible by default)
+            for (const [code, info] of Object.entries(patternConfig)) {
+                patternVisibility[code] = info.enabled;
+            }
 
             // Build filter checkboxes
             buildFilterCheckboxes(patternConfig);
@@ -63,7 +69,7 @@ function buildFilterCheckboxes(config) {
     bullish.forEach(p => {
         html += `
             <label class="filter-checkbox">
-                <input type="checkbox" id="filter-${p.code}" ${p.enabled ? 'checked' : ''} disabled>
+                <input type="checkbox" id="filter-${p.code}" ${p.enabled ? 'checked' : ''} onchange="togglePatternVisibility('${p.code}', this.checked)">
                 <span class="filter-item filter-bullish" title="${p.description}">${p.name}</span>
             </label>
         `;
@@ -75,7 +81,7 @@ function buildFilterCheckboxes(config) {
     bearish.forEach(p => {
         html += `
             <label class="filter-checkbox">
-                <input type="checkbox" id="filter-${p.code}" ${p.enabled ? 'checked' : ''} disabled>
+                <input type="checkbox" id="filter-${p.code}" ${p.enabled ? 'checked' : ''} onchange="togglePatternVisibility('${p.code}', this.checked)">
                 <span class="filter-item filter-bearish" title="${p.description}">${p.name}</span>
             </label>
         `;
@@ -87,7 +93,7 @@ function buildFilterCheckboxes(config) {
     neutral.forEach(p => {
         html += `
             <label class="filter-checkbox">
-                <input type="checkbox" id="filter-${p.code}" ${p.enabled ? 'checked' : ''} disabled>
+                <input type="checkbox" id="filter-${p.code}" ${p.enabled ? 'checked' : ''} onchange="togglePatternVisibility('${p.code}', this.checked)">
                 <span class="filter-item filter-neutral" title="${p.description}">${p.name}</span>
             </label>
         `;
@@ -95,6 +101,49 @@ function buildFilterCheckboxes(config) {
     html += '</div></div>';
 
     container.innerHTML = html;
+}
+
+/**
+ * Toggle pattern visibility on chart
+ */
+function togglePatternVisibility(patternCode, visible) {
+    patternVisibility[patternCode] = visible;
+
+    // Update chart markers if we have data
+    if (analysisData) {
+        updateChartMarkers();
+    }
+}
+
+/**
+ * Update chart markers based on visibility settings
+ */
+function updateChartMarkers() {
+    if (!candleSeries || !analysisData || !analysisData.patterns) return;
+
+    const colors = {
+        'bullish': '#26a69a',
+        'bearish': '#ef5350',
+        'neutral': '#9e9e9e'
+    };
+
+    // Build markers from visible patterns only
+    const visibleMarkers = [];
+    for (const p of analysisData.patterns) {
+        // Check if this pattern is visible
+        if (patternVisibility[p.code] === false) continue;
+
+        visibleMarkers.push({
+            time: Math.floor(p.time / 1000),
+            position: p.type === 'bullish' ? 'belowBar' : 'aboveBar',
+            color: colors[p.type] || '#9e9e9e',
+            shape: p.type === 'bullish' ? 'arrowUp' : (p.type === 'bearish' ? 'arrowDown' : 'circle'),
+            text: p.name,
+            size: 1
+        });
+    }
+
+    candleSeries.setMarkers(visibleMarkers);
 }
 
 /**
@@ -322,10 +371,8 @@ function updateChart(data) {
         volumeSeries.setData(volumeData);
     }
 
-    // Set markers for patterns
-    if (data.annotations && data.annotations.markers) {
-        candleSeries.setMarkers(data.annotations.markers);
-    }
+    // Set markers for patterns (filtered by visibility)
+    updateChartMarkers();
 
     // Fit content
     chart.timeScale().fitContent();

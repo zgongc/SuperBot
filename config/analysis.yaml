@@ -91,7 +91,7 @@ analysis:
   # Only patterns with 'true' will be detected and shown
   candlestick:
     # Single candle - Bullish
-    hammer: true
+    hammer: false
     inverted_hammer: true
     dragonfly_doji: true
     marubozu_bullish: true

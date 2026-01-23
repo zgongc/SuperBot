@@ -207,19 +207,10 @@ class PatternsService:
                 'timeframe': timeframe
             }
 
-        # Load pattern filter config
-        pattern_config = load_candlestick_config()
-
-        # Detect patterns
+        # Detect all patterns (config controls checkbox defaults, not detection)
         detector = self._get_detector()
         detector.reset()
-        all_patterns = detector.detect(df)
-
-        # Filter patterns based on config (only show patterns where config is True)
-        if pattern_config:
-            patterns = [p for p in all_patterns if pattern_config.get(p.name, True)]
-        else:
-            patterns = all_patterns
+        patterns = detector.detect(df)
 
         # Cache
         cache_key = f"{symbol}_{timeframe}"

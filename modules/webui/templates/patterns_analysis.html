@@ -307,88 +307,57 @@
     </div>
 </div>
 
-<!-- Pattern Filter (from config/analysis.yaml) -->
-<div class="card" style="margin-top: 20px;">
+<!-- Pattern Filter (chart visibility) -->
+<div class="smc-filter card" style="margin-top: 20px;">
     <div class="card-header">
-        <h3>Pattern Filter</h3>
-        <small style="color: var(--text-muted);">Edit config/analysis.yaml to enable/disable patterns</small>
+        <h3>Filter</h3>
+        <small style="color: var(--text-muted);">Toggle patterns on chart</small>
     </div>
     <div class="card-body">
-        <div id="pattern-filters" class="pattern-filters-grid">
-            <p class="empty-message">Loading config...</p>
+        <div id="pattern-filters" class="filter-grid">
+            <p class="empty-message">Loading...</p>
         </div>
     </div>
 </div>
 
-<style>
-    .pattern-filters-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 16px;
-    }
-
-    @media (max-width: 768px) {
-        .pattern-filters-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-
-    .filter-group {
-        background: var(--card-bg);
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        padding: 12px;
-    }
-
-    .filter-group-title {
-        font-weight: 600;
-        margin-bottom: 10px;
-        padding-bottom: 6px;
-        border-bottom: 1px solid var(--border-color);
-    }
-
-    .filter-group-title.bullish { color: #26a69a; }
-    .filter-group-title.bearish { color: #ef5350; }
-    .filter-group-title.neutral { color: #9e9e9e; }
-
-    .filter-items {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-    }
-
-    .filter-checkbox {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        cursor: default;
-    }
-
-    .filter-checkbox input[type="checkbox"] {
-        width: 16px;
-        height: 16px;
-        cursor: default;
-    }
-
-    .filter-checkbox input[type="checkbox"]:checked + .filter-item {
-        opacity: 1;
-    }
-
-    .filter-checkbox input[type="checkbox"]:not(:checked) + .filter-item {
-        opacity: 0.4;
-        text-decoration: line-through;
-    }
-
-    .filter-item {
-        font-size: 13px;
-        padding: 4px 8px;
-        border-radius: 4px;
-    }
-
-    .filter-item.filter-bullish { color: #26a69a; }
-    .filter-item.filter-bearish { color: #ef5350; }
-    .filter-item.filter-neutral { color: #9e9e9e; }
-</style>
+<!-- Pattern Legend -->
+<div class="card" style="margin-top: 20px;">
+    <div class="card-header">
+        <h3>Pattern Legend</h3>
+    </div>
+    <div class="card-body">
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px;">
+            <div>
+                <h4 style="margin-bottom: 8px; color: #26a69a;">Bullish Patterns</h4>
+                <div style="font-size: 13px; color: var(--text-muted);">
+                    <div><strong>Hammer</strong> - Reversal at bottom</div>
+                    <div><strong>Bullish Engulfing</strong> - Strong reversal</div>
+                    <div><strong>Morning Star</strong> - 3-bar reversal</div>
+                    <div><strong>Three White Soldiers</strong> - Continuation</div>
+                    <div><strong>Piercing Line</strong> - Reversal</div>
+                </div>
+            </div>
+            <div>
+                <h4 style="margin-bottom: 8px; color: #ef5350;">Bearish Patterns</h4>
+                <div style="font-size: 13px; color: var(--text-muted);">
+                    <div><strong>Shooting Star</strong> - Reversal at top</div>
+                    <div><strong>Bearish Engulfing</strong> - Strong reversal</div>
+                    <div><strong>Evening Star</strong> - 3-bar reversal</div>
+                    <div><strong>Three Black Crows</strong> - Continuation</div>
+                    <div><strong>Dark Cloud Cover</strong> - Reversal</div>
+                </div>
+            </div>
+            <div>
+                <h4 style="margin-bottom: 8px; color: #9e9e9e;">Neutral Patterns</h4>
+                <div style="font-size: 13px; color: var(--text-muted);">
+                    <div><strong>Doji</strong> - Market indecision</div>
+                    <div><strong>Spinning Top</strong> - Indecision</div>
+                    <div><strong>Long-legged Doji</strong> - High volatility</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block javascriptArea %}
