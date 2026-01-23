@@ -172,7 +172,7 @@ class DownloadService:
             for task in job.tasks:
                 if job.cancelled:
                     task.status = TaskStatus.CANCELLED
-                    task.message = "İptal edildi"
+                    task.message = "Cancelled"
                     continue
 
                 await self._process_task(downloader, task)
@@ -185,11 +185,11 @@ class DownloadService:
         """Process a single download task"""
         task.status = TaskStatus.RUNNING
         task.started_at = datetime.now()
-        task.message = "Başlatılıyor..."
+        task.message = "Starting..."
         task.progress = 5
 
         try:
-            task.message = "İndiriliyor..."
+            task.message = "Downloading..."
             task.progress = 10
 
             df = await downloader.download(
@@ -213,7 +213,7 @@ class DownloadService:
             else:
                 task.rows_downloaded = 0
 
-            task.message = f"{task.rows_downloaded:,} satır indirildi"
+            task.message = f"{task.rows_downloaded:,} rows downloaded"
 
             if self.logger:
                 self.logger.info(f"Task {task.id} completed: {task.rows_downloaded} rows")
@@ -221,7 +221,7 @@ class DownloadService:
         except Exception as e:
             task.status = TaskStatus.ERROR
             task.error = str(e)
-            task.message = f"Hata: {str(e)[:50]}"
+            task.message = f"Error: {str(e)[:50]}"
             task.completed_at = datetime.now()
 
             if self.logger:

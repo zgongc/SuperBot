@@ -114,6 +114,10 @@ class ParquetsEngine:
             FileNotFoundError: The required file was not found.
             RuntimeError: Insufficient data
         """
+        # Validate required parameters
+        if start_date is None or end_date is None:
+            raise ValueError("start_date and end_date are required for ParquetsEngine")
+
         # Ensure warmup_candles is integer (may come as float from YAML config)
         warmup_candles = int(warmup_candles)
 

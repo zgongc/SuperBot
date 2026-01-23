@@ -1,23 +1,23 @@
 """
 Replay Trading Service
-WebUI için ReplayMode wrapper - thin layer
+WebUI için ReplayMode wrapper - ince bir katman
 
-ReplayMode (Trading Engine) tüm işi yapar:
-- Parquet yükleme
-- Playback kontrol
+ReplayMode (Trading Engine) does all the work:
+- Parquet loading
+- Playback control
 - Strategy execution
 - Order/Position/Balance management
-- İndikatör hesaplama
+- Calculate indicator.
 
-ReplayService sadece:
-- Session yönetimi (dict: session_id → ReplayMode)
+ReplayService only:
+- Session management (dict: session_id -> ReplayMode)
 - Chart data formatting (WebUI'ye uygun JSON)
-- Strategy listesi
+- List of strategies.
 
 Session Persistence:
-- Flask reload olduğunda session'lar kaybolmasın diye
-- Session ID = strategy_id (aynı strateji = aynı session)
-- Session info JSON olarak kaydedilir
+- To prevent sessions from being lost when Flask reloads
+- Session ID = strategy_id (same strategy = same session)
+- Session info is saved as JSON
 """
 
 from typing import List, Dict, Any, Optional
@@ -33,13 +33,13 @@ import json
 from .base_service import BaseService
 
 
-# Session cache dosyası
+# Session cache file
 SESSION_CACHE_FILE = Path("data/replay_sessions.json")
 
 
 @dataclass
 class ReplaySessionInfo:
-    """Session metadata (WebUI için)"""
+    """Session metadata (for WebUI)"""
     id: str
     strategy_id: str
     strategy_name: str
@@ -53,7 +53,7 @@ class ReplaySessionInfo:
     speed: float = 1.0
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
     indicator_names: List[str] = field(default_factory=list)
-    indicator_config: Dict = field(default_factory=dict)  # Strateji indicator config
+    indicator_config: Dict = field(default_factory=dict)  # Strategy indicator config
 
     def to_dict(self) -> Dict:
         d = asdict(self)
@@ -63,7 +63,7 @@ class ReplaySessionInfo:
 
     @classmethod
     def from_dict(cls, d: Dict) -> 'ReplaySessionInfo':
-        """Dict'ten ReplaySessionInfo oluştur"""
+        """Create a ReplaySessionInfo object from a dictionary."""
         return cls(
             id=d['id'],
             strategy_id=d['strategy_id'],
@@ -86,12 +86,12 @@ class ReplayService(BaseService):
     """
     Replay Trading Service - ReplayMode Wrapper
 
-    WebUI ↔ ReplayMode köprüsü
+    WebUI ↔ ReplayMode bridge
 
-    Session'lar strateji bazlı:
-    - session_id = strategy_id (örn: "mavilims")
-    - Flask reload'da ReplayMode yeniden oluşturulur
-    - Position bilgisi JSON'dan yüklenir
+    Sessions are strategy-based:
+    - session_id = strategy_id (e.g., "bluish")
+    - ReplayMode is recreated in Flask reload
+    - Position information is loaded from JSON
     """
 
     def __init__(self, data_manager=None, logger=None, parquets_engine=None, strategy_manager=None):
@@ -103,21 +103,21 @@ class ReplayService(BaseService):
         # Active sessions: session_id → (ReplayMode, ReplaySessionInfo)
         self._sessions: Dict[str, tuple] = {}
 
-        # Session cache'i yükle (sadece metadata, ReplayMode lazy load)
+        # Load the session cache (only metadata, ReplayMode lazy load)
         self._session_cache: Dict[str, Dict] = {}
         self._load_session_cache()
 
     def _load_session_cache(self):
-        """Kaydedilmiş session bilgilerini yükle"""
+        """Load saved session information"""
         try:
             if SESSION_CACHE_FILE.exists():
                 with open(SESSION_CACHE_FILE, 'r') as f:
                     self._session_cache = json.load(f)
                 if self.logger:
-                    self.logger.info(f"📂 Session cache yüklendi: {len(self._session_cache)} session")
+                    self.logger.info(f"📂 Session cache loaded: {len(self._session_cache)} sessions")
         except Exception as e:
             if self.logger:
-                self.logger.warning(f"⚠️ Session cache yüklenemedi: {e}")
+                self.logger.warning(f"⚠️ Session cache could not be loaded: {e}")
             self._session_cache = {}
 
     def _save_session_cache(self):
@@ -131,10 +131,10 @@ class ReplayService(BaseService):
                 self.logger.warning(f"⚠️ Session cache kaydedilemedi: {e}")
 
     def _load_strategy_class(self, strategy_id: str):
-        """Strateji dosyasını yükleyip Strategy class'ını döndür"""
+        """Loads the strategy file and returns the Strategy class"""
         template_path = self.template_path / f"{strategy_id}.py"
         if not template_path.exists():
-            raise FileNotFoundError(f"Strateji bulunamadı: {strategy_id}")
+            raise FileNotFoundError(f"Strategy not found: {strategy_id}")
 
         spec = importlib.util.spec_from_file_location("strategy_module", template_path)
         module = importlib.util.module_from_spec(spec)
@@ -144,7 +144,7 @@ class ReplayService(BaseService):
         return strategy
 
     async def get_strategies(self) -> List[Dict[str, Any]]:
-        """Mevcut stratejilerin listesini getir"""
+        """Gets the list of existing strategies"""
         strategies = []
 
         if self.template_path.exists():
@@ -176,11 +176,11 @@ class ReplayService(BaseService):
 
                 except Exception as e:
                     if self.logger:
-                        self.logger.warning(f"⚠️  Strateji yükleme hatası {file_path}: {e}")
+                        self.logger.warning(f"⚠️ Strategy loading error {file_path}: {e}")
                     strategies.append({
                         'id': file_path.stem,
                         'name': file_path.stem.replace('_', ' ').title(),
-                        'description': f"Hata: {str(e)[:50]}",
+                        'description': f"Error: {str(e)[:50]}",
                         'symbol': '',
                         'timeframe': '',
                         'start_date': '',
@@ -199,23 +199,23 @@ class ReplayService(BaseService):
         calculate_indicators: bool = False
     ) -> Dict[str, Any]:
         """
-        Yeni replay session oluştur
+        Create a new replay session.
 
-        ReplayMode instance'ı oluşturur ve veri yükler.
+        Creates a ReplayMode instance and loads data.
 
         Args:
-            strategy_id: Strateji ID
+            strategy_id: Strategy ID
             override_timeframe: Timeframe override
-            override_start_date: Başlangıç tarihi override
-            override_end_date: Bitiş tarihi override
-            calculate_indicators: True ise indicator hesapla (default: False - performans için)
+            override_start_date: Override the start date.
+            override_end_date: Override the end date.
+            calculate_indicators: If True, calculate indicators (default: False - for performance).
         """
         from modules.trading.modes.replay_mode import ReplayMode
 
         if self.logger:
-            self.logger.info(f"🎮 Replay session oluşturuluyor: {strategy_id}")
+            self.logger.info(f"🎮 Creating replay session: {strategy_id}")
 
-        # 1. Strateji yükle
+        # 1. Load strategy
         strategy = self._load_strategy_class(strategy_id)
 
         # 2. Symbol, timeframe, dates
@@ -236,7 +236,7 @@ class ReplayService(BaseService):
             self.logger.info(f"   Symbol: {symbol}, TF: {timeframe}")
             self.logger.info(f"   Start: {start_date}, End: {end_date}")
 
-        # 3. ReplayMode oluştur
+        # 3. Create ReplayMode
         mode_config = {
             "strategy": strategy,
             "initial_balance": initial_balance,
@@ -247,7 +247,7 @@ class ReplayService(BaseService):
         if self.logger:
             self.logger.info(f"   Indicators: {'enabled' if calculate_indicators else 'disabled (performance mode)'}")
 
-        # 4. Parquet'ten veri yükle
+        # 4. Load data from Parquet
         if self.parquets_engine:
             try:
                 df = await self.parquets_engine.get_historical_data(
@@ -259,36 +259,36 @@ class ReplayService(BaseService):
                     utc_offset=3
                 )
 
-                # ReplayMode'a veri yükle (DataFrame → Candle list)
+                # Load data into ReplayMode (DataFrame -> Candle list)
                 await self._load_dataframe_to_mode(replay_mode, df, symbol, timeframe)
 
             except Exception as e:
                 if self.logger:
-                    self.logger.error(f"❌ Veri yükleme hatası: {e}")
-                raise RuntimeError(f"Veri yüklenemedi: {e}")
+                    self.logger.error(f"❌ Data loading error: {e}")
+                raise RuntimeError(f"Data could not be loaded: {e}")
         else:
-            raise RuntimeError("ParquetsEngine tanımlı değil!")
+            raise RuntimeError("ParquetsEngine is not defined!")
 
         # 5. ReplayMode initialize
         await replay_mode.initialize()
 
-        # 6. İndikatör config ve isimlerini al (stratejiden)
+        # 6. Get the indicator configuration and names (from the strategy)
         indicator_names = []
         indicator_config = {}
         if hasattr(strategy, 'technical_parameters') and hasattr(strategy.technical_parameters, 'indicators'):
             indicator_config = strategy.technical_parameters.indicators
             indicator_names = list(indicator_config.keys())
 
-        # 7. Session info oluştur
-        # Session ID = strategy_id (böylece reload'da devam edilebilir)
+        # 7. Create session information
+        # Session ID = strategy_id (so that it can be continued after reload)
         session_id = strategy_id
 
-        # Cache'den önceki pozisyonu al
+        # Get the previous position from the cache
         cached_position = 0
         if session_id in self._session_cache:
             cached_position = self._session_cache[session_id].get('current_position', 0)
             if self.logger:
-                self.logger.info(f"📂 Önceki pozisyon yüklendi: {cached_position}")
+                self.logger.info(f"📂 Previous position loaded: {cached_position}")
 
         session_info = ReplaySessionInfo(
             id=session_id,
@@ -304,7 +304,7 @@ class ReplayService(BaseService):
             indicator_config=indicator_config
         )
 
-        # ReplayMode'un pozisyonunu da güncelle
+        # Update the ReplayMode's position as well.
         key = f"{symbol}_{timeframe}"
         if cached_position > 0 and key in replay_mode._data:
             replay_mode._current_index[key] = min(cached_position, len(replay_mode._data[key]) - 1)
@@ -315,13 +315,13 @@ class ReplayService(BaseService):
         self._save_session_cache()
 
         if self.logger:
-            self.logger.info(f"✅ Replay session oluşturuldu: {session_id}")
-            self.logger.info(f"   Bars: {session_info.total_bars}, Pozisyon: {cached_position}")
+            self.logger.info(f"✅ Replay session created: {session_id}")
+            self.logger.info(f"   Bars: {session_info.total_bars}, Position: {cached_position}")
 
         return session_info.to_dict()
 
     async def _load_dataframe_to_mode(self, mode, df, symbol: str, timeframe: str):
-        """DataFrame'i ReplayMode'a yükle"""
+        """Load DataFrame into ReplayMode"""
         from modules.trading.modes.base_mode import Candle
 
         candles = []
@@ -347,7 +347,7 @@ class ReplayService(BaseService):
         mode._stats["total_candles"] = len(candles)
 
     async def _restore_session(self, session_id: str) -> bool:
-        """Cache'den session'ı restore et"""
+        """Restore session from cache"""
         if session_id not in self._session_cache:
             return False
 
@@ -358,12 +358,12 @@ class ReplayService(BaseService):
             self.logger.info(f"🔄 Session restore ediliyor: {session_id}")
 
         try:
-            # Session'ı yeniden oluştur (cache'deki pozisyon kullanılacak)
+            # Recreate the session (using the position from the cache)
             await self.create_session(strategy_id)
             return True
         except Exception as e:
             if self.logger:
-                self.logger.error(f"❌ Session restore hatası: {e}")
+                self.logger.error(f"❌ Session restore error: {e}")
             return False
 
     async def get_session(self, session_id: str) -> Optional[Dict[str, Any]]:
@@ -372,7 +372,7 @@ class ReplayService(BaseService):
         if session_id not in self._sessions:
             if session_id in self._session_cache:
                 if await self._restore_session(session_id):
-                    pass  # Restore başarılı, devam et
+                    pass  # Restore successful, continue
                 else:
                     return None
             else:
@@ -380,7 +380,7 @@ class ReplayService(BaseService):
 
         mode, info = self._sessions[session_id]
 
-        # Güncel durumu al
+        # Get the current status
         info.current_position = sum(mode._current_index.values())
         info.status = 'playing' if mode.is_playing else ('paused' if mode.is_paused else 'stopped')
         info.speed = mode.speed
@@ -388,7 +388,7 @@ class ReplayService(BaseService):
         return info.to_dict()
 
     async def get_candles(self, session_id: str, start: int = 0, limit: int = 100) -> Optional[Dict[str, Any]]:
-        """Chart için candle verisi getir"""
+        """Get candle data for the chart"""
         # Memory'de yoksa restore etmeyi dene
         if session_id not in self._sessions:
             if session_id in self._session_cache:
@@ -398,7 +398,7 @@ class ReplayService(BaseService):
 
         mode, info = self._sessions[session_id]
 
-        # ReplayMode'dan candle'ları al
+        # Get candles from ReplayMode
         symbol = info.symbol
         timeframe = info.timeframe
         key = f"{symbol}_{timeframe}"
@@ -406,13 +406,13 @@ class ReplayService(BaseService):
         all_candles = mode._data.get(key, [])
         current_pos = mode._current_index.get(key, 0)
 
-        # Sadece current_position'a kadar göster
+        # Show only up to the current_position
         visible_end = min(current_pos + 1, len(all_candles))
         visible_start = max(0, visible_end - limit)
 
         visible_candles = all_candles[visible_start:visible_end]
 
-        # Candle formatı (Lightweight Charts için)
+        # Candle format (for Lightweight Charts)
         candles = []
         volumes = []
         timestamps = []
@@ -433,23 +433,23 @@ class ReplayService(BaseService):
             })
             timestamps.append(ts)
 
-        # İndikatörleri ReplayMode'dan al (duplicate hesaplama yok)
+        # Get indicators from ReplayMode (to avoid duplicate calculations)
         indicators = self._get_indicators_from_mode(
             mode, info, timestamps, visible_start, visible_end
         )
 
-        # Signal markers (ReplayMode'dan - gerçek zamanlı sinyaller)
+        # Signal markers (from ReplayMode - real-time signals)
         signal_markers = self._get_signals_from_mode(
             mode, info, timestamps, visible_start, visible_end
         )
 
-        # Trade markers (ReplayMode trades + backtest sonuçları)
+        # Trade markers (ReplayMode trades + backtest results)
         markers, trades = self._get_trade_markers(
             mode, info.symbol, info.timeframe, timestamps,
             visible_start, visible_end, all_candles
         )
 
-        # Signal ve trade marker'larını birleştir (signal_markers öncelikli)
+        # Merge signal and trade markers (signal_markers take precedence)
         all_markers = signal_markers + markers
 
         return {
@@ -466,18 +466,18 @@ class ReplayService(BaseService):
         }
 
     async def play(self, session_id: str) -> Dict[str, Any]:
-        """Replay başlat"""
+        """Start replay"""
         # Memory'de yoksa restore etmeyi dene
         if session_id not in self._sessions:
             if session_id in self._session_cache:
                 await self._restore_session(session_id)
             if session_id not in self._sessions:
-                raise ValueError("Session bulunamadı")
+                raise ValueError("Session not found")
 
         mode, info = self._sessions[session_id]
 
-        # Background'da play başlat (blocking değil)
-        # WebUI polling ile durumu takip edecek
+        # Start playback in the background (non-blocking)
+        # Will monitor the status using WebUI polling.
         asyncio.create_task(self._play_loop(session_id))
 
         return {'status': 'playing', 'current_position': sum(mode._current_index.values())}
@@ -509,7 +509,7 @@ class ReplayService(BaseService):
             mode._current_index[key] = current_idx + 1
             mode._stats["processed_candles"] = sum(mode._current_index.values())
 
-            # Speed'e göre bekle
+            # Wait according to speed
             await asyncio.sleep(1.0 / mode.speed)
 
         mode._playing = False
@@ -521,7 +521,7 @@ class ReplayService(BaseService):
             if session_id in self._session_cache:
                 await self._restore_session(session_id)
             if session_id not in self._sessions:
-                raise ValueError("Session bulunamadı")
+                raise ValueError("Session not found")
 
         mode, info = self._sessions[session_id]
         mode.pause()
@@ -535,7 +535,7 @@ class ReplayService(BaseService):
             if session_id in self._session_cache:
                 await self._restore_session(session_id)
             if session_id not in self._sessions:
-                raise ValueError("Session bulunamadı")
+                raise ValueError("Session not found")
 
         mode, info = self._sessions[session_id]
         key = f"{info.symbol}_{info.timeframe}"
@@ -546,12 +546,12 @@ class ReplayService(BaseService):
         new_idx = max(0, min(current_idx + direction, total - 1))
         mode._current_index[key] = new_idx
 
-        # Cache'i güncelle (her 10 step'te bir kaydet - performans için)
+        # Update the cache (save every 10 steps - for performance)
         if new_idx % 10 == 0:
             self._session_cache[session_id]['current_position'] = new_idx
             self._save_session_cache()
 
-        # State güncelle
+        # Update state
         state = await self._get_state_dict(mode, info)
 
         return {
@@ -567,7 +567,7 @@ class ReplayService(BaseService):
             if session_id in self._session_cache:
                 await self._restore_session(session_id)
             if session_id not in self._sessions:
-                raise ValueError("Session bulunamadı")
+                raise ValueError("Session not found")
 
         mode, info = self._sessions[session_id]
         key = f"{info.symbol}_{info.timeframe}"
@@ -576,7 +576,7 @@ class ReplayService(BaseService):
         new_idx = max(0, min(position, total - 1))
         mode._current_index[key] = new_idx
 
-        # Cache'i güncelle
+        # Update the cache
         self._session_cache[session_id]['current_position'] = new_idx
         self._save_session_cache()
 
@@ -589,13 +589,13 @@ class ReplayService(BaseService):
         }
 
     async def set_speed(self, session_id: str, speed: float) -> Dict[str, Any]:
-        """Hız ayarla"""
+        """Set speed"""
         # Memory'de yoksa restore etmeyi dene
         if session_id not in self._sessions:
             if session_id in self._session_cache:
                 await self._restore_session(session_id)
             if session_id not in self._sessions:
-                raise ValueError("Session bulunamadı")
+                raise ValueError("Session not found")
 
         mode, info = self._sessions[session_id]
         mode.set_speed(speed)
@@ -603,7 +603,7 @@ class ReplayService(BaseService):
         return {'speed': mode.speed}
 
     async def get_state(self, session_id: str) -> Optional[Dict[str, Any]]:
-        """Mevcut state'i getir"""
+        """Gets the current state"""
         # Memory'de yoksa restore etmeyi dene
         if session_id not in self._sessions:
             if session_id in self._session_cache:
@@ -615,18 +615,18 @@ class ReplayService(BaseService):
         return await self._get_state_dict(mode, info)
 
     async def _get_state_dict(self, mode, info) -> Dict[str, Any]:
-        """ReplayMode'dan state dict oluştur"""
+        """Create a state dictionary from ReplayMode"""
         balance = await mode.get_balance()
         positions = await mode.get_positions()
 
         key = f"{info.symbol}_{info.timeframe}"
         current_idx = mode._current_index.get(key, 0)
 
-        # Mevcut candle'dan fiyat
+        # Price from the current candle
         candles = mode._data.get(key, [])
         current_price = candles[current_idx].close if current_idx < len(candles) else 0
 
-        # ReplayMode'dan mevcut bar için indicator değerleri
+        # Get indicator values for the current bar from ReplayMode
         current_indicators = {}
         if hasattr(mode, 'get_indicators_at'):
             current_indicators = mode.get_indicators_at(current_idx, info.symbol, info.timeframe)
@@ -651,13 +651,13 @@ class ReplayService(BaseService):
         }
 
     async def get_trades(self, session_id: str) -> List[Dict[str, Any]]:
-        """Trade listesini getir"""
+        """Get the trade list"""
         if session_id not in self._sessions:
             return []
 
         mode, info = self._sessions[session_id]
 
-        # ReplayMode'dan trade history al
+        # Get trade history from ReplayMode
         if hasattr(mode, 'get_trades'):
             return mode.get_trades()
         return []
@@ -688,15 +688,15 @@ class ReplayService(BaseService):
         visible_end: int
     ) -> Dict[str, List[Dict]]:
         """
-        ReplayMode'dan önceden hesaplanmış indicator değerlerini al
+        Get pre-calculated indicator values from ReplayMode.
 
-        DUPLICATE HESAPLAMA YOK - ReplayMode tüm hesaplamaları yapar.
-        Bu metod sadece chart formatına çevirir.
+        NO DUPLICATE CALCULATION - ReplayMode performs all calculations.
+        This method only converts to chart format.
 
         Args:
-            timestamps: Görüntülenen candle'ların timestamp listesi (len = visible_end - visible_start)
-            visible_start: Data array'deki başlangıç indexi
-            visible_end: Data array'deki bitiş indexi
+            timestamps: List of timestamps for the displayed candles (len = visible_end - visible_start)
+            visible_start: Starting index in the data array
+            visible_end: Ending index in the data array
         """
         indicators = {}
 
@@ -709,14 +709,14 @@ class ReplayService(BaseService):
         if not mode_indicators:
             return indicators
 
-        # Her indicator için chart formatına çevir
+        # Convert each indicator to chart format
         for ind_name, values in mode_indicators.items():
             try:
                 if not isinstance(values, np.ndarray):
                     continue
 
-                # Visible aralıktaki değerleri al
-                # timestamps[ts_idx] ↔ values[data_idx] eşleşmesi
+                # Get the values within the visible range
+                # timestamps[ts_idx] ↔ values[data_idx] mapping
                 chart_data = []
                 for ts_idx, data_idx in enumerate(range(visible_start, min(visible_end, len(values)))):
                     if ts_idx < len(timestamps):
@@ -745,10 +745,10 @@ class ReplayService(BaseService):
         visible_end: int
     ) -> List[Dict]:
         """
-        ReplayMode'dan signal marker'larını al
+        Get signal markers from ReplayMode.
 
-        Signal'lar ReplayMode.initialize()'da hesaplanır.
-        Bu metod sadece chart marker formatına çevirir.
+        Signals are calculated in ReplayMode.initialize().
+        This method only converts to chart marker format.
         """
         markers = []
 
@@ -761,7 +761,7 @@ class ReplayService(BaseService):
         if not signal_dict:
             return markers
 
-        # Signal'ları chart marker formatına çevir
+        # Convert signals to chart marker format
         for idx, signal in signal_dict.items():
             if visible_start <= idx < visible_end:
                 ts_idx = idx - visible_start
@@ -775,7 +775,7 @@ class ReplayService(BaseService):
                         'text': 'LONG' if is_long else 'SHORT'
                     })
 
-        # Zamana göre sırala
+        # Sort by time
         markers.sort(key=lambda x: x['time'])
 
         return markers
@@ -790,16 +790,16 @@ class ReplayService(BaseService):
         visible_end: int
     ) -> tuple[List[Dict], List[Dict]]:
         """
-        ReplayMode._trades listesini chart marker formatına çevir
+        Converts the ReplayMode._trades list to a chart marker format.
 
         Args:
-            replay_trades: ReplayMode'dan Trade listesi
-            visible_timestamps: Görüntülenen candle timestamp'leri
-            visible_start: Görüntülenen başlangıç indexi
-            visible_end: Görüntülenen bitiş indexi
+            replay_trades: Trade list from ReplayMode
+            visible_timestamps: Visible candle timestamps
+            visible_start: Visible starting index
+            visible_end: Visible ending index
 
         Returns:
-            (trades, markers): Trade listesi ve chart marker'ları
+            (trades, markers): Trade list and chart markers.
         """
         trades = []
         markers = []
@@ -812,18 +812,18 @@ class ReplayService(BaseService):
         ts_set = set(visible_timestamps)
 
         def snap_to_candle(ts: int) -> int:
-            """Timestamp'i en yakın candle'a snap et"""
+            """Snap the timestamp to the nearest candle."""
             if ts in ts_set:
                 return ts
             closest = min(visible_timestamps, key=lambda x: abs(x - ts))
             return closest
 
         for trade in replay_trades:
-            # Trade object'ten değerleri al
+            # Get values from the Trade object
             entry_ts = trade.entry_time
             exit_ts = trade.exit_time
 
-            # Timestamp'leri second'a çevir
+            # Convert timestamps to seconds
             if hasattr(entry_ts, 'timestamp'):
                 entry_ts_sec = int(entry_ts.timestamp())
             elif isinstance(entry_ts, (int, float)):
@@ -838,7 +838,7 @@ class ReplayService(BaseService):
                 elif isinstance(exit_ts, (int, float)):
                     exit_ts_sec = int(exit_ts / 1000) if exit_ts > 1e12 else int(exit_ts)
 
-            # Bu trade görünür aralıkta mı?
+            # Is this trade within the visible range?
             if not (min_ts <= entry_ts_sec <= max_ts or (exit_ts_sec and min_ts <= exit_ts_sec <= max_ts)):
                 continue
 
@@ -847,7 +847,7 @@ class ReplayService(BaseService):
             pnl = trade.pnl_usd if hasattr(trade, 'pnl_usd') else 0
             pnl_pct = trade.pnl_pct if hasattr(trade, 'pnl_pct') else 0
 
-            # Trade dict
+            # Trade dictionary
             trades.append({
                 'id': trade.id if hasattr(trade, 'id') else len(trades) + 1,
                 'side': 'LONG' if is_long else 'SHORT',
@@ -886,7 +886,7 @@ class ReplayService(BaseService):
                     'text': pnl_text
                 })
 
-        # Zamana göre sırala
+        # Sort by time
         markers.sort(key=lambda x: x['time'])
 
         return trades, markers
@@ -904,12 +904,12 @@ class ReplayService(BaseService):
         all_candles: List
     ) -> tuple[List[Dict], List[Dict]]:
         """
-        Trade marker'larını al - önce ReplayMode, sonra backtest
+        Get trade markers - first ReplayMode, then backtest
 
         Returns:
-            (markers, trades): Chart markers ve trade listesi
+            (markers, trades): Chart markers and trade list.
 
-        Lightweight Charts marker formatı:
+        Lightweight Charts marker format:
         {
             time: unix_timestamp,
             position: 'belowBar' | 'aboveBar',
@@ -922,36 +922,36 @@ class ReplayService(BaseService):
         trades = []
 
         # ═══════════════════════════════════════════════════════════════════
-        # 1. REPLAY MODE TRADES (canlı trade'ler)
+        # 1. REPLAY MODE TRADES (live trades)
         # ═══════════════════════════════════════════════════════════════════
         if mode and hasattr(mode, '_trades') and mode._trades:
             trades, markers = self._format_replay_trades(
                 mode._trades, visible_timestamps, visible_start, visible_end
             )
             if trades:
-                # Replay trade'leri varsa bunları kullan, backtest'e bakma
+                # If there are replay trades, use them, don't look at the backtest.
                 return markers, trades
 
         # ═══════════════════════════════════════════════════════════════════
-        # 2. BACKTEST PARQUET (eski backtest sonuçları)
+        # 2. BACKTEST PARQUET (old backtest results)
         # ═══════════════════════════════════════════════════════════════════
         try:
             import pandas as pd
             from pathlib import Path
 
-            # En son backtest dosyasını bul
+            # Find the most recent backtest file
             backtest_dir = Path("data/ai/features/backtest")
             if not backtest_dir.exists():
                 return markers, trades
 
-            # Bu symbol ve timeframe için backtest dosyalarını bul
+            # Find the backtest files for this symbol and timeframe
             pattern = f"backtest_{symbol}_{timeframe}_*.parquet"
             files = sorted(backtest_dir.glob(pattern), reverse=True)
 
             if not files:
                 return markers, trades
 
-            # En son dosyayı yükle
+            # Load the latest file
             latest_file = files[0]
             df = pd.read_parquet(latest_file)
 
@@ -964,17 +964,17 @@ class ReplayService(BaseService):
 
             min_ts = min(visible_timestamps)
             max_ts = max(visible_timestamps)
-            ts_set = set(visible_timestamps)  # Hızlı lookup için
+            ts_set = set(visible_timestamps)  # For fast lookup
 
             def snap_to_candle(ts: int) -> int:
-                """Timestamp'i en yakın candle'a snap et"""
+                """Snap the timestamp to the nearest candle."""
                 if ts in ts_set:
                     return ts
-                # En yakın candle'ı bul
+                # Find the nearest candle
                 closest = min(visible_timestamps, key=lambda x: abs(x - ts))
                 return closest
 
-            # Trade'leri filtrele
+            # Filter trades
             for _, trade in df.iterrows():
                 entry_ts = trade.get('entry_time')
                 exit_ts = trade.get('exit_time')
@@ -986,7 +986,7 @@ class ReplayService(BaseService):
                 entry_ts_sec = int(entry_ts / 1000) if entry_ts > 1e12 else int(entry_ts)
                 exit_ts_sec = int(exit_ts / 1000) if pd.notna(exit_ts) and exit_ts > 1e12 else (int(exit_ts) if pd.notna(exit_ts) else None)
 
-                # Bu trade görünür aralıkta mı?
+                # Is this trade within the visible range?
                 if not (min_ts <= entry_ts_sec <= max_ts or (exit_ts_sec and min_ts <= exit_ts_sec <= max_ts)):
                     continue
 
@@ -995,7 +995,7 @@ class ReplayService(BaseService):
                 pnl = trade.get('pnl', 0)
                 pnl = float(pnl) if pd.notna(pnl) else 0
 
-                # SL/TP değerlerini al
+                # Get SL/TP values
                 stop_loss = float(trade.get('stop_loss', 0)) if pd.notna(trade.get('stop_loss')) else None
                 take_profit = float(trade.get('take_profit', 0)) if pd.notna(trade.get('take_profit')) else None
                 exit_reason = str(trade.get('exit_reason', '')) if pd.notna(trade.get('exit_reason')) else ''
@@ -1006,14 +1006,14 @@ class ReplayService(BaseService):
                 is_partial_exit = bool(trade.get('is_partial_exit', False))
                 partial_exit_level = int(trade.get('partial_exit_level', 0)) if pd.notna(trade.get('partial_exit_level')) else 0
 
-                # Exit reason'ı düzenle
+                # Edit the exit reason
                 display_exit_reason = exit_reason
                 if is_partial_exit:
                     display_exit_reason = f'PE{partial_exit_level}'  # Partial Exit (PE1, PE2, ...)
                 elif break_even_activated and exit_reason.upper() in ['SL', 'STOP_LOSS']:
                     display_exit_reason = 'BE'  # Break-even exit
 
-                # Trade listesine ekle (detaylı bilgilerle)
+                # Add to the trade list (with detailed information)
                 trades.append({
                     'id': trade.get('trade_id', len(trades) + 1),
                     'side': 'LONG' if is_long else 'SHORT',
@@ -1033,7 +1033,7 @@ class ReplayService(BaseService):
                     'duration_minutes': int(trade.get('duration_minutes', 0)) if pd.notna(trade.get('duration_minutes')) else 0
                 })
 
-                # Entry marker - basit ok işareti
+                # Entry marker - simple arrow symbol
                 if min_ts <= entry_ts_sec <= max_ts:
                     snapped_entry = snap_to_candle(entry_ts_sec)
                     markers.append({
@@ -1041,10 +1041,10 @@ class ReplayService(BaseService):
                         'position': 'belowBar' if is_long else 'aboveBar',
                         'color': '#26a69a' if is_long else '#ef5350',
                         'shape': 'arrowUp' if is_long else 'arrowDown',
-                        'text': ''  # Boş - box gösterecek
+                        'text': ''  # Empty - will show the box
                     })
 
-                # Exit marker - P&L göster
+                # Exit marker - Show P&L
                 if exit_ts_sec and min_ts <= exit_ts_sec <= max_ts:
                     snapped_exit = snap_to_candle(exit_ts_sec)
                     is_profit = pnl >= 0
@@ -1058,11 +1058,11 @@ class ReplayService(BaseService):
                         'text': pnl_text
                     })
 
-            # Zamana göre sırala (Lightweight Charts gereksinimi)
+            # Sort by time (Lightweight Charts requirement)
             markers.sort(key=lambda x: x['time'])
 
         except Exception as e:
             if self.logger:
-                self.logger.warning(f"⚠️ Trade markers yüklenemedi: {e}")
+                self.logger.warning(f"⚠️ Trade markers could not be loaded: {e}")
 
         return markers, trades

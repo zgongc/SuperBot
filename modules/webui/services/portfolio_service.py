@@ -166,8 +166,8 @@ class PortfolioService(BaseService):
 
         Args:
             portfolio_id: Portfolio ID
-            symbol: Symbol string (örn: "BTC/USDT") - kullanıcı manuel giriş
-            symbol_id: Symbol ID from exchange_symbols table (opsiyonel)
+            symbol: Symbol string (e.g., "BTC/USDT") - user manual input
+            symbol_id: Symbol ID from exchange_symbols table (optional)
             quantity: Position quantity
             entry_price: Entry price
             side: LONG or SHORT (default: LONG)
@@ -191,7 +191,7 @@ class PortfolioService(BaseService):
 
         if position_id:
             symbol_info = symbol or f"symbol_id={symbol_id}"
-            self.logger.info(f"📊 Manuel pozisyon eklendi: {symbol_info}, miktar={quantity}, fiyat={entry_price}")
+            self.logger.info(f"📊 Manually added position: {symbol_info}, quantity={quantity}, price={entry_price}")
 
         return position_id
 
@@ -250,7 +250,7 @@ class PortfolioService(BaseService):
                     'quote_asset': quote_asset
                 })
 
-            self.logger.info(f"📊 Fiyat güncellemesi: {len(positions)} pozisyon, {len(symbols_by_exchange)} borsa")
+            self.logger.info(f"📊 Price update: {len(positions)} positions, {len(symbols_by_exchange)} exchanges")
 
             # Fetch prices from each exchange
             for exchange, symbol_list in symbols_by_exchange.items():
@@ -274,7 +274,7 @@ class PortfolioService(BaseService):
                             errors.append(f"{sym_data['symbol']}: {exchange} not supported")
                         continue
 
-                    self.logger.info(f"📡 {exchange} bağlantısı kuruldu")
+                    self.logger.info(f"📡 Connection to {exchange} established")
 
                     # Fetch prices for each symbol
                     for sym_data in symbol_list:
@@ -336,13 +336,13 @@ class PortfolioService(BaseService):
                 'total_positions': len(positions),
                 'errors': errors,
                 'prices': prices,
-                'message': f'{updated_count}/{len(positions)} pozisyon güncellendi'
+                'message': f'{updated_count}/{len(positions)} positions updated'
             }
 
         except Exception as e:
             import traceback
             error_details = traceback.format_exc()
-            self.logger.error(f"❌ Fiyat güncelleme hatası: {e}")
+            self.logger.error(f"❌ Price update error: {e}")
             self.logger.error(f"Traceback:\n{error_details}")
             return {
                 'updated_count': 0,
@@ -357,7 +357,7 @@ class PortfolioService(BaseService):
 
     async def sync_positions_from_exchange(self, portfolio_id: int) -> Dict[str, Any]:
         """
-        Borsadan pozisyonları senkronize et (SPOT balances)
+        Synchronize positions from the stock market (SPOT balances)
 
         Args:
             portfolio_id: Portfolio ID
@@ -369,32 +369,32 @@ class PortfolioService(BaseService):
             # Portfolio bilgilerini al
             portfolio = await self.data_manager.get_portfolio_by_id(portfolio_id)
             if not portfolio or not portfolio.get('exchange_account_id'):
-                self.logger.warning(f"⚠️  Portfolio {portfolio_id} exchange hesabı yok")
-                return {'synced_count': 0, 'message': 'Exchange hesabı bulunamadı'}
+                self.logger.warning(f"⚠️  Portfolio {portfolio_id} does not have an exchange account")
+                return {'synced_count': 0, 'message': 'Exchange account not found'}
 
             # Exchange hesap bilgilerini al
             exchange_account = await self.data_manager.get_exchange_account_by_id(
                 portfolio['exchange_account_id']
             )
             if not exchange_account:
-                self.logger.warning(f"⚠️  Exchange hesabı bulunamadı: {portfolio['exchange_account_id']}")
-                return {'synced_count': 0, 'message': 'Exchange hesabı bulunamadı'}
+                self.logger.warning(f"⚠️ Exchange account not found: {portfolio['exchange_account_id']}")
+                return {'synced_count': 0, 'message': 'Exchange account not found'}
 
-            # Manuel portfolyolar için sync yapılamaz
+            # Synchronization is not possible for manually created portfolios.
             if exchange_account['exchange'] == 'manual':
-                self.logger.info(f"📝 Manuel portfolio için sync yapılamaz: {portfolio['name']}")
-                return {'synced_count': 0, 'message': 'Manuel portfolyolar için sync yapılamaz'}
+                self.logger.info(f"📝 Manual portfolio synchronization is not possible: {portfolio['name']}")
+                return {'synced_count': 0, 'message': 'Sync cannot be performed for manually created portfolios'}
 
             # TODO: Exchange connector integration
-            # Şimdilik placeholder - gelecekte exchange connector kullanılacak
-            self.logger.info(f"🔄 Sync başlatılıyor: {portfolio['name']} - {exchange_account['exchange']}")
+            # Currently a placeholder - an exchange connector will be used in the future.
+            self.logger.info(f"🔄 Starting sync: {portfolio['name']} - {exchange_account['exchange']}")
 
-            # Placeholder: Gerçek implementasyon için exchange connector gerekli
+            # Placeholder: An exchange connector is required for the actual implementation.
             # from components.connectors.exchange_connector_engine import ExchangeConnectorEngine
             # connector = ExchangeConnectorEngine(...)
             # balances = await connector.get_account_balance(...)
 
-            self.logger.warning(f"⚠️  Exchange connector henüz entegre edilmedi")
+            self.logger.warning(f"⚠️ Exchange connector has not yet been integrated")
 
             return {
                 'synced_count': 0,
@@ -402,7 +402,7 @@ class PortfolioService(BaseService):
             }
 
         except Exception as e:
-            self.logger.error(f"❌ Sync hatası: {e}")
+            self.logger.error(f"❌ Sync error: {e}")
             raise
 
     async def prepare_import_preview(self, portfolio_id: int) -> Dict[str, Any]:
@@ -439,7 +439,7 @@ class PortfolioService(BaseService):
             if not exchange_account_id:
                 return {
                     'assets': [],
-                    'message': 'Bu portfolio bir borsa hesabına bağlı değil. Manuel portfolio için JSON import kullanın.'
+                    'message': 'This portfolio is not linked to a brokerage account. Use the JSON import for a manual portfolio.'
                 }
 
             # Get exchange account credentials
@@ -456,7 +456,7 @@ class PortfolioService(BaseService):
             if not api_key or not api_secret:
                 return {
                     'assets': [],
-                    'message': 'Bu borsa hesabı için API key tanımlanmamış. Lütfen Exchange Accounts sayfasından API key ekleyin.'
+                    'message': 'An API key has not been defined for this exchange account. Please add an API key from the Exchange Accounts page.'
                 }
 
             # Initialize exchange client based on exchange type
@@ -466,7 +466,7 @@ class PortfolioService(BaseService):
             if exchange_type != 'binance':
                 return {
                     'assets': [],
-                    'message': f'{exchange_type} henüz desteklenmiyor. Şu anda sadece Binance desteklenmektedir.'
+                    'message': f'{exchange_type} is not yet supported. Currently, only Binance is supported.'
                 }
 
             # Create client
@@ -607,7 +607,7 @@ class PortfolioService(BaseService):
             self.logger.error(f"❌ Prepare import preview error: {e}", exc_info=True)
             return {
                 'assets': [],
-                'message': f'Hata: {str(e)}'
+                'message': f'Error: {str(e)}'
             }
 
     async def import_selected_positions(

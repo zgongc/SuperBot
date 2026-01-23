@@ -1,11 +1,11 @@
 """
 modules/webui/services/exchange_service.py
 SuperBot - Exchange Account Service Layer
-Yazar: SuperBot Team
-Tarih: 2025-10-30
+Author: SuperBot Team
+Date: 2025-10-30
 Versiyon: 1.0.0
 
-Exchange account business logic ve operations
+Exchange account business logic and operations.
 """
 
 from typing import Dict, List, Any, Optional

@@ -50,8 +50,8 @@ class SMCService:
     """
     SMC Analysis Service
 
-    WebUI için AnalysisEngine wrapper.
-    Parquet verisi yükler ve analiz yapar.
+    Wrapper for the AnalysisEngine for the WebUI.
+    Loads Parquet data and performs analysis.
     """
 
     def __init__(self, parquets_engine=None, logger=None):
@@ -147,7 +147,7 @@ class SMCService:
         end_date: str = None
     ) -> Optional[pd.DataFrame]:
         """
-        Veri yükle (parquets_engine veya dosyadan)
+        Load data (from parquets_engine or from a file).
 
         Args:
             symbol: Trading symbol
@@ -159,11 +159,11 @@ class SMCService:
         Returns:
             DataFrame or None
         """
-        # Date mode: start_date verilmişse limit görmezden gelinir
-        use_date_range = start_date is not None
+        # Date mode: ParquetsEngine is used if both dates are provided.
+        use_date_range = start_date is not None and end_date is not None
 
-        # ParquetsEngine varsa kullan
-        if self.parquets_engine:
+        # ParquetsEngine is only used in the date range mode.
+        if self.parquets_engine and use_date_range:
             try:
                 df = await self.parquets_engine.get_historical_data(
                     symbol=symbol,
@@ -172,15 +172,12 @@ class SMCService:
                     end_date=end_date
                 )
                 if df is not None and len(df) > 0:
-                    # Limit sadece date mode olmadığında uygulanır
-                    if not use_date_range and limit and len(df) > limit:
-                        df = df.tail(limit)
                     return df.reset_index(drop=True)
             except Exception as e:
                 if self.logger:
-                    self.logger.warning(f"ParquetsEngine hatası: {e}")
+                    self.logger.warning(f"ParquetsEngine error: {e}")
 
-        # Fallback: Doğrudan parquet dosyasından yükle - yeni format: data/parquets/{symbol}/
+        # Fallback: Load directly from the parquet file - new format: data/parquets/{symbol}/
         parquet_dir = Path("data/parquets")
         symbol_dir = parquet_dir / symbol
         if not symbol_dir.exists():
@@ -206,7 +203,7 @@ class SMCService:
                 elif open_time.dtype == 'object':
                     df['timestamp'] = pd.to_datetime(open_time).astype('int64') // 10**6
                 else:
-                    # Numeric - millisecond veya second olabilir
+                    # Numeric - can be millisecond or second.
                     first_val = float(open_time.iloc[0])
                     if first_val > 1e12:
                         df['timestamp'] = open_time.astype('int64')
@@ -222,7 +219,7 @@ class SMCService:
                     end_ts = int(datetime.fromisoformat(end_date).timestamp() * 1000)
                     df = df[df['timestamp'] <= end_ts]
                 else:
-                    # end_date yoksa now() kullan
+                    # If end_date is not provided, use now()
                     now_ts = int(datetime.now().timestamp() * 1000)
                     df = df[df['timestamp'] <= now_ts]
             else:
@@ -234,7 +231,7 @@ class SMCService:
 
         except Exception as e:
             if self.logger:
-                self.logger.error(f"Parquet yükleme hatası: {e}")
+                self.logger.error(f"Parquet loading error: {e}")
             return None
 
     async def analyze(
@@ -257,12 +254,12 @@ class SMCService:
                 "annotations": {...}
             }
         """
-        # Veri yükle
+        # Load data
         df = await self._load_data(symbol, timeframe, limit, start_date, end_date)
 
         if df is None or len(df) == 0:
             return {
-                'error': 'Veri bulunamadı',
+                'error': 'Data not found',
                 'symbol': symbol,
                 'timeframe': timeframe
             }
@@ -298,14 +295,14 @@ class SMCService:
                 d['swing_time'] = swing_dict[f.swing_index].time
             bos_list.append(d)
 
-        # CHoCH - swing_time ekle (CHoCH'da swing_index yok, break_index - offset kullanalim)
+        # CHoCH - add swing_time (since swing_index doesn't exist in CHoCH, let's use break_index - offset)
         choch_list = []
         for f in engine.get_formations('choch'):
             d = f.to_dict()
             # En yakin swing'i bul (broken_level'a gore)
             closest_swing = None
             for s in swings:
-                if abs(s.price - f.broken_level) < 0.01:  # Ayni fiyat
+                if abs(s.price - f.broken_level) < 0.01:  # Same price
                     if closest_swing is None or s.index > closest_swing.index:
                         if s.index < f.break_index:
                             closest_swing = s
@@ -329,7 +326,7 @@ class SMCService:
         # FTR/FTB Zones
         ftr_list = [f.to_dict() for f in engine.get_formations('ftr')]
 
-        # Gap (2 mum arası boşluk)
+        # Gap (space between 2 candles)
         gap_list = [f.to_dict() for f in engine.get_formations('gap')]
 
         if self.logger:
@@ -357,7 +354,7 @@ class SMCService:
             'summary': summary,
             'levels': levels,
             'formations': {
-                'bos': bos_list[-20:],  # Son 20
+                'bos': bos_list[-20:],  # Last 20
                 'choch': choch_list[-10:],
                 'fvg': fvg_list[-20:],
                 'swing': swing_list[-20:],
@@ -365,7 +362,7 @@ class SMCService:
                 'liquidity': liq_list[-20:],
                 'qml': qml_list[-10:],
                 'ftr_zones': ftr_list[-30:],  # FTR/FTB zones
-                'gap': gap_list[-50:]  # Gap zones (2 mum arası boşluk)
+                'gap': gap_list[-50:]  # Gap zones (space between 2 candles)
             },
             'active': {
                 'fvg': [f.to_dict() for f in engine.get_formations('fvg', active_only=True)],
@@ -386,15 +383,15 @@ class SMCService:
         active_only: bool = False,
         limit: int = 100
     ) -> Dict[str, Any]:
-        """Formation listesi"""
+        """Formation list"""
         cache_key = f"{symbol}_{timeframe}"
 
-        # Cache kontrolü
+        # Cache control
         if cache_key not in self._cache:
             await self.analyze(symbol, timeframe)
 
         if cache_key not in self._cache:
-            return {'error': 'Veri bulunamadı'}
+            return {'error': 'Data not found'}
 
         engine = self._cache[cache_key]['engine']
 

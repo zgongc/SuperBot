@@ -1,13 +1,13 @@
 # modules/analysis - Market Structure Analysis Module
 
-## Amaç
-Verilen candle verilerinden SMC (Smart Money Concepts) oluşumlarını tespit eden, kaynak-agnostik analiz modülü.
+## Purpose
+This is a source-agnostic analysis module that detects SMC (Smart Money Concepts) formations from the given candle data.
 
-## Kullanım Senaryoları
-1. **Replay Mode** - Geçmiş veriden oluşumları göster
-2. **Live Mode** - Real-time WebSocket verisinden tespit
-3. **Backtest** - Strateji geliştirme için analiz
-4. **Standalone** - CLI veya API ile doğrudan analiz
+## Usage Scenarios
+1. **Replay Mode** - Shows formations from historical data.
+2. **Live Mode** - Detection from real-time WebSocket data.
+3. **Backtest** - Analysis for strategy development.
+4. **Standalone** - Direct analysis via CLI or API.
 
 ## Mimari
 
@@ -39,18 +39,18 @@ modules/analysis/
 ```python
 class AnalysisEngine:
     """
-    Ana analiz motoru - tüm detector'ları koordine eder
+    Main analysis engine - coordinates all detectors.
 
-    Kullanım:
+    Usage:
         engine = AnalysisEngine()
 
         # DataFrame'den analiz
         result = engine.analyze(df)
 
-        # Tek candle update (streaming)
+        # Single candle update (streaming)
         result = engine.update(candle)
 
-        # Belirli oluşumları sorgula
+        # Query specific formations
         bos_list = engine.get_formations('bos')
         fvg_list = engine.get_formations('fvg', active_only=True)
     """
@@ -60,7 +60,7 @@ class AnalysisEngine:
 ```python
 class BaseDetector(ABC):
     """
-    Tüm detector'ların base class'ı
+    This is the base class for all detectors.
 
     Methods:
         detect(df: DataFrame) -> List[Formation]
@@ -77,11 +77,11 @@ class BOSFormation:
     """Break of Structure"""
     id: str
     type: Literal['bullish', 'bearish']
-    broken_level: float      # Kırılan swing seviyesi
-    break_price: float       # Kırılma fiyatı
-    break_time: int          # Kırılma timestamp
-    swing_index: int         # Kırılan swing'in bar index'i
-    strength: float          # 0-100 güç skoru
+    broken_level: float      # Broken swing level
+    break_price: float       # Break price
+    break_time: int          # Break timestamp
+    swing_index: int         # The bar index of the broken swing
+    strength: float          # 0-100 strength score
 
 @dataclass
 class CHoCHFormation:
@@ -91,7 +91,7 @@ class CHoCHFormation:
     previous_trend: str
     broken_level: float
     break_time: int
-    significance: float      # Trend değişiminin önemi
+    significance: float      # Importance of the trend change
 
 @dataclass
 class FVGFormation:
@@ -102,8 +102,8 @@ class FVGFormation:
     bottom: float
     created_time: int
     filled: bool
-    filled_percent: float    # Ne kadar doldu (0-100)
-    age: int                 # Kaç bar önce oluştu
+    filled_percent: float    # How much is filled (0-100)
+    age: int                 # How many bars ago it was created
 
 @dataclass
 class SwingPoint:
@@ -123,7 +123,7 @@ class OrderBlockFormation:
     top: float
     bottom: float
     created_time: int
-    mitigated: bool          # Ziyaret edildi mi
+    mitigated: bool          # Visited?
     strength: float
 ```
 
@@ -157,10 +157,10 @@ class AnalysisResult:
         """JSON serializable dict"""
 
     def get_chart_annotations(self) -> List[dict]:
-        """LightweightCharts için annotation listesi"""
+        """Annotation list for LightweightCharts"""
 ```
 
-## API Kullanımı
+## API Usage
 
 ### Batch Analysis (DataFrame)
 ```python
@@ -173,13 +173,13 @@ engine = AnalysisEngine(config={
     'fvg_max_age': 50,
 })
 
-# Parquet/CSV'den yüklenmiş DataFrame
+# DataFrame loaded from Parquet/CSV
 df = pd.read_parquet('data.parquet')
 
-# Tüm veriyi analiz et
+# Analyze all data
 results = engine.analyze_batch(df)
 
-# Her bar için oluşumları al
+# Get the occurrences for each bar
 for i, result in enumerate(results):
     if result.new_bos:
         print(f"Bar {i}: {result.new_bos.type} BOS at {result.new_bos.break_price}")
@@ -190,16 +190,16 @@ for i, result in enumerate(results):
 ### Streaming Analysis (Real-time)
 ```python
 engine = AnalysisEngine()
-engine.warmup(historical_df)  # İlk N bar ile ısın
+engine.warmup(historical_df)  # Warm up with the first N bars
 
-# WebSocket'ten gelen her candle için
+# For each candle received from WebSocket
 async def on_candle(candle: dict):
     result = engine.update(candle)
 
     if result.new_bos:
         await notify_bos(result.new_bos)
 
-    # Aktif FVG'leri kontrol et (fiyat yaklaştı mı)
+    # Check for active FVG (fair value gaps) (has the price approached?)
     for fvg in result.active_fvgs:
         if is_price_near(candle['close'], fvg):
             await notify_fvg_approach(fvg)
@@ -207,7 +207,7 @@ async def on_candle(candle: dict):
 
 ### ReplayMode Entegrasyonu
 ```python
-# ReplayService'de kullanım
+# Usage in ReplayService
 class ReplayService:
     def __init__(self):
         self.analysis_engine = AnalysisEngine()
@@ -215,7 +215,7 @@ class ReplayService:
     async def create_session(self, strategy_id, analyze_smc=False):
         # ...
         if analyze_smc:
-            # Tüm veriyi analiz et
+            # Analyze all data
             self.smc_results = self.analysis_engine.analyze_batch(df)
 
     async def get_candles(self, session_id, start, limit):
@@ -235,28 +235,28 @@ class ReplayService:
         }
 ```
 
-## Mevcut SMC Indicator ile İlişki
+## Relationship with the Existing SMC Indicator
 
-`components/indicators/structure/smc.py` zaten BOS/CHoCH/FVG hesaplıyor. Ancak:
+`components/indicators/structure/smc.py` already calculates BOS/CHoCH/FVG. However:
 
-| Özellik | SMC Indicator | Analysis Module |
+| Feature | SMC Indicator | Analysis Module |
 |---------|---------------|-----------------|
-| Amaç | Backtest için vectorized | Analiz + görselleştirme |
+| Purpose | Vectorized for backtesting | Analysis + visualization |
 | Output | Numpy arrays (batch) | Formation objects (rich) |
-| Streaming | Var ama basit | Full featured |
-| History | Sadece son değer | Tüm aktif formations |
-| Visualization | Yok | Chart annotations |
+| Streaming | Yes, but basic | Full featured |
+| History | Only the last value | All active formations |
+| Visualization | None | Chart annotations |
 
-**Karar**: Analysis modülü SMC Indicator'ü **internal olarak kullanabilir** veya kendi logic'ini implement edebilir. İlk versiyonda SMC'yi wrap edelim, sonra gerekirse ayrıştırırız.
+**Decision**: The analysis module can either **use the SMC Indicator internally** or implement its own logic. Let's wrap the SMC in the initial version, and we can separate it later if necessary.
 
-## Faz 1 - Temel Yapı ✅ DONE
-1. [x] PLAN.md (bu dosya)
-2. [x] `models/formations.py` - Dataclass'lar
+## Phase 1 - Basic Structure ✅ DONE
+1. [x] PLAN.md (this file)
+2. [x] `models/formations.py` - Dataclass
 3. [x] `models/analysis_result.py` - Result container
 4. [x] `analysis_engine.py` - Temel engine
 5. [x] `detectors/base_detector.py` - Abstract base
 
-## Faz 2 - Detector'lar ✅ DONE
+## Faz 2 - Detectors ✅ DONE
 1. [x] `detectors/swing_detector.py` - Swing High/Low
 2. [x] `detectors/structure_detector.py` - BOS + CHoCH (combined)
 3. [x] `detectors/fvg_detector.py` - FVG
@@ -269,13 +269,13 @@ class ReplayService:
 3. [ ] Frontend chart annotations
 4. [ ] CLI interface
 
-## Faz 4 - Gelişmiş
+## Phase 4 - Advanced
 1. [ ] MTF (Multi-Timeframe) analiz
-2. [ ] Confluence detection (birden fazla oluşum)
-3. [ ] Alert sistemi
+2. [ ] Confluence detection (multiple occurrences)
+3. [ ] Alert system
 4. [ ] AI-powered pattern recognition
 
-## Konfigürasyon
+## Configuration
 ```yaml
 # config/analysis.yaml
 analysis:

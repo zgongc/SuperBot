@@ -158,14 +158,14 @@ class StrategyUIService(BaseService):
         """
         # Validate required fields
         if 'name' not in data:
-            raise ValueError('Strateji adı zorunludur')
+            raise ValueError('Strategy name is required')
 
         strategy_name = data['name']
 
         # Check if strategy file already exists
         target_file = self.template_path / f"{strategy_name}.py"
         if target_file.exists():
-            raise ValueError(f'"{strategy_name}" adında bir strateji dosyası zaten mevcut')
+            raise ValueError(f'A strategy file with the name "{strategy_name}" already exists')
 
         # Generate Python strategy code from UI data
         strategy_code = self._generate_strategy_code(strategy_name, data)
@@ -795,7 +795,7 @@ class Strategy(BaseStrategy):
         if hasattr(strategy_obj, 'enabled'):
             strategy_obj.enabled = enabled
 
-        status = 'aktifleştirildi' if enabled else 'devre dışı bırakıldı'
+        status = 'activated' if enabled else 'deactivated'
         self.logger.info(f"Strategy {strategy_id} {status}")
 
         return await self.get_strategy_by_id(strategy_id)
@@ -824,7 +824,7 @@ class Strategy(BaseStrategy):
 
         # Check if new name already exists
         if new_name in self.strategy_manager.loaded_strategies:
-            raise ValueError(f'"{new_name}" adında bir strateji zaten mevcut')
+            raise ValueError(f'A strategy with the name "{new_name}" already exists')
 
         # Copy strategy file
         source_file = self.template_path / f"{strategy_id}.py"
@@ -915,7 +915,7 @@ class Strategy(BaseStrategy):
                 template_info = {
                     'id': file_path.stem,
                     'name': file_path.stem.replace('_', ' ').title(),
-                    'description': description or 'Strateji şablonu',
+                    'description': description or 'Strategy template',
                     'file': file_path.name,
                 }
 
@@ -992,26 +992,26 @@ class Strategy(BaseStrategy):
         # Check if strategy exists
         if strategy_id not in self.strategy_manager.loaded_strategies:
             validation_result['valid'] = False
-            validation_result['errors'].append('Strateji bulunamadı')
+            validation_result['errors'].append('Strategy not found')
             return validation_result
 
         strategy_obj = self.strategy_manager.loaded_strategies[strategy_id]
 
         # Validate symbols
         if not hasattr(strategy_obj, 'symbols') or not strategy_obj.symbols:
-            validation_result['warnings'].append('Sembol tanımlanmamış')
+            validation_result['warnings'].append('Symbol is not defined')
 
         # Validate entry signals
         if not hasattr(strategy_obj, 'entry_signals') or not strategy_obj.entry_signals:
-            validation_result['warnings'].append('Giriş sinyali tanımlanmamış')
+            validation_result['warnings'].append('Input signal is not defined')
 
         # Validate exit signals
         if not hasattr(strategy_obj, 'exit_signals') or not strategy_obj.exit_signals:
-            validation_result['warnings'].append('Çıkış sinyali tanımlanmamış')
+            validation_result['warnings'].append('Output signal is not defined')
 
         # Validate risk management
         if not hasattr(strategy_obj, 'risk_management') or not strategy_obj.risk_management:
-            validation_result['warnings'].append('Risk yönetimi tanımlanmamış')
+            validation_result['warnings'].append('Risk management is not defined')
 
         return validation_result
 
@@ -1049,12 +1049,12 @@ class Strategy(BaseStrategy):
                     self.logger.error(f"❌ Failed to load template: {e}")
                     return None
             else:
-                self.logger.error(f"❌ Strategy bulunamadı: {strategy_id}")
+                self.logger.error(f"❌ Strategy not found: {strategy_id}")
                 return None
         else:
             # Already loaded
             strategy_obj = self.strategy_manager.loaded_strategies[strategy_id]
-        self.logger.info(f"📂 Strategy yükleniyor: {strategy_id}")
+        self.logger.info(f"📂 Loading strategy: {strategy_id}")
 
         try:
             # ════════════════════════════════════════════════════════════
@@ -1419,14 +1419,14 @@ class Strategy(BaseStrategy):
                 'custom_parameters': custom_params
             }
 
-            self.logger.info(f"✅ Strategy yüklendi: {strategy_id}")
-            self.logger.debug(f"📊 Yüklenen indicators: {len(indicators)}")
+            self.logger.info(f"✅ Strategy loaded: {strategy_id}")
+            self.logger.debug(f"📊 Loaded indicators: {len(indicators)}")
             self.logger.debug(f"📊 Symbols: {symbols}")
 
             return result
 
         except Exception as e:
-            self.logger.error(f"❌ Strategy yükleme hatası: {e}")
+            self.logger.error(f"❌ Error loading strategy: {e}")
             import traceback
             self.logger.error(traceback.format_exc())
             return None

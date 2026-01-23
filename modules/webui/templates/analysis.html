@@ -175,11 +175,11 @@
     </div>
 </div>
 
-<!-- Create Alert Modal -->
+<!-- Create/Edit Alert Modal -->
 <div id="createAlertModal" class="modal">
     <div class="modal-content modal-large">
         <div class="modal-header">
-            <h2 class="modal-title">Create Alert</h2>
+            <h2 id="alert-modal-title" class="modal-title">Create Alert</h2>
             <button class="modal-close" onclick="closeCreateAlertModal()">&times;</button>
         </div>
 
@@ -207,11 +207,12 @@
                     </select>
                 </div>
 
-                <div class="form-group" id="symbol-selector" style="display: none;">
+                <div class="form-group" id="symbol-selector" style="display: none; position: relative;">
                     <label>Symbol *</label>
-                    <select id="alert-symbol">
-                        <option value="">Loading...</option>
-                    </select>
+                    <input type="text" id="alert-symbol-search" placeholder="Search symbol... (BTC, ETH, SOL)" autocomplete="off" oninput="searchSymbolsForAlert(event)">
+                    <input type="hidden" id="alert-symbol-id">
+                    <div id="alert-symbol-dropdown" class="symbol-dropdown" style="display: none;"></div>
+                    <small style="color: var(--text-muted);">Search and select from available symbols</small>
                 </div>
 
                 <div class="form-group" id="category-selector" style="display: none;">
@@ -376,7 +377,7 @@
 
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" onclick="goToStep(2)">← Back</button>
-                    <button type="button" class="btn btn-primary" onclick="createAlert()">Create Alert</button>
+                    <button type="button" id="alert-submit-btn" class="btn btn-primary" onclick="createAlert()">Create Alert</button>
                 </div>
             </div>
         </form>
@@ -496,7 +497,7 @@ async function showDetail(resultId) {
             }
         }
     } catch (error) {
-        alert('Failed to load details: ' + error.message);
+        showToast('Failed to load details: ' + error.message, 'error');
     }
 }
 
@@ -567,7 +568,6 @@ function showError(message) {
 // Load results on page load
 document.addEventListener('DOMContentLoaded', () => {
     loadResults();
-    loadSymbolsForAlerts();
     loadCategoriesForAlerts();
 
     // Check URL parameters for quick create and tab switching
@@ -733,7 +733,12 @@ function displayAlerts(alerts) {
 
         html += `
             <tr>
-                <td>${statusBadge}</td>
+                <td>
+                    <label class="toggle-switch">
+                        <input type="checkbox" ${isActive ? 'checked' : ''} onchange="toggleAlertStatus(${alert.id}, this.checked)">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </td>
                 <td><strong>${alert.name}</strong></td>
                 <td>${typeLabels[alert.alert_type] || alert.alert_type}</td>
                 <td>${alert.scope_type}</td>
@@ -742,7 +747,7 @@ function displayAlerts(alerts) {
                 <td><span class="badge badge-info">${alert.trigger_count || 0}</span></td>
                 <td><small>${lastTriggered}</small></td>
                 <td>
-                    <button class="btn btn-sm" onclick="toggleAlertStatus(${alert.id}, ${!isActive})">${isActive ? 'Disable' : 'Enable'}</button>
+                    <button class="btn btn-sm btn-secondary" onclick="editAlert(${alert.id})">Edit</button>
                     <button class="btn btn-sm btn-danger" onclick="deleteAlert(${alert.id})">Delete</button>
                 </td>
             </tr>
@@ -800,11 +805,12 @@ async function toggleAlertStatus(alertId, newStatus) {
         const data = await response.json();
         if (data.status === 'success') {
             loadAlerts();
+            showToast('Alert updated successfully', 'success');
         } else {
-            alert('Failed to update alert: ' + data.message);
+            showToast('Failed to update alert: ' + data.message, 'error');
         }
     } catch (error) {
-        alert('Error: ' + error.message);
+        showToast('Error: ' + error.message, 'error');
     }
 }
 
@@ -826,23 +832,93 @@ async function deleteAlert(alertId) {
         const data = await response.json();
         if (data.status === 'success') {
             loadAlerts();
+            showToast('Alert deleted successfully', 'success');
         } else {
-            alert('Failed to delete alert: ' + data.message);
+            showToast('Failed to delete alert: ' + data.message, 'error');
         }
     } catch (error) {
-        alert('Error: ' + error.message);
+        showToast('Error: ' + error.message, 'error');
     }
 }
 
-// ==================== CREATE ALERT MODAL ====================
+// ==================== CREATE/EDIT ALERT MODAL ====================
+let editingAlertId = null;
+
 function openCreateAlertModal() {
+    editingAlertId = null;
     currentAlertStep = 1;
+    document.getElementById('alert-modal-title').textContent = 'Create Alert';
+    document.getElementById('alert-submit-btn').textContent = 'Create Alert';
     document.getElementById('createAlertModal').classList.add('active');
     document.getElementById('createAlertForm').reset();
+    document.getElementById('alert-symbol-id').value = '';
+    document.getElementById('alert-symbol-search').value = '';
     goToStep(1);
 }
 
+async function editAlert(alertId) {
+    try {
+        const response = await fetch(`/api/alerts/${alertId}`);
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            const alert = data.data;
+            editingAlertId = alertId;
+
+            // Update modal title
+            document.getElementById('alert-modal-title').textContent = 'Edit Alert';
+            document.getElementById('alert-submit-btn').textContent = 'Save Changes';
+
+            // Fill Step 1 - Basic Info
+            document.getElementById('alert-name').value = alert.name || '';
+            document.getElementById('alert-description').value = alert.description || '';
+            document.getElementById('alert-scope').value = alert.scope_type;
+            onScopeChange();
+
+            if (alert.scope_type === 'symbol') {
+                document.getElementById('alert-symbol-search').value = alert.symbol_name || '';
+                document.getElementById('alert-symbol-id').value = alert.symbol_id || '';
+            } else {
+                document.getElementById('alert-category').value = alert.category_id || '';
+            }
+
+            // Fill Step 2 - Alert Type
+            document.getElementById('alert-type').value = alert.alert_type;
+            onAlertTypeChange();
+
+            // Fill conditions based on type
+            if (alert.conditions) {
+                const conditions = typeof alert.conditions === 'string' ?
+                    JSON.parse(alert.conditions) : alert.conditions;
+                // Pattern conditions
+                if (alert.alert_type === 'pattern' && conditions.pattern_names) {
+                    conditions.pattern_names.forEach(p => {
+                        const cb = document.querySelector(`#pattern-conditions input[value="${p}"]`);
+                        if (cb) cb.checked = true;
+                    });
+                }
+            }
+
+            // Fill Step 3 - Notification Settings
+            document.getElementById('notify-webui').checked = alert.notify_webui;
+            document.getElementById('notify-telegram').checked = alert.notify_telegram;
+            document.getElementById('notify-email').checked = alert.notify_email;
+            document.getElementById('alert-cooldown').value = alert.cooldown_minutes || 60;
+            document.getElementById('alert-active').value = alert.is_active ? '1' : '0';
+
+            // Open modal
+            document.getElementById('createAlertModal').classList.add('active');
+            goToStep(1);
+        } else {
+            showToast('Failed to load alert: ' + data.message, 'error');
+        }
+    } catch (error) {
+        showToast('Error: ' + error.message, 'error');
+    }
+}
+
 function closeCreateAlertModal() {
+    editingAlertId = null;
     document.getElementById('createAlertModal').classList.remove('active');
 }
 
@@ -896,21 +972,65 @@ function onAlertTypeChange() {
     }
 }
 
-async function loadSymbolsForAlerts() {
-    try {
-        const response = await fetch('/api/symbols');
-        const data = await response.json();
-        if (data.status === 'success') {
-            const select = document.getElementById('alert-symbol');
-            select.innerHTML = '<option value="">Select symbol...</option>';
-            data.data.symbols.forEach(s => {
-                select.innerHTML += `<option value="${s.id}">${s.symbol}</option>`;
-            });
-        }
-    } catch (error) {
-        console.error('Failed to load symbols:', error);
+// Symbol search for alerts
+let alertSymbolSearchTimeout = null;
+
+async function searchSymbolsForAlert(event) {
+    const query = event.target.value.trim();
+    const dropdown = document.getElementById('alert-symbol-dropdown');
+
+    if (alertSymbolSearchTimeout) clearTimeout(alertSymbolSearchTimeout);
+
+    if (query.length < 1) {
+        dropdown.style.display = 'none';
+        return;
     }
+
+    alertSymbolSearchTimeout = setTimeout(async () => {
+        try {
+            const response = await fetch(`/api/symbols/available?search=${encodeURIComponent(query)}&market_type=spot&quote_asset=USDT&limit=50`);
+            const data = await response.json();
+
+            if (data.status === 'success' && data.data && data.data.symbols) {
+                const symbols = data.data.symbols;
+
+                if (symbols.length > 0) {
+                    dropdown.innerHTML = symbols.map(s =>
+                        `<div class="symbol-dropdown-item" data-id="${s.id}" data-symbol="${s.symbol}">
+                            <span class="symbol-name">${s.symbol}</span>
+                            <span class="symbol-info">${s.status || 'TRADING'}</span>
+                        </div>`
+                    ).join('');
+
+                    dropdown.querySelectorAll('.symbol-dropdown-item').forEach(item => {
+                        item.onclick = () => selectAlertSymbol(item.dataset.id, item.dataset.symbol);
+                    });
+                    dropdown.style.display = 'block';
+                } else {
+                    dropdown.innerHTML = '<div class="symbol-dropdown-empty">No results found</div>';
+                    dropdown.style.display = 'block';
+                }
+            }
+        } catch (error) {
+            console.error('Symbol search error:', error);
+        }
+    }, 300);
 }
+
+function selectAlertSymbol(id, symbol) {
+    document.getElementById('alert-symbol-search').value = symbol;
+    document.getElementById('alert-symbol-id').value = id;
+    document.getElementById('alert-symbol-dropdown').style.display = 'none';
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(event) {
+    const dropdown = document.getElementById('alert-symbol-dropdown');
+    const input = document.getElementById('alert-symbol-search');
+    if (dropdown && input && !input.contains(event.target) && !dropdown.contains(event.target)) {
+        dropdown.style.display = 'none';
+    }
+});
 
 async function loadCategoriesForAlerts() {
     try {
@@ -919,9 +1039,13 @@ async function loadCategoriesForAlerts() {
         if (data.status === 'success') {
             const select = document.getElementById('alert-category');
             select.innerHTML = '<option value="">Select category...</option>';
-            data.data.forEach(c => {
+            const categories = data.data.categories || data.data || [];
+            categories.forEach(c => {
                 select.innerHTML += `<option value="${c.id}">${c.name}</option>`;
             });
+            if (categories.length === 0) {
+                select.innerHTML = '<option value="">No categories found - create one first</option>';
+            }
         }
     } catch (error) {
         console.error('Failed to load categories:', error);
@@ -936,7 +1060,7 @@ async function createAlert() {
     const alertType = document.getElementById('alert-type').value;
 
     if (!name || !scope || !alertType) {
-        alert('Please fill in all required fields');
+        showToast('Please fill in all required fields', 'warning');
         return;
     }
 
@@ -955,7 +1079,12 @@ async function createAlert() {
 
     // Add scope target
     if (scope === 'symbol') {
-        alertData.symbol_id = parseInt(document.getElementById('alert-symbol').value);
+        const symbolId = document.getElementById('alert-symbol-id').value;
+        if (!symbolId) {
+            showToast('Please select a symbol from the search results', 'warning');
+            return;
+        }
+        alertData.symbol_id = parseInt(symbolId);
     } else {
         alertData.category_id = parseInt(document.getElementById('alert-category').value);
     }
@@ -990,10 +1119,14 @@ async function createAlert() {
 
     alertData.conditions = JSON.stringify(conditions);
 
-    // Send to API
+    // Send to API - create or update
     try {
-        const response = await fetch('/api/alerts', {
-            method: 'POST',
+        const isEdit = editingAlertId !== null;
+        const url = isEdit ? `/api/alerts/${editingAlertId}` : '/api/alerts';
+        const method = isEdit ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+            method: method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(alertData)
         });
@@ -1003,12 +1136,12 @@ async function createAlert() {
             closeCreateAlertModal();
             switchTab('alerts');
             loadAlerts();
-            alert('Alert created successfully!');
+            showToast(isEdit ? 'Alert updated successfully!' : 'Alert created successfully!', 'success');
         } else {
-            alert('Failed to create alert: ' + data.message);
+            showToast(`Failed to ${isEdit ? 'update' : 'create'} alert: ` + data.message, 'error');
         }
     } catch (error) {
-        alert('Error: ' + error.message);
+        showToast('Error: ' + error.message, 'error');
     }
 }
 </script>
