@@ -1,0 +1,352 @@
+{% extends 'base.html' %}
+
+{% block title %}Candlestick Pattern Analysis{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/smc.css') }}">
+<script src="https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+    /* Pattern-specific styles */
+    .pattern-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+        margin: 2px;
+    }
+
+    .pattern-badge.bullish {
+        background: rgba(38, 166, 154, 0.2);
+        color: #26a69a;
+        border: 1px solid rgba(38, 166, 154, 0.3);
+    }
+
+    .pattern-badge.bearish {
+        background: rgba(239, 83, 80, 0.2);
+        color: #ef5350;
+        border: 1px solid rgba(239, 83, 80, 0.3);
+    }
+
+    .pattern-badge.neutral {
+        background: rgba(158, 158, 158, 0.2);
+        color: #9e9e9e;
+        border: 1px solid rgba(158, 158, 158, 0.3);
+    }
+
+    .pattern-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 12px;
+        background: var(--card-bg);
+        border-radius: 8px;
+        margin-bottom: 8px;
+        border: 1px solid var(--border-color);
+    }
+
+    .pattern-item:hover {
+        background: var(--card-hover-bg);
+        cursor: pointer;
+    }
+
+    .pattern-item .pattern-name {
+        font-weight: 500;
+    }
+
+    .pattern-item .pattern-time {
+        font-size: 12px;
+        color: var(--text-muted);
+    }
+
+    .pattern-item .pattern-type {
+        font-size: 11px;
+        text-transform: uppercase;
+    }
+
+    .pattern-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+    }
+
+    .pattern-stat {
+        text-align: center;
+        padding: 16px;
+        background: var(--card-bg);
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+    }
+
+    .pattern-stat .stat-value {
+        font-size: 28px;
+        font-weight: 600;
+    }
+
+    .pattern-stat .stat-label {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-top: 4px;
+    }
+
+    .pattern-stat.bullish .stat-value { color: #26a69a; }
+    .pattern-stat.bearish .stat-value { color: #ef5350; }
+    .pattern-stat.neutral .stat-value { color: #9e9e9e; }
+
+    .filter-patterns {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+    }
+
+    .filter-patterns .btn-filter {
+        padding: 4px 12px;
+        font-size: 12px;
+        border-radius: 16px;
+    }
+
+    .filter-patterns .btn-filter.active {
+        background: var(--accent-color);
+        color: white;
+    }
+
+    .pattern-frequency {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .pattern-freq-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        background: var(--card-bg);
+        border-radius: 6px;
+        border: 1px solid var(--border-color);
+        font-size: 12px;
+    }
+
+    .pattern-freq-item .count {
+        background: var(--accent-color);
+        color: white;
+        padding: 2px 6px;
+        border-radius: 10px;
+        font-weight: 600;
+    }
+
+    .bias-indicator {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-weight: 500;
+    }
+
+    .bias-indicator.bullish {
+        background: rgba(38, 166, 154, 0.15);
+        color: #26a69a;
+        border: 1px solid rgba(38, 166, 154, 0.3);
+    }
+
+    .bias-indicator.bearish {
+        background: rgba(239, 83, 80, 0.15);
+        color: #ef5350;
+        border: 1px solid rgba(239, 83, 80, 0.3);
+    }
+
+    .bias-indicator.neutral {
+        background: rgba(158, 158, 158, 0.15);
+        color: #9e9e9e;
+        border: 1px solid rgba(158, 158, 158, 0.3);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Candlestick Pattern Analysis</h1>
+    <p>Detect and analyze candlestick patterns (Doji, Hammer, Engulfing, etc.)</p>
+</div>
+
+<!-- Setup Panel -->
+<div class="smc-setup card">
+    <div class="card-header">
+        <h3>Analysis Settings</h3>
+    </div>
+    <div class="card-body">
+        <div class="setup-row">
+            <div class="form-group">
+                <label for="pattern-symbol">Symbol</label>
+                <select id="pattern-symbol" class="form-control">
+                    <option value="">Loading...</option>
+                </select>
+            </div>
+            <div class="form-group form-group-sm">
+                <label for="pattern-timeframe">Timeframe</label>
+                <select id="pattern-timeframe" class="form-control">
+                    <option value="1m">1m</option>
+                    <option value="5m" selected>5m</option>
+                    <option value="15m">15m</option>
+                    <option value="30m">30m</option>
+                    <option value="1h">1h</option>
+                    <option value="4h">4h</option>
+                    <option value="1d">1d</option>
+                </select>
+            </div>
+
+            <!-- Data Mode Container -->
+            <div class="form-group form-group-data">
+                <label class="data-mode-label" onclick="toggleDataMode()">
+                    <span class="mode-text" id="data-mode-text">Bar Count</span>
+                    <svg class="toggle-chevron" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+                </label>
+                <!-- Bar Mode (default) -->
+                <div id="bars-mode-inputs">
+                    <input type="number" id="pattern-limit" class="form-control" value="500" min="100" max="5000">
+                </div>
+                <!-- Date Mode (hidden by default) -->
+                <div id="date-mode-inputs" class="date-inputs-row" style="display: none;">
+                    <input type="date" id="pattern-start-date" class="form-control">
+                    <span class="date-separator">-></span>
+                    <input type="date" id="pattern-end-date" class="form-control" disabled>
+                    <label class="use-now-label" title="Until now">
+                        <input type="checkbox" id="end-now" checked onchange="toggleEndDate()">
+                        <span>Now</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <button id="btn-analyze" class="btn btn-primary" onclick="analyzePatterns()">Analyze</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Content -->
+<div class="smc-content">
+    <!-- Chart Section -->
+    <div class="smc-chart-container card">
+        <div class="card-header">
+            <h3>Chart</h3>
+        </div>
+        <div class="card-body">
+            <div id="pattern-chart" style="width: 100%; height: 500px;"></div>
+        </div>
+    </div>
+
+    <!-- Analysis Results -->
+    <div class="smc-results">
+        <!-- Statistics Card -->
+        <div class="card">
+            <div class="card-header">
+                <h3>Statistics</h3>
+            </div>
+            <div class="card-body">
+                <div class="pattern-stats-grid">
+                    <div class="pattern-stat">
+                        <div class="stat-value" id="stat-total">0</div>
+                        <div class="stat-label">Total Patterns</div>
+                    </div>
+                    <div class="pattern-stat bullish">
+                        <div class="stat-value" id="stat-bullish">0</div>
+                        <div class="stat-label">Bullish</div>
+                    </div>
+                    <div class="pattern-stat bearish">
+                        <div class="stat-value" id="stat-bearish">0</div>
+                        <div class="stat-label">Bearish</div>
+                    </div>
+                    <div class="pattern-stat neutral">
+                        <div class="stat-value" id="stat-neutral">0</div>
+                        <div class="stat-label">Neutral</div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 16px;">
+                    <div id="bias-indicator" class="bias-indicator neutral">
+                        <span>Market Bias: </span>
+                        <strong id="bias-text">Neutral</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pattern Frequency -->
+        <div class="card">
+            <div class="card-header">
+                <h3>Pattern Frequency</h3>
+            </div>
+            <div class="card-body">
+                <div id="pattern-frequency" class="pattern-frequency">
+                    <p class="empty-message">Waiting for analysis...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Patterns -->
+        <div class="smc-formations card">
+            <div class="card-header">
+                <h3>Recent Patterns</h3>
+                <div class="filter-patterns">
+                    <button class="btn btn-sm btn-filter active" data-filter="all" onclick="filterPatterns('all')">All</button>
+                    <button class="btn btn-sm btn-filter" data-filter="bullish" onclick="filterPatterns('bullish')">Bullish</button>
+                    <button class="btn btn-sm btn-filter" data-filter="bearish" onclick="filterPatterns('bearish')">Bearish</button>
+                    <button class="btn btn-sm btn-filter" data-filter="neutral" onclick="filterPatterns('neutral')">Neutral</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="patterns-list" class="formations-list">
+                    <p class="empty-message">Waiting for analysis...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pattern Legend -->
+<div class="card" style="margin-top: 20px;">
+    <div class="card-header">
+        <h3>Pattern Legend</h3>
+    </div>
+    <div class="card-body">
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px;">
+            <div>
+                <h4 style="margin-bottom: 8px; color: #26a69a;">Bullish Patterns</h4>
+                <div style="font-size: 13px; color: var(--text-muted);">
+                    <div><strong>Hammer</strong> - Reversal at bottom</div>
+                    <div><strong>Bullish Engulfing</strong> - Strong reversal</div>
+                    <div><strong>Morning Star</strong> - 3-bar reversal</div>
+                    <div><strong>Three White Soldiers</strong> - Continuation</div>
+                    <div><strong>Piercing Line</strong> - Reversal</div>
+                </div>
+            </div>
+            <div>
+                <h4 style="margin-bottom: 8px; color: #ef5350;">Bearish Patterns</h4>
+                <div style="font-size: 13px; color: var(--text-muted);">
+                    <div><strong>Shooting Star</strong> - Reversal at top</div>
+                    <div><strong>Bearish Engulfing</strong> - Strong reversal</div>
+                    <div><strong>Evening Star</strong> - 3-bar reversal</div>
+                    <div><strong>Three Black Crows</strong> - Continuation</div>
+                    <div><strong>Dark Cloud Cover</strong> - Reversal</div>
+                </div>
+            </div>
+            <div>
+                <h4 style="margin-bottom: 8px; color: #9e9e9e;">Neutral Patterns</h4>
+                <div style="font-size: 13px; color: var(--text-muted);">
+                    <div><strong>Doji</strong> - Market indecision</div>
+                    <div><strong>Spinning Top</strong> - Indecision</div>
+                    <div><strong>Long-legged Doji</strong> - High volatility</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascriptArea %}
+<script src="{{ url_for('static', filename='js/patterns.js') }}"></script>
+{% endblock %}

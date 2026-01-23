@@ -6,7 +6,7 @@ def create_api_blueprint():
     api = Blueprint('api', __name__, url_prefix='/api')
 
     # Import and register sub-routes
-    from . import symbols, favorites, analysis, portfolio, account, stats, theme, categories, alerts, notifications, settings, exchanges, replay, smc_analysis, data_download
+    from . import symbols, favorites, analysis, portfolio, account, stats, theme, categories, alerts, notifications, settings, exchanges, replay, smc_analysis, data_download, patterns
 
     symbols.register_routes(api)
     favorites.register_routes(api)
@@ -22,6 +22,7 @@ def create_api_blueprint():
     replay.register_routes(api)
     smc_analysis.register_routes(api)
     data_download.register_routes(api)
+    patterns.register_routes(api)
 
     # Register exchanges blueprint
     api.register_blueprint(exchanges.bp)
