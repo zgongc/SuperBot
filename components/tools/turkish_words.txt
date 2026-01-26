@@ -1,0 +1,268 @@
+# Turkish Words List for Translation Scanner
+# One word or regex pattern per line
+# Lines starting with # are comments
+# Empty lines are ignored
+
+# ============================================
+# Conjunctions & Prepositions
+# ============================================
+ve
+veya
+icin
+ile
+olan
+olarak
+gibi
+kadar
+sonra
+once
+degil
+var
+yok
+evet
+hayir
+tamam
+lutfen
+
+# ============================================
+# File/Folder Terms
+# ============================================
+dosya
+klasor
+dizin
+ayar
+yapilandirma
+
+# ============================================
+# Status Words
+# ============================================
+basarili
+basarisiz
+hata
+hatalar
+uyari
+bilgi
+yukleniyor
+kaydediliyor
+siliniyor
+guncelleniyor
+bulunamadi
+zaten
+mevcut
+gerekli
+zorunlu
+
+# ============================================
+# Common Technical Terms
+# ============================================
+aktif
+pasif
+etkin
+devre
+hesaplama
+metod
+metodu
+parametre
+parametreler
+parametreleri
+korelasyon
+limit
+limiti
+seviye
+seviyesi
+dakika
+saat
+gun
+hafta
+maksimum
+toplam
+
+# ============================================
+# Action Words
+# ============================================
+acil
+durum
+durdurucu
+dinamik
+boyut
+boyutu
+tetikleme
+tetikle
+cikis
+giris
+kar
+zarar
+ornek
+kullanim
+kullanma
+kullan
+sadece
+ayarla
+gerisi
+otomatik
+tipi
+tipinde
+olacak
+olmaz
+tespit
+edildi
+sonuc
+sonucu
+miktar
+fazla
+riskli
+cok
+
+# ============================================
+# Validation/Error Words
+# ============================================
+kosul
+eleman
+icermeli
+gecersiz
+operator
+negatif
+olamaz
+strateji
+objesi
+opsiyonel
+ikisi
+gelir
+sahip
+kendi
+olmali
+liste
+listesi
+koordinasyon
+koordinasyonu
+kosullar
+kosullari
+
+# ============================================
+# Trading/Strategy Words
+# ============================================
+periyod
+sembol
+semboller
+performans
+trade
+getiri
+detaylar
+kazanan
+kaybeden
+komisyon
+ort
+stratejiler
+sinyal
+sinyaller
+pozisyon
+pozisyonlar
+baslangic
+bitis
+sure
+rapor
+ozet
+islem
+adet
+oran
+bakiye
+satis
+alis
+fiyat
+acik
+kapali
+beklemede
+hacim
+lot
+pip
+giren
+cikan
+kalan
+basari
+kayip
+elde
+
+# ============================================
+# Headers/Metadata
+# ============================================
+yazar
+tarih
+sistemi
+yetersiz
+sorumluluk
+uzun
+vadeli
+daha
+gelecek
+son
+devam
+
+# ============================================
+# UI/Button Words
+# ============================================
+sil
+silmek
+kaydet
+iptal
+geri
+ileri
+kapat
+ekle
+duzenle
+goruntule
+kopyala
+yukle
+durdur
+baslat
+yenile
+yeniden
+tumu
+tumunu
+secili
+filtre
+ara
+bul
+yeni
+eski
+onceki
+sonraki
+emin
+misiniz
+onay
+onayla
+sayfa
+
+# ============================================
+# Common Log/Action Verbs
+# ============================================
+okundu
+temizle
+temizlendi
+tamamlandi
+
+# ============================================
+# Additional UI Words (from templates)
+# ============================================
+strateji
+stratejisi
+silmek
+silinecek
+istediginize
+istediginizden
+devam
+geri
+alamaz
+alinamaz
+yuklenemedi
+yuklenirken
+olustu
+kopyalama
+durumu
+guncelle
+guncellendi
+yeniden
+dene
+iptal
+et
+edildi
+edilecek

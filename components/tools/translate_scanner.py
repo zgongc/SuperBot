@@ -44,77 +44,48 @@ except ImportError:
 # Turkish-specific characters
 TURKISH_CHARS = re.compile(r'[çğıöşüÇĞİÖŞÜ]')
 
-# Common Turkish words (for detection even without special chars)
-TURKISH_WORDS = [
-    # Conjunctions & prepositions
-    r'\b(ve|veya|icin|ile|olan|olarak|gibi|kadar|sonra|once)\b',
-    r'\b(degil|var|yok|evet|hayir|tamam|lutfen)\b',
-    # File/folder terms
-    r'\b(dosya|klasor|dizin|ayar|yapilandirma)\b',
-    # Status words
-    r'\b(basarili|basarisiz|hatalar?|uyari|bilgi)\b',
-    r'\b(yukleniyor|kaydediliyor|siliniyor|guncelleniyor)\b',
-    r'\b(bulunamadi|zaten|mevcut|gerekli|zorunlu)\b',
-    # Common technical terms in Turkish
-    r'\b(aktif|pasif|etkin|devre)\b',
-    r'\b(hesaplama|metodu?|parametreler?i?)\b',
-    r'\b(korelasyon|limiti|seviyes?i)\b',  # limiti (not limit), seviye/seviyesi
-    r'\b(dakika|saat|gun|hafta)\b',
-    r'\b(maksimum|toplam)\b',  # removed 'minimum' - same in English
-    r'\b(acil|durum|durdurucu)\b',
-    r'\b(dinamik|boyut|boyutu)\b',
-    r'\b(tetikleme|tetikle)\b',
-    r'\b(cikis|giris|kar|zarar)\b',
-    r'\b(ornek|kullanim|kullanma|kullan)\b',
-    r'\b(KULLANILMAZ|edilir|etsin)\b',
-    r'\b(izni|izin|kontrol)\b',
-    # More common Turkish words without special chars
-    r'\b(sadece|ayarla|gerisi|otomatik)\b',
-    r'\b(tipi|tipinde|olacak|olmaz)\b',
-    r'\b(tespit|edildi|sonucu?)\b',
-    r'\b(miktar|fazla|riskli|cok)\b',
-    r'\b(koordinasyonu?|kosullari?)\b',
-    r'\b(olmali|listesi?)\b',
-    # More validation/error message words
-    r'\b(kosul|eleman|icermeli)\b',
-    r'\b(gecersiz|operator|negatif|olamaz)\b',
-    r'\b(strateji|objesi|opsiyonel)\b',
-    r'\b(ikisi|gelir|sahip|kendi)\b',
-    # Performance/trading report words
-    r'\b(periyod|sembol|performans)\b',
-    r'\b(toplam|trade|getiri)\b',
-    r'\b(detaylar|kazanan|kaybeden)\b',
-    r'\b(komisyon|slippage|spread)\b',
-    r'\b(ort|execution)\b',
-    # More trading/strategy words (with plurals)
-    r'\b(stratejiler?|sinyaller?|pozisyonlar?)\b',
-    r'\b(baslangic|bitis|sure)\b',
-    r'\b(sonuc|rapor|ozet)\b',
-    r'\b(islem|adet|oran)\b',
-    r'\b(kar|zarar|bakiye)\b',
-    r'\b(satis|alis|fiyat)\b',
-    r'\b(acik|kapali|beklemede)\b',
-    r'\b(hacim|lot|pip)\b',
-    r'\b(giren|cikan|kalan)\b',
-    r'\b(basari|kayip|elde)\b',
-    # Headers/Metadata
-    r'\b(yazar|tarih|sistemi|yetersiz)\b',
-    r'\b(sorumluluk|uzun|vadeli|daha|gelecek)\b', 
-    r'\b(son|devam)\b', 
-    
-    # UI/Button words
-    r'\b(sil|silmek|kaydet|iptal|geri|ileri|tamam|kapat)\b',
-    r'\b(ekle|duzenle|goruntule|kopyala|yukle)\b',
-    r'\b(durdur|baslat|yenile|yeniden)\b',
-    r'\b(tumunu?|secili|filtre|ara|bul)\b',
-    r'\b(yeni|eski|onceki|sonraki)\b',
-    r'\b(emin|misiniz|onay|onayla)\b',
-    r'\b(semboller?|sayfa|liste)\b',
-    # Question endings
-    r'\b\w+\s+mi\?\b',
-    # Common log words/verbs
-    r'\b(okundu|temizle|temizlendi|tamamlandi)\b',
-]
+# Path to external Turkish words file
+TURKISH_WORDS_FILE = Path(__file__).parent / "turkish_words.txt"
+
+
+def load_turkish_words() -> List[str]:
+    """
+    Load Turkish words from external file and build regex patterns.
+
+    Returns:
+        List of regex pattern strings
+    """
+    words = []
+
+    # Load from file if exists
+    if TURKISH_WORDS_FILE.exists():
+        try:
+            with open(TURKISH_WORDS_FILE, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    # Skip comments and empty lines
+                    if not line or line.startswith('#'):
+                        continue
+                    words.append(line)
+        except Exception as e:
+            print(f"[WARN] Could not load turkish_words.txt: {e}")
+
+    # Add hardcoded patterns (regex patterns that can't be simple words)
+    hardcoded_patterns = [
+        r'\b\w+\s+mi\?\b',  # Question endings like "emin mi?"
+    ]
+
+    # Build word boundary patterns from loaded words
+    if words:
+        # Group words into batches for efficient regex
+        word_pattern = r'\b(' + '|'.join(re.escape(w) for w in words) + r')\b'
+        return [word_pattern] + hardcoded_patterns
+
+    return hardcoded_patterns
+
+
+# Load Turkish words at module load time
+TURKISH_WORDS = load_turkish_words()
 TURKISH_WORD_PATTERN = re.compile('|'.join(TURKISH_WORDS), re.IGNORECASE)
 
 
