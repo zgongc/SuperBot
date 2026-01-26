@@ -77,7 +77,7 @@ try:
     RICH_AVAILABLE = True
 except ImportError:
     RICH_AVAILABLE = False
-    print("⚠️  Rich library not found. Install: pip install rich")
+    print("⚠️ Rich library not found. Install: pip install rich")
 
 
 # Custom log levels

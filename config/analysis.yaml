@@ -83,6 +83,27 @@ analysis:
     show: false
     max_levels: 10  # Max number of unbroken levels to show per type (highs/lows)
 
+  # Trendline Breakout Detection (v5.0 - TSR Style)
+  # Based on TradingView "Trend Lines, Supports and Resistances" indicator
+  # Uptrend: Rising lows (support), Downtrend: Falling highs (resistance)
+  chart_patterns:
+    enabled: true
+    show: true
+
+    # Pivot detection (like TradingView ta.pivothigh/pivotlow)
+    pivot_length: 25           # Pivot period (higher = fewer pivots, more significant)
+
+    # TSR parameters
+    points_to_check: 3          # How many recent pivots to check for trendlines
+    max_violation: 0            # Max bars allowed to cross the line (0 = strict)
+    except_bars: 3              # Ignore last N bars for violation check
+    extend_lines: true          # Extend valid trendlines to current bar
+
+    # Patterns
+    patterns:
+      resistance_breakout: true   # Bullish - price breaks above falling resistance
+      support_breakout: true      # Bearish - price breaks below rising support
+
   output:
     include_filled_fvg: false
     include_broken_swings: false
@@ -91,36 +112,36 @@ analysis:
   # Only patterns with 'true' will be detected and shown
   candlestick:
     # Single candle - Bullish
-    hammer: false
-    inverted_hammer: true
-    dragonfly_doji: true
-    marubozu_bullish: true
+    hammer: true              # Classic bullish reversal
+    inverted_hammer: false
+    dragonfly_doji: false
+    marubozu_bullish: false
 
     # Single candle - Bearish
-    hanging_man: true
-    shooting_star: true
-    gravestone_doji: true
-    marubozu_bearish: true
+    hanging_man: false
+    shooting_star: true       # Classic bearish reversal
+    gravestone_doji: false
+    marubozu_bearish: false
 
     # Single candle - Neutral
-    doji: true
-    longlegged_doji: true
-    spinning_top: true
+    doji: true                # Key indecision signal
+    longlegged_doji: false
+    spinning_top: false
 
     # Multi candle - Bullish (2-bar)
-    engulfing_bullish: true
-    harami_bullish: true
-    piercing_line: true
+    engulfing_bullish: true   # Strong reversal signal
+    harami_bullish: false
+    piercing_line: false
 
     # Multi candle - Bearish (2-bar)
-    engulfing_bearish: true
-    harami_bearish: true
-    dark_cloud_cover: true
+    engulfing_bearish: true   # Strong reversal signal
+    harami_bearish: false
+    dark_cloud_cover: false
 
     # Multi candle - Bullish (3-bar)
-    morning_star: true
-    three_white_soldiers: true
+    morning_star: false
+    three_white_soldiers: false
 
     # Multi candle - Bearish (3-bar)
-    evening_star: true
-    three_black_crows: true
+    evening_star: false
+    three_black_crows: false

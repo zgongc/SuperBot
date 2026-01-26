@@ -1,0 +1,198 @@
+{% extends 'base.html' %}
+
+{% block title %}Trendline Breakout{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/smc.css') }}">
+<script src="https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Trendline Breakout</h1>
+    <p>Support/Resistance trendline breakout detection</p>
+</div>
+
+<!-- Setup Panel -->
+<div class="smc-setup card">
+    <div class="card-header">
+        <h3>Analysis Settings</h3>
+    </div>
+    <div class="card-body">
+        <div class="setup-row">
+            <div class="form-group">
+                <label for="cp-symbol">Symbol</label>
+                <select id="cp-symbol" class="form-control">
+                    <option value="">Loading...</option>
+                </select>
+            </div>
+            <div class="form-group form-group-sm">
+                <label for="cp-timeframe">Timeframe</label>
+                <select id="cp-timeframe" class="form-control">
+                    <option value="5m">5m</option>
+                    <option value="15m" selected>15m</option>
+                    <option value="30m">30m</option>
+                    <option value="1h">1h</option>
+                    <option value="4h">4h</option>
+                    <option value="1d">1d</option>
+                </select>
+            </div>
+
+            <!-- Data Mode Container -->
+            <div class="form-group form-group-data">
+                <label class="data-mode-label" onclick="toggleDataMode()">
+                    <span class="mode-text" id="data-mode-text">Bar Count</span>
+                    <svg class="toggle-chevron" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+                </label>
+                <!-- Bar Mode (default) -->
+                <div id="bars-mode-inputs">
+                    <input type="number" id="cp-limit" class="form-control" value="500" min="100" max="5000">
+                </div>
+                <!-- Date Mode (hidden by default) -->
+                <div id="date-mode-inputs" class="date-inputs-row" style="display: none;">
+                    <input type="date" id="cp-start-date" class="form-control">
+                    <span class="date-separator">→</span>
+                    <input type="date" id="cp-end-date" class="form-control" disabled>
+                    <label class="use-now-label" title="Until now">
+                        <input type="checkbox" id="end-now" checked onchange="toggleEndDate()">
+                        <span>Now</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <button id="btn-analyze" class="btn btn-primary">Analyze</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Content -->
+<div class="smc-content">
+    <!-- Chart Section -->
+    <div class="smc-chart-container card">
+        <div class="card-header">
+            <h3>Chart</h3>
+        </div>
+        <div class="card-body">
+            <div id="cp-chart" style="width: 100%; height: 500px;"></div>
+        </div>
+    </div>
+
+    <!-- Analysis Results -->
+    <div class="smc-results">
+        <!-- Filter Card -->
+        <div class="smc-filter card">
+            <div class="card-header">
+                <h3>Display Options</h3>
+            </div>
+            <div class="card-body">
+                <div class="filter-grid">
+                    <label class="filter-checkbox">
+                        <input type="checkbox" id="show-swing" checked onchange="updateChartVisibility()">
+                        <span class="filter-item filter-swing">Swings</span>
+                    </label>
+                    <label class="filter-checkbox">
+                        <input type="checkbox" id="show-resistance" checked onchange="updateChartVisibility()">
+                        <span class="filter-item filter-bearish">Resistance</span>
+                    </label>
+                    <label class="filter-checkbox">
+                        <input type="checkbox" id="show-support" checked onchange="updateChartVisibility()">
+                        <span class="filter-item filter-bullish">Support</span>
+                    </label>
+                    <label class="filter-checkbox">
+                        <input type="checkbox" id="show-breakouts" checked onchange="updateChartVisibility()">
+                        <span class="filter-item filter-qml">Breakouts</span>
+                    </label>
+                    <label class="filter-checkbox">
+                        <input type="checkbox" id="show-targets" checked onchange="updateChartVisibility()">
+                        <span class="filter-item filter-levels">Targets</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Card -->
+        <div class="smc-stats card">
+            <div class="card-header">
+                <h3>Statistics</h3>
+            </div>
+            <div class="card-body">
+                <div class="stats-grid stats-extended">
+                    <div class="stat-item stat-bullish">
+                        <span class="stat-value" id="stat-bullish">0</span>
+                        <span class="stat-label">Bullish Breakouts</span>
+                    </div>
+                    <div class="stat-item stat-bearish">
+                        <span class="stat-value" id="stat-bearish">0</span>
+                        <span class="stat-label">Bearish Breakouts</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="stat-trendlines">0</span>
+                        <span class="stat-label">Trendlines</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="stat-swings">0</span>
+                        <span class="stat-label">Swings</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trendlines Card -->
+        <div class="smc-formations card">
+            <div class="card-header">
+                <h3>Detected Trendlines</h3>
+            </div>
+            <div class="card-body">
+                <div id="trendlines-list" class="formations-list">
+                    <p class="empty-message">Waiting for analysis...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Breakouts Card -->
+        <div class="smc-formations card">
+            <div class="card-header">
+                <h3>Breakout Signals</h3>
+            </div>
+            <div class="card-body">
+                <div id="patterns-list" class="formations-list">
+                    <p class="empty-message">Waiting for analysis...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Legend -->
+<div class="smc-summary card">
+    <div class="card-header">
+        <h3>Legend</h3>
+    </div>
+    <div class="card-body">
+        <div class="summary-grid">
+            <div class="summary-item">
+                <span class="summary-label">Resistance Breakout</span>
+                <span class="summary-value" style="color: #26a69a;">Bullish Signal</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Support Breakout</span>
+                <span class="summary-value" style="color: #ef5350;">Bearish Signal</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Resistance Trendline</span>
+                <span class="summary-value" style="color: #ef5350;">Swing Highs</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Support Trendline</span>
+                <span class="summary-value" style="color: #26a69a;">Swing Lows</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascriptArea %}
+<script src="{{ url_for('static', filename='js/chart_patterns.js') }}"></script>
+{% endblock %}

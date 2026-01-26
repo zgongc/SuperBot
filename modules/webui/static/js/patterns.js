@@ -62,44 +62,40 @@ function buildFilterCheckboxes(config) {
         else neutral.push(item);
     }
 
-    let html = '';
+    // Single 3-column grid: bullish first, then bearish, then neutral
+    let html = '<div class="filter-grid-3col">';
 
     // Bullish patterns
-    html += '<div class="filter-group"><div class="filter-group-title bullish">Bullish</div><div class="filter-items">';
     bullish.forEach(p => {
         html += `
             <label class="filter-checkbox">
                 <input type="checkbox" id="filter-${p.code}" ${p.enabled ? 'checked' : ''} onchange="togglePatternVisibility('${p.code}', this.checked)">
-                <span class="filter-item filter-bullish" title="${p.description}">${p.name}</span>
+                <span class="filter-item text-bullish" title="${p.description}">${p.name}</span>
             </label>
         `;
     });
-    html += '</div></div>';
 
     // Bearish patterns
-    html += '<div class="filter-group"><div class="filter-group-title bearish">Bearish</div><div class="filter-items">';
     bearish.forEach(p => {
         html += `
             <label class="filter-checkbox">
                 <input type="checkbox" id="filter-${p.code}" ${p.enabled ? 'checked' : ''} onchange="togglePatternVisibility('${p.code}', this.checked)">
-                <span class="filter-item filter-bearish" title="${p.description}">${p.name}</span>
+                <span class="filter-item text-bearish" title="${p.description}">${p.name}</span>
             </label>
         `;
     });
-    html += '</div></div>';
 
     // Neutral patterns
-    html += '<div class="filter-group"><div class="filter-group-title neutral">Neutral</div><div class="filter-items">';
     neutral.forEach(p => {
         html += `
             <label class="filter-checkbox">
                 <input type="checkbox" id="filter-${p.code}" ${p.enabled ? 'checked' : ''} onchange="togglePatternVisibility('${p.code}', this.checked)">
-                <span class="filter-item filter-neutral" title="${p.description}">${p.name}</span>
+                <span class="filter-item text-neutral" title="${p.description}">${p.name}</span>
             </label>
         `;
     });
-    html += '</div></div>';
 
+    html += '</div>';
     container.innerHTML = html;
 }
 
@@ -405,27 +401,68 @@ function updatePatternFrequency(data) {
     const container = document.getElementById('pattern-frequency');
     const counts = data.pattern_counts || {};
 
-    if (Object.keys(counts).length === 0) {
-        container.innerHTML = '<p class="empty-message">No patterns detected</p>';
-        return;
-    }
+    // Pattern pairs (bullish/bearish counterparts)
+    const pairs = [
+        ['hammer', 'hanging_man'],
+        ['inverted_hammer', 'shooting_star'],
+        ['dragonfly_doji', 'gravestone_doji'],
+        ['marubozu_bullish', 'marubozu_bearish'],
+        ['engulfing_bullish', 'engulfing_bearish'],
+        ['harami_bullish', 'harami_bearish'],
+        ['piercing_line', 'dark_cloud_cover'],
+        ['morning_star', 'evening_star'],
+        ['three_white_soldiers', 'three_black_crows']
+    ];
 
-    // Sort by count
-    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    const neutralCodes = ['doji', 'longlegged_doji', 'spinning_top'];
 
-    let html = '';
-    sorted.forEach(([name, count]) => {
-        // Get pattern type for coloring
-        const pattern = data.patterns.find(p => p.code === name);
-        const type = pattern ? pattern.type : 'neutral';
+    // Build 2-column layout with paired patterns
+    let html = '<div class="freq-two-columns">';
 
-        html += `
-            <div class="pattern-freq-item">
-                <span class="pattern-badge ${type}">${formatPatternName(name)}</span>
-                <span class="count">${count}</span>
-            </div>
-        `;
+    pairs.forEach(([bullCode, bearCode]) => {
+        const bullInfo = patternConfig[bullCode];
+        const bearInfo = patternConfig[bearCode];
+
+        html += '<div class="freq-row">';
+        if (bullInfo) {
+            html += `
+                <div class="pattern-freq-item">
+                    <span class="freq-count">${counts[bullCode] || 0}</span>
+                    <span class="text-bullish">${bullInfo.name}</span>
+                </div>
+            `;
+        } else {
+            html += '<div class="freq-empty"></div>';
+        }
+        if (bearInfo) {
+            html += `
+                <div class="pattern-freq-item">
+                    <span class="freq-count">${counts[bearCode] || 0}</span>
+                    <span class="text-bearish">${bearInfo.name}</span>
+                </div>
+            `;
+        } else {
+            html += '<div class="freq-empty"></div>';
+        }
+        html += '</div>';
     });
+
+    html += '</div>';
+
+    // Neutral row at bottom (3 equal columns)
+    html += '<div class="freq-neutral-row">';
+    neutralCodes.forEach(code => {
+        const info = patternConfig[code];
+        if (info) {
+            html += `
+                <div class="pattern-freq-item neutral-item">
+                    <span class="freq-count">${counts[code] || 0}</span>
+                    <span class="text-neutral">${info.name}</span>
+                </div>
+            `;
+        }
+    });
+    html += '</div>';
 
     container.innerHTML = html;
 }

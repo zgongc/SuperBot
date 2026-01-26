@@ -6,7 +6,7 @@ def create_views_blueprint():
     views = Blueprint('views', __name__)
 
     # Import route handlers
-    from . import main, trading, settings, favorites, portfolio, replay, smc, patterns
+    from . import main, trading, settings, favorites, portfolio, replay, smc, patterns, chart_patterns
 
     # Register routes
     main.register_routes(views)
@@ -17,6 +17,7 @@ def create_views_blueprint():
     replay.register_routes(views)
     smc.register_routes(views)
     patterns.register_routes(views)
+    chart_patterns.register_routes(views)
 
     return views
 

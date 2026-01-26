@@ -2,11 +2,11 @@
 modules/analysis/models/formations.py
 
 SMC Formation Dataclasses
-- BOS, CHoCH, FVG, Gap, SwingPoint, OrderBlock
+- BOS, CHoCH, FVG, Gap, SwingPoint, OrderBlock, ChartPattern
 """
 
 from dataclasses import dataclass, field
-from typing import Literal, Optional
+from typing import Literal, Optional, List
 from datetime import datetime
 import uuid
 
@@ -577,4 +577,141 @@ class FTRZone:
             'color': color,
             'border_color': border,
             'label': 'FTR' if self.is_fresh else ('FTB' if self.is_ftb else 'Zone')
+        }
+
+
+@dataclass
+class ChartPattern:
+    """
+    Geometric Chart Pattern (Double Top, Head & Shoulders, Triangles, etc.)
+
+    Attributes:
+        id: Unique identifier
+        name: Pattern code (e.g., 'double_top', 'head_shoulders')
+        display_name: Human readable name
+        type: 'bullish', 'bearish', 'neutral'
+        status: 'forming', 'completed', 'confirmed', 'failed'
+        swings: List of swing points forming the pattern
+        start_time: Pattern start timestamp (ms)
+        end_time: Pattern completion timestamp (ms)
+        start_index: Start bar index
+        end_index: End bar index
+        neckline: Neckline price (for H&S patterns)
+        target: Target price projection
+        confidence: Pattern confidence score (0-100)
+        breakout_price: Breakout level
+        breakout_confirmed: Was breakout confirmed?
+    """
+    name: str
+    display_name: str
+    type: Literal['bullish', 'bearish', 'neutral']
+    status: Literal['forming', 'completed', 'confirmed', 'failed']
+    swings: List['SwingPoint']
+    start_time: int
+    end_time: int
+    start_index: int
+    end_index: int
+    neckline: Optional[float] = None
+    target: Optional[float] = None
+    confidence: float = 50.0
+    breakout_price: Optional[float] = None
+    breakout_confirmed: bool = False
+    id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
+
+    @property
+    def duration_bars(self) -> int:
+        """Pattern duration in bars"""
+        return self.end_index - self.start_index
+
+    @property
+    def price_range(self) -> float:
+        """Pattern price range (high - low of all swings)"""
+        if not self.swings:
+            return 0.0
+        prices = [s.price for s in self.swings]
+        return max(prices) - min(prices)
+
+    def to_dict(self) -> dict:
+        return {
+            'id': self.id,
+            'name': self.name,
+            'display_name': self.display_name,
+            'type': self.type,
+            'status': self.status,
+            'swings': [s.to_dict() for s in self.swings],
+            'start_time': self.start_time,
+            'end_time': self.end_time,
+            'start_index': self.start_index,
+            'end_index': self.end_index,
+            'duration_bars': self.duration_bars,
+            'neckline': self.neckline,
+            'target': self.target,
+            'confidence': self.confidence,
+            'breakout_price': self.breakout_price,
+            'breakout_confirmed': self.breakout_confirmed
+        }
+
+    def to_chart_annotation(self) -> dict:
+        """
+        Chart annotation data for LightweightCharts
+
+        Returns lines connecting swing points and pattern label
+        """
+        colors = {
+            'bullish': '#26a69a',
+            'bearish': '#ef5350',
+            'neutral': '#9e9e9e'
+        }
+        color = colors.get(self.type, '#9e9e9e')
+
+        # Build line segments connecting swings
+        lines = []
+        for i in range(len(self.swings) - 1):
+            s1, s2 = self.swings[i], self.swings[i + 1]
+            lines.append({
+                'type': 'pattern_line',
+                'start_time': s1.time // 1000,
+                'start_price': s1.price,
+                'end_time': s2.time // 1000,
+                'end_price': s2.price,
+                'color': color,
+                'lineWidth': 2,
+                'lineStyle': 0  # Solid
+            })
+
+        # Add neckline if exists
+        if self.neckline and len(self.swings) >= 2:
+            lines.append({
+                'type': 'neckline',
+                'start_time': self.swings[0].time // 1000,
+                'start_price': self.neckline,
+                'end_time': self.swings[-1].time // 1000,
+                'end_price': self.neckline,
+                'color': color,
+                'lineWidth': 1,
+                'lineStyle': 2  # Dashed
+            })
+
+        # Add target line if exists
+        if self.target:
+            lines.append({
+                'type': 'target_line',
+                'price': self.target,
+                'start_time': self.end_time // 1000,
+                'color': color,
+                'lineWidth': 1,
+                'lineStyle': 1  # Dotted
+            })
+
+        return {
+            'pattern_id': self.id,
+            'pattern_name': self.display_name,
+            'pattern_type': self.type,
+            'lines': lines,
+            'label': {
+                'time': self.end_time // 1000,
+                'price': self.swings[-1].price if self.swings else 0,
+                'text': self.display_name,
+                'color': color
+            }
         }
