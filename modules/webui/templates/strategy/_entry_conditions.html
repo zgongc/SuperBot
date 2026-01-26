@@ -8,7 +8,7 @@
             <div class="accordion-icon">🎯</div>
             <div class="accordion-title-text">
                 <h3>Input Conditions</h3>
-                <p>Long ve Short giriş koşulları (Teknik)</p>
+                <p>Long and Short input conditions (Technical)</p>
             </div>
         </div>
         <svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -19,14 +19,14 @@
         <div class="accordion-body">
 
             <!-- IMPORTANT NOTE -->
-            <div class="info-box" style="background: var(--bg-tertiary); border: 2px solid #f59e0b; margin-bottom: 1.5rem;">
+            <div class="info-box" style="background: var(--bg-tertiary); border: 2px solid #f59e0b; margin-bottom: 1.5rem; font-size: 0.8125rem;">
                 <div class="info-box-title" style="color: #f59e0b;">⚠️ IMPORTANT: Indicator Definition</div>
                 <div class="info-box-content">
                     <p><strong>Before using the indicators in the input conditions, you must first add them in the Technical Indicators section.</strong></p>
                     <p style="margin-top: 0.5rem;">📌 How it works:</p>
                     <ul style="margin-left: 1.5rem; margin-top: 0.25rem;">
-                        <li>Teknik İndikatörler accordion'unu açın ve indikatör ekleyin (örn: RSI, EMA)</li>
-                        <li>Her indikatörün suffix'ini ayarlayın (örn: RSI için "14" → RSI-14 olur)</li>
+                        <li>Open the Technical Indicators accordion and add an indicator (e.g., RSI, EMA).</li>
+                        <li>Set the suffix for each indicator (e.g., for RSI, "14" -> becomes RSI-14).</li>
                         <li>The indicators you add will automatically appear in the dropdown menus here.</li>
                     </ul>
                     <p style="margin-top: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">
@@ -66,17 +66,17 @@
             </div>
 
             <!-- INFO BOX -->
-            <div class="info-box" style="margin-top: 1.5rem;">
+            <div class="info-box" style="margin-top: 1.5rem; font-size: 0.8125rem;">
                 <div class="info-box-title">💡 How do input conditions work?</div>
                 <div class="info-box-content">
-                    <p><strong>All conditions work with an AND logic:</strong> Giriş sinyali üretilmesi için belirlediğiniz TÜM koşulların sağlanması gerekir.</p>
+                    <p><strong>All conditions work with an AND logic:</strong> All conditions you specify for generating the input signal must be met.</p>
                     <p style="margin-top: 0.5rem;"><strong>Example:</strong></p>
                     <ul style="margin-left: 1.5rem; margin-top: 0.25rem;">
                         <li><code>RSI-14 &lt; 35</code> VE</li>
                         <li><code>EMA-9 crossover EMA-21</code> VE</li>
                         <li><code>Volume &gt; Volume-SMA</code></li>
                     </ul>
-                    <p style="margin-top: 0.5rem;">Bu 3 koşul <strong>at the same time</strong> sağlandığında LONG giriş sinyali oluşur.</p>
+                    <p style="margin-top: 0.5rem;">These 3 conditions <strong>at the same time</strong> when a LONG input signal is generated.</p>
                 </div>
             </div>
 

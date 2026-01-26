@@ -59,7 +59,7 @@
                 <polyline points="17 21 17 13 7 13 7 21"></polyline>
                 <polyline points="7 3 7 8 15 8"></polyline>
             </svg>
-            Kaydet
+            Save
         </button>
     </div>
 </div>
@@ -370,7 +370,7 @@
         }
 
         if (!INDICATOR_REGISTRY) {
-            searchResults.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--text-secondary);">Loading...</div';
+            searchResults.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--text-secondary);">Loading...</div>';
             searchResults.style.display = 'block';
             return;
         }
@@ -394,7 +394,7 @@
                     <div class="indicator-search-name">${key}</div>
                     <div class="indicator-search-desc">${data.description}</div>
                 </div>
-                <button class="indicator-add-btn" onclick="addIndicatorFromSearch('${key}')">Ekle</button>
+                <button class="indicator-add-btn" onclick="addIndicatorFromSearch('${key}')">Add</button>
             </div>
         `).join('');
 
@@ -1725,7 +1725,7 @@
                     ).join('')}
                 </optgroup>
                 <optgroup label="💲 Price-Based">
-                    ${OPERATORS.filter(op => op.category === 'Fiyat').map(op =>
+                    ${OPERATORS.filter(op => op.category === 'Price').map(op =>
                         `<option value="${op.value}">${op.label}</option>`
                     ).join('')}
                 </optgroup>
@@ -2126,7 +2126,7 @@
                 else if (operator === 'crossover' || operator === 'crossunder') {
                     let thresholdValue = thresholdElem?.value;
 
-                    // If user selected "Sayı Gir" (Enter Number), get value from the number input.
+                    // If user selected "Enter a number" (Enter Number), get value from the number input.
                     if (thresholdValue === 'number') {
                         const numberInput = document.getElementById(`threshold-number-${conditionId}`);
                         if (numberInput && numberInput.value) {
@@ -2211,7 +2211,7 @@
                 else if (operator === 'crossover' || operator === 'crossunder') {
                     let thresholdValue = thresholdElem?.value;
 
-                    // If user selected "Sayı Gir" (Enter Number), get value from the number input
+                    // If user selected "Enter a number" (Enter Number), get value from the number input
                     if (thresholdValue === 'number') {
                         const numberInput = document.getElementById(`threshold-number-${conditionId}`);
                         if (numberInput && numberInput.value) {
@@ -2467,11 +2467,11 @@
 
                 if (checkResult.data && checkResult.data.exists) {
                     const confirmOverwrite = await confirm({
-                        title: 'Dosya Mevcut',
+                        title: 'File Exists',
                         message: `"${actualStrategyId}" adında bir dosya zaten var. Üzerine yazmak istiyor musunuz?`,
                         type: 'warning',
-                        confirmText: 'Üzerine Yaz',
-                        cancelText: 'İptal'
+                        confirmText: 'Overwrite',
+                        cancelText: 'Cancel'
                     });
 
                     if (!confirmOverwrite) {
@@ -2549,7 +2549,7 @@
         document.getElementById('strategy-version').value = data.version || '1.0.0';
         document.getElementById('strategy-description').value = data.description || '';
 
-        // Yeni alanlar
+        // New fields
         if (document.getElementById('strategy-author')) {
             document.getElementById('strategy-author').value = data.author || 'Unknown';
         }

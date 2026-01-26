@@ -25,7 +25,7 @@
         </div>
         <div class="wizard-step" data-step="2">
             <div class="step-circle">2</div>
-            <div class="step-label">Semboller</div>
+            <div class="step-label">Symbols</div>
         </div>
         <div class="wizard-step" data-step="3">
             <div class="step-circle">3</div>
@@ -57,7 +57,7 @@
 
         <!-- Step 2: Symbols -->
         <div class="step-content" data-step="2">
-            <h2 style="margin-bottom: 1.5rem;">Semboller</h2>
+            <h2 style="margin-bottom: 1.5rem;">Symbols</h2>
 
             <div class="form-group">
                 <label class="form-label">Selected Symbols</label>
@@ -75,7 +75,7 @@
                             <line x1="12" y1="5" x2="12" y2="19"></line>
                             <line x1="5" y1="12" x2="19" y2="12"></line>
                         </svg>
-                        Ekle
+                        Add
                     </button>
                 </div>
             </div>
@@ -116,7 +116,7 @@
             </div>
 
             <div class="summary-section">
-                <div class="summary-title">Semboller</div>
+                <div class="summary-title">Symbols</div>
                 <div class="symbol-selector" id="summary-symbols">
                     <!-- Symbols will be shown here -->
                 </div>
@@ -135,11 +135,11 @@
                     <line x1="19" y1="12" x2="5" y2="12"></line>
                     <polyline points="12 19 5 12 12 5"></polyline>
                 </svg>
-                Geri
+                Back
             </button>
             <a href="/strategies" class="btn btn-secondary">Cancel</a>
             <button class="btn btn-primary" id="next-btn" onclick="nextStep()">
-                İleri
+                Forward
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="5" y1="12" x2="19" y2="12"></line>
                     <polyline points="12 5 19 12 12 19"></polyline>
@@ -181,12 +181,12 @@
                 document.getElementById('loading-state').style.display = 'none';
                 document.getElementById('edit-content').style.display = 'block';
             } else {
-                showToast('Hata', result.message || 'Strateji yüklenemedi', 'error');
+                showToast('Error', result.message || 'Strategy could not be loaded.', 'error');
                 setTimeout(() => window.location.href = '/strategies', 2000);
             }
         } catch (error) {
             console.error('Error loading strategy:', error);
-            showToast('Hata', 'Strateji yüklenirken hata oluştu', 'error');
+            showToast('Error', 'Error occurred while loading strategy.', 'error');
             setTimeout(() => window.location.href = '/strategies', 2000);
         }
     }
@@ -208,7 +208,7 @@
 
         if (!symbolValue) return;
         if (selectedSymbols.includes(symbolValue)) {
-            showToast('Uyarı', 'Bu sembol zaten eklenmiş', 'warning');
+            showToast('Warning', 'This symbol has already been added.', 'warning');
             return;
         }
 
@@ -226,7 +226,7 @@
         const container = document.getElementById('symbol-selector');
 
         if (selectedSymbols.length === 0) {
-            container.innerHTML = '<span style="color: var(--text-secondary);">Henüz sembol eklenmedi</span>';
+            container.innerHTML = '<span style="color: var(--text-secondary);">No symbol added yet</span>';
             return;
         }
 
@@ -265,7 +265,7 @@
         if (step === 1) {
             const name = document.getElementById('strategy-name').value.trim();
             if (!name) {
-                showToast('Uyarı', 'Strateji adı zorunludur', 'warning');
+                showToast('Warning', 'Strategy name is required', 'warning');
                 return false;
             }
         }
@@ -319,7 +319,7 @@
     function updateSummary() {
         const name = document.getElementById('strategy-name').value || '-';
         const version = document.getElementById('strategy-version').value || '-';
-        const description = document.getElementById('strategy-description').value || 'Açıklama yok';
+        const description = document.getElementById('strategy-description').value || 'Description not available';
 
         document.getElementById('summary-name').textContent = name;
         document.getElementById('summary-version').textContent = version;
@@ -327,7 +327,7 @@
 
         const summarySymbols = document.getElementById('summary-symbols');
         if (selectedSymbols.length === 0) {
-            summarySymbols.innerHTML = '<span style="color: var(--text-secondary);">Sembol yok</span>';
+            summarySymbols.innerHTML = '<span style="color: var(--text-secondary);">No symbol</span>';
         } else {
             summarySymbols.innerHTML = selectedSymbols.map(symbol =>
                 `<span class="symbol-tag">${symbol}</span>`
@@ -352,14 +352,14 @@
             const result = await response.json();
 
             if (result.status === 'success') {
-                showToast('Başarılı', 'Strateji başarıyla güncellendi', 'success');
+                showToast('Successful', 'Strategy successfully updated', 'success');
                 setTimeout(() => window.location.href = `/strategies/${strategyId}`, 1500);
             } else {
-                showToast('Hata', result.message || 'Strateji güncellenemedi', 'error');
+                showToast('Error', result.message || 'Strategy could not be updated.', 'error');
             }
         } catch (error) {
             console.error('Error updating strategy:', error);
-            showToast('Hata', 'Strateji güncellenirken hata oluştu', 'error');
+            showToast('Error', 'An error occurred while updating the strategy.', 'error');
         }
     }
 </script>

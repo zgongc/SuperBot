@@ -490,7 +490,7 @@ function updateChart(data) {
                 createIndicatorSeries(data.indicator_names);
             }
 
-            // Veriyi set et
+            // Set the data.
             if (ReplayState.indicators[name] && values.length > 0) {
                 ReplayState.indicators[name].setData(values);
             }

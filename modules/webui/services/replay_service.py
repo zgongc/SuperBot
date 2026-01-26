@@ -1,6 +1,6 @@
 """
 Replay Trading Service
-WebUI için ReplayMode wrapper - ince bir katman
+WebUI for ReplayMode wrapper - a thin layer
 
 ReplayMode (Trading Engine) does all the work:
 - Parquet loading
@@ -121,7 +121,7 @@ class ReplayService(BaseService):
             self._session_cache = {}
 
     def _save_session_cache(self):
-        """Session bilgilerini dosyaya kaydet"""
+        """Save session information to a file"""
         try:
             SESSION_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
             with open(SESSION_CACHE_FILE, 'w') as f:
@@ -309,7 +309,7 @@ class ReplayService(BaseService):
         if cached_position > 0 and key in replay_mode._data:
             replay_mode._current_index[key] = min(cached_position, len(replay_mode._data[key]) - 1)
 
-        # 8. Kaydet (memory + file)
+        # 8. Save (memory + file)
         self._sessions[session_id] = (replay_mode, session_info)
         self._session_cache[session_id] = session_info.to_dict()
         self._save_session_cache()
@@ -368,7 +368,7 @@ class ReplayService(BaseService):
 
     async def get_session(self, session_id: str) -> Optional[Dict[str, Any]]:
         """Session bilgilerini getir"""
-        # Memory'de yoksa restore etmeyi dene
+        # Try to restore if not in memory
         if session_id not in self._sessions:
             if session_id in self._session_cache:
                 if await self._restore_session(session_id):
@@ -389,7 +389,7 @@ class ReplayService(BaseService):
 
     async def get_candles(self, session_id: str, start: int = 0, limit: int = 100) -> Optional[Dict[str, Any]]:
         """Get candle data for the chart"""
-        # Memory'de yoksa restore etmeyi dene
+        # Try to restore if not in memory
         if session_id not in self._sessions:
             if session_id in self._session_cache:
                 await self._restore_session(session_id)
@@ -467,7 +467,7 @@ class ReplayService(BaseService):
 
     async def play(self, session_id: str) -> Dict[str, Any]:
         """Start replay"""
-        # Memory'de yoksa restore etmeyi dene
+        # Try to restore if not in memory
         if session_id not in self._sessions:
             if session_id in self._session_cache:
                 await self._restore_session(session_id)
@@ -516,7 +516,7 @@ class ReplayService(BaseService):
 
     async def pause(self, session_id: str) -> Dict[str, Any]:
         """Replay duraklat"""
-        # Memory'de yoksa restore etmeyi dene
+        # Try to restore if not in memory
         if session_id not in self._sessions:
             if session_id in self._session_cache:
                 await self._restore_session(session_id)
@@ -529,8 +529,8 @@ class ReplayService(BaseService):
         return {'status': 'paused', 'current_position': sum(mode._current_index.values())}
 
     async def step(self, session_id: str, direction: int = 1) -> Dict[str, Any]:
-        """Bir bar ileri/geri git"""
-        # Memory'de yoksa restore etmeyi dene
+        """Go one bar forward/backward"""
+        # Try to restore if not in memory
         if session_id not in self._sessions:
             if session_id in self._session_cache:
                 await self._restore_session(session_id)
@@ -562,7 +562,7 @@ class ReplayService(BaseService):
 
     async def seek(self, session_id: str, position: int) -> Dict[str, Any]:
         """Belirli pozisyona git"""
-        # Memory'de yoksa restore etmeyi dene
+        # Try to restore if not in memory
         if session_id not in self._sessions:
             if session_id in self._session_cache:
                 await self._restore_session(session_id)
@@ -590,7 +590,7 @@ class ReplayService(BaseService):
 
     async def set_speed(self, session_id: str, speed: float) -> Dict[str, Any]:
         """Set speed"""
-        # Memory'de yoksa restore etmeyi dene
+        # Try to restore if not in memory
         if session_id not in self._sessions:
             if session_id in self._session_cache:
                 await self._restore_session(session_id)
@@ -604,7 +604,7 @@ class ReplayService(BaseService):
 
     async def get_state(self, session_id: str) -> Optional[Dict[str, Any]]:
         """Gets the current state"""
-        # Memory'de yoksa restore etmeyi dene
+        # Try to restore if not in memory
         if session_id not in self._sessions:
             if session_id in self._session_cache:
                 await self._restore_session(session_id)
@@ -663,11 +663,11 @@ class ReplayService(BaseService):
         return []
 
     async def delete_session(self, session_id: str) -> None:
-        """Session sil"""
+        """Delete session"""
         if session_id in self._sessions:
             mode, info = self._sessions[session_id]
 
-            # ReplayMode'u kapat
+            # Disable ReplayMode
             if mode.is_playing:
                 mode.stop()
             await mode.shutdown()

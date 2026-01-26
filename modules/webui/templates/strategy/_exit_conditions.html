@@ -8,7 +8,7 @@
             <div class="accordion-icon">🚪</div>
             <div class="accordion-title-text">
                 <h3>Exit Conditions</h3>
-                <p>Long ve Short çıkış koşulları (Teknik)</p>
+                <p>Long and Short exit conditions (Technical)</p>
             </div>
         </div>
         <svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -19,11 +19,11 @@
         <div class="accordion-body">
 
             <!-- IMPORTANT NOTE -->
-            <div class="info-box" style="background: var(--bg-tertiary); border: 2px solid #3b82f6; margin-bottom: 1.5rem;">
+            <div class="info-box" style="background: var(--bg-tertiary); border: 2px solid #3b82f6; margin-bottom: 1.5rem; font-size: 0.8125rem;">
                 <div class="info-box-title" style="color: #3b82f6;">ℹ️ About Exit Conditions</div>
                 <div class="info-box-content">
-                    <p><strong>Çıkış Stratejisi'ndeki (Stop Loss / Take Profit) ayarlar ile birlikte çalışır.</strong></p>
-                    <p style="margin-top: 0.5rem;">Bu bölüm <strong>ekstra</strong> çıkış koşulları için kullanılır. Örneğin:</p>
+                    <p><strong>It works together with the settings in the Exit Strategy (Stop Loss / Take Profit).</strong></p>
+                    <p style="margin-top: 0.5rem;">This section <strong>ekstra</strong> It is used for exit conditions. For example:</p>
                     <ul style="margin-left: 1.5rem; margin-top: 0.25rem;">
                         <li>RSI reaches overbought/oversold region, exit.</li>
                         <li>Exit when a specific profit/loss percentage is reached.</li>
@@ -65,7 +65,7 @@
             <!-- STOP LOSS CONDITIONS -->
             <div class="strategy-section" style="margin-top: 1.5rem;">
                 <div class="section-header">
-                    🛑 STOP LOSS KOŞULLARI (İki Taraf İçin)
+                    🛑 STOP LOSS CONDITIONS (For both sides)
                 </div>
                 <div style="margin-top: 1rem;">
                     <div id="exit-stop_loss-conditions" class="conditions-container">
@@ -80,7 +80,7 @@
             <!-- TAKE PROFIT CONDITIONS -->
             <div class="strategy-section" style="margin-top: 1.5rem;">
                 <div class="section-header">
-                    💰 TAKE PROFIT KOŞULLARI (İki Taraf İçin)
+                    💰 TAKE PROFIT CONDITIONS (For Both Sides)
                 </div>
                 <div style="margin-top: 1rem;">
                     <div id="exit-take_profit-conditions" class="conditions-container">
@@ -92,18 +92,18 @@
                 </div>
             </div>
 
-            <!-- INFO BOX -->
-            <div class="info-box" style="margin-top: 1.5rem;">
+            <!-- INFO BOX --><br><hr>
+            <div class="info-box" style="margin-top: 1.5rem; font-size: 0.8125rem;">
                 <div class="info-box-title">💡 How do exit conditions work?</div>
                 <div class="info-box-content">
-                    <p><strong>Herhangi bir koşul sağlandığında çıkış yapılır (OR mantığı):</strong></p>
+                    <p><strong>If any condition is met, the output is generated (OR logic):</strong></p>
                     <p style="margin-top: 0.5rem;"><strong>Example for a LONG position:</strong></p>
                     <ul style="margin-left: 1.5rem; margin-top: 0.25rem;">
-                        <li><code>RSI-14 &gt; 80</code> (aşırı alım) VEYA</li>
+                        <li><code>RSI-14 &gt; 80</code> (over-allocation) OR</li>
                         <li><code>profit_percent &gt; 4</code> (%4 kar) VEYA</li>
                         <li><code>loss_percent &gt; 2</code> (%2 zarar)</li>
                     </ul>
-                    <p style="margin-top: 0.5rem;">Bu koşullardan <strong>herhangi biri</strong> sağlandığında pozisyondan çıkılır.</p>
+                    <p style="margin-top: 0.5rem;">These conditions <strong>herhangi biri</strong> when it is provided.</p>
                 </div>
             </div>
 

@@ -223,7 +223,7 @@ class SMCService:
                     now_ts = int(datetime.now().timestamp() * 1000)
                     df = df[df['timestamp'] <= now_ts]
             else:
-                # Bars mode: limit uygula
+                # Bars mode: apply limit
                 if limit and len(df) > limit:
                     df = df.tail(limit)
 
@@ -286,11 +286,11 @@ class SMCService:
         swings = engine.get_formations('swing')
         swing_dict = {s.index: s for s in swings}
 
-        # BOS - swing_time ekle
+        # TODO - add swing_time
         bos_list = []
         for f in engine.get_formations('bos'):
             d = f.to_dict()
-            # Swing index'ten swing time'i bul
+            # Find the swing time from the swing index
             if f.swing_index in swing_dict:
                 d['swing_time'] = swing_dict[f.swing_index].time
             bos_list.append(d)
@@ -299,7 +299,7 @@ class SMCService:
         choch_list = []
         for f in engine.get_formations('choch'):
             d = f.to_dict()
-            # En yakin swing'i bul (broken_level'a gore)
+            # Find the nearest swing (based on broken_level)
             closest_swing = None
             for s in swings:
                 if abs(s.price - f.broken_level) < 0.01:  # Same price

@@ -35,7 +35,7 @@
 <div class="tabs-container">
     <div class="tabs-header">
         <button class="tab-btn active" data-tab="positions" onclick="switchTab('positions')">
-            📊 Pozisyonlar
+            📊 Positions
         </button>
         <button class="tab-btn" data-tab="statistics" onclick="switchTab('statistics')">
             📈 Statistics
@@ -87,7 +87,7 @@
     <!-- Positions Table -->
 <div class="card">
     <div class="card-header">
-        <h3>Pozisyonlar</h3>
+        <h3>Positions</h3>
         <div style="display: flex; gap: 10px; align-items: center;">
             <select id="position-filter" onchange="filterPositions()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-primary); background: var(--bg-primary); color: var(--text-primary);">
                 <option value="open">Open Positions</option>
@@ -267,10 +267,10 @@
             <h3>Performance Guide</h3>
         </div>
         <div style="padding: 20px; color: var(--text-muted); font-size: 14px;">
-            <p><strong>Sharpe Ratio:</strong> >1.0 = İyi, >2.0 = Mükemmel, >3.0 = Olağanüstü</p>
-            <p><strong>Sortino Ratio:</strong> Sharpe'a benzer ama sadece düşüş volatilitesini dikkate alır</p>
-            <p><strong>Snow Factor:</strong> >1.0 = Karlı, >2.0 = Çok İyi, >3.0 = Mükemmel</p>
-            <p><strong>Win Rate:</strong> >50% = Pozitif, >60% = İyi, >70% = Mükemmel</p>
+            <p><strong>Sharpe Ratio:</strong> >1.0 = İyi, >2.0 = Mükemmel, >3.0 = Extraordinary</p>
+            <p><strong>Sortino Ratio:</strong> Similar to Sharpe, but only considers downside volatility.</p>
+            <p><strong>Snow Factor:</strong> >1.0 = Karlı, >2.0 = Çok İyi, >3.0 = Perfect</p>
+            <p><strong>Win Rate:</strong> >50% = Pozitif, >60% = İyi, >70% = Excellent</p>
         </div>
     </div>
 </div>
@@ -314,7 +314,7 @@
 
             <div class="form-group">
                 <label for="position-notes">Notlar</label>
-                <textarea id="position-notes" placeholder="Opsiyonel notlar (örn: DCA entry 1)"></textarea>
+                <textarea id="position-notes" placeholder="Optional notes (e.g., DCA entry 1)"></textarea>
             </div>
 
             <div class="form-actions">
@@ -356,12 +356,12 @@
 
             <div class="form-group">
                 <label for="entry-notes">Notlar</label>
-                <textarea id="entry-notes" placeholder="Opsiyonel notlar (örn: DCA entry 2)"></textarea>
+                <textarea id="entry-notes" placeholder="Optional notes (e.g., DCA entry 2)"></textarea>
             </div>
 
             <div class="form-actions">
                 <button type="button" class="btn btn-secondary" onclick="closeAddEntryModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary">Entry Ekle</button>
+                <button type="submit" class="btn btn-primary">Add Entry</button>
             </div>
         </form>
     </div>
@@ -387,7 +387,7 @@
             <div class="form-group">
                 <label for="edit-position-quantity">Initial Quantity *</label>
                 <input type="number" step="0.00000001" id="edit-position-quantity" placeholder="example: 255" required>
-                <small style="color: var(--text-muted); font-size: 13px;">Pozisyonun ilk açılış miktarı (DCA eklemeleri hariç)</small>
+                <small style="color: var(--text-muted); font-size: 13px;">Initial opening amount of the position (excluding DCA additions)</small>
             </div>
 
             <div class="form-group">
@@ -554,7 +554,7 @@
 <div class="modal" id="import-preview-modal" style="display: none;">
     <div class="modal-content" style="max-width: 900px;">
         <div class="modal-header">
-            <h2 class="modal-title">📤 Import Pozisyonlar</h2>
+            <h2 class="modal-title">📤 Import Positions</h2>
             <button class="modal-close" onclick="window.closeImportPreview()">&times;</button>
         </div>
 
@@ -594,7 +594,7 @@
         <div class="form-actions">
             <button type="button" class="btn btn-secondary" onclick="window.closeImportPreview()">Cancel</button>
             <button type="button" class="btn btn-primary" onclick="window.confirmImport()" id="confirm-import-btn">
-                <span id="import-btn-text">Import Pozisyonlar</span>
+                <span id="import-btn-text">Import Positions</span>
             </button>
         </div>
     </div>
@@ -604,7 +604,7 @@
 <div class="modal" id="export-modal" style="display: none;">
     <div class="modal-content" style="max-width: 500px;">
         <div class="modal-header">
-            <h2 class="modal-title">📥 Export Pozisyonlar</h2>
+            <h2 class="modal-title">📥 Export Positions</h2>
             <button class="modal-close" onclick="window.closeExportModal()">&times;</button>
         </div>
 
@@ -613,7 +613,7 @@
 
             <div style="display: flex; flex-direction: column; gap: 12px;">
                 <button class="btn btn-primary" onclick="window.exportPositions('all')" style="width: 100%; justify-content: center; padding: 15px;">
-                    📦 Tümü (Açık + Kapalı)
+                    📦 All (Open + Closed)
                 </button>
                 <button class="btn btn-success" onclick="window.exportPositions('open')" style="width: 100%; justify-content: center; padding: 15px;">
                     📈 Only Open Positions
@@ -718,21 +718,21 @@ async function loadPositions() {
             if (currentFilter === 'open') {
                 document.getElementById('pnl-label').textContent = 'Unrealized P&L';
                 document.getElementById('pnl-icon').textContent = '📊';
-                document.getElementById('count-label').textContent = 'Açık Pozisyonlar';
+                document.getElementById('count-label').textContent = 'Open Positions';
                 document.getElementById('count-icon').textContent = '📈';
                 document.getElementById('unrealized-pnl').textContent = '$' + (summary.total_unrealized_pnl || 0).toFixed(2);
                 document.getElementById('unrealized-pnl-pct').textContent = (summary.unrealized_pnl_pct || 0).toFixed(2) + '%';
             } else if (currentFilter === 'closed') {
                 document.getElementById('pnl-label').textContent = 'Realized P&L';
                 document.getElementById('pnl-icon').textContent = '💰';
-                document.getElementById('count-label').textContent = 'Kapalı Pozisyonlar';
+                document.getElementById('count-label').textContent = 'Closed Positions';
                 document.getElementById('count-icon').textContent = '🔒';
                 document.getElementById('unrealized-pnl').textContent = '$' + (summary.total_realized_pnl || 0).toFixed(2);
                 document.getElementById('unrealized-pnl-pct').textContent = (summary.realized_pnl_pct || 0).toFixed(2) + '%';
             } else { // all
                 document.getElementById('pnl-label').textContent = 'Total P&L';
                 document.getElementById('pnl-icon').textContent = '💵';
-                document.getElementById('count-label').textContent = 'Toplam Pozisyonlar';
+                document.getElementById('count-label').textContent = 'Total Positions';
                 document.getElementById('count-icon').textContent = '📊';
                 const totalPnl = (summary.total_unrealized_pnl || 0) + (summary.total_realized_pnl || 0);
                 document.getElementById('unrealized-pnl').textContent = '$' + totalPnl.toFixed(2);
@@ -813,7 +813,7 @@ async function loadPositions() {
                                 <!-- Durum (Status Badge) -->
                                 <div class="pos-col-durum">
                                     <span class="pos-status ${pos.is_open ? 'open' : 'closed'}">
-                                        ${pos.is_open ? 'Açık' : 'Kapalı'}
+                                        ${pos.is_open ? 'Open' : 'Closed'}
                                     </span>
                                 </div>
 
@@ -848,11 +848,11 @@ async function loadPositions() {
                                 <!-- Entry Summary -->
                                 <div class="pos-entry-summary">
                                     <div class="pos-summary-item">
-                                        <span class="pos-summary-label">Ortalama Fiyat:</span>
+                                        <span class="pos-summary-label">Average Price:</span>
                                         <span class="pos-summary-value">₮ ${avgPrice.toFixed(2)}</span>
                                     </div>
                                     <div class="pos-summary-item">
-                                        <span class="pos-summary-label">Toplam Pozisyon:</span>
+                                        <span class="pos-summary-label">Total Positions:</span>
                                         <span class="pos-summary-value">
                                             <div style="display: flex; flex-direction: column; gap: 3px;">
                                                 <span class="pos-summary-value-primary">🔵 ${formatQuantity(totalQty)} ${getBaseAsset(pos.symbol)}</span>
@@ -861,11 +861,11 @@ async function loadPositions() {
                                         </span>
                                     </div>
                                     <div class="pos-summary-item">
-                                        <span class="pos-summary-label">İlk Alım:</span>
+                                        <span class="pos-summary-label">First Purchase:</span>
                                         <span class="pos-summary-value">${formatQuantity(pos.quantity)} ${getBaseAsset(pos.symbol)} @ ${pos.entry_price.toFixed(2)}</span>
                                     </div>
                                     <div class="pos-summary-item">
-                                        <span class="pos-summary-label">Ek Alımlar (DCA):</span>
+                                        <span class="pos-summary-label">Additional Acquisitions (DCA):</span>
                                         <span class="pos-summary-value">${formatQuantity(pos.entries_total_quantity || 0)} ${getBaseAsset(pos.symbol)}</span>
                                     </div>
                                 </div>
@@ -873,7 +873,7 @@ async function loadPositions() {
                                 <!-- Entries Table -->
                                 <div class="pos-entries-section">
                                     <div class="pos-entries-header">
-                                        <span class="pos-entries-title">Alım Adımları</span>
+                                        <span class="pos-entries-title">Acquisition Steps</span>
                                         ${pos.is_open !== false ? `
                                             <button class="pos-add-entry-btn" onclick="showAddEntryModal(${pos.id})">
                                                 + Yeni Entry
@@ -883,7 +883,7 @@ async function loadPositions() {
                                         `}
                                     </div>
                                     <div id="entries-${pos.id}">
-                                        <p style="color: var(--text-muted); font-size: 13px;">Entry'ler yükleniyor...</p>
+                                        <p style="color: var(--text-muted); font-size: 13px;">Entries are loading...</p>
                                     </div>
                                 </div>
                             </div>
@@ -894,10 +894,10 @@ async function loadPositions() {
                 container.innerHTML = `
                     <div class="positions-empty">
                         <div class="positions-empty-icon">📊</div>
-                        <h3 class="positions-empty-title">Henüz Pozisyon Yok</h3>
-                        <p class="positions-empty-text">İlk pozisyonunuzu manuel olarak ekleyin veya borsadan içe aktarın</p>
+                        <h3 class="positions-empty-title">No position available yet.</h3>
+                        <p class="positions-empty-text">Add your first position manually or import from the exchange.</p>
                         <button class="btn btn-primary" onclick="showAddPositionModal()">
-                            + Pozisyon Ekle
+                            + Add Position
                         </button>
                     </div>
                 `;
@@ -909,10 +909,10 @@ async function loadPositions() {
         container.innerHTML = `
             <div class="positions-empty">
                 <div class="positions-empty-icon">⚠️</div>
-                <h3 class="positions-empty-title" style="color: var(--accent-danger);">Hata</h3>
+                <h3 class="positions-empty-title" style="color: var(--accent-danger);">Error</h3>
                 <p class="positions-empty-text">Pozisyonlar yüklenirken hata oluştu: ${error.message}</p>
                 <button class="btn btn-primary" onclick="loadPositions()">
-                    Tekrar Dene
+                    Retry
                 </button>
             </div>
         `;
@@ -953,12 +953,12 @@ async function loadPositionEntries(positionId) {
                 <table class="pos-entries-table">
                     <thead>
                         <tr>
-                            <th>Al adımları</th>
-                            <th>Tarih</th>
-                            <th>Fiyat</th>
-                            <th>Hacim</th>
-                            <th>Durum</th>
-                            <th>İşlemler</th>
+                            <th>Acquire steps</th>
+                            <th>Date</th>
+                            <th>Price</th>
+                            <th>Volume</th>
+                            <th>Status</th>
+                            <th>Operations</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -971,10 +971,10 @@ async function loadPositionEntries(positionId) {
                                 <td>Sahip olunan bakiye</td>
                                 <td>
                                     <div class="entry-action-btns">
-                                        <button class="entry-btn edit" onclick="editEntry(${positionId}, ${entry.id})" title="Düzenle">
+                                        <button class="entry-btn edit" onclick="editEntry(${positionId}, ${entry.id})" title="Edit">
                                             e
                                         </button>
-                                        <button class="entry-btn delete" onclick="deleteEntry(${positionId}, ${entry.id})" title="Sil">
+                                        <button class="entry-btn delete" onclick="deleteEntry(${positionId}, ${entry.id})" title="Delete">
                                             d
                                         </button>
                                     </div>
@@ -987,7 +987,7 @@ async function loadPositionEntries(positionId) {
         } else {
             entriesContainer.innerHTML = `
                 <p style="color: var(--text-muted); font-size: 13px; text-align: center; padding: 20px;">
-                    Henüz entry eklenmemiş. "+ Yeni Entry" butonuna tıklayarak ekleyebilirsiniz.
+                    Henüz entry eklenmemiş. "+ New Entry" butonuna tıklayarak ekleyebilirsiniz.
                 </p>
             `;
         }
@@ -1106,8 +1106,8 @@ async function editPosition(positionId) {
             }
         }
     } catch (error) {
-        console.error('Pozisyon yükleme hatası:', error);
-        showToast('Pozisyon bilgileri yüklenemedi', 'error');
+        console.error('Position loading error:', error);
+        showToast('Position information could not be loaded.', 'error');
     }
 }
 
@@ -1129,7 +1129,7 @@ async function updatePosition(event) {
 
     // Validate exit price if closing position
     if (!isOpen && (!exitPrice || parseFloat(exitPrice) <= 0)) {
-        showToast('Pozisyon kapatırken kapanış fiyatı girmelisiniz', 'error');
+        showToast('When closing a position, you must enter the closing price.', 'error');
         return;
     }
 
@@ -1156,15 +1156,15 @@ async function updatePosition(event) {
         const data = await response.json();
 
         if (data.status === 'success') {
-            showToast('Pozisyon başarıyla güncellendi!', 'success');
+            showToast('Position updated successfully!', 'success');
             closeEditPositionModal();
             loadPositions(); // Reload positions to show updated data
         } else {
-            showToast('Hata: ' + (data.error || 'Bilinmeyen hata'), 'error');
+            showToast('Error: ' + (data.error || 'Unknown error'), 'error');
         }
     } catch (error) {
-        console.error('Pozisyon güncelleme hatası:', error);
-        showToast('Pozisyon güncellenirken hata oluştu: ' + error.message, 'error');
+        console.error('Position update error:', error);
+        showToast('An error occurred while updating the position: ' + error.message, 'error');
     }
 }
 
@@ -1204,8 +1204,8 @@ async function editEntry(positionId, entryId) {
             }
         }
     } catch (error) {
-        console.error('Entry yükleme hatası:', error);
-        showToast('Entry bilgileri yüklenemedi', 'error');
+        console.error('Entry loading error:', error);
+        showToast('Entry information could not be loaded.', 'error');
     }
 }
 
@@ -1240,26 +1240,26 @@ async function updateEntry(event) {
         const data = await response.json();
 
         if (data.status === 'success') {
-            showToast('Entry başarıyla güncellendi!', 'success');
+            showToast('Entry successfully updated!', 'success');
             closeEditEntryModal();
             loadPositions(); // Reload positions to show updated data
         } else {
-            showToast('Hata: ' + (data.error || 'Bilinmeyen hata'), 'error');
+            showToast('Error: ' + (data.error || 'Unknown error'), 'error');
         }
     } catch (error) {
-        console.error('Entry güncelleme hatası:', error);
-        showToast('Entry güncellenirken hata oluştu: ' + error.message, 'error');
+        console.error('Entry update error:', error);
+        showToast('An error occurred while updating the entry: ' + error.message, 'error');
     }
 }
 
 // Delete entry
 async function deleteEntry(positionId, entryId) {
     const confirmed = await confirm({
-        title: 'Entry Sil',
-        message: 'Bu entry\'yi silmek istediğinizden emin misiniz?',
+        title: 'Delete Entry',
+        message: 'Are you sure you want to delete this entry?',
         type: 'danger',
-        confirmText: 'Sil',
-        cancelText: 'İptal'
+        confirmText: 'Delete',
+        cancelText: 'Cancel'
     });
 
     if (!confirmed) return;
@@ -1275,17 +1275,17 @@ async function deleteEntry(positionId, entryId) {
         const data = await response.json();
 
         if (data.status === 'success') {
-            showToast('Entry başarıyla silindi', 'success');
+            showToast('Entry successfully deleted', 'success');
             // Reload entries for this position
             await loadPositionEntries(positionId);
             // Reload positions to update totals
             await loadPositions();
         } else {
-            showToast(data.error || 'Entry silinirken hata oluştu', 'error');
+            showToast(data.error || 'An error occurred while deleting the entry.', 'error');
         }
     } catch (error) {
         console.error('Delete entry error:', error);
-        showToast('Entry silinirken bir hata oluştu', 'error');
+        showToast('An error occurred while deleting the entry.', 'error');
     }
 }
 
@@ -1333,17 +1333,17 @@ async function searchSymbols(event) {
                     dropdown.style.display = 'block';
                     console.log('Dropdown shown with', symbols.length, 'items');
                 } else {
-                    dropdown.innerHTML = '<div class="symbol-dropdown-empty">Sonuç bulunamadı. Manuel girebilirsiniz.</div>';
+                    dropdown.innerHTML = '<div class="symbol-dropdown-empty">No results found. You can enter it manually.</div>';
                     dropdown.style.display = 'block';
                 }
             } else {
                 console.log('No symbols in response:', data);
-                dropdown.innerHTML = '<div class="symbol-dropdown-empty">Sonuç bulunamadı. Manuel girebilirsiniz.</div>';
+                dropdown.innerHTML = '<div class="symbol-dropdown-empty">No results found. You can enter it manually.</div>';
                 dropdown.style.display = 'block';
             }
         } catch (error) {
-            console.error('Sembol arama hatası:', error);
-            dropdown.innerHTML = '<div class="symbol-dropdown-empty">Arama hatası. Manuel girebilirsiniz.</div>';
+            console.error('Symbol search error:', error);
+            dropdown.innerHTML = '<div class="symbol-dropdown-empty">Search error. You can enter it manually.</div>';
             dropdown.style.display = 'block';
         }
     }, 300);
@@ -1365,13 +1365,13 @@ async function addPosition(event) {
     const notes = document.getElementById('position-notes').value;
 
     const formData = {
-        symbol: symbol,  // String olarak gönder (BTC/USDT gibi)
+        symbol: symbol,  // Send as a string (e.g., BTC/USDT)
         quantity: quantity,
         entry_price: entryPrice,
         opened_at: new Date(entryDate).toISOString(),
         notes: notes || null,
-        side: 'LONG',  // Sabit: Sadece LONG
-        position_type: 'SPOT',  // Sabit: Sadece SPOT
+        side: 'LONG',  // Constant: Only LONG
+        position_type: 'SPOT',  // Constant: Only SPOT
         source: 'manual'  // Manuel ekleme
     };
 
@@ -1386,21 +1386,21 @@ async function addPosition(event) {
 
         if (data.status === 'success') {
             closeAddPositionModal();
-            showToast('✅ Pozisyon başarıyla eklendi', 'success');
+            showToast('✅ Position added successfully', 'success');
             loadPositions();
         } else {
-            showToast(data.error || 'Pozisyon eklenemedi', 'error');
+            showToast(data.error || 'Position could not be added.', 'error');
         }
 
     } catch (error) {
-        console.error('Pozisyon ekleme hatası:', error);
-        showToast('Bir hata oluştu', 'error');
+        console.error('Position addition error:', error);
+        showToast('An error occurred.', 'error');
     }
 }
 
 async function updatePrices() {
     try {
-        showToast('🔄 Fiyatlar güncelleniyor...', 'info');
+        showToast('🔄 Prices are being updated...', 'info');
 
         const response = await fetch(`/api/portfolios/${PORTFOLIO_ID}/update-prices`, {
             method: 'POST',
@@ -1423,25 +1423,25 @@ async function updatePrices() {
             } else if (errors.length > 0) {
                 showToast(`⚠️ Fiyat güncellenemedi: ${errors[0]}`, 'warning');
             } else {
-                showToast('ℹ️ Güncellenecek pozisyon yok', 'info');
+                showToast('ℹ️ No positions to update.', 'info');
             }
         } else {
-            showToast(data.error || 'Fiyat güncelleme başarısız', 'error');
+            showToast(data.error || 'Price update failed.', 'error');
         }
 
     } catch (error) {
-        console.error('Fiyat güncelleme hatası:', error);
-        showToast('Fiyat güncellenirken hata oluştu', 'error');
+        console.error('Price update error:', error);
+        showToast('An error occurred while updating the price.', 'error');
     }
 }
 
 async function deletePosition(positionId) {
     const confirmed = await confirm({
-        title: 'Pozisyonu Sil',
-        message: 'Bu pozisyonu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
+        title: 'Delete Position',
+        message: 'Are you sure you want to delete this position? This action cannot be undone.',
         type: 'danger',
-        confirmText: 'Sil',
-        cancelText: 'İptal'
+        confirmText: 'Delete',
+        cancelText: 'Cancel'
     });
 
     if (!confirmed) return;
@@ -1454,15 +1454,15 @@ async function deletePosition(positionId) {
         const data = await response.json();
 
         if (data.status === 'success') {
-            showToast('✅ Pozisyon başarıyla silindi', 'success');
+            showToast('✅ Position successfully deleted', 'success');
             loadPositions();
         } else {
-            showToast(data.message || 'Pozisyon silinemedi', 'error');
+            showToast(data.message || 'Position could not be deleted.', 'error');
         }
 
     } catch (error) {
-        console.error('Pozisyon silme hatası:', error);
-        showToast('Pozisyon silinirken hata oluştu: ' + error.message, 'error');
+        console.error('Position deletion error:', error);
+        showToast('An error occurred while deleting the position: ' + error.message, 'error');
     }
 }
 
@@ -1518,7 +1518,7 @@ async function showImportModal() {
             if (exchangeImportData.length === 0) {
                 // No positions found
                 document.getElementById('exchange-import-error-message').textContent =
-                    'Borsada pozisyon bulunamadı veya tümü zaten import edilmiş.';
+                    'No position found in the stock market or all of them are already imported.';
                 error.style.display = 'block';
                 loading.style.display = 'none';
             } else {
@@ -1531,14 +1531,14 @@ async function showImportModal() {
         } else {
             // Error fetching data
             document.getElementById('exchange-import-error-message').textContent =
-                result.error || result.data?.message || 'Bilinmeyen hata oluştu';
+                result.error || result.data?.message || 'An unknown error occurred.';
             error.style.display = 'block';
             loading.style.display = 'none';
         }
     } catch (err) {
         console.error('Exchange import error:', err);
         document.getElementById('exchange-import-error-message').textContent =
-            'Bağlantı hatası: ' + err.message;
+            'Connection error: ' + err.message;
         error.style.display = 'block';
         loading.style.display = 'none';
     }
@@ -1570,10 +1570,10 @@ function renderExchangePositions(assets) {
         };
 
         const statusLabels = {
-            'new': '🆕 Yeni',
-            'already_imported': '✅ Mevcut',
-            'quantity_increased': '📈 Arttı',
-            'quantity_decreased': '📉 Azaldı'
+            'new': '🆕 New',
+            'already_imported': '✅ Available',
+            'quantity_increased': '📈 Increased',
+            'quantity_decreased': '📉 Decreased'
         };
 
         const color = statusColors[asset.status] || 'var(--text-primary)';
@@ -1679,7 +1679,7 @@ window.confirmExchangeImport = async function() {
     });
 
     if (selectedAssets.length === 0) {
-        showToast('Lütfen en az bir pozisyon seçin', 'error');
+        showToast('Please select at least one position.', 'error');
         return;
     }
 
@@ -1687,7 +1687,7 @@ window.confirmExchangeImport = async function() {
     const btn = document.getElementById('confirm-exchange-import-btn');
     const btnText = document.getElementById('exchange-import-btn-text');
     const originalText = btnText.textContent;
-    btnText.textContent = 'İçe aktarılıyor...';
+    btnText.textContent = 'Importing...';
     btn.disabled = true;
 
     try {
@@ -1711,13 +1711,13 @@ window.confirmExchangeImport = async function() {
             window.closeExchangeImportModal();
             loadPositions();
         } else {
-            showToast('Import hatası: ' + (result.error || 'Bilinmeyen hata'), 'error');
+            showToast('Import error: ' + (result.error || 'Unknown error'), 'error');
             btnText.textContent = originalText;
             btn.disabled = false;
         }
     } catch (error) {
         console.error('Import error:', error);
-        showToast('Import başarısız: ' + error.message, 'error');
+        showToast('Import failed: ' + error.message, 'error');
         btnText.textContent = originalText;
         btn.disabled = false;
     }
@@ -1773,15 +1773,15 @@ async function addEntry(event) {
         const data = await response.json();
 
         if (data.status === 'success') {
-            showToast('Entry başarıyla eklendi!', 'success');
+            showToast('Entry added successfully!', 'success');
             closeAddEntryModal();
             loadPositions(); // Refresh positions to show updated average price
         } else {
             throw new Error(data.error || 'Entry eklenemedi');
         }
     } catch (error) {
-        console.error('Entry ekleme hatası:', error);
-        showToast('Entry eklenirken hata oluştu: ' + error.message, 'error');
+        console.error('Entry addition error:', error);
+        showToast('An error occurred while adding the entry: ' + error.message, 'error');
     }
 }
 
@@ -2114,18 +2114,18 @@ window.exportPositions = async function(filter = 'all') {
             URL.revokeObjectURL(url);
 
             // Show success message
-            const filterText = filter === 'all' ? 'Tüm' : filter === 'open' ? 'Açık' : 'Kapalı';
+            const filterText = filter === 'all' ? 'All' : filter === 'open' ? 'Open' : 'Closed';
             showToast(`${filterText} pozisyonlar export edildi (${data.summary.total_positions} pozisyon)`, 'success');
 
             // Close modal
             window.closeExportModal();
         } else {
-            showToast('Export hatası: ' + (result.error || 'Bilinmeyen hata'), 'error');
+            showToast('Export error: ' + (result.error || 'Unknown error'), 'error');
             window.closeExportModal();
         }
     } catch (error) {
         console.error('Export error:', error);
-        showToast('Export başarısız: ' + error.message, 'error');
+        showToast('Export failed: ' + error.message, 'error');
         window.closeExportModal();
     }
 };
@@ -2141,7 +2141,7 @@ window.handleImportFile = async function(event) {
 
         // Validate JSON structure
         if (!importData.version || !importData.positions) {
-            showToast('Geçersiz JSON formatı', 'error');
+            showToast('Invalid JSON format', 'error');
             return;
         }
 
@@ -2152,7 +2152,7 @@ window.handleImportFile = async function(event) {
         window.showImportPreview(importData);
     } catch (error) {
         console.error('Import file error:', error);
-        showToast('Geçersiz JSON dosyası', 'error');
+        showToast('Invalid JSON file', 'error');
     } finally {
         // Reset file input
         event.target.value = '';
@@ -2171,7 +2171,7 @@ window.showImportPreview = function(data) {
 
     data.positions.forEach((pos, index) => {
         const statusColor = pos.is_open === false ? 'var(--text-muted)' : 'var(--color-success)';
-        const statusText = pos.is_open === false ? 'Kapalı' : 'Açık';
+        const statusText = pos.is_open === false ? 'Closed' : 'Open';
         const entriesCount = pos.entries ? pos.entries.length : 0;
         const exitTargetsCount = pos.exit_targets ? pos.exit_targets.length : 0;
 
@@ -2184,11 +2184,11 @@ window.showImportPreview = function(data) {
                         <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">${pos.exchange || 'manual'}</div>
                     </div>
                     <div style="text-align: right;">
-                        <div style="font-size: 12px; color: var(--text-muted);">Miktar</div>
+                        <div style="font-size: 12px; color: var(--text-muted);">Quantity</div>
                         <div style="font-size: 13px; color: var(--text-primary);">${formatQuantity(pos.quantity)}</div>
                     </div>
                     <div style="text-align: right;">
-                        <div style="font-size: 12px; color: var(--text-muted);">Giriş</div>
+                        <div style="font-size: 12px; color: var(--text-muted);">Input</div>
                         <div style="font-size: 13px; color: var(--text-primary);">$${pos.entry_price.toFixed(2)}</div>
                     </div>
                     <div style="text-align: center;">
@@ -2232,7 +2232,7 @@ async function checkDuplicatesAndShow(data) {
 
         data.positions.forEach((pos, index) => {
             const statusColor = pos.is_open === false ? 'var(--text-muted)' : 'var(--color-success)';
-            const statusText = pos.is_open === false ? 'Kapalı' : 'Açık';
+            const statusText = pos.is_open === false ? 'Closed' : 'Open';
             const entriesCount = pos.entries ? pos.entries.length : 0;
             const exitTargetsCount = pos.exit_targets ? pos.exit_targets.length : 0;
             const isDuplicate = duplicates[pos.symbol];
@@ -2258,11 +2258,11 @@ async function checkDuplicatesAndShow(data) {
                                     <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">${pos.exchange || 'manual'}</div>
                                 </div>
                                 <div style="text-align: right;">
-                                    <div style="font-size: 12px; color: var(--text-muted);">Miktar</div>
+                                    <div style="font-size: 12px; color: var(--text-muted);">Quantity</div>
                                     <div style="font-size: 13px; color: var(--text-primary);">${formatQuantity(pos.quantity)}</div>
                                 </div>
                                 <div style="text-align: right;">
-                                    <div style="font-size: 12px; color: var(--text-muted);">Giriş</div>
+                                    <div style="font-size: 12px; color: var(--text-muted);">Input</div>
                                     <div style="font-size: 13px; color: var(--text-primary);">$${pos.entry_price.toFixed(2)}</div>
                                 </div>
                                 <div style="text-align: center;">
@@ -2306,7 +2306,7 @@ async function checkDuplicatesAndShow(data) {
 
     } catch (error) {
         console.error('Duplicate check error:', error);
-        previewContent.innerHTML = '<div style="text-align: center; padding: 40px; color: red;">Duplicate kontrolü başarısız</div>';
+        previewContent.innerHTML = '<div style="text-align: center; padding: 40px; color: red;">Duplicate check failed</div>';
     }
 
     // Show modal
@@ -2362,14 +2362,14 @@ window.closeImportPreview = function() {
 // Confirm and execute import
 window.confirmImport = async function() {
     if (!importData) {
-        showToast('Import verisi bulunamadı', 'error');
+        showToast('Import data not found', 'error');
         return;
     }
 
     // Get selected positions
     const checkboxes = document.querySelectorAll('.position-checkbox:checked');
     if (checkboxes.length === 0) {
-        showToast('Lütfen en az bir pozisyon seçin', 'error');
+        showToast('Please select at least one position.', 'error');
         return;
     }
 
@@ -2416,11 +2416,11 @@ window.confirmImport = async function() {
             // Reload positions
             loadPositions();
         } else {
-            showToast('Import hatası: ' + (result.error || 'Bilinmeyen hata'), 'error');
+            showToast('Import error: ' + (result.error || 'Unknown error'), 'error');
         }
     } catch (error) {
         console.error('Import error:', error);
-        showToast('Import başarısız: ' + error.message, 'error');
+        showToast('Import failed: ' + error.message, 'error');
     }
 };
 

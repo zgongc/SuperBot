@@ -131,7 +131,7 @@
             <div class="form-group" id="passphrase-group" style="display: none;">
                 <label for="passphrase">Passphrase</label>
                 <input type="password" id="passphrase" placeholder="OKX passphrase">
-                <small style="color: var(--text-muted); font-size: 13px;">OKX için gerekli</small>
+                <small style="color: var(--text-muted); font-size: 13px;">Required for OKX.</small>
             </div>
 
             <div class="form-group">
@@ -141,7 +141,7 @@
 
             <div class="form-actions">
                 <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary">Kaydet</button>
+                <button type="submit" class="btn btn-primary">Save</button>
             </div>
         </form>
     </div>
@@ -183,8 +183,8 @@
                         <td>
                             <div class="action-buttons">
                                 <button class="btn-icon" onclick="testConnection(${account.id})" title="Test">🔌</button>
-                                <button class="btn-icon" onclick="editAccount(${account.id})" title="Düzenle">✏️</button>
-                                <button class="btn-icon" onclick="deleteAccount(${account.id})" title="Sil">🗑️</button>
+                                <button class="btn-icon" onclick="editAccount(${account.id})" title="Edit">✏️</button>
+                                <button class="btn-icon" onclick="deleteAccount(${account.id})" title="Delete">🗑️</button>
                             </div>
                         </td>
                     </tr>
@@ -195,7 +195,7 @@
             }
         } catch (error) {
             console.error('Error:', error);
-            loading.innerHTML = '<p style="color: var(--accent-danger);">Hata: Veriler yüklenemedi</p>';
+            loading.innerHTML = '<p style="color: var(--accent-danger);">Error: Data could not be loaded</p>';
         }
     }
 
@@ -218,7 +218,7 @@
 
     function openCreateModal() {
         currentAccountId = null;
-        document.getElementById('modal-title').textContent = 'Borsa Hesabı Ekle';
+        document.getElementById('modal-title').textContent = 'Add Stock Account';
         document.getElementById('exchange-form').reset();
         document.getElementById('account-id').value = '';
         document.getElementById('type-spot').checked = true;
@@ -235,7 +235,7 @@
                 const account = data.data.account;
                 currentAccountId = id;
 
-                document.getElementById('modal-title').textContent = 'Borsa Hesabını Düzenle';
+                document.getElementById('modal-title').textContent = 'Edit Stock Account';
                 document.getElementById('account-id').value = id;
                 document.getElementById('account-name').value = account.name;
                 document.getElementById('exchange').value = account.exchange;
@@ -252,7 +252,7 @@
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('Hesap bilgileri yüklenemedi');
+            alert('Account information could not be loaded.');
         }
     }
 
@@ -292,21 +292,21 @@
                 loadAccounts();
                 loadSummary();
             } else {
-                alert(data.error || 'Kaydetme başarısız');
+                alert(data.error || 'Save failed');
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('Bir hata oluştu');
+            alert('An error occurred.');
         }
     }
 
     async function deleteAccount(id) {
         const confirmed = await confirm({
-            title: 'Borsa Hesabını Sil?',
-            message: 'Bu işlem geri alınamaz. Bu hesaba bağlı portfolio ve tüm pozisyonlar silinecek.<br><br>Devam etmek istediğinize emin misiniz?',
+            title: 'Delete Stock Account?',
+            message: 'This operation cannot be undone. The portfolio and all positions associated with this account will be deleted.<br><br>Are you sure you want to proceed?',
             type: 'danger',
-            confirmText: 'Sil',
-            cancelText: 'İptal'
+            confirmText: 'Delete',
+            cancelText: 'Cancel'
         });
         if (!confirmed) return;
 
@@ -318,16 +318,16 @@
                 loadAccounts();
                 loadSummary();
             } else {
-                alert(data.error || 'Silme başarısız');
+                alert(data.error || 'Deletion failed');
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('Bir hata oluştu');
+            alert('An error occurred.');
         }
     }
 
     async function testConnection(id) {
-        alert('Bağlantı testi henüz uygulanmadı');
+        alert('Connection test has not been implemented yet.');
     }
 
     function closeModal() {

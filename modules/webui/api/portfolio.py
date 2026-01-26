@@ -141,7 +141,7 @@ def register_routes(bp):
         try:
             data = request.get_json()
 
-            # Validate required fields (symbol string VEYA symbol_id)
+            # Validate required fields (symbol string OR symbol_id)
             required_fields = ['quantity', 'entry_price']
             for field in required_fields:
                 if field not in data:
@@ -152,11 +152,11 @@ def register_routes(bp):
 
             service = get_portfolio_service()
 
-            # symbol_id veya symbol parametresini gönder
+            # Send either the symbol_id or the symbol parameter.
             position_id = run_async(service.add_manual_position(
                 portfolio_id=portfolio_id,
-                symbol=data.get('symbol'),  # String (örn: "BTC/USDT")
-                symbol_id=data.get('symbol_id'),  # Integer (opsiyonel)
+                symbol=data.get('symbol'),  # String (e.g., "BTC/USDT")
+                symbol_id=data.get('symbol_id'),  # Integer (optional)
                 quantity=float(data['quantity']),
                 entry_price=float(data['entry_price']),
                 side=data.get('side', 'LONG'),
@@ -249,10 +249,10 @@ def register_routes(bp):
             if result:
                 return success_response({
                     'synced_count': result.get('synced_count', 0),
-                    'message': f"{result.get('synced_count', 0)} pozisyon senkronize edildi"
+                    'message': f"{result.get('synced_count', 0)} positions synchronized"
                 })
             else:
-                return error_response('Senkronizasyon başarısız', 500)
+                return error_response('Synchronization failed', 500)
 
         except Exception as e:
             return error_response(str(e), 500)
@@ -273,7 +273,7 @@ def register_routes(bp):
                     'message': result.get('message', 'Prices updated')
                 })
             else:
-                return error_response('Fiyat güncellemesi başarısız', 500)
+                return error_response('Price update failed', 500)
 
         except Exception as e:
             return error_response(str(e), 500)

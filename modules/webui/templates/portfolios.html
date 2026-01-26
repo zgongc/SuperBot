@@ -131,7 +131,7 @@
 
             <div class="form-group">
                 <label for="position-notes">Notlar</label>
-                <textarea id="position-notes" placeholder="Opsiyonel notlar (örn: DCA entry 1)"></textarea>
+                <textarea id="position-notes" placeholder="Optional notes (e.g., DCA entry 1)"></textarea>
             </div>
 
             <div class="form-actions">
@@ -221,7 +221,7 @@
 
             <div class="form-actions">
                 <button type="button" class="btn btn-secondary" onclick="closeExchangeModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary">Kaydet</button>
+                <button type="submit" class="btn btn-primary">Save</button>
             </div>
         </form>
     </div>
@@ -299,21 +299,21 @@ async function loadPortfolios() {
 
                     <div class="portfolio-stats">
                         <div class="portfolio-stat">
-                            <div class="portfolio-stat-label">Açık Pozisyonlar</div>
+                            <div class="portfolio-stat-label">Open Positions</div>
                             <div class="portfolio-stat-value">${portfolio.position_count || 0}</div>
                         </div>
                         <div class="portfolio-stat">
-                            <div class="portfolio-stat-label">Toplam Değer</div>
+                            <div class="portfolio-stat-label">Total Value</div>
                             <div class="portfolio-stat-value">$${(portfolio.total_value || 0).toFixed(2)}</div>
                         </div>
                     </div>
 
                     <div class="portfolio-actions-row" style="display: flex; gap: 8px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border-primary);" onclick="event.stopPropagation();">
-                        <button class="btn btn-sm btn-secondary" onclick="syncPortfolio(${portfolio.id}, ${portfolio.exchange_account_id}); event.stopPropagation();" title="Borsadan pozisyonları senkronize et" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                        <button class="btn btn-sm btn-secondary" onclick="syncPortfolio(${portfolio.id}, ${portfolio.exchange_account_id}); event.stopPropagation();" title="Synchronize positions from the stock market." style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px;">
                             🔄 Sync
                         </button>
-                        <button class="btn btn-sm btn-primary" onclick="showAddPositionModal(${portfolio.id}); event.stopPropagation();" title="Manuel pozisyon ekle" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px;">
-                            ➕ Pozisyon Ekle
+                        <button class="btn btn-sm btn-primary" onclick="showAddPositionModal(${portfolio.id}); event.stopPropagation();" title="Manually add position." style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                            ➕ Add Position
                         </button>
                     </div>
 
@@ -321,10 +321,10 @@ async function loadPortfolios() {
                         <span style="font-size: 11px;">
                             ${portfolio.last_synced_at ?
                                 `Son sync: ${formatTimeAgo(portfolio.last_synced_at)}` :
-                                'Hiç sync edilmedi'}
+                                'Not synced.'}
                         </span>
                         <span style="color: ${portfolio.is_active ? 'var(--color-success)' : 'var(--text-muted)'};">
-                            ${portfolio.is_active ? '● Aktif' : '○ İnaktif'}
+                            ${portfolio.is_active ? '● Active' : '○ Inactive'}
                         </span>
                     </div>
                 </div>
@@ -467,8 +467,8 @@ async function loadExchanges() {
                         <h3 class="item-title">${account.name}</h3>
                         <div style="display: flex; gap: 8px; align-items: center;">
                             <span class="item-badge ${account.environment}">${account.environment}</span>
-                            <button class="btn btn-sm btn-secondary" onclick="editExchange(${account.id}); event.stopPropagation();" title="Düzenle" style="padding: 4px 8px;">✏️</button>
-                            <button class="btn btn-sm btn-danger" onclick="deleteExchange(${account.id}, event)" title="Sil" style="padding: 4px 8px;">🗑️</button>
+                            <button class="btn btn-sm btn-secondary" onclick="editExchange(${account.id}); event.stopPropagation();" title="Edit" style="padding: 4px 8px;">✏️</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteExchange(${account.id}, event)" title="Delete" style="padding: 4px 8px;">🗑️</button>
                         </div>
                     </div>
 
@@ -515,7 +515,7 @@ function viewExchange(exchangeId) {
 
 function showCreateExchangeModal() {
     // Reset form
-    document.getElementById('exchange-modal-title').textContent = 'Borsa Hesabı Ekle';
+    document.getElementById('exchange-modal-title').textContent = 'Add Stock Account';
     document.getElementById('exchange-form').reset();
     document.getElementById('exchange-account-id').value = '';
     document.getElementById('exchange-type-spot').checked = true;
@@ -537,7 +537,7 @@ async function editExchange(id) {
         if (data.status === 'success') {
             const account = data.data.account;
 
-            document.getElementById('exchange-modal-title').textContent = 'Borsa Hesabını Düzenle';
+            document.getElementById('exchange-modal-title').textContent = 'Edit Stock Account';
             document.getElementById('exchange-account-id').value = id;
             document.getElementById('exchange-account-name').value = account.name;
             document.getElementById('exchange-select').value = account.exchange;
@@ -560,7 +560,7 @@ async function editExchange(id) {
         }
     } catch (error) {
         console.error('Error loading exchange:', error);
-        showToast('Hesap bilgileri yüklenemedi', 'error');
+        showToast('Account information could not be loaded.', 'error');
     }
 }
 
@@ -598,7 +598,7 @@ async function handleExchangeSubmit(event) {
         const data = await response.json();
 
         if (data.status === 'success') {
-            showToast(accountId ? 'Hesap güncellendi' : 'Hesap eklendi', 'success');
+            showToast(accountId ? 'Account updated' : 'Hesap eklendi', 'success');
             closeExchangeModal();
 
             // Reload exchanges if on Borsa tab
@@ -608,11 +608,11 @@ async function handleExchangeSubmit(event) {
             // Reload portfolios since auto-created portfolio needs to show
             loadPortfolios();
         } else {
-            showToast(data.error || 'Kaydetme başarısız', 'error');
+            showToast(data.error || 'Save failed', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
-        showToast('Bir hata oluştu', 'error');
+        showToast('An error occurred.', 'error');
     }
 }
 
@@ -628,17 +628,17 @@ async function deleteExchange(id, event) {
         const data = await response.json();
 
         if (data.status === 'success') {
-            showToast('✅ Borsa hesabı ve bağlı portfolio başarıyla silindi', 'success');
+            showToast('✅ The stock account and associated portfolio were successfully deleted.', 'success');
 
             // Reload exchanges
             window.exchangesLoaded = false;
             loadExchanges();
         } else {
-            showToast(data.error || 'Borsa hesabı silinemedi', 'error');
+            showToast(data.error || 'Stock account could not be deleted.', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
-        showToast('Bir hata oluştu', 'error');
+        showToast('An error occurred.', 'error');
     }
 }
 
@@ -694,17 +694,17 @@ async function searchSymbols(event) {
                     dropdown.style.display = 'block';
                     console.log('Dropdown shown with', symbols.length, 'items');
                 } else {
-                    dropdown.innerHTML = '<div class="symbol-dropdown-empty">Sonuç bulunamadı. Manuel girebilirsiniz.</div>';
+                    dropdown.innerHTML = '<div class="symbol-dropdown-empty">No results found. You can enter it manually.</div>';
                     dropdown.style.display = 'block';
                 }
             } else {
                 console.log('No symbols in response or error:', data);
-                dropdown.innerHTML = '<div class="symbol-dropdown-empty">Sonuç bulunamadı. Manuel girebilirsiniz.</div>';
+                dropdown.innerHTML = '<div class="symbol-dropdown-empty">No results found. You can enter it manually.</div>';
                 dropdown.style.display = 'block';
             }
         } catch (error) {
-            console.error('Sembol arama hatası:', error);
-            dropdown.innerHTML = '<div class="symbol-dropdown-empty">Arama hatası. Manuel girebilirsiniz.</div>';
+            console.error('Symbol search error:', error);
+            dropdown.innerHTML = '<div class="symbol-dropdown-empty">Search error. You can enter it manually.</div>';
             dropdown.style.display = 'block';
         }
     }, 300);
@@ -759,13 +759,13 @@ async function handlePositionSubmit(event) {
     const notes = document.getElementById('position-notes').value;
 
     const formData = {
-        symbol: symbol,  // String olarak gönder (BTC/USDT gibi)
+        symbol: symbol,  // Send as a string (e.g., BTC/USDT)
         quantity: quantity,
         entry_price: entryPrice,
         opened_at: new Date(entryDate).toISOString(),
         notes: notes || null,
-        side: 'LONG',  // Sabit: Sadece LONG
-        position_type: 'SPOT',  // Sabit: Sadece SPOT
+        side: 'LONG',  // Constant: Only LONG
+        position_type: 'SPOT',  // Constant: Only SPOT
         source: 'manual'  // Manuel ekleme
     };
 
@@ -779,15 +779,15 @@ async function handlePositionSubmit(event) {
         const data = await response.json();
 
         if (data.status === 'success') {
-            showToast('✅ Pozisyon başarıyla eklendi', 'success');
+            showToast('✅ Position added successfully', 'success');
             closePositionModal();
             loadPortfolios(); // Refresh portfolio cards
         } else {
-            showToast(data.error || 'Pozisyon eklenemedi', 'error');
+            showToast(data.error || 'Position could not be added.', 'error');
         }
     } catch (error) {
-        console.error('Pozisyon ekleme hatası:', error);
-        showToast('Bir hata oluştu', 'error');
+        console.error('Position addition error:', error);
+        showToast('An error occurred.', 'error');
     }
 }
 
@@ -795,7 +795,7 @@ async function handlePositionSubmit(event) {
 async function syncPortfolio(portfolioId, exchangeAccountId) {
     try {
         // Show loading state
-        showToast('🔄 Pozisyonlar senkronize ediliyor...', 'info');
+        showToast('🔄 Positions are being synchronized...', 'info');
 
         const response = await fetch(`/api/portfolios/${portfolioId}/sync`, {
             method: 'POST',
@@ -809,11 +809,11 @@ async function syncPortfolio(portfolioId, exchangeAccountId) {
             showToast(`✅ ${count} pozisyon senkronize edildi`, 'success');
             loadPortfolios(); // Refresh portfolio cards
         } else {
-            showToast(data.error || 'Senkronizasyon başarısız', 'error');
+            showToast(data.error || 'Synchronization failed', 'error');
         }
     } catch (error) {
-        console.error('Sync hatası:', error);
-        showToast('Senkronizasyon sırasında hata oluştu', 'error');
+        console.error('Sync error:', error);
+        showToast('An error occurred during synchronization.', 'error');
     }
 }
 

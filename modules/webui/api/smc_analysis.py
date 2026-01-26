@@ -68,7 +68,7 @@ def register_routes(bp):
     @bp.route('/smc/analyze', methods=['POST'])
     def analyze_symbol():
         """
-        POST /api/smc/analyze - Sembol analizi
+        POST /api/smc/analyze - Symbol analysis
 
         Body:
             symbol: BTCUSDT (required)
@@ -90,7 +90,7 @@ def register_routes(bp):
 
             symbol = data.get('symbol')
             if not symbol:
-                return error_response('symbol gerekli', 400)
+                return error_response('symbol required', 400)
 
             timeframe = data.get('timeframe', '5m')
             limit = data.get('limit', 500)
@@ -114,7 +114,7 @@ def register_routes(bp):
     @bp.route('/smc/formations', methods=['GET'])
     def get_formations():
         """
-        GET /api/smc/formations - Formation listesi
+        GET /api/smc/formations - Formation list
 
         Query params:
             symbol: BTCUSDT (required)
@@ -126,7 +126,7 @@ def register_routes(bp):
         try:
             symbol = request.args.get('symbol')
             if not symbol:
-                return error_response('symbol gerekli', 400)
+                return error_response('symbol required', 400)
 
             timeframe = request.args.get('timeframe', '5m')
             formation_type = request.args.get('type')
@@ -168,7 +168,7 @@ def register_routes(bp):
         try:
             symbol = request.args.get('symbol')
             if not symbol:
-                return error_response('symbol gerekli', 400)
+                return error_response('symbol required', 400)
 
             timeframe = request.args.get('timeframe', '5m')
             start = request.args.get('start', 0, type=int)
@@ -199,7 +199,7 @@ def register_routes(bp):
         try:
             symbol = request.args.get('symbol')
             if not symbol:
-                return error_response('symbol gerekli', 400)
+                return error_response('symbol required', 400)
 
             timeframe = request.args.get('timeframe', '5m')
 
@@ -226,7 +226,7 @@ def register_routes(bp):
         try:
             symbol = request.args.get('symbol')
             if not symbol:
-                return error_response('symbol gerekli', 400)
+                return error_response('symbol required', 400)
 
             timeframe = request.args.get('timeframe', '5m')
 
@@ -238,7 +238,7 @@ def register_routes(bp):
             ))
 
             if not result:
-                return error_response('Bar bulunamadı', 404)
+                return error_response('Bar not found', 404)
 
             return success_response(result)
 

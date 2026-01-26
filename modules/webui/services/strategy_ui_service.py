@@ -309,7 +309,7 @@ Version: {version}
 import sys
 from pathlib import Path
 
-# SuperBot base directory'yi path'e ekle
+# Add the SuperBot base directory to the path.
 base_dir = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(base_dir))
 

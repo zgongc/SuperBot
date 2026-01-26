@@ -27,14 +27,14 @@
             <div class="form-grid">
                 <div class="form-group">
                     <label class="form-label">
-                        Toplam Max Pozisyon
+                        Total Max Position
                         <span class="form-help" title="The maximum number of positions that can be open at the same time.">ℹ️</span>
                     </label>
                     <input type="number" class="form-input" id="pm-max-total-positions" value="3" min="1" max="20" step="1">
                 </div>
                 <div class="form-group">
                     <label class="form-label">
-                        Sembol Başına Max
+                        Max symbols per line
                         <span class="form-help" title="For each symbol, the maximum number of positions.">ℹ️</span>
                     </label>
                     <input type="number" class="form-input" id="pm-max-positions-per-symbol" value="1" min="1" max="10" step="1">
@@ -51,22 +51,22 @@
             <div class="form-group">
                 <label class="form-label">
                     Pozisyon Timeout (saniye)
-                    <span class="form-help" title="Pozisyon bu süre sonra otomatik kapatılır (0 = sınırsız)">ℹ️</span>
+                    <span class="form-help" title="Position will be automatically closed after this duration (0 = unlimited)">ℹ️</span>
                 </label>
                 <div style="display: flex; align-items: center; gap: 1rem; position: relative;">
                     <input type="number" class="form-input" id="pm-position-timeout" value="1800" min="0" max="86400" step="60" style="flex: 1;">
                     <span class="input-suffix" id="pm-timeout-display">30 minutes</span>
                 </div>
                 <div class="form-help-text">
-                    Önerilen: 1800s (30dk) | 3600s (1 saat) | 0 (sınırsız)
+                    Suggested: 1800s (30 minutes) | 3600s (1 hour) | 0 (unlimited)
                 </div>
             </div>
 
             <!-- ═══════════════════════════════════════════ -->
-            <!-- PYRAMIDING (Kademeli Giriş) -->
+            <!-- PYRAMIDING (Gradual Introduction) -->
             <!-- ═══════════════════════════════════════════ -->
             <div class="section-header" style="margin: 2rem 0 1rem 0; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border-primary); font-weight: 600; color: var(--text-primary);">
-                📈 PYRAMIDING (Kademeli Giriş)
+                📈 PYRAMIDING (Gradual Entry)
             </div>
 
             <div class="toggle-group">
@@ -86,27 +86,27 @@
                     <div class="form-grid">
                         <div class="form-group">
                             <label class="form-label">
-                                Max Giriş Sayısı
+                                Max Input Count
                                 <span class="form-help" title="How many times can a position be added in total?">ℹ️</span>
                             </label>
                             <input type="number" class="form-input" id="pm-pyramiding-max-entries" value="3" min="2" max="10" step="1" oninput="updatePyramidingExample()">
                         </div>
                         <div class="form-group">
                             <label class="form-label">
-                                Boyut Ölçek Faktörü
-                                <span class="form-help" title="Her yeni girişte pozisyon boyutu çarpanı (0.5 = yarıya düşer)">ℹ️</span>
+                                Size Scale Factor
+                                <span class="form-help" title="For each new entry, the position size multiplier (0.5 = halves).">ℹ️</span>
                             </label>
                             <input type="number" class="form-input" id="pm-pyramiding-scale-factor" value="0.5" min="0.1" max="1.0" step="0.1" oninput="updatePyramidingExample()">
                         </div>
                     </div>
 
-                    <!-- Pyramiding Örnek Senaryo (Dynamic) -->
+                    <!-- Pyramiding Example Scenario (Dynamic) -->
                     <div style="background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: 0.375rem; padding: 1rem; margin-top: 1rem;">
                         <div style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-primary);">
                             💡 Example Scenario
                         </div>
                         <div id="pyramiding-example" style="font-size: 0.8125rem; color: var(--text-secondary); line-height: 1.8;">
-                            <!-- JavaScript ile doldurulacak -->
+                            <!-- To be filled with JavaScript. -->
                         </div>
                     </div>
                 </div>

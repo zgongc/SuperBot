@@ -1025,7 +1025,7 @@ function drawOBZone(ob) {
     const topPrice = ob.top;
     const bottomPrice = ob.bottom;
 
-    // OB timestamp'ten candleData index'ini bul
+    // Find the candleData index from the OB timestamp.
     let startIndex = 0;
     if (ob.timestamp) {
         const obTimeSec = Math.floor(ob.timestamp / 1000);
@@ -1734,7 +1734,7 @@ function updateLastBar() {
     if (bar.new_bos) {
         html += `
             <div class="last-bar-item">
-                <h4>Yeni BOS</h4>
+                <h4>New BOS</h4>
                 <span class="value badge badge-${bar.new_bos.type}">${bar.new_bos.type} @ ${bar.new_bos.broken_level?.toFixed(2) || '-'}</span>
             </div>
         `;
@@ -1743,7 +1743,7 @@ function updateLastBar() {
     if (bar.new_choch) {
         html += `
             <div class="last-bar-item">
-                <h4>Yeni CHoCH</h4>
+                <h4>New CHoCH</h4>
                 <span class="value badge badge-${bar.new_choch.type}">${bar.new_choch.type} @ ${bar.new_choch.broken_level?.toFixed(2) || '-'}</span>
             </div>
         `;
@@ -1752,7 +1752,7 @@ function updateLastBar() {
     if (bar.new_fvg) {
         html += `
             <div class="last-bar-item">
-                <h4>Yeni FVG</h4>
+                <h4>New FVG</h4>
                 <span class="value badge badge-${bar.new_fvg.type}">${bar.new_fvg.type} (${bar.new_fvg.bottom?.toFixed(2)} - ${bar.new_fvg.top?.toFixed(2)})</span>
             </div>
         `;
@@ -1761,7 +1761,7 @@ function updateLastBar() {
     if (bar.new_swing) {
         html += `
             <div class="last-bar-item">
-                <h4>Yeni Swing</h4>
+                <h4>New Swing</h4>
                 <span class="value badge badge-${bar.new_swing.type === 'high' ? 'bullish' : 'bearish'}">${bar.new_swing.type} @ ${bar.new_swing.price?.toFixed(2) || '-'}</span>
             </div>
         `;

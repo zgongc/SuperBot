@@ -27,15 +27,15 @@
             <div class="form-grid">
                 <div class="form-group">
                     <label class="form-label">
-                        Boyutlandırma Metodu
+                        Sizing Method
                         <span class="form-help" title="Determines how to calculate the position size.">ℹ️</span>
                     </label>
                     <select class="form-select" id="rm-sizing-method" onchange="updateSizingMethodParams(this.value)">
                         <option value="fixed_usd">💵 Sabit Miktar (Fixed USD)</option>
-                        <option value="fixed_percent">📊 Sermaye Yüzdesi (Fixed %)</option>
-                        <option value="risk_based" selected>🎯 Risk Bazlı (Risk Based) - Önerilen</option>
+                        <option value="fixed_percent">📊 Capital Percentage (Fixed %)</option>
+                        <option value="risk_based" selected>🎯 Risk Based - Recommended</option>
                         <option value="kelly">🧮 Kelly Kriteri (Kelly Criterion)</option>
-                        <option value="ai_dynamic">🤖 AI Dinamik (Henüz Hazır Değil)</option>
+                        <option value="ai_dynamic">🤖 AI Dynamic (Not Ready Yet)</option>
                     </select>
                 </div>
 
@@ -55,7 +55,7 @@
             <div class="form-grid">
                 <div class="form-group">
                     <label class="form-label">
-                        Trade Başına Max Risk (%)
+                        Maximum Risk (%) per Trade
                         <span class="form-help" title="Maximum percentage of capital that can be risked in each transaction.">ℹ️</span>
                     </label>
                     <input type="number" class="form-input" id="rm-max-risk-per-trade" value="1.0" min="0.1" max="10" step="0.1">
@@ -69,7 +69,7 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">
-                        Günlük Max Trade Sayısı
+                        Daily Maximum Trade Count
                         <span class="form-help" title="The maximum number of transactions that can be opened in a day.">ℹ️</span>
                     </label>
                     <input type="number" class="form-input" id="rm-max-daily-trades" value="20" min="1" max="100" step="1">
@@ -86,14 +86,14 @@
             <div class="form-grid">
                 <div class="form-group">
                     <label class="form-label">
-                        Max Korelasyon
-                        <span class="form-help" title="Farklı coinler arasında izin verilen maksimum korelasyon (0-1)">ℹ️</span>
+                        Max Correlation
+                        <span class="form-help" title="Maximum allowed correlation (0-1) between different coins.">ℹ️</span>
                     </label>
                     <input type="number" class="form-input" id="rm-max-correlation" value="0.6" min="0" max="1" step="0.1">
                 </div>
                 <div class="form-group">
                     <label class="form-label">
-                        Pozisyon Korelasyon Limiti
+                        Position Correlation Limit
                         <span class="form-help" title="Maximum allowed correlation among open positions.">ℹ️</span>
                     </label>
                     <input type="number" class="form-input" id="rm-position-correlation-limit" value="0.7" min="0" max="1" step="0.1">
@@ -121,7 +121,7 @@
             <div class="toggle-group">
                 <div>
                     <label class="toggle-label">AI Risk Adjustment</label>
-                    <div class="form-help-text">AI ile dinamik risk yönetimi (henüz hazır değil)</div>
+                    <div class="form-help-text">AI-powered dynamic risk management (not yet ready)</div>
                 </div>
                 <label class="toggle-switch">
                     <input type="checkbox" id="rm-ai-risk-enabled">

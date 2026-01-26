@@ -349,11 +349,11 @@ async function updateFavorite(event) {
 
 async function deleteFavorite(id) {
     const confirmed = await confirm({
-        title: 'Favoriyi Sil?',
-        message: 'Bu favori silinecek. Devam etmek istediğinize emin misiniz?',
+        title: 'Delete Favorite?',
+        message: 'This favorite will be deleted. Are you sure you want to continue?',
         type: 'danger',
-        confirmText: 'Sil',
-        cancelText: 'İptal'
+        confirmText: 'Delete',
+        cancelText: 'Cancel'
     });
     if (!confirmed) return;
 
@@ -559,10 +559,10 @@ function closeSymbolBrowser() {
 async function syncSymbols() {
     const confirmed = await confirm({
         title: 'Sembolleri Senkronize Et?',
-        message: 'Binance\'den tüm SPOT ve FUTURES sembolleri indirilecek. Devam etmek istiyor musunuz?',
+        message: 'All SPOT and FUTURES symbols will be downloaded from Binance. Do you want to continue?',
         type: 'warning',
         confirmText: 'Senkronize Et',
-        cancelText: 'İptal'
+        cancelText: 'Cancel'
     });
     if (!confirmed) return;
 

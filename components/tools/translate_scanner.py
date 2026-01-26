@@ -439,8 +439,8 @@ class HTMLScanner:
     # Patterns for extractable text in HTML
     # These are SAFE to translate
     SAFE_PATTERNS = [
-        # Text inside common tags (added small, strong, em, b, i)
-        (r'<(h[1-6]|p|span|div|label|button|a|td|th|li|option|title|small|strong|em|b|i)([^>]*)>([^<]+)</\1>', 'tag_content'),
+        # Text inside common tags - matches text between > and < (including whitespace/newlines)
+        (r'>([^<>{}]+)<', 'text_node'),
         # Placeholder attributes
         (r'placeholder="([^"]+)"', 'placeholder'),
         (r"placeholder='([^']+)'", 'placeholder'),
@@ -475,12 +475,32 @@ class HTMLScanner:
         self.results: Dict[str, List[Tuple[int, str, str, str]]] = {}  # line_num, type, original, extracted
         self.skip_dirs = {'node_modules', '.git', '__pycache__', 'venv', '.venv'}
 
+    # English words that happen to match Turkish patterns (false positives)
+    ENGLISH_BLOCKLIST = {
+        'are', 'the', 'and', 'for', 'not', 'you', 'all', 'can', 'her', 'was',
+        'one', 'our', 'out', 'day', 'get', 'has', 'him', 'his', 'how', 'its',
+        'let', 'may', 'new', 'now', 'old', 'see', 'two', 'way', 'who', 'boy',
+        'did', 'own', 'say', 'she', 'too', 'use', 'sure', 'sure?', 'just',
+    }
+
     def is_turkish(self, text: str) -> bool:
         """Check if text contains Turkish content."""
+        # Turkish-specific characters are a strong signal
         if TURKISH_CHARS.search(text):
             return True
-        if TURKISH_WORD_PATTERN.search(text):
-            return True
+        # For ASCII-only text, require multiple Turkish word matches
+        # to reduce false positives like "Are" matching "ara"
+        matches = TURKISH_WORD_PATTERN.findall(text)
+        if len(matches) >= 2:
+            # Filter out English blocklist words
+            filtered = [m for m in matches if m.lower() not in self.ENGLISH_BLOCKLIST]
+            if len(filtered) >= 2:
+                return True
+        # Single word match: require >= 3 chars and not in English blocklist
+        if matches:
+            longest_match = max(matches, key=len)
+            if len(longest_match) >= 3 and longest_match.lower() not in self.ENGLISH_BLOCKLIST:
+                return True
         return False
 
     def should_skip_line(self, line: str) -> bool:
@@ -505,17 +525,18 @@ class HTMLScanner:
         for pattern, content_type in self.SAFE_PATTERNS:
             for match in re.finditer(pattern, line, re.IGNORECASE):
                 # Get the captured group (text content)
-                if content_type == 'tag_content':
-                    text = match.group(3).strip()
-                else:
-                    text = match.group(1).strip()
+                text = match.group(1).strip()
 
                 if text and self.is_turkish(text):
                     # Skip if it's a Jinja2 expression
                     if '{{' in text or '{%' in text:
                         continue
-                    # Skip if it's mostly code
-                    if text.count('(') > 0 or text.count('{') > 0:
+                    # Skip if it looks like pure code
+                    stripped = text.strip()
+                    if stripped.startswith('(') or stripped.endswith(')'):
+                        if not any(c in stripped for c in 'çğıöşüÇĞİÖŞÜ'):
+                            continue
+                    if '{' in text and '}' in text:
                         continue
                     findings.append((line_num, content_type, match.group(0), text))
 
@@ -540,17 +561,20 @@ class HTMLScanner:
         for pattern, content_type in self.SAFE_PATTERNS:
             # Use DOTALL for multi-line matching
             for match in re.finditer(pattern, clean_content, re.IGNORECASE | re.DOTALL):
-                if content_type == 'tag_content':
-                    text = match.group(3).strip()
-                else:
-                    text = match.group(1).strip()
+                text = match.group(1).strip()
 
                 if text and self.is_turkish(text):
                     # Skip Jinja2 expressions
                     if '{{' in text or '{%' in text:
                         continue
-                    # Skip if mostly code
-                    if text.count('(') > 0 or text.count('{') > 0:
+                    # Skip if it looks like pure code (function calls, object literals)
+                    # But allow text that just happens to contain () like "Total (5)"
+                    stripped = text.strip()
+                    if stripped.startswith('(') or stripped.endswith(')'):
+                        # Looks like a function argument or expression
+                        if not any(c in stripped for c in 'çğıöşüÇĞİÖŞÜ'):
+                            continue
+                    if '{' in text and '}' in text:
                         continue
 
                     # Find line number
@@ -574,7 +598,7 @@ class HTMLScanner:
         return unique_findings
 
     def _scan_inline_scripts(self, content: str, lines: List[str]) -> List[Tuple[int, str, str, str]]:
-        """Scan inline <script> blocks for Turkish content in JS strings."""
+        """Scan inline <script> blocks for Turkish content in JS strings and template literals."""
         findings = []
 
         # JS string patterns (same as JSScanner)
@@ -623,6 +647,48 @@ class HTMLScanner:
 
                         if self.is_turkish(text):
                             findings.append((line_num, content_type, match.group(0), text))
+
+            # Scan template literals for HTML-like content (text between > and <)
+            findings.extend(self._scan_template_literals(script_content, script_start_line))
+
+        return findings
+
+    def _scan_template_literals(self, script_content: str, start_line: int) -> List[Tuple[int, str, str, str]]:
+        """Scan JavaScript template literals for Turkish content in HTML-like text."""
+        findings = []
+
+        # Find template literals (content between backticks)
+        # This regex handles nested template expressions ${...}
+        template_pattern = re.compile(r'`((?:[^`\\]|\\.|\$\{[^}]*\})*)`', re.DOTALL)
+
+        for tmpl_match in template_pattern.finditer(script_content):
+            template_content = tmpl_match.group(1)
+            tmpl_start_pos = tmpl_match.start(1)
+
+            # Calculate line offset within script
+            tmpl_line_offset = script_content[:tmpl_start_pos].count('\n')
+
+            # Extract text nodes from HTML-like content in template literal
+            # This matches text between > and < (like HTML text nodes)
+            text_pattern = re.compile(r'>([^<>${}]+)<', re.DOTALL)
+
+            for text_match in text_pattern.finditer(template_content):
+                text = text_match.group(1).strip()
+
+                if not text or len(text) < 2:
+                    continue
+
+                # Skip if it looks like code
+                if self._is_code_string(text):
+                    continue
+
+                if self.is_turkish(text):
+                    # Calculate line number
+                    pos_in_template = text_match.start()
+                    line_offset = template_content[:pos_in_template].count('\n')
+                    line_num = start_line + tmpl_line_offset + line_offset
+
+                    findings.append((line_num, 'template_literal', text_match.group(0), text))
 
         return findings
 

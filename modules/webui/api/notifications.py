@@ -21,7 +21,7 @@ def get_pending_notifications():
         # Get all pending notifications
         notifications = NotificationDispatcher.pending_webui_notifications.copy()
 
-        # Clear the queue (they've been delivered)
+        # Clear the queue (they have been delivered)
         NotificationDispatcher.pending_webui_notifications.clear()
 
         return success_response({

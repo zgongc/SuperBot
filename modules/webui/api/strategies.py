@@ -46,7 +46,7 @@ def get_strategy(strategy_id):
         strategy = run_async(service.get_strategy_by_id(strategy_id))
 
         if not strategy:
-            return error_response('Strateji bulunamadı', 404)
+            return error_response('Strategy not found', 404)
 
         return success_response(data=strategy)
     except Exception as e:
@@ -64,12 +64,12 @@ def create_strategy():
         data = request.get_json()
 
         if not data:
-            return error_response('Geçersiz veri', 400)
+            return error_response('Invalid data', 400)
 
         result = run_async(service.create_strategy(data))
 
         return success_response(
-            message='Strateji başarıyla oluşturuldu',
+            message='Strategy created successfully',
             data=result
         )
     except ValueError as e:
@@ -89,15 +89,15 @@ def update_strategy(strategy_id):
         data = request.get_json()
 
         if not data:
-            return error_response('Geçersiz veri', 400)
+            return error_response('Invalid data', 400)
 
         result = run_async(service.update_strategy(strategy_id, data))
 
         if not result:
-            return error_response('Strateji bulunamadı', 404)
+            return error_response('Strategy not found', 404)
 
         return success_response(
-            message='Strateji başarıyla güncellendi',
+            message='Strategy updated successfully',
             data=result
         )
     except ValueError as e:
@@ -115,9 +115,9 @@ def delete_strategy(strategy_id):
         success = run_async(service.delete_strategy(strategy_id))
 
         if not success:
-            return error_response('Strateji bulunamadı', 404)
+            return error_response('Strategy not found', 404)
 
-        return success_response(message='Strateji başarıyla silindi')
+        return success_response(message='Strategy successfully deleted')
     except Exception as e:
         return error_response(str(e), 500)
 
@@ -131,10 +131,10 @@ def activate_strategy(strategy_id):
         result = run_async(service.set_strategy_status(strategy_id, True))
 
         if not result:
-            return error_response('Strateji bulunamadı', 404)
+            return error_response('Strategy not found', 404)
 
         return success_response(
-            message='Strateji aktifleştirildi',
+            message='Strategy activated',
             data=result
         )
     except Exception as e:
@@ -150,10 +150,10 @@ def deactivate_strategy(strategy_id):
         result = run_async(service.set_strategy_status(strategy_id, False))
 
         if not result:
-            return error_response('Strateji bulunamadı', 404)
+            return error_response('Strategy not found', 404)
 
         return success_response(
-            message='Strateji devre dışı bırakıldı',
+            message='Strategy disabled',
             data=result
         )
     except Exception as e:
@@ -171,10 +171,10 @@ def duplicate_strategy(strategy_id):
         result = run_async(service.duplicate_strategy(strategy_id, new_name))
 
         if not result:
-            return error_response('Strateji bulunamadı', 404)
+            return error_response('Strategy not found', 404)
 
         return success_response(
-            message='Strateji kopyalandı',
+            message='Strategy copied',
             data=result
         )
     except Exception as e:
@@ -222,7 +222,7 @@ def get_strategy_config(strategy_id):
         config = run_async(service.get_strategy_config(strategy_id))
 
         if not config:
-            return error_response('Strateji bulunamadı', 404)
+            return error_response('Strategy not found', 404)
 
         return success_response(data={'config': config})
     except Exception as e:
@@ -261,10 +261,10 @@ def load_strategy(strategy_id):
         result = run_async(service.load_strategy(strategy_id))
 
         if not result:
-            return error_response('Strateji bulunamadı veya yüklenemedi', 404)
+            return error_response('Strategy not found or could not be loaded', 404)
 
         return success_response(
-            message='Strateji başarıyla yüklendi',
+            message='Strategy loaded successfully',
             data=result
         )
     except Exception as e:

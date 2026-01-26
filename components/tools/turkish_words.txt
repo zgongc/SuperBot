@@ -266,3 +266,10 @@ iptal
 et
 edildi
 edilecek
+temel
+bilgiler
+ana
+filtreler
+otomatik
+veri
+indirme

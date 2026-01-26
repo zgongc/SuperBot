@@ -7,7 +7,7 @@ def register_routes(bp):
 
     @bp.route('/trading/replay')
     def replay():
-        """Replay Trading - Tarihsel veri üzerinde strateji simülasyonu"""
+        """Replay Trading - Strategy simulation on historical data"""
         return render_template('replay.html',
                              page='replay',
                              title='Replay Trading')

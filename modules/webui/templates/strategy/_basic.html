@@ -7,7 +7,7 @@
         <div class="accordion-title-section">
             <div class="accordion-icon">📋</div>
             <div class="accordion-title-text">
-                <h3>Temel Bilgiler</h3>
+                <h3>Basic Information</h3>
                 <p>Strategy name, version, symbols, and timeframe</p>
             </div>
         </div>
@@ -96,9 +96,9 @@
                 </div>
             </div>
 
-            <!-- Ana Timeframe -->
+            <!-- Main Timeframe -->
             <div class="form-group">
-                <label class="form-label required">Ana Timeframe</label>
+                <label class="form-label required">Main Timeframe</label>
                 <select class="form-select" id="primary-timeframe">
                     <option value="1m">1m - 1 Minute</option>
                     <option value="3m">3m - 3 Minutes</option>
@@ -116,13 +116,13 @@
                     <option value="1w">1w - 1 Week</option>
                     <option value="1M">1M - 1 Ay</option>
                 </select>
-                <span class="form-hint">Ana trading timeframe (stratejinin çalışacağı periyot)</span>
+                <span class="form-hint">Main trading timeframe (the period during which the strategy will operate)</span>
             </div>
 
             <div class="form-group">
                 <label class="form-label">Warmup Period</label>
                 <input type="number" class="form-input" id="warmup-period" placeholder="100" min="1" max="1000" step="1">
-                <span class="form-hint">Indikatör hesaplamaları için warmup periyodu (örn: EMA 50 için minimum 100 önerilir)</span>
+                <span class="form-hint">Warm-up period for indicator calculations (e.g., a minimum of 100 is recommended for EMA 50).</span>
             </div>
 
             <div class="form-group">
@@ -217,9 +217,9 @@
                     <div class="symbol-tags" id="symbol-tags"></div>
                     <div class="add-symbol-input">
                         <input type="text" class="form-input" id="new-symbol" placeholder="BTC, ETH, SOL...">
-                        <button class="btn btn-secondary" onclick="addSymbol()">Ekle</button>
+                        <button class="btn btn-secondary" onclick="addSymbol()">Add</button>
                     </div>
-                    <span class="form-hint">Base asset girin (örn: BTC, ETH)</span>
+                    <span class="form-hint">Enter the base asset (e.g., BTC, ETH)</span>
                 </div>
 
                 <div class="form-group">

@@ -28,7 +28,7 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: start;">
                 <div class="form-group" style="margin: 0;">
                     <label class="form-label">
-                        Metod
+                        Method
                         <span class="form-help" title="Take profit calculation method">ℹ️</span>
                     </label>
                     <select class="form-select" id="es-tp-method" onchange="updateTPMethodParams(this.value)">
@@ -58,7 +58,7 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: start;">
                 <div class="form-group" style="margin: 0;">
                     <label class="form-label">
-                        Metod
+                        Method
                         <span class="form-help" title="Stop loss calculation method">ℹ️</span>
                     </label>
                     <select class="form-select" id="es-sl-method" onchange="updateSLMethodParams(this.value)">
@@ -101,7 +101,7 @@
                         </div>
                         <div class="form-group">
                             <label class="form-label">
-                                Aktivasyon Kar %
+                                Activation Percentage
                                 <span class="form-help" title="When there is so much snow, trailing starts.">ℹ️</span>
                             </label>
                             <input type="number" class="form-input" id="es-trailing-activation" value="1.0" min="0" max="10" step="0.1">
@@ -112,9 +112,9 @@
                     <div style="margin-top: 0.75rem; padding: 0.5rem; background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: 0.375rem; font-size: 0.8125rem;">
                         <div style="font-weight: 600; margin-bottom: 0.25rem;">💡 Example:</div>
                         <div style="color: var(--text-secondary); line-height: 1.5;">
-                            Giriş: $100, Fiyat $105'e çıktı → SL: $104.58 ($105 - 0.4%)<br>
-                            Fiyat $103'e düştü → SL: $104.58 (sabit, aşağı inmez!)<br>
-                            Fiyat $104.58'e düştü → Pozisyon kapat, $4.58 kar!
+                            Input: $100, Price increased to $105 -> SL: $104.58 ($105 - 0.4%)<br>
+                            Price dropped to $103 -> SL: $104.58 (fixed, will not go down!)<br>
+                            Price dropped to $104.58 -> Close position, $4.58 profit!
                         </div>
                     </div>
                 </div>
@@ -146,10 +146,10 @@
                     <div style="margin-top: 0.75rem; padding: 0.5rem; background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: 0.375rem; font-size: 0.8125rem;">
                         <div style="font-weight: 600; margin-bottom: 0.25rem;">💡 Example:</div>
                         <div style="color: var(--text-secondary); line-height: 1.5;">
-                            Giriş: $100, TP: $110<br>
-                            Fiyat $110'a ulaştı → Trailing TP başladı! 🚀<br>
-                            Fiyat $115'e çıktı → TP: $114.77 ($115 - 0.2%)<br>
-                            Fiyat $114.77'ye düştü → Kapat, $14.77 kar! (Normal TP: $10)
+                            Input: $100, TP: $110<br>
+                            Price reached $110 -> Trailing TP started! 🚀<br>
+                            Price went up to $115 -> TP: $114.77 ($115 - 0.2%)<br>
+                            Price dropped to $114.77 -> Close, $14.77 profit! (Normal TP: $10)
                         </div>
                     </div>
                 </div>
@@ -172,7 +172,7 @@
                     <div class="form-grid">
                         <div class="form-group">
                             <label class="form-label">
-                                Tetik Kar %
+                                Trigger Car %
                                 <span class="form-help" title="When there is this much snow, the break-even point becomes active.">ℹ️</span>
                             </label>
                             <input type="number" class="form-input" id="es-breakeven-trigger" value="1.0" min="0.1" max="10" step="0.1">
@@ -192,7 +192,7 @@
             <!-- PARTIAL EXIT -->
             <!-- ═══════════════════════════════════════════ -->
             <div class="section-header" style="margin: 2rem 0 1rem 0; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border-primary); font-weight: 600; color: var(--text-primary); display: flex; justify-content: space-between; align-items: center;">
-                <span>📊 PARTIAL EXIT (Kademeli Çıkış)</span>
+                <span>📊 PARTIAL EXIT (Gradual Exit)</span>
                 <label class="toggle-switch">
                     <input type="checkbox" id="es-partial-enabled" onchange="togglePartialExitConfig()">
                     <span class="toggle-slider"></span>
@@ -208,7 +208,7 @@
                             📊 Gradual Exit Plan
                         </div>
 
-                        <!-- Seviye 1 -->
+                        <!-- Level 1 -->
                         <div class="partial-exit-visual-row">
                             <div class="partial-level-badge">1️⃣</div>
                             <div class="partial-level-inputs-wrapper">
@@ -227,7 +227,7 @@
                             </div>
                         </div>
 
-                        <!-- Seviye 2 -->
+                        <!-- Level 2 -->
                         <div class="partial-exit-visual-row">
                             <div class="partial-level-badge">2️⃣</div>
                             <div class="partial-level-inputs-wrapper">
@@ -246,7 +246,7 @@
                             </div>
                         </div>
 
-                        <!-- Seviye 3 -->
+                        <!-- Level 3 -->
                         <div class="partial-exit-visual-row">
                             <div class="partial-level-badge">3️⃣</div>
                             <div class="partial-level-inputs-wrapper">
@@ -287,7 +287,7 @@
             <!-- AI DYNAMIC EXIT -->
             <!-- ═══════════════════════════════════════════ -->
             <div class="section-header" style="margin: 2rem 0 1rem 0; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border-primary); font-weight: 600; color: var(--text-primary); display: flex; justify-content: space-between; align-items: center;">
-                <span>🤖 AI DYNAMIC EXIT (Yapay Zeka Çıkış Optimizasyonu)</span>
+                <span>🤖 AI DYNAMIC EXIT (AI Dynamic Exit Optimization)</span>
                 <label class="toggle-switch">
                     <input type="checkbox" id="es-ai-exit-enabled" onchange="toggleAIExitConfig()">
                     <span class="toggle-slider"></span>
@@ -297,7 +297,7 @@
             <div id="ai-exit-config" class="collapsible-config">
                 <div class="params-container" style="margin-top: 1rem;">
                     <div class="form-help-text" style="margin-bottom: 1rem;">
-                        Yapay zeka modeli kullanarak dinamik TP/SL optimizasyonu yapar. Piyasa rejimine (trend, range, volatile) göre hedefleri otomatik ayarlar.
+                        It performs dynamic TP/SL optimization using an AI model. It automatically adjusts the targets according to the market regime (trend, range, volatile).
                     </div>
 
                     <!-- Model Configuration -->
@@ -427,14 +427,14 @@
                         <div class="form-row">
                             <div class="form-group">
                                 <label class="form-label">
-                                    Minimum ATR Çarpanı
+                                    Minimum ATR Multiplier
                                     <span class="label-help" title="Minimum multiplier to be used with low volatility.">ℹ️</span>
                                 </label>
                                 <input type="number" class="form-input" id="ai-exit-atr-min" value="1.0" min="0.1" max="10.0" step="0.1">
                             </div>
                             <div class="form-group">
                                 <label class="form-label">
-                                    Maksimum ATR Çarpanı
+                                    Maximum ATR Multiplier
                                     <span class="label-help" title="Maximum multiplier to be used with high volatility.">ℹ️</span>
                                 </label>
                                 <input type="number" class="form-input" id="ai-exit-atr-max" value="3.0" min="0.1" max="10.0" step="0.1">
@@ -448,13 +448,13 @@
                         <div class="info-box-content">
                             <p><strong>AI model analyzes the following factors:</strong></p>
                             <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
-                                <li>📊 <strong>Piyasa Rejimi:</strong> Trend, range veya volatile duruma göre TP/SL çarpanlarını ayarlar</li>
-                                <li>📈 <strong>Volatilite:</strong> ATR bazlı ölçekleme ile hedefleri dinamik tutar</li>
-                                <li>🎯 <strong>Tahmin:</strong> Belirlenen ufuk kadar ilerisini tahmin ederek optimal çıkış noktası belirler</li>
-                                <li>⚖️ <strong>Risk/Reward Dengesi:</strong> Her pozisyon için optimal risk/reward oranını hesaplar</li>
+                                <li>📊 <strong>Piyasa Rejimi:</strong> Adjusts the TP/SL multipliers based on the trend, range, or volatility.</li>
+                                <li>📈 <strong>Volatilite:</strong> ATR based scaling keeps the targets dynamic.</li>
+                                <li>🎯 <strong>Tahmin:</strong> It determines the optimal exit point by predicting as far as the specified horizon.</li>
+                                <li>⚖️ <strong>Risk/Reward Dengesi:</strong> Calculates the optimal risk/reward ratio for each position.</li>
                             </ul>
                             <p style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border-primary);">
-                                <strong>⚠️ Not:</strong> AI exit kullanmak için önceden eğitilmiş bir model gerekir. Model yoksa klasik exit stratejileri kullanılır.
+                                <strong>⚠️ Not:</strong> To use the AI exit, a pre-trained model is required. If a model is not available, classic exit strategies are used.
                             </p>
                         </div>
                     </div>

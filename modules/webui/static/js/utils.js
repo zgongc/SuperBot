@@ -222,7 +222,7 @@ async function confirmDelete(itemName) {
     };
 
     const translation = translations[itemName] || {
-        title: itemName + ' Sil?',
+        title: itemName + ' Delete?',
         message: 'This operation cannot be undone. ' + itemName + ' Are you sure you want to delete?'
     };
 
@@ -230,7 +230,7 @@ async function confirmDelete(itemName) {
         title: translation.title,
         message: translation.message,
         type: 'danger',
-        confirmText: 'Sil',
+        confirmText: 'Delete',
         cancelText: 'Cancel'
     });
 }

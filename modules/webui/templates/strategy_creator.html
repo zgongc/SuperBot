@@ -25,7 +25,7 @@
                 <line x1="19" y1="12" x2="5" y2="12"></line>
                 <polyline points="12 19 5 12 12 5"></polyline>
             </svg>
-            Geri
+            Back
         </a>
     </div>
 </div>
@@ -71,7 +71,7 @@
 
         } catch (error) {
             console.error('Error loading templates:', error);
-            showToast('Hata', 'Şablonlar yüklenirken hata oluştu', 'error');
+            showToast('Error', 'Templates failed to load.', 'error');
         }
     }
 
@@ -79,7 +79,7 @@
         const grid = document.getElementById('template-grid');
 
         if (templates.length === 0) {
-            grid.innerHTML = '<p style="color: var(--text-secondary); text-align: center;">Şablon bulunamadı</p>';
+            grid.innerHTML = '<p style="color: var(--text-secondary); text-align: center;">Template not found</p>';
             return;
         }
 
@@ -114,7 +114,7 @@
                 <div class="template-card" data-template="${template.id}" onclick="selectTemplate('${template.id}')">
                     ${icon}
                     <div class="template-name">${template.name}</div>
-                    <div class="template-desc">${template.description || 'Strateji şablonu'}</div>
+                    <div class="template-desc">${template.description || 'Strategy template'}</div>
                 </div>
             `;
         }).join('');

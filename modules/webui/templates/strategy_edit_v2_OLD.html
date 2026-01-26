@@ -59,7 +59,7 @@
                 <polyline points="17 21 17 13 7 13 7 21"></polyline>
                 <polyline points="7 3 7 8 15 8"></polyline>
             </svg>
-            Kaydet
+            Save
         </button>
     </div>
 </div>
@@ -92,7 +92,7 @@
     async function loadStrategy() {
         showLoading(true);
         try {
-            // Önce basic info için /api/strategies/{id}
+            // First, for basic information, use /api/strategies/{id}
             const basicResponse = await fetch(`/api/strategies/${strategyId}`);
             const basicResult = await basicResponse.json();
 
@@ -100,7 +100,7 @@
                 prefillForm(basicResult.data);
             }
 
-            // Sonra tüm detaylar için /api/strategies/{id}/load
+            // Then, for all details, see /api/strategies/{id}/load
             const loadResponse = await fetch(`/api/strategies/${strategyId}/load`);
             const loadResult = await loadResponse.json();
 
@@ -108,17 +108,17 @@
                 // Store loaded data globally for save operation
                 loadedStrategyData = loadResult.data;
 
-                // Tüm parametreleri doldur
+                // Fill in all parameters.
                 populateFormFromData(loadResult.data);
-                console.log('✅ Strategy tam olarak yüklendi:', loadResult.data);
+                console.log('✅ Strategy loaded successfully:', loadResult.data);
             } else {
-                console.warn('⚠️  Strategy load endpoint başarısız, sadece basic info yüklendi');
+                console.warn('⚠️ Strategy load endpoint failed, only basic info was loaded.');
             }
         } catch (error) {
             console.error('Error loading strategy:', error);
             console.error('Strategy ID:', strategyId);
             console.error('Error stack:', error.stack);
-            showToast('Hata', `Strateji yüklenirken hata oluştu: ${error.message}`, 'error');
+            showToast('Error', `Strateji yüklenirken hata oluştu: ${error.message}`, 'error');
         } finally {
             showLoading(false);
         }
@@ -370,7 +370,7 @@
         }
 
         if (!INDICATOR_REGISTRY) {
-            searchResults.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--text-secondary);">Yükleniyor...</div>';
+            searchResults.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--text-secondary);">Loading...</div';
             searchResults.style.display = 'block';
             return;
         }
@@ -382,7 +382,7 @@
         });
 
         if (matches.length === 0) {
-            searchResults.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--text-secondary);">Sonuç bulunamadı</div>';
+            searchResults.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--text-secondary);">No results found</div>';
             searchResults.style.display = 'block';
             return;
         }
@@ -394,7 +394,7 @@
                     <div class="indicator-search-name">${key}</div>
                     <div class="indicator-search-desc">${data.description}</div>
                 </div>
-                <button class="indicator-add-btn" onclick="addIndicatorFromSearch('${key}')">Ekle</button>
+                <button class="indicator-add-btn" onclick="addIndicatorFromSearch('${key}')">Add</button>
             </div>
         `).join('');
 
@@ -431,7 +431,7 @@
                 <label>Suffix</label>
                 <input type="text" class="param-input"
                        id="${uniqueId}-suffix"
-                       placeholder="(opsiyonel)"
+                       placeholder="(optional)"
                        value=""
                        data-param="_suffix"
                        data-period-value="${periodValue}"
@@ -468,7 +468,7 @@
                     <label for="${uniqueId}-checkbox" id="${uniqueId}-label">${indicatorKey.toUpperCase()}</label>
                 </div>
                 <div class="indicator-params" id="${uniqueId}-params" style="display: block;">
-                    ${paramsHtml || '<div style="padding: 0.5rem; color: var(--text-secondary); font-size: 0.75rem;">Parametre yok</div>'}
+                    ${paramsHtml || '<div style="padding: 0.5rem; color: var(--text-secondary); font-size: 0.75rem;">No parameters</div>'}
                 </div>
             </div>
         `;
@@ -495,7 +495,7 @@
                 container.querySelectorAll('select[id^="indicator-"]').forEach(select => {
                     const currentValue = select.value;
                     select.innerHTML = `
-                        <option value="">İndikatör Seç</option>
+                        <option value="">Select Indicator</option>
                         ${availableIndicators.map(ind =>
                             `<option value="${ind.value}" ${ind.value === currentValue ? 'selected' : ''}>${ind.label}</option>`
                         ).join('')}
@@ -511,7 +511,7 @@
                 container.querySelectorAll('select[id^="indicator-"]').forEach(select => {
                     const currentValue = select.value;
                     select.innerHTML = `
-                        <option value="">İndikatör Seç</option>
+                        <option value="">Select Indicator</option>
                         ${availableIndicators.map(ind =>
                             `<option value="${ind.value}" ${ind.value === currentValue ? 'selected' : ''}>${ind.label}</option>`
                         ).join('')}
@@ -597,40 +597,40 @@
         'fixed_usd': [
             {
                 name: 'size_value',
-                label: 'Sabit Miktar (USD)',
+                label: 'Fixed Amount (USD)',
                 type: 'number',
                 default: 100,
                 min: 10,
                 max: 10000,
                 step: 10,
                 suffix: '$',
-                help: 'Her trade için sabit dolar miktarı'
+                help: 'For each trade, a fixed dollar amount.'
             }
         ],
         'fixed_percent': [
             {
                 name: 'size_value',
-                label: 'Sermaye Yüzdesi',
+                label: 'Capital Percentage',
                 type: 'number',
                 default: 5,
                 min: 0.1,
                 max: 100,
                 step: 0.1,
                 suffix: '%',
-                help: 'Mevcut sermayenin yüzdesi'
+                help: 'Percentage of current capital.'
             }
         ],
         'risk_based': [
             {
                 name: 'size_value',
-                label: 'Risk Değeri',
+                label: 'Risk Value',
                 type: 'number',
                 default: 1.0,
                 min: 0.1,
                 max: 10,
                 step: 0.1,
                 suffix: '%',
-                help: 'Her trade\'de risk edilecek sermaye yüzdesi (stop loss\'a göre hesaplanır)'
+                help: 'The percentage of capital to be risked in each trade (calculated based on the stop loss).'
             }
         ],
         'kelly': [
@@ -642,13 +642,13 @@
                 min: 0.1,
                 max: 1.0,
                 step: 0.1,
-                help: 'Kelly formülü sonucunun ne kadarı kullanılacak (0.5 = yarı Kelly, önerilir)'
+                help: 'What percentage of the Kelly formula result will be used (0.5 = half Kelly, recommended)'
             }
         ],
         'ai_dynamic': [
             {
                 name: 'size_value',
-                label: 'Baz Yüzde',
+                label: 'Base Percentage',
                 type: 'number',
                 default: 2.0,
                 min: 0.1,
@@ -665,15 +665,15 @@
         const params = SIZING_METHOD_PARAMS[method];
 
         if (!params || params.length === 0) {
-            container.innerHTML = '<div style="padding: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">Parametre gerektirmiyor</div>';
+            container.innerHTML = '<div style="padding: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">Does not require parameters</div>';
             return;
         }
 
-        // Mevcut değeri koru (eğer field zaten varsa)
+        // Keep the current value (if the field already exists).
         const existingField = document.getElementById('rm-size-value');
         const currentValue = existingField ? existingField.value : params[0].default;
 
-        // Field name'i tire'li ID'ye çevir (size_value → size-value)
+        // Convert the field name to a hyphenated ID (size_value -> size-value).
         const fieldId = 'rm-' + params[0].name.replace(/_/g, '-');
 
         // Wrap params in form-group to match the grid layout
@@ -760,7 +760,7 @@
         }
 
         html += `<div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border-primary);">`;
-        html += `<strong>Toplam Pozisyon:</strong> <span style="color: var(--color-success); font-size: 1.1em;">$${total.toFixed(2)}</span>`;
+        html += `<strong>Total Positions:</strong> <span style="color: var(--color-success); font-size: 1.1em;">$${total.toFixed(2)}</span>`;
         html += `</div>`;
 
         exampleDiv.innerHTML = html;
@@ -782,7 +782,7 @@
             const seconds = parseInt(timeoutInput.value) || 0;
 
             if (seconds === 0) {
-                display.textContent = 'Sınırsız';
+                display.textContent = 'Unlimited';
             } else if (seconds < 60) {
                 display.textContent = `${seconds} saniye`;
             } else if (seconds < 3600) {
@@ -814,7 +814,7 @@
         'fixed_percent': [
             {
                 name: 'take_profit_value',
-                label: 'TP Yüzdesi',
+                label: 'TP Percentage',
                 type: 'number',
                 default: 2.0,
                 min: 0.1,
@@ -826,7 +826,7 @@
         'fixed_price': [
             {
                 name: 'tp_price',
-                label: 'TP Fiyatı',
+                label: 'TP Price',
                 type: 'number',
                 default: 50000,
                 min: 0,
@@ -837,39 +837,39 @@
         'risk_reward': [
             {
                 name: 'tp_risk_reward_ratio',
-                label: 'Risk/Reward Oranı',
+                label: 'Risk/Reward Ratio',
                 type: 'number',
                 default: 2.0,
                 min: 0.5,
                 max: 10,
                 step: 0.1,
-                help: 'Örn: 2.0 = %1 risk ile %2 kar hedefi'
+                help: 'Example: 2.0 = %1 risk with a %2 profit target.'
             }
         ],
         'atr_based': [
             {
                 name: 'tp_atr_multiplier',
-                label: 'ATR Çarpanı',
+                label: 'ATR Multiplier',
                 type: 'number',
                 default: 2.0,
                 min: 0.5,
                 max: 10,
                 step: 0.1,
-                help: 'ATR değerinin kaç katı TP mesafesi olacak'
+                help: 'ATR value's multiple of the TP distance.'
             }
         ],
         'fibonacci': [
             {
                 name: 'take_profit_value',
-                label: 'Fibonacci Seviyesi',
+                label: 'Fibonacci Level',
                 type: 'select',
                 options: [
-                    { value: 0.382, label: '0.382 (Düşük)' },
+                    { value: 0.382, label: '0.  382 (Low)' },
                     { value: 0.5, label: '0.5 (Orta)' },
-                    { value: 0.618, label: '0.618 (Altın Oran)' },
-                    { value: 1.0, label: '1.0 (Tam Dönüş)' },
-                    { value: 1.618, label: '1.618 (Genişleme)' },
-                    { value: 2.618, label: '2.618 (İleri Genişleme)' }
+                    { value: 0.618, label: '0.618 (Golden Ratio)' },
+                    { value: 1.0, label: '1.0 (Full Conversion)' },
+                    { value: 1.618, label: '1.618 (Expansion)' },
+                    { value: 2.618, label: '2.618 (Forward Expansion)' }
                 ],
                 default: 1.618
             }
@@ -884,7 +884,7 @@
                 max: 10,
                 step: 0.1,
                 suffix: '%',
-                help: 'AI tarafından piyasa koşullarına göre ayarlanacak (henüz aktif değil)'
+                help: 'AI will adjust according to market conditions (not yet active).'
             }
         ]
     };
@@ -893,7 +893,7 @@
         'fixed_percent': [
             {
                 name: 'stop_loss_value',
-                label: 'SL Yüzdesi',
+                label: 'SL Percentage',
                 type: 'number',
                 default: 1.0,
                 min: 0.1,
@@ -905,13 +905,13 @@
         'atr_based': [
             {
                 name: 'sl_atr_multiplier',
-                label: 'ATR Çarpanı',
+                label: 'ATR Multiplier',
                 type: 'number',
                 default: 1.5,
                 min: 0.5,
                 max: 5,
                 step: 0.1,
-                help: 'ATR değerinin kaç katı SL mesafesi olacak'
+                help: 'ATR value's multiple for the SL distance.'
             }
         ],
         'swing_point': [
@@ -923,7 +923,7 @@
                 min: 5,
                 max: 100,
                 step: 1,
-                help: 'Kaç bar geriye bakılarak swing low/high bulunacak'
+                help: 'Find the swing low/high by looking back a certain number of bars.'
             }
         ],
         'support_resistance': [
@@ -936,19 +936,20 @@
                 max: 2,
                 step: 0.1,
                 suffix: '%',
-                help: 'Support/Resistance seviyesinden ne kadar güvenlik payı'
+                help: 'Support/Resistance levelinden ne kadar güvenlik payı
+How much safety margin from the Support/Resistance level.'
             }
         ],
         'volatility_based': [
             {
                 name: 'stop_loss_value',
-                label: 'Volatilite Çarpanı',
+                label: 'Volatility Factor',
                 type: 'number',
                 default: 2.0,
                 min: 1,
                 max: 5,
                 step: 0.1,
-                help: 'Standart sapmanın kaç katı SL mesafesi olacak'
+                help: 'What multiple of the standard deviation will the SL distance be?'
             }
         ],
         'ai_adaptive': [
@@ -961,7 +962,7 @@
                 max: 10,
                 step: 0.1,
                 suffix: '%',
-                help: 'AI tarafından piyasa koşullarına göre ayarlanacak (henüz aktif değil)'
+                help: 'AI will adjust according to market conditions (not yet active).'
             }
         ]
     };
@@ -971,11 +972,11 @@
         const params = TP_METHOD_PARAMS[method];
 
         if (!params || params.length === 0) {
-            container.innerHTML = '<div style="padding: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; text-align: center;">Parametre yok</div>';
+            container.innerHTML = '<div style="padding: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; text-align: center;">No parameters</div>';
             return;
         }
 
-        // Sadece ilk parametreyi göster (yan yana layout için)
+        // Show only the first parameter (for side-by-side layout).
         const param = params[0];
 
         if (param.type === 'select') {
@@ -1022,11 +1023,11 @@
         const params = SL_METHOD_PARAMS[method];
 
         if (!params || params.length === 0) {
-            container.innerHTML = '<div style="padding: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; text-align: center;">Parametre yok</div>';
+            container.innerHTML = '<div style="padding: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; text-align: center;">No parameters</div>';
             return;
         }
 
-        // Sadece ilk parametreyi göster (yan yana layout için)
+        // Show only the first parameter (for side-by-side layout).
         const param = params[0];
 
         container.innerHTML = `
@@ -1230,11 +1231,11 @@
         // Add built-in exit condition indicators (only for exit conditions)
         if (isExitCondition) {
             indicators.push(
-                { value: 'loss_percent', label: '💸 Loss % (Zarar Yüzdesi)', isBuiltIn: true },
-                { value: 'profit_percent', label: '💰 Profit % (Kar Yüzdesi)', isBuiltIn: true },
+                { value: 'loss_percent', label: '💸 Loss % (Loss Percentage)', isBuiltIn: true },
+                { value: 'profit_percent', label: '💰 Profit % (Profit Percentage)', isBuiltIn: true },
                 { value: 'atr_stop', label: '🎯 ATR Stop', isBuiltIn: true },
                 { value: 'support', label: '📉 Support (Destek)', isBuiltIn: true },
-                { value: 'resistance', label: '📈 Resistance (Direnç)', isBuiltIn: true },
+                { value: 'resistance', label: '📈 Resistance (Resistance)', isBuiltIn: true },
                 { value: 'time_in_position', label: '⏱️ Time in Position (Saniye)', isBuiltIn: true }
             );
         }
@@ -1352,32 +1353,32 @@
 
     // Available operators (categorized)
     const OPERATORS = [
-        // Temel Karşılaştırma
-        { value: '>', label: '> (Büyük)', category: 'Karşılaştırma' },
-        { value: '<', label: '< (Küçük)', category: 'Karşılaştırma' },
-        { value: '>=', label: '>= (Büyük Eşit)', category: 'Karşılaştırma' },
-        { value: '<=', label: '<= (Küçük Eşit)', category: 'Karşılaştırma' },
-        { value: '==', label: '== (Eşit)', category: 'Karşılaştırma' },
+        // Basic Comparison
+        { value: '>', label: '(Large)', category: 'Comparison' },
+        { value: '<', label: '< (Small)', category: 'Comparison' },
+        { value: '>=', label: '>= (Greater than or equal to)', category: 'Comparison' },
+        { value: '<=', label: '<= (Less than or equal to)', category: 'Comparison' },
+        { value: '==', label: '== (Equal)', category: 'Comparison' },
 
         // Pattern (Only for talib_patterns indicator)
         { value: 'pattern', label: 'Pattern (Candlestick Pattern)', category: 'Pattern', patternOnly: true },
 
         // Trend ve Hareket
-        { value: 'crossover', label: 'Crossover (Yukarı Kesişim)', category: 'Trend' },
-        { value: 'crossunder', label: 'Crossunder (Aşağı Kesişim)', category: 'Trend' },
-        { value: 'rising', label: 'Rising (Yükseliş)', category: 'Trend' },
+        { value: 'crossover', label: 'Crossover (Intersection)', category: 'Trend' },
+        { value: 'crossunder', label: 'Crossunder (Crossunder)', category: 'Trend' },
+        { value: 'rising', label: 'Rising (Ascent)', category: 'Trend' },
         { value: 'falling', label: 'Falling (Düşüş)', category: 'Trend' },
         { value: 'between', label: 'Between (Arasında)', category: 'Trend' },
         { value: 'outside', label: 'Outside (Dışında)', category: 'Trend' },
 
-        // Pozisyon Bazlı (Exit için)
-        { value: 'triggered', label: 'Triggered (Tetiklendi)', category: 'Pozisyon', exitOnly: true },
-        { value: 'profit_percent', label: 'Profit % (Kar Yüzdesi)', category: 'Pozisyon', exitOnly: true },
-        { value: 'loss_percent', label: 'Loss % (Zarar Yüzdesi)', category: 'Pozisyon', exitOnly: true },
+        // Position-based (for exit)
+        { value: 'triggered', label: 'Triggered (Tetiklendi)', category: 'Position', exitOnly: true },
+        { value: 'profit_percent', label: 'Profit % (Profit Percentage)', category: 'Position', exitOnly: true },
+        { value: 'loss_percent', label: 'Loss % (Loss Percentage)', category: 'Position', exitOnly: true },
 
-        // Fiyat Bazlı
-        { value: 'reached', label: 'Reached (Ulaştı)', category: 'Fiyat' },
-        { value: 'broken', label: 'Broken (Kırıldı)', category: 'Fiyat' }
+        // Price-based
+        { value: 'reached', label: 'Reached (Ulaştı)', category: 'Price' },
+        { value: 'broken', label: 'Broken (Broken)', category: 'Price' }
     ];
 
     // Available timeframes
@@ -1404,15 +1405,15 @@
 
             <!-- Indicator Select -->
             <select class="condition-select" id="indicator-${conditionId}" onchange="updateOperatorOptions('${conditionId}')">
-                <option value="">İndikatör Seç</option>
+                <option value="">Select Indicator</option>
                 ${availableIndicators.map(ind => `<option value="${ind.value}">${ind.label}</option>`).join('')}
             </select>
 
             <!-- Operator Select -->
             <select class="condition-select" id="operator-${conditionId}" onchange="updateConditionThreshold('${conditionId}')">
-                <option value="">Operatör Seç</option>
-                <optgroup label="📊 Karşılaştırma">
-                    ${OPERATORS.filter(op => op.category === 'Karşılaştırma' && !op.exitOnly).map(op =>
+                <option value="">Select Operator</option>
+                <optgroup label="📊 Comparison">
+                    ${OPERATORS.filter(op => op.category === 'Comparison' && !op.exitOnly).map(op =>
                         `<option value="${op.value}">${op.label}</option>`
                     ).join('')}
                 </optgroup>
@@ -1421,13 +1422,13 @@
                         `<option value="${op.value}">${op.label}</option>`
                     ).join('')}
                 </optgroup>
-                <optgroup label="💰 Pozisyon Bazlı">
-                    ${OPERATORS.filter(op => op.category === 'Pozisyon').map(op =>
+                <optgroup label="💰 Position-based">
+                    ${OPERATORS.filter(op => op.category === 'Position').map(op =>
                         `<option value="${op.value}">${op.label}</option>`
                     ).join('')}
                 </optgroup>
-                <optgroup label="💲 Fiyat Bazlı">
-                    ${OPERATORS.filter(op => op.category === 'Fiyat' && !op.exitOnly).map(op =>
+                <optgroup label="💲 Price-based">
+                    ${OPERATORS.filter(op => op.category === 'Price' && !op.exitOnly).map(op =>
                         `<option value="${op.value}">${op.label}</option>`
                     ).join('')}
                 </optgroup>
@@ -1436,7 +1437,7 @@
             <!-- Threshold (can be number or indicator name) -->
             <div id="threshold-container-${conditionId}" style="flex: 1; display: flex; gap: 0.5rem;">
                 <input type="text" class="condition-input" id="threshold-${conditionId}"
-                       placeholder="Değer veya İndikatör">
+                       placeholder="Value or Indicator">
             </div>
 
             <!-- Timeframe Select (Optional) -->
@@ -1488,7 +1489,7 @@
         const isTalibPatterns = indicator && indicator.includes('talib_patterns');
 
         // Build operator options
-        let optionsHTML = '<option value="">Operatör Seç</option>';
+        let optionsHTML = '<option value="">Select Operator</option>';
 
         // Add Pattern operator only for talib_patterns
         if (isTalibPatterns) {
@@ -1501,8 +1502,8 @@
 
         // Add standard operators
         optionsHTML += `
-            <optgroup label="📊 Karşılaştırma">
-                ${OPERATORS.filter(op => op.category === 'Karşılaştırma' && !op.exitOnly && !op.patternOnly).map(op =>
+            <optgroup label="📊 Comparison">
+                ${OPERATORS.filter(op => op.category === 'Comparison' && !op.exitOnly && !op.patternOnly).map(op =>
                     `<option value="${op.value}">${op.label}</option>`
                 ).join('')}
             </optgroup>
@@ -1511,13 +1512,13 @@
                     `<option value="${op.value}">${op.label}</option>`
                 ).join('')}
             </optgroup>
-            <optgroup label="💰 Pozisyon Bazlı">
-                ${OPERATORS.filter(op => op.category === 'Pozisyon' && !op.patternOnly).map(op =>
+            <optgroup label="💰 Position-based">
+                ${OPERATORS.filter(op => op.category === 'Position' && !op.patternOnly).map(op =>
                     `<option value="${op.value}">${op.label}</option>`
                 ).join('')}
             </optgroup>
-            <optgroup label="💲 Fiyat Bazlı">
-                ${OPERATORS.filter(op => op.category === 'Fiyat' && !op.exitOnly && !op.patternOnly).map(op =>
+            <optgroup label="💲 Price-based">
+                ${OPERATORS.filter(op => op.category === 'Price' && !op.exitOnly && !op.patternOnly).map(op =>
                     `<option value="${op.value}">${op.label}</option>`
                 ).join('')}
             </optgroup>
@@ -1542,13 +1543,13 @@
         if (operator === 'pattern') {
             thresholdContainer.innerHTML = `
                 <select class="condition-select" id="threshold-${conditionId}" style="flex: 1;">
-                    <option value="">Pattern Seç</option>
+                    <option value="">Select Pattern</option>
                     ${TALIB_PATTERNS.map(p => `<option value="${p.value}">${p.label}</option>`).join('')}
                 </select>
                 <select class="condition-select" id="threshold2-${conditionId}" style="width: 120px;">
                     <option value="0">Any (Herhangi)</option>
-                    <option value="100">Bullish (Yükseliş)</option>
-                    <option value="-100">Bearish (Düşüş)</option>
+                    <option value="100">Bullish (Uptrend)</option>
+                    <option value="-100">Bearish (Decline)</option>
                 </select>
             `;
         }
@@ -1556,19 +1557,19 @@
         else if (operator === 'crossover' || operator === 'crossunder') {
             thresholdContainer.innerHTML = `
                 <select class="condition-select" id="threshold-${conditionId}">
-                    <option value="">Hedef Seç</option>
-                    <optgroup label="🔢 Sayısal Değer">
-                        <option value="number">Sayı Gir</option>
+                    <option value="">Select Target</option>
+                    <optgroup label="🔢 Numerical Value">
+                        <option value="number">Enter a number</option>
                     </optgroup>
-                    <optgroup label="📊 İndikatör">
+                    <optgroup label="📊 Indicator">
                         ${availableIndicators.map(ind => `<option value="${ind.value}">${ind.label}</option>`).join('')}
                     </optgroup>
                 </select>
                 <input type="number" class="condition-input" id="threshold-number-${conditionId}"
-                       placeholder="Değer" step="0.01" style="display: none;">
+                       placeholder="Value" step="0.01" style="display: none;">
             `;
 
-            // Add listener to show number input when "Sayı Gir" is selected
+            // Add listener to show number input when "Enter a number" is selected
             const thresholdSelect = document.getElementById(`threshold-${conditionId}`);
             const thresholdNumber = document.getElementById(`threshold-number-${conditionId}`);
 
@@ -1585,31 +1586,31 @@
         else if (operator === 'rising' || operator === 'falling') {
             thresholdContainer.innerHTML = `
                 <input type="number" class="condition-input" id="threshold-${conditionId}"
-                       placeholder="Bar Sayısı" value="2" min="1" max="10" step="1">
+                       placeholder="Number of Bars" value="2" min="1" max="10" step="1">
             `;
         }
         // For between/outside, need two values
         else if (operator === 'between' || operator === 'outside') {
             thresholdContainer.innerHTML = `
                 <input type="number" class="condition-input" id="threshold-${conditionId}"
-                       placeholder="Alt Değer" step="0.01" style="flex: 1;">
+                       placeholder="Lower Value" step="0.01" style="flex: 1;">
                 <span style="color: var(--text-secondary);">-</span>
                 <input type="number" class="condition-input" id="threshold2-${conditionId}"
-                       placeholder="Üst Değer" step="0.01" style="flex: 1;">
+                       placeholder="Upper Value" step="0.01" style="flex: 1;">
             `;
         }
         // For profit_percent, loss_percent - percentage input
         else if (operator === 'profit_percent' || operator === 'loss_percent') {
             thresholdContainer.innerHTML = `
                 <input type="number" class="condition-input" id="threshold-${conditionId}"
-                       placeholder="Yüzde (%)" value="1.0" min="0" max="100" step="0.1">
+                       placeholder="Percent (%)" value="1.0" min="0" max="100" step="0.1">
             `;
         }
         // For reached, broken - price level input
         else if (operator === 'reached' || operator === 'broken') {
             thresholdContainer.innerHTML = `
                 <input type="number" class="condition-input" id="threshold-${conditionId}"
-                       placeholder="Fiyat Seviyesi" step="0.01">
+                       placeholder="Price Level" step="0.01">
             `;
         }
         // Default: number OR indicator selection (for comparison operators)
@@ -1618,12 +1619,12 @@
                 <select class="condition-select" id="threshold-mode-${conditionId}"
                         onchange="toggleThresholdMode('${conditionId}')"
                         style="width: auto; min-width: 80px;">
-                    <option value="number">Sayı</option>
-                    <option value="indicator">İndikatör</option>
+                    <option value="number">Number</option>
+                    <option value="indicator">Indicator</option>
                 </select>
                 <div id="threshold-value-${conditionId}" style="flex: 1; display: flex;">
                     <input type="number" class="condition-input" id="threshold-${conditionId}"
-                           placeholder="Değer" step="0.01" style="flex: 1;">
+                           placeholder="Value" step="0.01" style="flex: 1;">
                 </div>
             `;
         }
@@ -1631,7 +1632,7 @@
         else {
             thresholdContainer.innerHTML = `
                 <input type="number" class="condition-input" id="threshold-${conditionId}"
-                       placeholder="Değer" step="0.01" style="opacity: 0.5;" disabled>
+                       placeholder="Value" step="0.01" style="opacity: 0.5;" disabled>
             `;
         }
     }
@@ -1650,14 +1651,14 @@
         if (mode === 'indicator') {
             valueContainer.innerHTML = `
                 <select class="condition-select" id="threshold-${conditionId}" style="flex: 1;">
-                    <option value="">İndikatör Seç</option>
+                    <option value="">Select Indicator</option>
                     ${availableIndicators.map(ind => `<option value="${ind.value}">${ind.label}</option>`).join('')}
                 </select>
             `;
         } else {
             valueContainer.innerHTML = `
                 <input type="number" class="condition-input" id="threshold-${conditionId}"
-                       placeholder="Değer" step="0.01" style="flex: 1;">
+                       placeholder="Value" step="0.01" style="flex: 1;">
             `;
         }
     }
@@ -1702,15 +1703,15 @@
 
             <!-- Indicator Select -->
             <select class="condition-select" id="indicator-${conditionId}" onchange="updateExitOperatorOptions('${conditionId}')">
-                <option value="">İndikatör Seç</option>
+                <option value="">Select Indicator</option>
                 ${availableIndicators.map(ind => `<option value="${ind.value}">${ind.label}</option>`).join('')}
             </select>
 
             <!-- Operator Select (all operators for exit) -->
             <select class="condition-select" id="operator-${conditionId}" onchange="updateConditionThreshold('${conditionId}')">
-                <option value="">Operatör Seç</option>
-                <optgroup label="📊 Karşılaştırma">
-                    ${OPERATORS.filter(op => op.category === 'Karşılaştırma').map(op =>
+                <option value="">Select Operator</option>
+                <optgroup label="📊 Comparison">
+                    ${OPERATORS.filter(op => op.category === 'Comparison').map(op =>
                         `<option value="${op.value}">${op.label}</option>`
                     ).join('')}
                 </optgroup>
@@ -1719,13 +1720,13 @@
                         `<option value="${op.value}">${op.label}</option>`
                     ).join('')}
                 </optgroup>
-                <optgroup label="💰 Pozisyon Bazlı">
-                    ${OPERATORS.filter(op => op.category === 'Pozisyon').map(op =>
+                <optgroup label="💰 Position-based">
+                    ${OPERATORS.filter(op => op.category === 'Position').map(op =>
                         `<option value="${op.value}">${op.label}</option>`
                     ).join('')}
                 </optgroup>
-                <optgroup label="💲 Fiyat Bazlı">
-                    ${OPERATORS.filter(op => op.category === 'Fiyat').map(op =>
+                <optgroup label="💲 Price-based">
+                    ${OPERATORS.filter(op => op.category === 'Price').map(op =>
                         `<option value="${op.value}">${op.label}</option>`
                     ).join('')}
                 </optgroup>
@@ -1734,7 +1735,7 @@
             <!-- Threshold (can be number or indicator name) -->
             <div id="threshold-container-${conditionId}" style="flex: 1; display: flex; gap: 0.5rem;">
                 <input type="text" class="condition-input" id="threshold-${conditionId}"
-                       placeholder="Değer veya İndikatör">
+                       placeholder="Value or Indicator">
             </div>
 
             <!-- Timeframe Select (Optional) -->
@@ -1791,7 +1792,7 @@
         const isBuiltInExitIndicator = ['loss_percent', 'profit_percent', 'atr_stop', 'support', 'resistance', 'time_in_position'].includes(indicator);
 
         // Build operator options
-        let optionsHTML = '<option value="">Operatör Seç</option>';
+        let optionsHTML = '<option value="">Select Operator</option>';
 
         // Add Pattern operator only for talib_patterns
         if (isTalibPatterns) {
@@ -1806,8 +1807,8 @@
             if (indicator === 'loss_percent' || indicator === 'profit_percent' || indicator === 'time_in_position') {
                 // Only show comparison operators for percentage and time-based
                 optionsHTML += `
-                    <optgroup label="📊 Karşılaştırma">
-                        ${OPERATORS.filter(op => op.category === 'Karşılaştırma').map(op =>
+                    <optgroup label="📊 Comparison">
+                        ${OPERATORS.filter(op => op.category === 'Comparison').map(op =>
                             `<option value="${op.value}">${op.label}</option>`
                         ).join('')}
                     </optgroup>
@@ -1815,14 +1816,14 @@
             } else if (indicator === 'atr_stop') {
                 // Only triggered operator for ATR stop
                 optionsHTML += `
-                    <optgroup label="💰 Pozisyon Bazlı">
+                    <optgroup label="💰 Position-based">
                         <option value="triggered">Triggered (Tetiklendi)</option>
                     </optgroup>
                 `;
             } else if (indicator === 'support' || indicator === 'resistance') {
                 // reached/broken operators for support/resistance
                 optionsHTML += `
-                    <optgroup label="💲 Fiyat Bazlı">
+                    <optgroup label="💲 Price-based">
                         <option value="reached">Reached (Ulaştı)</option>
                         <option value="broken">Broken (Kırıldı)</option>
                     </optgroup>
@@ -1832,8 +1833,8 @@
         // Add standard operators (all operators available for exit)
         else {
             optionsHTML += `
-                <optgroup label="📊 Karşılaştırma">
-                    ${OPERATORS.filter(op => op.category === 'Karşılaştırma' && !op.patternOnly).map(op =>
+                <optgroup label="📊 Comparison">
+                    ${OPERATORS.filter(op => op.category === 'Comparison' && !op.patternOnly).map(op =>
                         `<option value="${op.value}">${op.label}</option>`
                     ).join('')}
                 </optgroup>
@@ -1842,13 +1843,13 @@
                         `<option value="${op.value}">${op.label}</option>`
                     ).join('')}
                 </optgroup>
-                <optgroup label="💰 Pozisyon Bazlı">
-                    ${OPERATORS.filter(op => op.category === 'Pozisyon' && !op.patternOnly).map(op =>
+                <optgroup label="💰 Position-based">
+                    ${OPERATORS.filter(op => op.category === 'Position' && !op.patternOnly).map(op =>
                         `<option value="${op.value}">${op.label}</option>`
                     ).join('')}
                 </optgroup>
-                <optgroup label="💲 Fiyat Bazlı">
-                    ${OPERATORS.filter(op => op.category === 'Fiyat' && !op.patternOnly).map(op =>
+                <optgroup label="💲 Price-based">
+                    ${OPERATORS.filter(op => op.category === 'Price' && !op.patternOnly).map(op =>
                         `<option value="${op.value}">${op.label}</option>`
                     ).join('')}
                 </optgroup>
@@ -1875,13 +1876,13 @@
         if (operator === 'pattern') {
             thresholdContainer.innerHTML = `
                 <select class="condition-select" id="threshold-${conditionId}" style="flex: 1;">
-                    <option value="">Pattern Seç</option>
+                    <option value="">Select Pattern</option>
                     ${TALIB_PATTERNS.map(p => `<option value="${p.value}">${p.label}</option>`).join('')}
                 </select>
                 <select class="condition-select" id="threshold2-${conditionId}" style="width: 120px;">
                     <option value="0">Any (Herhangi)</option>
-                    <option value="100">Bullish (Yükseliş)</option>
-                    <option value="-100">Bearish (Düşüş)</option>
+                    <option value="100">Bullish (Uptrend)</option>
+                    <option value="-100">Bearish (Decline)</option>
                 </select>
             `;
         }
@@ -1889,16 +1890,16 @@
         else if (operator === 'crossover' || operator === 'crossunder') {
             thresholdContainer.innerHTML = `
                 <select class="condition-select" id="threshold-${conditionId}">
-                    <option value="">Hedef Seç</option>
-                    <optgroup label="🔢 Sayısal Değer">
-                        <option value="number">Sayı Gir</option>
+                    <option value="">Select Target</option>
+                    <optgroup label="🔢 Numerical Value">
+                        <option value="number">Enter a number</option>
                     </optgroup>
-                    <optgroup label="📊 İndikatör">
+                    <optgroup label="📊 Indicator">
                         ${availableIndicators.map(ind => `<option value="${ind.value}">${ind.label}</option>`).join('')}
                     </optgroup>
                 </select>
                 <input type="number" class="condition-input" id="threshold-number-${conditionId}"
-                       placeholder="Değer" step="0.01" style="display: none;">
+                       placeholder="Value" step="0.01" style="display: none;">
             `;
 
             const thresholdSelect = document.getElementById(`threshold-${conditionId}`);
@@ -1917,24 +1918,24 @@
         else if (operator === 'rising' || operator === 'falling') {
             thresholdContainer.innerHTML = `
                 <input type="number" class="condition-input" id="threshold-${conditionId}"
-                       placeholder="Bar Sayısı" value="2" min="1" max="10" step="1">
+                       placeholder="Number of Bars" value="2" min="1" max="10" step="1">
             `;
         }
         // For between/outside, need two values
         else if (operator === 'between' || operator === 'outside') {
             thresholdContainer.innerHTML = `
                 <input type="number" class="condition-input" id="threshold-${conditionId}"
-                       placeholder="Alt Değer" step="0.01" style="flex: 1;">
+                       placeholder="Lower Value" step="0.01" style="flex: 1;">
                 <span style="color: var(--text-secondary);">-</span>
                 <input type="number" class="condition-input" id="threshold2-${conditionId}"
-                       placeholder="Üst Değer" step="0.01" style="flex: 1;">
+                       placeholder="Upper Value" step="0.01" style="flex: 1;">
             `;
         }
         // For profit_percent, loss_percent indicators - percentage input
         else if (indicator === 'profit_percent' || indicator === 'loss_percent') {
             thresholdContainer.innerHTML = `
                 <input type="number" class="condition-input" id="threshold-${conditionId}"
-                       placeholder="Yüzde (%)" value="1.0" min="0" max="100" step="0.1">
+                       placeholder="Percent (%)" value="1.0" min="0" max="100" step="0.1">
             `;
         }
         // For time_in_position indicator - seconds input
@@ -1960,14 +1961,14 @@
         else if (operator === 'profit_percent' || operator === 'loss_percent') {
             thresholdContainer.innerHTML = `
                 <input type="number" class="condition-input" id="threshold-${conditionId}"
-                       placeholder="Yüzde (%)" value="1.0" min="0" max="100" step="0.1">
+                       placeholder="Percent (%)" value="1.0" min="0" max="100" step="0.1">
             `;
         }
         // For reached, broken operators - price level input
         else if (operator === 'reached' || operator === 'broken') {
             thresholdContainer.innerHTML = `
                 <input type="number" class="condition-input" id="threshold-${conditionId}"
-                       placeholder="Fiyat Seviyesi" step="0.01">
+                       placeholder="Price Level" step="0.01">
             `;
         }
         // For triggered operator - no threshold needed
@@ -1982,12 +1983,12 @@
                 <select class="condition-select" id="threshold-mode-${conditionId}"
                         onchange="toggleThresholdMode('${conditionId}')"
                         style="width: auto; min-width: 80px;">
-                    <option value="number">Sayı</option>
-                    <option value="indicator">İndikatör</option>
+                    <option value="number">Number</option>
+                    <option value="indicator">Indicator</option>
                 </select>
                 <div id="threshold-value-${conditionId}" style="flex: 1; display: flex;">
                     <input type="number" class="condition-input" id="threshold-${conditionId}"
-                           placeholder="Değer" step="0.01" style="flex: 1;">
+                           placeholder="Value" step="0.01" style="flex: 1;">
                 </div>
             `;
         }
@@ -1995,7 +1996,7 @@
         else {
             thresholdContainer.innerHTML = `
                 <input type="number" class="condition-input" id="threshold-${conditionId}"
-                       placeholder="Değer" step="0.01" style="opacity: 0.5;" disabled>
+                       placeholder="Value" step="0.01" style="opacity: 0.5;" disabled>
             `;
         }
     }
@@ -2014,14 +2015,14 @@
         if (mode === 'indicator') {
             valueContainer.innerHTML = `
                 <select class="condition-select" id="threshold-${conditionId}" style="flex: 1;">
-                    <option value="">İndikatör Seç</option>
+                    <option value="">Select Indicator</option>
                     ${availableIndicators.map(ind => `<option value="${ind.value}">${ind.label}</option>`).join('')}
                 </select>
             `;
         } else {
             valueContainer.innerHTML = `
                 <input type="number" class="condition-input" id="threshold-${conditionId}"
-                       placeholder="Değer" step="0.01" style="flex: 1;">
+                       placeholder="Value" step="0.01" style="flex: 1;">
             `;
         }
     }
@@ -2126,7 +2127,7 @@
                 else if (operator === 'crossover' || operator === 'crossunder') {
                     let thresholdValue = thresholdElem?.value;
 
-                    // If user selected "Sayı Gir" (number), get value from the number input
+                    // If user selected "Enter a number" (number), get value from the number input
                     if (thresholdValue === 'number') {
                         const numberInput = document.getElementById(`threshold-number-${conditionId}`);
                         if (numberInput && numberInput.value) {
@@ -2211,7 +2212,7 @@
                 else if (operator === 'crossover' || operator === 'crossunder') {
                     let thresholdValue = thresholdElem?.value;
 
-                    // If user selected "Sayı Gir" (number), get value from the number input
+                    // If user selected "Enter a number" (number), get value from the number input
                     if (thresholdValue === 'number') {
                         const numberInput = document.getElementById(`threshold-number-${conditionId}`);
                         if (numberInput && numberInput.value) {
@@ -2455,7 +2456,7 @@
 
             // Validate strategy name
             if (!actualStrategyId || actualStrategyId.trim() === '') {
-                showToast('Hata', 'Strateji adı boş olamaz', 'error');
+                showToast('Error', 'Strategy name cannot be empty.', 'error');
                 showLoading(false);
                 return;
             }
@@ -2490,16 +2491,16 @@
             const result = await response.json();
 
             if (result.status === 'success') {
-                const successMessage = isNewStrategy ? 'Strateji oluşturuldu' : 'Strateji güncellendi';
-                showToast('Başarılı', successMessage, 'success');
+                const successMessage = isNewStrategy ? 'Strategy created' : 'Strategy updated';
+                showToast('Successful', successMessage, 'success');
                 setTimeout(() => window.location.href = `/strategies/${actualStrategyId}`, 500);
             } else {
-                const errorMessage = isNewStrategy ? 'Oluşturma başarısız' : 'Güncelleme başarısız';
-                showToast('Hata', result.message || errorMessage, 'error');
+                const errorMessage = isNewStrategy ? 'Creation failed' : 'Update failed';
+                showToast('Error', result.message || errorMessage, 'error');
             }
         } catch (error) {
             console.error('Error saving strategy:', error);
-            showToast('Hata', 'Kaydetme sırasında hata oluştu', 'error');
+            showToast('Error', 'An error occurred during saving.', 'error');
         } finally {
             showLoading(false);
         }
@@ -2517,20 +2518,20 @@
 
             if (result.status === 'success' && result.data) {
                 populateFormFromData(result.data);
-                showToast('Başarılı', 'Strateji yüklendi', 'success');
+                showToast('Successful', 'Strategy loaded', 'success');
             } else {
-                showToast('Hata', result.message || 'Yükleme başarısız', 'error');
+                showToast('Error', result.message || 'Loading failed', 'error');
             }
         } catch (error) {
             console.error('Error loading strategy:', error);
-            showToast('Hata', 'Yükleme sırasında hata oluştu', 'error');
+            showToast('Error', 'An error occurred during loading.', 'error');
         } finally {
             showLoading(false);
         }
     }
 
     function populateFormFromData(data) {
-        console.log('📂 Strategy yükleniyor:', data);
+        console.log('📂 Strategy is loading:', data);
 
         // ════════════════════════════════════════════════════════════
         // BASIC INFORMATION
@@ -2545,7 +2546,7 @@
         document.getElementById('strategy-version').value = data.version || '1.0.0';
         document.getElementById('strategy-description').value = data.description || '';
 
-        // Yeni alanlar
+        // New fields
         if (document.getElementById('strategy-author')) {
             document.getElementById('strategy-author').value = data.author || 'Unknown';
         }
@@ -2592,11 +2593,11 @@
 
         // Multi-timeframe checkboxes
         if (data.timeframes && Array.isArray(data.timeframes)) {
-            // Önce tüm checkbox'ları temizle
+            // First, clear all checkboxes.
             const checkboxes = document.querySelectorAll('#timeframe-dropdown-menu input[type="checkbox"]');
             checkboxes.forEach(cb => cb.checked = false);
 
-            // Yüklenen timeframe'leri işaretle
+            // Mark the loaded timeframes.
             data.timeframes.forEach(tf => {
                 const checkbox = document.querySelector(`#timeframe-dropdown-menu input[value="${tf}"]`);
                 if (checkbox) {
@@ -2604,12 +2605,12 @@
                 }
             });
 
-            // selectedTimeframes array'ini güncelle (eğer varsa)
+            // Update the selectedTimeframes array (if it exists).
             if (typeof selectedTimeframes !== 'undefined') {
                 selectedTimeframes = [...data.timeframes];
             }
 
-            // Display'i güncelle
+            // Update the display.
             if (typeof updateTimeframesDisplay === 'function') {
                 updateTimeframesDisplay();
             }
@@ -2782,7 +2783,7 @@
         // ════════════════════════════════════════════════════════════
         if (data.exit_strategy) {
             const es = data.exit_strategy;
-            console.log('📊 Exit Strategy yükleniyor:', es);
+            console.log('📊 Loading Exit Strategy:', es);
 
             // ──────────────────────────────────────
             // TAKE PROFIT
@@ -2800,9 +2801,9 @@
                 const tpField = document.getElementById('es-take_profit_value') || document.getElementById('es-tp_risk_reward_ratio') || document.getElementById('es-tp_atr_multiplier') || document.getElementById('es-tp_price');
                 if (tpField) {
                     tpField.value = es.take_profit_value || 2.0;
-                    console.log('✅ TP value yüklendi:', tpField.id, '=', es.take_profit_value);
+                    console.log('✅ TP value loaded:', tpField.id, '=', es.take_profit_value);
                 } else {
-                    console.warn('⚠️ TP field bulunamadı');
+                    console.warn('⚠️ TP field not found');
                 }
             }, 100);
 
@@ -2822,9 +2823,9 @@
                 const slField = document.getElementById('es-stop_loss_value') || document.getElementById('es-sl_atr_multiplier');
                 if (slField) {
                     slField.value = es.stop_loss_value || 1.0;
-                    console.log('✅ SL value yüklendi:', slField.id, '=', es.stop_loss_value);
+                    console.log('✅ SL value loaded:', slField.id, '=', es.stop_loss_value);
                 } else {
-                    console.warn('⚠️ SL field bulunamadı');
+                    console.warn('⚠️ SL field not found');
                 }
             }, 100);
 
@@ -2906,7 +2907,7 @@
                     }
                 }
             } else {
-                console.warn('⚠️ Partial exit data eksik veya geçersiz:', {
+                console.warn('⚠️ Partial exit data is missing or invalid:', {
                     levels: es.partial_exit_levels,
                     sizes: es.partial_exit_sizes
                 });
@@ -2956,7 +2957,7 @@
                             <label>Suffix</label>
                             <input type="text" class="param-input"
                                    id="${uniqueId}-suffix"
-                                   placeholder="(opsiyonel)"
+                                   placeholder="(optional)"
                                    value="${indData.suffix || ''}"
                                    data-param="_suffix"
                                    data-period-value="${periodValue}"
@@ -2994,7 +2995,7 @@
                                 <label for="${uniqueId}-checkbox" id="${uniqueId}-label">${indicatorLabel}</label>
                             </div>
                             <div class="indicator-params" id="${uniqueId}-params" style="display: block;">
-                                ${paramsHtml || '<div style="padding: 0.5rem; color: var(--text-secondary); font-size: 0.75rem;">Parametre yok</div>'}
+                                ${paramsHtml || '<div style="padding: 0.5rem; color: var(--text-secondary); font-size: 0.75rem;">No parameters</div>'}
                             </div>
                         </div>
                     `;
@@ -3080,7 +3081,7 @@
                                     // Special handling for crossover/crossunder operators
                                     if (operator === 'crossover' || operator === 'crossunder') {
                                         if (typeof threshold === 'number') {
-                                            // Select "Sayı Gir" option in dropdown
+                                            // Select "Enter a number" option in dropdown
                                             if (thresholdInput) {
                                                 thresholdInput.value = 'number';
                                                 // Hide dropdown, show number input
@@ -3099,12 +3100,12 @@
                                     } else {
                                         // Standard handling for comparison operators (>, <, >=, <=, ==, !=)
                                         if (typeof threshold === 'number') {
-                                            // Number threshold - default mode is already "Sayı"
+                                            // Number threshold - default mode is already "Number"
                                             if (thresholdInput) {
                                                 thresholdInput.value = threshold;
                                             }
                                         } else if (typeof threshold === 'string') {
-                                            // Indicator threshold - need to switch mode to "İndikatör"
+                                            // Indicator threshold - need to switch mode to "Indicator"
                                             if (thresholdModeSelect) {
                                                 // Switch mode to indicator
                                                 thresholdModeSelect.value = 'indicator';
@@ -3175,7 +3176,7 @@
                                     // Special handling for crossover/crossunder operators
                                     if (operator === 'crossover' || operator === 'crossunder') {
                                         if (typeof threshold === 'number') {
-                                            // Select "Sayı Gir" option in dropdown
+                                            // Select "Enter a number" option in dropdown
                                             if (thresholdInput) {
                                                 thresholdInput.value = 'number';
                                                 // Hide dropdown, show number input
@@ -3194,12 +3195,12 @@
                                     } else {
                                         // Standard handling for comparison operators (>, <, >=, <=, ==, !=)
                                         if (typeof threshold === 'number') {
-                                            // Number threshold - default mode is already "Sayı"
+                                            // Number threshold - default mode is already "Number"
                                             if (thresholdInput) {
                                                 thresholdInput.value = threshold;
                                             }
                                         } else if (typeof threshold === 'string') {
-                                            // Indicator threshold - need to switch mode to "İndikatör"
+                                            // Indicator threshold - need to switch mode to "Indicator"
                                             if (thresholdModeSelect) {
                                                 // Switch mode to indicator
                                                 thresholdModeSelect.value = 'indicator';
@@ -3285,7 +3286,7 @@
                                 // Special handling for crossover/crossunder operators
                                 if (operator === 'crossover' || operator === 'crossunder') {
                                     if (typeof threshold === 'number') {
-                                        // Select "Sayı Gir" option in dropdown
+                                        // Select "Enter a number" option in dropdown
                                         if (thresholdInput) {
                                             thresholdInput.value = 'number';
                                             // Hide dropdown, show number input
@@ -3310,7 +3311,7 @@
                                             thresholdInput.value = threshold;
                                         }
                                     } else if (typeof threshold === 'string') {
-                                        // Indicator threshold - need to switch mode to "İndikatör"
+                                        // Indicator threshold - need to switch mode to "Indicator"
                                         if (thresholdModeSelect) {
                                             thresholdModeSelect.value = 'indicator';
                                             toggleThresholdMode(conditionId);
@@ -3467,7 +3468,7 @@
             }
         }
 
-        console.log('✅ Form doldurma tamamlandı');
+        console.log('✅ Form filling completed');
     }
 
     // ========================================

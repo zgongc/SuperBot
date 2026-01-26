@@ -1,8 +1,8 @@
 """
 modules/webui/api/exchanges.py
 SuperBot - Exchange Accounts API Endpoints
-Yazar: SuperBot Team
-Tarih: 2025-10-30
+Author: SuperBot Team
+Date: 2025-10-30
 Versiyon: 1.0.0
 
 Exchange account management REST API

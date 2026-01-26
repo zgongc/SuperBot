@@ -816,11 +816,11 @@ async function toggleAlertStatus(alertId, newStatus) {
 
 async function deleteAlert(alertId) {
     const confirmed = await confirm({
-        title: 'Alarmı Sil?',
-        message: 'Bu alarm silinecek. Devam etmek istediğinize emin misiniz?',
+        title: 'Delete alarm?',
+        message: 'This alarm will be deleted. Are you sure you want to continue?',
         type: 'danger',
-        confirmText: 'Sil',
-        cancelText: 'İptal'
+        confirmText: 'Delete',
+        cancelText: 'Cancel'
     });
     if (!confirmed) return;
 

@@ -15,7 +15,7 @@ def register_routes(bp):
 
     @bp.route('/replay/strategies', methods=['GET'])
     def get_strategies():
-        """GET /api/replay/strategies - Strateji listesi"""
+        """GET /api/replay/strategies - Strategy list"""
         try:
             service = get_replay_service()
             strategies = run_async(service.get_strategies())
@@ -25,22 +25,22 @@ def register_routes(bp):
 
     @bp.route('/replay/sessions', methods=['POST'])
     def create_session():
-        """POST /api/replay/sessions - Yeni replay session oluştur
+        """POST /api/replay/sessions - Create a new replay session
 
         Body:
-            strategy_id: Strateji ID (required)
-            calculate_indicators: true/false - Indicator hesaplama (default: false)
+            strategy_id: Strategy ID (required)
+            calculate_indicators: true/false - Indicator calculation (default: false)
         """
         try:
             data = request.get_json()
             if not data:
-                return error_response('Request body boş olamaz', 400)
+                return error_response('Request body cannot be empty', 400)
 
             strategy_id = data.get('strategy_id')
             if not strategy_id:
-                return error_response('strategy_id gerekli', 400)
+                return error_response('strategy_id is required', 400)
 
-            # Performance: default False - indicator hesaplamayı atla
+            # Performance: default False - skip indicator calculation
             calculate_indicators = data.get('calculate_indicators', False)
 
             service = get_replay_service()
@@ -54,12 +54,12 @@ def register_routes(bp):
 
     @bp.route('/replay/sessions/<session_id>', methods=['GET'])
     def get_session(session_id):
-        """GET /api/replay/sessions/{id} - Session detayları"""
+        """GET /api/replay/sessions/{id} - Session details"""
         try:
             service = get_replay_service()
             session = run_async(service.get_session(session_id))
             if not session:
-                return error_response('Session bulunamadı', 404)
+                return error_response('Session not found', 404)
             return success_response({'session': session})
         except Exception as e:
             return error_response(str(e), 500)
@@ -74,14 +74,14 @@ def register_routes(bp):
             service = get_replay_service()
             result = run_async(service.get_candles(session_id, start, limit))
             if not result:
-                return error_response('Session bulunamadı', 404)
+                return error_response('Session not found', 404)
             return success_response(result)
         except Exception as e:
             return error_response(str(e), 500)
 
     @bp.route('/replay/sessions/<session_id>/play', methods=['POST'])
     def play_session(session_id):
-        """POST /api/replay/sessions/{id}/play - Replay başlat"""
+        """POST /api/replay/sessions/{id}/play - Start replay"""
         try:
             service = get_replay_service()
             result = run_async(service.play(session_id))
@@ -119,7 +119,7 @@ def register_routes(bp):
             data = request.get_json() or {}
             position = data.get('position')
             if position is None:
-                return error_response('position gerekli', 400)
+                return error_response('position is required', 400)
 
             service = get_replay_service()
             result = run_async(service.seek(session_id, position))
@@ -129,7 +129,7 @@ def register_routes(bp):
 
     @bp.route('/replay/sessions/<session_id>/speed', methods=['POST'])
     def set_speed(session_id):
-        """POST /api/replay/sessions/{id}/speed - Hız ayarla"""
+        """POST /api/replay/sessions/{id}/speed - Set speed"""
         try:
             data = request.get_json() or {}
             speed = data.get('speed', 1.0)
@@ -142,19 +142,19 @@ def register_routes(bp):
 
     @bp.route('/replay/sessions/<session_id>/state', methods=['GET'])
     def get_state(session_id):
-        """GET /api/replay/sessions/{id}/state - Mevcut state"""
+        """GET /api/replay/sessions/{id}/state - Current state"""
         try:
             service = get_replay_service()
             state = run_async(service.get_state(session_id))
             if not state:
-                return error_response('Session bulunamadı', 404)
+                return error_response('Session not found', 404)
             return success_response({'state': state})
         except Exception as e:
             return error_response(str(e), 500)
 
     @bp.route('/replay/sessions/<session_id>/trades', methods=['GET'])
     def get_trades(session_id):
-        """GET /api/replay/sessions/{id}/trades - Trade listesi"""
+        """GET /api/replay/sessions/{id}/trades - Trade list"""
         try:
             service = get_replay_service()
             trades = run_async(service.get_trades(session_id))
@@ -174,7 +174,7 @@ def register_routes(bp):
 
     @bp.route('/backtest/trades', methods=['GET'])
     def get_backtest_trades():
-        """GET /api/backtest/trades - Backtest trade'lerini ve bar index'lerini getir
+        """GET /api/backtest/trades - Retrieves backtest trades and bar indices.
 
         Query params:
             symbol: BTCUSDT (required)
@@ -188,32 +188,32 @@ def register_routes(bp):
             timeframe = request.args.get('timeframe')
 
             if not symbol or not timeframe:
-                return error_response('symbol ve timeframe gerekli', 400)
+                return error_response('symbol and timeframe are required', 400)
 
-            # Backtest parquet dosyasını bul
+            # Find the backtest parquet file
             backtest_dir = Path("data/ai/features/backtest")
             if not backtest_dir.exists():
-                return error_response('Backtest dizini bulunamadı', 404)
+                return error_response('Backtest directory not found', 404)
 
             pattern = f"backtest_{symbol}_{timeframe}_*.parquet"
             files = sorted(backtest_dir.glob(pattern), reverse=True)
 
             if not files:
-                return error_response(f'Backtest dosyası bulunamadı: {pattern}', 404)
+                return error_response(f'Backtest file not found: {pattern}', 404)
 
-            # En son backtest dosyasını yükle
+            # Load the most recent backtest file
             df = pd.read_parquet(files[0])
 
             if df.empty:
                 return success_response({'trades': [], 'trade_bar_indices': []})
 
-            # Candle verilerini yükle (timestamp -> bar index mapping için)
+            # Load candle data (for timestamp -> bar index mapping)
             parquet_dir = Path("data/parquets") / symbol
             candle_pattern = f"{symbol}_{timeframe}_*.parquet"
             candle_files = sorted(parquet_dir.glob(candle_pattern))
 
             if not candle_files:
-                return error_response('Candle dosyası bulunamadı', 404)
+                return error_response('Candle file not found', 404)
 
             candle_df = pd.read_parquet(candle_files[-1])
 
@@ -229,7 +229,7 @@ def register_routes(bp):
                     ts_sec = int(pd.to_datetime(ts).timestamp())
                 ts_to_index[ts_sec] = idx
 
-            # Trade bar index'lerini hesapla
+            # Calculate trade bar indices
             trade_bar_indices = []
             trades = []
 
@@ -238,13 +238,13 @@ def register_routes(bp):
                 if not pd.notna(entry_ts):
                     continue
 
-                # Entry timestamp'i saniyeye çevir
+                # Convert the entry timestamp to seconds
                 if isinstance(entry_ts, (int, float)):
                     entry_ts_sec = int(entry_ts / 1000) if entry_ts > 1e12 else int(entry_ts)
                 else:
                     entry_ts_sec = int(entry_ts)
 
-                # En yakın candle'ı bul
+                # Find the nearest candle
                 closest_idx = 0
                 min_diff = float('inf')
                 for ts, idx in ts_to_index.items():
@@ -287,7 +287,7 @@ def register_routes(bp):
 
             symbol = request.args.get('symbol')
             if not symbol:
-                return error_response('symbol gerekli', 400)
+                return error_response('symbol required', 400)
 
             timeframe = request.args.get('timeframe', '5m')
             limit = request.args.get('limit', 500, type=int)
@@ -296,19 +296,19 @@ def register_routes(bp):
             parquet_dir = Path("data/parquets")
             symbol_dir = parquet_dir / symbol
             if not symbol_dir.exists():
-                return error_response(f'Sembol dizini bulunamadi: {symbol}', 404)
+                return error_response(f'Symbol index not found: {symbol}', 404)
 
             pattern = f"{symbol}_{timeframe}_*.parquet"
             files = list(symbol_dir.glob(pattern))
 
             if not files:
-                return error_response(f'Parquet dosyasi bulunamadi: {pattern}', 404)
+                return error_response(f'Parquet file not found: {pattern}', 404)
 
             parquet_file = sorted(files)[-1]
             df = pd.read_parquet(parquet_file)
 
             if df is None or len(df) == 0:
-                return error_response('Veri bulunamadi', 404)
+                return error_response('Data not found', 404)
 
             # Limit uygula
             if limit and len(df) > limit:
@@ -330,7 +330,7 @@ def register_routes(bp):
                     else:
                         ts = int(ts)
                 else:
-                    # String veya baska tip
+                    # String or other type
                     ts = int(pd.to_datetime(ts).timestamp())
 
                 candles.append({
@@ -357,7 +357,7 @@ def register_routes(bp):
 
     @bp.route('/data/symbols', methods=['GET'])
     def get_data_symbols():
-        """GET /api/data/symbols - data/parquets klasöründeki sembolleri listele
+        """GET /api/data/symbols - Lists the symbols in the data/parquets folder
 
         Returns:
             {
@@ -372,13 +372,13 @@ def register_routes(bp):
             if not parquet_dir.exists():
                 return success_response({'symbols': [], 'total': 0})
 
-            # Her alt klasör bir sembol
+            # Each subdirectory represents a symbol
             symbols = []
             for item in sorted(parquet_dir.iterdir()):
                 if item.is_dir():
-                    # Klasör adı sembol adı
+                    # Folder name symbol name
                     symbol = item.name.upper()
-                    # En az bir parquet dosyası var mı kontrol et
+                    # Check if there is at least one parquet file.
                     parquet_files = list(item.glob("*.parquet"))
                     if parquet_files:
                         symbols.append(symbol)
