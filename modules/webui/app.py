@@ -99,6 +99,7 @@ def init_components(app, config):
     from .services.replay_service import ReplayService
     from .services.smc_service import SMCService
     from .services.download_service import DownloadService
+    from .services.monitoring_service import MonitoringService
 
     config.logger.info("Initializing components...")
 
@@ -161,6 +162,7 @@ def init_components(app, config):
     replay_service = ReplayService(data_manager, config.logger, parquets_engine, strategy_manager)
     smc_service = SMCService(parquets_engine=parquets_engine, logger=config.logger)
     download_service = DownloadService(logger=config.logger)
+    monitoring_service = MonitoringService(history_size=60)
 
     # Store in app context
     app.data_manager = data_manager
@@ -186,6 +188,7 @@ def init_components(app, config):
     app.smc_service = smc_service
     app.parquets_engine = parquets_engine
     app.download_service = download_service
+    app.monitoring_service = monitoring_service
 
     # Start background event loop for async operations
     from .helpers.async_helper import start_background_loop

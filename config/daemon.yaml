@@ -1,0 +1,402 @@
+# config/daemon.yaml
+# SuperBot - Daemon Orchestrator Configuration
+# Author: SuperBot Team
+# Date: 2025-11-07
+# Version: 1.0.0
+
+# ============================================================
+# DAEMON CORE SETTINGS
+# ============================================================
+daemon:
+  name: "SuperBot Daemon"
+  version: "1.0.0"
+
+  # IPC/RPC Server
+  ipc:
+    type: "unix_socket"           # unix_socket | tcp
+    socket_path: "/tmp/superbot.sock"
+    tcp_host: "127.0.0.1"
+    tcp_port: 9999
+
+  # Runtime files (all under .superbot/)
+  runtime_dir: ".superbot"
+  pid_file: ".superbot/daemon.pid"
+  log_file: "data/logs/daemon.log"  # Daemon-specific log
+
+  # Auto-start modules on daemon startup
+  autostart:
+    - webui
+    - ai
+    - monitoring
+
+  # Scheduled tasks (cron-like)
+  schedule:
+    # Trading schedule (auto start/stop)
+    trading_start: "09:00"        # Start at 9 AM
+    trading_stop: "21:00"         # Stop at 9 PM
+    trading_days: [1,2,3,4,5]     # Mon-Fri only (1=Mon, 7=Sun)
+
+    # Daily backtest (optional)
+    daily_backtest:
+      enabled: false
+      cron: "0 2 * * *"           # 2 AM daily
+      strategy: "SMC_Volume"
+
+    # Weekly report (optional)
+    weekly_report:
+      enabled: false
+      cron: "0 0 * * 0"           # Sunday midnight
+
+  # Watchdog (auto-restart on crash)
+  watchdog:
+    enabled: true
+    check_interval: 30            # seconds
+    auto_restart_on_crash: true
+    max_restart_attempts: 3
+    restart_cooldown: 60          # seconds
+    alert_on_restart: true        # Send notification on restart
+
+  # Graceful shutdown behavior
+  shutdown:
+    timeout: 30                   # seconds
+    close_positions: false        # Don't auto-close positions
+    cancel_orders: true           # Cancel pending orders
+    save_state: true              # Save state before shutdown
+    notify_admin: true            # Send shutdown notification
+
+# ============================================================
+# CPU/THREAD MANAGEMENT (Performance Optimization)
+# ============================================================
+resource_allocation:
+  # Global settings
+  max_cpu_cores: 0                # 0 = auto-detect (use all cores)
+  cpu_affinity: []                # Pin to specific cores: [0,1,2,3] (empty = no pinning)
+
+  # Thread pools per module
+  thread_pools:
+    # Backtest engine (CPU-intensive)
+    backtest:
+      worker_threads: 4           # Parallel strategy testing
+      indicator_threads: 2        # Indicator calculation workers
+      io_threads: 1               # Data loading
+      priority: "high"            # high | normal | low
+
+    # Trading engine (Real-time, low-latency)
+    trading:
+      worker_threads: 2           # Main trading workers
+      websocket_threads: 1        # Market data stream
+      order_threads: 1            # Order execution
+      priority: "high"
+
+    # AI engine (CPU/GPU-intensive)
+    ai:
+      worker_threads: 2           # Main workers
+      inference_threads: 2        # Model inference
+      training_threads: 1         # Model training (background)
+      priority: "normal"
+      use_gpu: false              # GPU acceleration (requires CUDA)
+      gpu_devices: [0]            # GPU device IDs
+
+    # WebUI (I/O bound)
+    webui:
+      worker_threads: 4           # Flask workers (or uvicorn workers)
+      priority: "low"
+
+    # Data manager (I/O bound)
+    data:
+      download_threads: 3         # Parallel exchange data downloads
+      processing_threads: 2       # Data processing/parsing
+      priority: "normal"
+
+    # Optimizer (CPU-intensive)
+    optimizer:
+      worker_threads: 8           # Parallel optimization trials
+      population_size: 50         # Genetic algorithm population size
+      priority: "high"
+
+  # Memory limits per module (MB)
+  memory_limits:
+    trading: 512
+    backtest: 1024
+    ai: 2048
+    webui: 256
+    optimizer: 1024
+    data: 512
+
+  # CPU quotas (percentage of total CPU)
+  # Only enforced if system supports cgroups (Linux)
+  cpu_quotas:
+    trading: 30                   # Max 30% CPU
+    backtest: 50                  # Max 50% CPU
+    ai: 40
+    webui: 10
+    optimizer: 60
+
+# ============================================================
+# MODULE DEFINITIONS
+# ============================================================
+modules:
+  # AI Server Module (Transformer Model Inference)
+  ai_server:
+    enabled: true
+    type: "uvicorn"
+    app: "modules.ai_server.api.server:app"
+    host: "0.0.0.0"
+    port: 8100
+    workers: 1
+    debug: false
+    auto_start: true
+    restart_on_error: true
+    healthcheck_endpoint: "/health"
+    healthcheck_interval: 30
+
+    # AI Server specific config
+    model:
+      checkpoint_path: "data/checkpoints/active/production.pt"
+      warmup: true                   # Pre-load model on startup
+
+    inference:
+      mode: "local"                  # api | local | hybrid
+      batch_size: 32
+      cache_enabled: true
+      cache_ttl: 60                  # seconds
+
+  # Legacy AI Module (deprecated - use ai_server instead)
+  ai:
+    enabled: false
+    type: "uvicorn"
+    app: "modules.ai.server.main:app"
+    host: "0.0.0.0"
+    port: 8001
+    workers: 1
+    debug: true
+    auto_start: false
+    restart_on_error: true
+    healthcheck_endpoint: "/health"
+    healthcheck_interval: 30
+
+    # AI-specific config
+    models:
+      - signal_enhancer
+      - regime_detector
+    model_warmup: true
+
+  # WebUI Module (Flask)
+  webui:
+    enabled: true
+    type: "flask"
+    app: "modules.webui.app:app"
+    host: "0.0.0.0"
+    port: 5000
+    workers: 4                    # Flask workers
+    debug: true                  # Enable debug mode (auto-reload, detailed errors)
+    auto_start: true              # Start with daemon
+    restart_on_error: true
+    healthcheck_endpoint: "/api/health"
+    healthcheck_interval: 30      # seconds
+
+  # Trading Module (Async Python)
+  trading:
+    enabled: true
+    type: "python"
+    module: "modules.trading.engine"
+    mode: "paper"                 # paper | live (can be overridden by CLI)
+    strategies:
+      - SMC_Volume_5m
+    auto_start: false
+    restart_on_error: true
+    healthcheck_interval: 30      # seconds
+
+    # Trading-specific config
+    risk_checks:
+      enabled: true
+      max_positions: 3
+      max_daily_loss: 1000
+      emergency_stop_enabled: true
+
+  # Backtest Module (On-Demand)
+  backtest:
+    enabled: true
+    type: "python"
+    module: "modules.backtest.backtest_engine"
+    auto_start: false
+    parallel_backtests: 4         # Max concurrent backtests
+    restart_on_error: false       # Don't restart (on-demand)
+
+  # Optimizer Module (On-Demand, CPU-Intensive)
+  optimizer:
+    enabled: true
+    type: "python"
+    module: "modules.optimizer.cli"
+    auto_start: false
+    max_concurrent_trials: 4      # Max parallel optimization trials
+    restart_on_error: false       # Don't restart (on-demand)
+
+  # Monitoring Module (Background Thread)
+  # TODO: modules/monitoring/health_monitor.py oluşturulmalı veya components/monitoring kullanılmalı
+  monitoring:
+    enabled: false                # Henüz implementasyon yok
+    type: "thread"
+    module: "modules.monitoring.health_monitor"
+    auto_start: false
+    check_interval: 30            # seconds
+    metrics_retention: 86400      # 24 hours
+
+# ============================================================
+# INTER-PROCESS COMMUNICATION (IPC)
+# ============================================================
+ipc:
+  # JSON-RPC protocol
+  protocol: "json-rpc"
+  version: "2.0"
+  timeout: 30                     # Request timeout (seconds)
+
+  # Message queue between modules (internal)
+  message_queue:
+    backend: "memory"             # memory | redis (uses infrastructure.yaml backend)
+    max_size: 10000
+
+  # Shared memory (for high-frequency data)
+  shared_memory:
+    enabled: true
+    size_mb: 128
+    keys:
+      - "market_data"             # Latest market data (OHLCV)
+      - "indicators"              # Latest indicator values
+      - "positions"               # Current positions snapshot
+
+  # Event broadcasting (uses core.event_bus)
+  broadcast:
+    enabled: true
+    channels:
+      - "trade.opened"
+      - "trade.closed"
+      - "order.filled"
+      - "order.cancelled"
+      - "signal.generated"
+      - "risk.alert"
+      - "system.health"
+      - "module.started"
+      - "module.stopped"
+      - "module.crashed"
+
+# ============================================================
+# MONITORING & HEALTH CHECKS
+# ============================================================
+monitoring:
+  # Health checks (performed by watchdog)
+  health_check:
+    enabled: true
+    interval: 30                  # seconds
+    timeout: 10                   # health check timeout
+    checks:
+      - database_connection
+      - exchange_api
+      - cache_backend             # Redis/Memory
+      - websocket_status
+      - module_health
+
+  # Performance metrics collection
+  metrics:
+    enabled: true
+    collect_interval: 10          # seconds
+    retention: 86400              # 24 hours
+    metrics:
+      - cpu_usage
+      - memory_usage
+      - thread_count
+      - active_connections
+      - request_latency
+      - order_execution_time
+      - event_bus_throughput
+      - cache_hit_rate
+
+  # Alerting (uses notification system from main.yaml)
+  alerts:
+    enabled: true
+    channels: ["telegram"]        # telegram | discord | email
+    rules:
+      - condition: "cpu_usage > 80"
+        severity: "warning"
+        cooldown: 300             # Don't spam (5 min cooldown)
+
+      - condition: "memory_usage > 90"
+        severity: "critical"
+        cooldown: 300
+
+      - condition: "module_crashed"
+        severity: "critical"
+        cooldown: 60
+
+      - condition: "exchange_disconnected"
+        severity: "high"
+        cooldown: 120
+
+# ============================================================
+# SECURITY (IPC Authentication)
+# ============================================================
+security:
+  # IPC authentication
+  ipc_auth:
+    enabled: true
+    method: "token"               # token | certificate
+    token: "${DAEMON_AUTH_TOKEN}" # From .env
+
+  # API authentication (for remote CLI via TCP)
+  api_auth:
+    enabled: true
+    require_https: false          # TCP only for local by default
+    allowed_ips:
+      - "127.0.0.1"
+      - "::1"
+      # - "192.168.1.0/24"        # Uncomment for LAN access
+
+  # Rate limiting (per client)
+  rate_limit:
+    enabled: true
+    requests_per_minute: 100
+    burst: 20
+
+# ============================================================
+# PERFORMANCE TUNING
+# ============================================================
+performance:
+  # Event loop policy (asyncio)
+  event_loop: "auto"              # auto | uvloop (uvloop for better performance)
+
+  # Process priorities (OS-level nice values: -20 to 19, lower = higher priority)
+  # Only works on Unix-like systems
+  process_priorities:
+    trading: -5                   # High priority
+    backtest: 0                   # Normal
+    ai: 0                         # Normal
+    webui: 5                      # Lower priority
+    optimizer: 0                  # Normal
+
+  # I/O optimization
+  io:
+    buffer_size: 8192             # I/O buffer size (bytes)
+    async_io: true                # Use async I/O where possible
+
+  # Memory optimization
+  memory:
+    gc_enabled: true              # Python garbage collection
+    gc_threshold: [700, 10, 10]   # GC thresholds
+
+# ============================================================
+# DEVELOPMENT MODE
+# ============================================================
+development:
+  # Development mode (more verbose logging, no daemonization)
+  enabled: false
+
+  # Mock modules (use mock implementations)
+  mock_modules:
+    exchange: false               # Use mock exchange
+    ai: false                     # Use mock AI models
+
+  # Debug features
+  debug:
+    log_ipc_messages: false       # Log all IPC messages
+    log_event_bus: false          # Log all event bus events
+    profile_performance: false    # Enable performance profiling

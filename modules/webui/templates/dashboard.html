@@ -5,14 +5,491 @@
 {% block content %}
 <div class="page-header">
     <h1>Dashboard</h1>
-    <p>Trading system overview and statistics</p>
+    <p>System overview and resource monitoring</p>
 </div>
 
-<div class="dashboard-grid">
+<div class="analysis-layout">
+    <!-- Left: Chart Area (empty for now) -->
+    <div class="chart-section">
+        <div class="card">
+            <div class="card-header-tab">Chart</div>
+            <div class="card-body chart-placeholder">
+                <i class="fas fa-chart-line"></i>
+                <span>Chart area</span>
+            </div>
+        </div>
+    </div>
 
+    <!-- Right: Sidebar -->
+    <div class="sidebar-section">
+        <!-- Resource Gauges -->
+        <div class="card">
+            <div class="card-header-tab">Resource Usage</div>
+            <div class="card-body">
+                <div class="gauges-vertical">
+                    <!-- CPU Gauge -->
+                    <div class="gauge-row">
+                        <div class="gauge-mini">
+                            <svg viewBox="0 0 100 50">
+                                <path class="gauge-bg" d="M10,50 A40,40 0 0,1 90,50"/>
+                                <path class="gauge-fill" id="cpu-arc" d="M10,50 A40,40 0 0,1 90,50"/>
+                            </svg>
+                            <div class="gauge-value" id="cpu-value">0%</div>
+                        </div>
+                        <div class="gauge-info">
+                            <span class="gauge-label">CPU</span>
+                            <span class="gauge-sub">Threshold: 80%</span>
+                        </div>
+                    </div>
+                    <!-- Memory Gauge -->
+                    <div class="gauge-row">
+                        <div class="gauge-mini">
+                            <svg viewBox="0 0 100 50">
+                                <path class="gauge-bg" d="M10,50 A40,40 0 0,1 90,50"/>
+                                <path class="gauge-fill" id="memory-arc" d="M10,50 A40,40 0 0,1 90,50"/>
+                            </svg>
+                            <div class="gauge-value" id="memory-value">0%</div>
+                        </div>
+                        <div class="gauge-info">
+                            <span class="gauge-label">Memory</span>
+                            <span class="gauge-sub" id="memory-used">0 MB</span>
+                        </div>
+                    </div>
+                    <!-- Disk Gauge -->
+                    <div class="gauge-row">
+                        <div class="gauge-mini">
+                            <svg viewBox="0 0 100 50">
+                                <path class="gauge-bg" d="M10,50 A40,40 0 0,1 90,50"/>
+                                <path class="gauge-fill" id="disk-arc" d="M10,50 A40,40 0 0,1 90,50"/>
+                            </svg>
+                            <div class="gauge-value" id="disk-value">0%</div>
+                        </div>
+                        <div class="gauge-info">
+                            <span class="gauge-label">Disk</span>
+                            <span class="gauge-sub" id="disk-used">0 GB</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
+        <!-- System Info -->
+        <div class="card">
+            <div class="card-header-tab">System Info</div>
+            <div class="card-body">
+                <div class="info-list">
+                    <div class="info-row">
+                        <span class="info-label">CPU Cores</span>
+                        <span class="info-value" id="cpu-cores">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">RAM</span>
+                        <span class="info-value" id="memory-total">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Disk</span>
+                        <span class="info-value" id="disk-total">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Uptime</span>
+                        <span class="info-value" id="uptime">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Network & Process -->
+        <div class="card">
+            <div class="card-header-tab">Network</div>
+            <div class="card-body">
+                <div class="info-list">
+                    <div class="info-row">
+                        <span class="info-label"><i class="fas fa-arrow-up text-success"></i> Sent</span>
+                        <span class="info-value" id="network-sent">0 MB</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label"><i class="fas fa-arrow-down text-primary"></i> Received</span>
+                        <span class="info-value" id="network-recv">0 MB</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Process Info -->
+        <div class="card">
+            <div class="card-header-tab">Process</div>
+            <div class="card-body">
+                <div class="info-list">
+                    <div class="info-row">
+                        <span class="info-label">PID</span>
+                        <span class="info-value" id="process-pid">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">CPU</span>
+                        <span class="info-value" id="process-cpu">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Memory</span>
+                        <span class="info-value" id="process-memory">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Threads</span>
+                        <span class="info-value" id="process-threads">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alerts -->
+        <div class="card">
+            <div class="card-header-tab">
+                Alerts
+                <button class="btn-reset" id="reset-alerts-btn" title="Reset"><i class="fas fa-redo"></i></button>
+            </div>
+            <div class="card-body">
+                <div class="alerts-compact">
+                    <div class="alert-item">
+                        <span>CPU</span>
+                        <span class="badge" id="alert-cpu">0</span>
+                    </div>
+                    <div class="alert-item">
+                        <span>Memory</span>
+                        <span class="badge" id="alert-memory">0</span>
+                    </div>
+                    <div class="alert-item">
+                        <span>Disk</span>
+                        <span class="badge" id="alert-disk">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Last Update -->
+        <div class="update-info">
+            Updated: <span id="last-update">-</span>
+        </div>
+    </div>
 </div>
 
+<style>
+.analysis-layout {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 1rem;
+    min-height: calc(100vh - 180px);
+}
 
-{# Tüm stiller main.css'te: .stats-grid, .stat-card, .progress-*, .badge-*, .btn-*, .empty-state, .error-message #}
+.chart-section .card {
+    height: 100%;
+    min-height: 500px;
+    display: flex;
+    flex-direction: column;
+}
+
+.chart-placeholder {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    gap: 1rem;
+}
+
+.chart-placeholder i {
+    font-size: 3rem;
+    opacity: 0.3;
+}
+
+.sidebar-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.card {
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.card-header-tab {
+    background: var(--primary-color);
+    color: white;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    display: inline-block;
+    border-radius: 4px 4px 0 0;
+    margin: 0;
+}
+
+.card-body {
+    padding: 1rem;
+}
+
+/* Gauges */
+.gauges-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.gauge-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--bg-tertiary);
+}
+
+.gauge-row:last-child {
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.gauge-mini {
+    position: relative;
+    width: 80px;
+    height: 45px;
+    flex-shrink: 0;
+}
+
+.gauge-mini svg {
+    width: 100%;
+    height: 100%;
+}
+
+.gauge-bg {
+    fill: none;
+    stroke: var(--bg-tertiary);
+    stroke-width: 8;
+    stroke-linecap: round;
+}
+
+.gauge-fill {
+    fill: none;
+    stroke: #10b981;
+    stroke-width: 8;
+    stroke-linecap: round;
+    stroke-dasharray: 126;
+    stroke-dashoffset: 126;
+    transition: stroke-dashoffset 0.5s ease, stroke 0.3s ease;
+}
+
+.gauge-fill.warning { stroke: #f59e0b; }
+.gauge-fill.danger { stroke: #ef4444; }
+
+.gauge-value {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.gauge-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.gauge-label {
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+.gauge-sub {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+/* Info List */
+.info-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--bg-tertiary);
+}
+
+.info-row:last-child {
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.info-label {
+    color: var(--text-muted);
+}
+
+.info-label i {
+    margin-right: 0.25rem;
+}
+
+.info-value {
+    font-weight: 500;
+}
+
+/* Alerts */
+.card-header-tab {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.btn-reset {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.7);
+    cursor: pointer;
+    padding: 0.25rem;
+    font-size: 0.7rem;
+}
+
+.btn-reset:hover {
+    color: white;
+}
+
+.alerts-compact {
+    display: flex;
+    justify-content: space-between;
+}
+
+.alert-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.badge {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    padding: 0.15rem 0.5rem;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    min-width: 22px;
+    text-align: center;
+}
+
+.update-info {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    padding: 0.5rem;
+}
+
+.text-success { color: #10b981; }
+.text-primary { color: #3b82f6; }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadSystemInfo();
+    loadResources();
+    loadProcessInfo();
+    setInterval(loadResources, 5000);
+    setInterval(loadProcessInfo, 10000);
+    document.getElementById('reset-alerts-btn').addEventListener('click', resetAlerts);
+});
+
+async function loadSystemInfo() {
+    try {
+        const response = await fetch('/api/monitoring/system');
+        const data = await response.json();
+        if (data.status === 'success') {
+            const info = data.data;
+            document.getElementById('cpu-cores').textContent = info.cpu_count_logical;
+            document.getElementById('memory-total').textContent = info.memory_total_gb + ' GB';
+            document.getElementById('disk-total').textContent = info.disk_total_gb + ' GB';
+
+            const bootTime = new Date(info.boot_time);
+            const uptimeMs = Date.now() - bootTime;
+            const days = Math.floor(uptimeMs / 86400000);
+            const hours = Math.floor((uptimeMs % 86400000) / 3600000);
+            document.getElementById('uptime').textContent = `${days}d ${hours}h`;
+        }
+    } catch (e) { console.error('System info error:', e); }
+}
+
+async function loadResources() {
+    try {
+        const response = await fetch('/api/monitoring/resources');
+        const data = await response.json();
+        if (data.status === 'success') {
+            const c = data.data.current;
+            const t = data.data.thresholds;
+            const a = data.data.alerts;
+
+            updateGauge('cpu', c.cpu_percent, t.cpu);
+            updateGauge('memory', c.memory_percent, t.memory);
+            updateGauge('disk', c.disk_percent, t.disk);
+
+            document.getElementById('memory-used').textContent = formatMB(c.memory_mb);
+            document.getElementById('disk-used').textContent = c.disk_gb.toFixed(1) + ' GB';
+
+            document.getElementById('network-sent').textContent = formatMB(c.network_sent_mb);
+            document.getElementById('network-recv').textContent = formatMB(c.network_recv_mb);
+
+            document.getElementById('alert-cpu').textContent = a.cpu;
+            document.getElementById('alert-memory').textContent = a.memory;
+            document.getElementById('alert-disk').textContent = a.disk;
+
+            document.getElementById('last-update').textContent = new Date(c.timestamp).toLocaleTimeString();
+        }
+    } catch (e) { console.error('Resources error:', e); }
+}
+
+function updateGauge(type, value, threshold) {
+    const valueEl = document.getElementById(`${type}-value`);
+    const arcEl = document.getElementById(`${type}-arc`);
+
+    valueEl.textContent = value.toFixed(1) + '%';
+    const offset = 126 - (value / 100) * 126;
+    arcEl.style.strokeDashoffset = offset;
+
+    arcEl.classList.remove('warning', 'danger');
+    if (value >= threshold) {
+        arcEl.classList.add('danger');
+    } else if (value >= threshold * 0.8) {
+        arcEl.classList.add('warning');
+    }
+}
+
+async function loadProcessInfo() {
+    try {
+        const response = await fetch('/api/monitoring/process');
+        const data = await response.json();
+        if (data.status === 'success') {
+            const p = data.data;
+            document.getElementById('process-pid').textContent = p.pid;
+            document.getElementById('process-cpu').textContent = p.cpu_percent + '%';
+            document.getElementById('process-memory').textContent = p.memory_mb.toFixed(0) + ' MB';
+            document.getElementById('process-threads').textContent = p.threads;
+        }
+    } catch (e) { console.error('Process info error:', e); }
+}
+
+async function resetAlerts() {
+    try {
+        await fetch('/api/monitoring/alerts/reset', { method: 'POST' });
+        document.getElementById('alert-cpu').textContent = '0';
+        document.getElementById('alert-memory').textContent = '0';
+        document.getElementById('alert-disk').textContent = '0';
+    } catch (e) { console.error('Reset error:', e); }
+}
+
+function formatMB(mb) {
+    return mb >= 1024 ? (mb / 1024).toFixed(2) + ' GB' : mb.toFixed(0) + ' MB';
+}
+</script>
 {% endblock %}
