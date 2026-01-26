@@ -173,7 +173,7 @@ class ParquetsEngine:
                 else:
                     df['open_time'] = df['open_time'].dt.tz_convert('UTC')
 
-            # Timestamp kolonu ekle (int64 ms)
+            # Add timestamp column (int64 ms)
             # Remove timezone info before converting to int64
             df['timestamp'] = df['open_time'].dt.tz_localize(None).astype('int64') // 10**6
 
@@ -324,7 +324,7 @@ class ParquetsEngine:
             if self.logger:
                 self.logger.info(f"   ✅ Read: {filename} ({len(df)} rows)")
 
-            # Cache'e ekle
+            # Add to cache
             self._file_cache[cache_key] = df
 
             return df
@@ -413,7 +413,7 @@ if __name__ == "__main__":
             logger.info(f"\n✅ Test 1 SUCCESSFUL!")
             logger.info(f"   Total rows: {len(df)}")
             logger.info(f"   First candle: {df.iloc[0]['open_time']}")
-            logger.info(f"   Son mum: {df.iloc[-1]['open_time']}")
+            logger.info(f"   Last candle: {df.iloc[-1]['open_time']}")
 
         except Exception as e:
             logger.error(f"❌ Test 1 FAILED: {e}")

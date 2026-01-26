@@ -2,15 +2,15 @@
 """
 components/managers/symbols_manager.py
 SuperBot - Symbols Manager
-Yazar: SuperBot Team
-Tarih: 2025-10-28
+Author: SuperBot Team
+Date: 2025-10-28
 Versiyon: 5.0.0
 
 UPGRADE v5.0: Tier system removed - Use SymbolFavorite for priority management
 
 Symbols Manager - Symbol loading, filtering, exchange sync, and storage
 
-Özellikler:
+Features:
 - Multi-exchange support (binance, bybit, okx)
 - Exchange symbol synchronization (SPOT + FUTURES)
 - Database storage (ExchangeSymbol, SymbolFavorite)
@@ -27,7 +27,7 @@ Symbol Management:
 - SPOT/FUTURES market type separation
 - Tags, notes, color coding per favorite
 
-Kullanım:
+Usage:
     sm = SymbolsManager(
         exchange_name='binance',
         config=config,
@@ -49,7 +49,7 @@ Kullanım:
     # Get favorites
     favorites = await data_manager.get_favorites()
 
-Bağımlılıklar:
+Dependencies:
     - fnmatch (built-in)
 """
 
@@ -102,7 +102,7 @@ class SymbolsManager:
             exchange_client: Exchange client
             data_manager: DataManager instance
             strategy: Strategy instance (for source=strategy)
-            strategy_file: Strategy dosya adı (örn: grok_scalp_king_5m_v2.py)
+            strategy_file: Strategy file name (e.g., grok_scalp_king_5m_v2.py)
         """
         self.exchange_name = exchange_name
         self.config = config
@@ -434,8 +434,8 @@ class SymbolsManager:
         Load base assets from strategy
 
         Priority:
-        1. self.strategy (injected instance) - TradingEngine'den gelir
-        2. Config'den strategy dosyası yükle (fallback)
+        1. self.strategy (injected instance) - Comes from TradingEngine
+        2. Load strategy file from Config (fallback)
         """
         try:
             strategy_instance = None
@@ -475,7 +475,7 @@ class SymbolsManager:
                 )
                 if self.logger:
                     self.logger.info(
-                        f"📋 Strategy '{strategy_id}' → {len(base_assets)} sembol: "
+                        f"📋 Strategy '{strategy_id}' -> {len(base_assets)} symbols: "
                         f"{sorted(list(self.base_assets))}"
                     )
                 return True
@@ -620,7 +620,7 @@ class SymbolsManager:
         if symbol.endswith(double_quote):
             symbol = symbol[:-len(quote)]
             if self.logger:
-                self.logger.debug(f"🔧 Çift quote düzeltildi: {symbol}{quote} → {symbol}")
+                self.logger.debug(f"🔧 Double quote corrected: {symbol}{quote} -> {symbol}")
 
         # Case 2: Already has quote (ETHUSDT → ETHUSDT)
         if symbol.endswith(quote):
