@@ -52,7 +52,7 @@ TURKISH_WORDS = [
     # File/folder terms
     r'\b(dosya|klasor|dizin|ayar|yapilandirma)\b',
     # Status words
-    r'\b(basarili|basarisiz|hata|uyari|bilgi)\b',
+    r'\b(basarili|basarisiz|hatalar?|uyari|bilgi)\b',
     r'\b(yukleniyor|kaydediliyor|siliniyor|guncelleniyor)\b',
     r'\b(bulunamadi|zaten|mevcut|gerekli|zorunlu)\b',
     # Common technical terms in Turkish
@@ -86,8 +86,8 @@ TURKISH_WORDS = [
     r'\b(detaylar|kazanan|kaybeden)\b',
     r'\b(komisyon|slippage|spread)\b',
     r'\b(ort|execution)\b',
-    # More trading/strategy words
-    r'\b(strateji|sinyal|pozisyon)\b',
+    # More trading/strategy words (with plurals)
+    r'\b(stratejiler?|sinyaller?|pozisyonlar?)\b',
     r'\b(baslangic|bitis|sure)\b',
     r'\b(sonuc|rapor|ozet)\b',
     r'\b(islem|adet|oran)\b',
@@ -102,6 +102,14 @@ TURKISH_WORDS = [
     r'\b(sorumluluk|uzun|vadeli|daha|gelecek)\b', 
     r'\b(son|devam)\b', 
     
+    # UI/Button words
+    r'\b(sil|silmek|kaydet|iptal|geri|ileri|tamam|kapat)\b',
+    r'\b(ekle|duzenle|goruntule|kopyala|yukle)\b',
+    r'\b(durdur|baslat|yenile|yeniden)\b',
+    r'\b(tumunu?|secili|filtre|ara|bul)\b',
+    r'\b(yeni|eski|onceki|sonraki)\b',
+    r'\b(emin|misiniz|onay|onayla)\b',
+    r'\b(semboller?|sayfa|liste)\b',
     # Question endings
     r'\b\w+\s+mi\?\b',
     # Common log words/verbs
@@ -543,7 +551,7 @@ class HTMLScanner:
         return findings
 
     def scan_file(self, file_path: Path) -> List[Tuple[int, str, str, str]]:
-        """Scan a single HTML file for Turkish content."""
+        """Scan a single HTML file for Turkish content, including inline scripts."""
         findings = []
 
         try:
@@ -553,7 +561,7 @@ class HTMLScanner:
         except (UnicodeDecodeError, IOError):
             return findings
 
-        # First, remove script and style blocks from content for whole-file scanning
+        # First, scan HTML content (excluding script/style blocks)
         clean_content = re.sub(r'<script[^>]*>.*?</script>', '', content, flags=re.DOTALL | re.IGNORECASE)
         clean_content = re.sub(r'<style[^>]*>.*?</style>', '', clean_content, flags=re.DOTALL | re.IGNORECASE)
 
@@ -580,6 +588,9 @@ class HTMLScanner:
 
                     findings.append((line_num, content_type, match.group(0), text))
 
+        # Now scan inline <script> blocks for Turkish content
+        findings.extend(self._scan_inline_scripts(content, lines))
+
         # Deduplicate findings (same text might match multiple patterns)
         seen = set()
         unique_findings = []
@@ -590,6 +601,77 @@ class HTMLScanner:
                 unique_findings.append(f)
 
         return unique_findings
+
+    def _scan_inline_scripts(self, content: str, lines: List[str]) -> List[Tuple[int, str, str, str]]:
+        """Scan inline <script> blocks for Turkish content in JS strings."""
+        findings = []
+
+        # JS string patterns (same as JSScanner)
+        js_patterns = [
+            (r"'([^'\\]*(?:\\.[^'\\]*)*)'", 'js_string'),
+            (r'"([^"\\]*(?:\\.[^"\\]*)*)"', 'js_string'),
+            (r'//\s*(.+)$', 'js_comment'),
+        ]
+
+        # Find all script blocks
+        script_pattern = re.compile(r'<script[^>]*>(.*?)</script>', re.DOTALL | re.IGNORECASE)
+
+        for script_match in script_pattern.finditer(content):
+            script_content = script_match.group(1)
+            script_start_pos = script_match.start(1)
+
+            # Calculate line number where script content starts
+            script_start_line = content[:script_start_pos].count('\n') + 1
+
+            # Scan each line in the script block
+            script_lines = script_content.split('\n')
+            for i, line in enumerate(script_lines):
+                line_num = script_start_line + i
+
+                # Skip lines with common JS patterns that shouldn't be translated
+                if any(skip in line for skip in ['fetch(', 'getElementById', 'querySelector',
+                                                   'addEventListener', '.classList', 'console.',
+                                                   'JSON.', 'window.', 'document.']):
+                    # But still check for Turkish strings in these lines
+                    pass
+
+                for pattern, content_type in js_patterns:
+                    for match in re.finditer(pattern, line):
+                        text = match.group(1).strip()
+
+                        if not text:
+                            continue
+
+                        # Skip code-like strings
+                        if self._is_code_string(text):
+                            continue
+
+                        # Skip template literal expressions
+                        if '${' in text:
+                            continue
+
+                        if self.is_turkish(text):
+                            findings.append((line_num, content_type, match.group(0), text))
+
+        return findings
+
+    def _is_code_string(self, text: str) -> bool:
+        """Check if the string looks like code rather than user-facing text."""
+        code_indicators = [
+            r'^[a-z_][a-z0-9_]*$',   # Variable names
+            r'^[A-Z_]+$',            # Constants
+            r'^\.',                   # Starts with dot
+            r'^#[a-fA-F0-9]+$',      # Hex colors
+            r'^https?://',           # URLs
+            r'^/',                    # Paths
+            r'\.(js|css|html|json)$', # File extensions
+            r'^\d+$',                 # Numbers only
+            r'^[a-z]+\.[a-z]+',      # Object.method patterns
+        ]
+        for pattern in code_indicators:
+            if re.match(pattern, text.strip()):
+                return True
+        return False
 
     def scan_directory(self, directory: Optional[Path] = None) -> Dict[str, List[Tuple[int, str, str, str]]]:
         """Scan all HTML files in directory."""
