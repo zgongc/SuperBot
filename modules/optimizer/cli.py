@@ -144,7 +144,8 @@ def load_strategy_from_file(strategy_path: str) -> Any:
     Load the strategy file and create an instance.
 
     Args:
-        strategy_path: Path to the strategy file (e.g., 'templates/TradingView_Dashboard.py')
+        strategy_path: Path to the strategy file
+                      Examples: 'simple_pmax', 'simple_pmax.py', 'templates/simple_pmax.py'
 
     Returns:
         Strategy instance
@@ -152,13 +153,42 @@ def load_strategy_from_file(strategy_path: str) -> Any:
     Raises:
         ValueError: If the file is not found or the strategy class does not exist.
     """
-    path = Path(strategy_path)
+    # Strategy file search paths (in priority order)
+    search_paths = []
 
-    if not path.exists():
-        # Try relative to components/strategies/
-        path = Path('components/strategies') / strategy_path
-        if not path.exists():
-            raise ValueError(f"Strategy file not found: {strategy_path}")
+    # 1. Direct path (as-is)
+    search_paths.append(Path(strategy_path))
+
+    # 2. Add .py extension if missing
+    if not strategy_path.endswith('.py'):
+        search_paths.append(Path(strategy_path + '.py'))
+
+    # 3. Try templates/ directory (most common)
+    base_name = Path(strategy_path).name
+    if not base_name.endswith('.py'):
+        base_name += '.py'
+    search_paths.append(Path('components/strategies/templates') / base_name)
+
+    # 4. Try components/strategies/ directory
+    search_paths.append(Path('components/strategies') / strategy_path)
+    if not strategy_path.endswith('.py'):
+        search_paths.append(Path('components/strategies') / (strategy_path + '.py'))
+
+    # Find the first existing path
+    path = None
+    for search_path in search_paths:
+        if search_path.exists():
+            path = search_path
+            break
+
+    if path is None:
+        # Build helpful error message
+        tried_paths = '\n  - '.join(str(p) for p in search_paths)
+        raise ValueError(
+            f"Strategy file not found: {strategy_path}\n\n"
+            f"Tried paths:\n  - {tried_paths}\n\n"
+            f"Hint: Place your strategy in components/strategies/templates/"
+        )
 
     print(f"📂 Loading strategy: {path}")
 
