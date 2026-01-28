@@ -332,8 +332,8 @@ class Strategy(BaseStrategy):
                 #'take_profit_risk_reward_ratio': (1.5, 4.0, 0.5),
 
                 # Break-Even
-                #'break_even_enabled': [True, False],
-                #'break_even_trigger_profit_percent': (0.5, 2.5, 0.25),
+                'break_even_enabled': [True, False],
+                'break_even_trigger_profit_percent': (0.5, 2.5, 0.25),
 
                 # Trailing Stop
                 'trailing_stop_enabled': [True, False],
