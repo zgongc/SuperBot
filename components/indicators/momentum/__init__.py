@@ -31,7 +31,7 @@ from .roc import ROC
 from .tsi import TSI
 from .awesome import AwesomeOscillator
 from .ultimate import UltimateOscillator
-from .rsi_divergence import RSIDivergence
+from .rsidivergence import RSIDivergence
 from .stochasticrsi import StochasticRSI
 
 __all__ = [

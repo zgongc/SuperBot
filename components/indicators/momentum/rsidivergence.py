@@ -1,8 +1,8 @@
 """
-indicators/momentum/rsi_divergence.py - RSI Divergence
+indicators/momentum/rsidivergence.py - RSI Divergence
 
-Version: 2.0.0
-Date: 2025-10-14
+Version: 3.0.0
+Date: 2026-01-29
 Author: SuperBot Team
 
 Description:
@@ -13,21 +13,22 @@ Description:
     Strong reversal indicator.
 
 Formula:
-    1. RSI hesapla (14 periyot)
-    2. Find price pivot points in the last N periods.
-    3. Find RSI pivot points at the same points.
-    4. Compare price and RSI movements.
-    5. Detect divergence.
+    1. Calculate RSI using existing RSI indicator (14 period)
+    2. Find price pivot points in the last N periods
+    3. Find RSI pivot points at the same points
+    4. Compare price and RSI movements
+    5. Detect divergence
 
 Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
+    - components.indicators.momentum.rsi (for RSI calculation)
 """
 
 import numpy as np
 import pandas as pd
-from indicators.base_indicator import BaseIndicator
-from indicators.indicator_types import (
+from components.indicators.base_indicator import BaseIndicator
+from components.indicators.indicator_types import (
     IndicatorCategory,
     IndicatorType,
     IndicatorResult,
@@ -35,6 +36,7 @@ from indicators.indicator_types import (
     TrendDirection,
     InvalidParameterError
 )
+from components.indicators.momentum.rsi import calculate_rsi_values
 
 
 class RSIDivergence(BaseIndicator):
@@ -63,7 +65,7 @@ class RSIDivergence(BaseIndicator):
         self.min_strength = min_strength
 
         super().__init__(
-            name='rsi_divergence',
+            name='rsidivergence',
             category=IndicatorCategory.MOMENTUM,
             indicator_type=IndicatorType.MULTIPLE_VALUES,
             params={
@@ -98,43 +100,13 @@ class RSIDivergence(BaseIndicator):
             )
         return True
 
-    def _calculate_rsi(self, close: np.ndarray) -> np.ndarray:
-        """
-        RSI hesapla
-
-        Args:
-            close: Closing prices
-
-        Returns:
-            RSI values
-        """
-        delta = np.diff(close)
-        delta = np.insert(delta, 0, 0)
-
-        gains = np.where(delta > 0, delta, 0)
-        losses = np.where(delta < 0, -delta, 0)
-
-        rsi_values = np.zeros_like(close)
-
-        for i in range(self.rsi_period, len(close)):
-            avg_gain = np.mean(gains[i-self.rsi_period:i])
-            avg_loss = np.mean(losses[i-self.rsi_period:i])
-
-            if avg_loss == 0:
-                rsi_values[i] = 100
-            else:
-                rs = avg_gain / avg_loss
-                rsi_values[i] = 100 - (100 / (1 + rs))
-
-        return rsi_values
-
     def _find_pivots(self, data: np.ndarray, lookback: int) -> dict:
         """
         Find pivot points (local highs and lows)
 
         Args:
-            data: Veri array
-            lookback: The lookback period.
+            data: Data array
+            lookback: The lookback period
 
         Returns:
             dict: {'highs': [(index, value)], 'lows': [(index, value)]}
@@ -151,7 +123,7 @@ class RSIDivergence(BaseIndicator):
             if is_high:
                 pivots['highs'].append((i, data[i]))
 
-            # Local minimum: Lower than the left and right sides.
+            # Local minimum: Lower than the left and right sides
             is_low = True
             for j in range(1, lookback + 1):
                 if data[i] >= data[i-j] or data[i] >= data[i+j]:
@@ -164,14 +136,14 @@ class RSIDivergence(BaseIndicator):
 
     def _detect_divergence(self, price_pivots: dict, rsi_pivots: dict) -> dict:
         """
-        Detect divergence.
+        Detect divergence
 
         Args:
             price_pivots: Price pivot points
             rsi_pivots: RSI pivot points
 
         Returns:
-            dict: Divergence bilgisi
+            dict: Divergence information
         """
         result = {
             'bullish': False,
@@ -186,7 +158,7 @@ class RSIDivergence(BaseIndicator):
             price_low1, price_val1 = price_pivots['lows'][-2]
             price_low2, price_val2 = price_pivots['lows'][-1]
 
-            # Find RSI pivots that are close to price pivots.
+            # Find RSI pivots that are close to price pivots
             rsi_low1 = None
             rsi_low2 = None
             for idx, val in rsi_pivots['lows']:
@@ -206,7 +178,7 @@ class RSIDivergence(BaseIndicator):
             price_high1, price_val1 = price_pivots['highs'][-2]
             price_high2, price_val2 = price_pivots['highs'][-1]
 
-            # Find RSI pivots that are close to price pivots.
+            # Find RSI pivots that are close to price pivots
             rsi_high1 = None
             rsi_high2 = None
             for idx, val in rsi_pivots['highs']:
@@ -225,18 +197,18 @@ class RSIDivergence(BaseIndicator):
 
     def calculate(self, data: pd.DataFrame) -> IndicatorResult:
         """
-        RSI Divergence hesapla
+        Calculate RSI Divergence
 
         Args:
             data: OHLCV DataFrame
 
         Returns:
-            IndicatorResult: Divergence bilgisi
+            IndicatorResult: Divergence information
         """
         close = data['close'].values
 
-        # RSI hesapla
-        rsi_values = self._calculate_rsi(close)
+        # Calculate RSI using existing RSI indicator
+        rsi_values = calculate_rsi_values(close, self.rsi_period)
 
         # Find pivot points
         price_pivots = self._find_pivots(close, self.lookback)
@@ -247,7 +219,7 @@ class RSIDivergence(BaseIndicator):
 
         # Result value
         value = {
-            'rsi': round(rsi_values[-1], 2),
+            'rsi': round(rsi_values[-1], 2) if not np.isnan(rsi_values[-1]) else 50.0,
             'bullish_divergence': divergence['bullish'],
             'bearish_divergence': divergence['bearish'],
             'divergence_strength': round(divergence['strength'], 2)
@@ -286,9 +258,8 @@ class RSIDivergence(BaseIndicator):
         """
         ⚡ VECTORIZED batch RSI Divergence calculation - for BACKTEST
 
-        Simplified implementation:
-        - RSI hesapla (vectorized)
-        - Simplified logic for divergence detection.
+        Uses existing RSI calculation for consistency.
+        Simplified divergence detection for batch processing.
 
         Returns:
             pd.DataFrame: 4 columns (rsi, bullish_divergence, bearish_divergence, divergence_strength)
@@ -297,36 +268,10 @@ class RSIDivergence(BaseIndicator):
 
         close = data['close'].values
 
-        # 1. RSI hesapla (vectorized)
-        delta = np.diff(close)
-        delta = np.insert(delta, 0, 0)
+        # Calculate RSI using existing RSI indicator
+        rsi = calculate_rsi_values(close, self.rsi_period)
 
-        gains = np.where(delta > 0, delta, 0)
-        losses = np.where(delta < 0, -delta, 0)
-
-        # Wilder's smoothing
-        alpha = 1.0 / self.rsi_period
-        avg_gain = np.zeros(len(close))
-        avg_loss = np.zeros(len(close))
-
-        if len(gains) >= self.rsi_period:
-            avg_gain[self.rsi_period] = np.mean(gains[:self.rsi_period])
-            avg_loss[self.rsi_period] = np.mean(losses[:self.rsi_period])
-
-            for i in range(self.rsi_period + 1, len(close)):
-                avg_gain[i] = avg_gain[i-1] * (1 - alpha) + gains[i] * alpha
-                avg_loss[i] = avg_loss[i-1] * (1 - alpha) + losses[i] * alpha
-
-        # RSI
-        rsi = np.zeros(len(close))
-        for i in range(len(close)):
-            if avg_loss[i] == 0:
-                rsi[i] = 100.0 if avg_gain[i] > 0 else 50.0
-            else:
-                rs = avg_gain[i] / avg_loss[i]
-                rsi[i] = 100 - (100 / (1 + rs))
-
-        # 2. Simplified divergence detection (for batch - not full pivot analysis)
+        # Simplified divergence detection (for batch - not full pivot analysis)
         # We'll mark potential divergence zones based on RSI-price relationship
         bullish_div = np.zeros(len(close), dtype=bool)
         bearish_div = np.zeros(len(close), dtype=bool)
@@ -390,11 +335,11 @@ class RSIDivergence(BaseIndicator):
         Incremental update (Real-time) - Symbol-aware
 
         Args:
-            candle: Yeni mum verisi
+            candle: New candle data
             symbol: Symbol identifier (for multi-symbol support)
 
         Returns:
-            IndicatorResult: The current indicator value.
+            IndicatorResult: Current indicator value
         """
         from collections import deque
 
@@ -439,10 +384,10 @@ class RSIDivergence(BaseIndicator):
 
     def get_signal(self, value: dict) -> SignalType:
         """
-        Generate a signal from the divergence value.
+        Generate a signal from the divergence value
 
         Args:
-            value: Divergence bilgisi
+            value: Divergence information
 
         Returns:
             SignalType: BUY, SELL or HOLD
@@ -456,10 +401,10 @@ class RSIDivergence(BaseIndicator):
 
     def get_trend(self, value: dict) -> TrendDirection:
         """
-        Determine the trend based on the divergence value.
+        Determine the trend based on the divergence value
 
         Args:
-            value: Divergence bilgisi
+            value: Divergence information
 
         Returns:
             TrendDirection: UP, DOWN or NEUTRAL
@@ -480,7 +425,7 @@ class RSIDivergence(BaseIndicator):
         }
 
     def _requires_volume(self) -> bool:
-        """RSI Divergence volume gerektirmez"""
+        """RSI Divergence does not require volume"""
         return False
 
 
@@ -511,13 +456,13 @@ if __name__ == "__main__":
     prices = []
     for i in range(60):
         if i < 20:
-            # Normal hareket
+            # Normal movement
             prices.append(100 + i * 0.5 + np.random.randn() * 0.3)
         elif i < 40:
             # Price decreases
             prices.append(110 - (i-20) * 0.5 + np.random.randn() * 0.3)
         else:
-            # The price may fall even further (lower low)
+            # Price falls even further (lower low)
             prices.append(100 - (i-40) * 0.3 + np.random.randn() * 0.3)
 
     data = pd.DataFrame({
@@ -536,14 +481,14 @@ if __name__ == "__main__":
     print("\n2. Basic calculation test...")
     rsi_div = RSIDivergence(rsi_period=14, lookback=5, min_strength=30)
     print(f"   [OK] Created: {rsi_div}")
-    print(f"   [OK] Kategori: {rsi_div.category.value}")
+    print(f"   [OK] Category: {rsi_div.category.value}")
     print(f"   [OK] Required period: {rsi_div.get_required_periods()}")
 
     result = rsi_div(data)
     print(f"   [OK] RSI Value: {result.value['rsi']}")
     print(f"   [OK] Bullish Divergence: {result.value['bullish_divergence']}")
     print(f"   [OK] Bearish Divergence: {result.value['bearish_divergence']}")
-    print(f"   [OK] Divergence Power: {result.value['divergence_strength']}")
+    print(f"   [OK] Divergence Strength: {result.value['divergence_strength']}")
     print(f"   [OK] Signal: {result.signal.value}")
     print(f"   [OK] Trend: {result.trend.name}")
 
@@ -560,7 +505,7 @@ if __name__ == "__main__":
         print(f"   [OK] Params({rsi_p},{look},{strength}): Bullish={result.value['bullish_divergence']}, Bearish={result.value['bearish_divergence']}")
 
     # Test 3: Bearish divergence pattern
-    print("\n4. Bearish divergence testi...")
+    print("\n4. Bearish divergence test...")
     bearish_prices = []
     for i in range(60):
         if i < 20:
@@ -587,8 +532,8 @@ if __name__ == "__main__":
     print(f"   [OK] RSI pivot highs: {result.metadata['rsi_pivots_highs']}")
     print(f"   [OK] RSI pivot lows: {result.metadata['rsi_pivots_lows']}")
 
-    # Test 5: Power test
-    print("\n6. Divergence power test...")
+    # Test 5: Strength test
+    print("\n6. Divergence strength test...")
     if result.value['divergence_strength'] >= rsi_div.min_strength:
         print(f"   [OK] Strong divergence detected: {result.value['divergence_strength']}")
     else:
@@ -601,12 +546,12 @@ if __name__ == "__main__":
     print(f"   [OK] Error count: {stats['error_count']}")
 
     # Test 7: Metadata
-    print("\n8. Metadata testi...")
+    print("\n8. Metadata test...")
     metadata = rsi_div.metadata
     print(f"   [OK] Name: {metadata.name}")
-    print(f"   [OK] Kategori: {metadata.category.value}")
-    print(f"   [OK] Tip: {metadata.indicator_type.value}")
-    print(f"   [OK] Min periyot: {metadata.min_periods}")
+    print(f"   [OK] Category: {metadata.category.value}")
+    print(f"   [OK] Type: {metadata.indicator_type.value}")
+    print(f"   [OK] Min period: {metadata.min_periods}")
     print(f"   [OK] Volume required: {metadata.requires_volume}")
 
     print("\n" + "="*60)

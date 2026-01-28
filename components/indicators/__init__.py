@@ -301,8 +301,8 @@ INDICATOR_REGISTRY: Dict[str, Dict[str, Any]] = {
         'output_keys': ['rsi']
     },
 
-    'rsi_divergence': {
-        'module': 'momentum.rsi_divergence',
+    'rsidivergence': {
+        'module': 'momentum.rsidivergence',
         'class': 'RSIDivergence',
         'category': IndicatorCategory.MOMENTUM,
         'type': IndicatorType.SINGLE_VALUE,
