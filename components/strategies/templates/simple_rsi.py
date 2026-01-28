@@ -64,8 +64,8 @@ class Strategy(BaseStrategy):
         # BACKTEST CONFIGURATION
         # ====================================================================
         self.backtesting_enabled = True
-        self.backtest_start_date = "2025-01-05T00:00"
-        self.backtest_end_date = "2025-03-30T00:00"
+        self.backtest_start_date = "2026-01-01T00:00"
+        self.backtest_end_date = "2026-01-30T00:00"
         self.initial_balance = 1000
         self.warmup_period = 200  # Sufficient for SMA 200
         self.download_klines = False
@@ -75,9 +75,9 @@ class Strategy(BaseStrategy):
         # BACKTEST PARAMETERS (Realistic Binance Futures)
         # ====================================================================
         self.backtest_parameters = {
-            "min_spread": 0.0001,     # %0.01 spread
-            "commission": 0.0002,     # %0.02 Maker fee (Binance Futures)
-            "max_slippage": 0.0005    # %0.05 slippage
+            "min_spread": 0.01,       # 0.01% spread
+            "commission": 0.02,       # 0.02% Maker fee (Binance Futures) - FIXED!
+            "max_slippage": 0.05      # 0.05% slippage
         }
 
         # ====================================================================

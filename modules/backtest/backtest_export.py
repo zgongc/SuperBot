@@ -58,10 +58,13 @@ def save_backtest_results(
     # Create output folder
     os.makedirs(output_dir, exist_ok=True)
 
-    # Timestamp and filename
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    # Filename format: backtest_strategyname_timeframe_startdate_enddate
+    # Same TF and date range will overwrite the same file
     strategy_name = result.config.strategy_name
-    base_filename = f"backtest_{strategy_name}_{timestamp}"
+    timeframe = result.config.primary_timeframe
+    start_date = result.config.start_date.strftime("%Y%m%d")
+    end_date = result.config.end_date.strftime("%Y%m%d")
+    base_filename = f"backtest_{strategy_name}_{timeframe}_{start_date}_{end_date}"
 
     # === JSON EXPORT ===
     json_data = {
@@ -106,7 +109,7 @@ def save_backtest_results(
 
     json_path = os.path.join(output_dir, f"{base_filename}.json")
 
-    # Duplicate check
+    # Skip if results are identical (same trades, same PnL)
     if os.path.exists(json_path):
         try:
             with open(json_path, 'r', encoding='utf-8') as f:
@@ -116,13 +119,12 @@ def save_backtest_results(
             if (existing_data.get('metrics', {}).get('total_trades') == result.metrics.total_trades and
                 abs(existing_data.get('metrics', {}).get('total_return_usd', 0) - result.metrics.total_return_usd) < 0.01):
                 if logger:
-                    logger.info(f"\n📁 Results already exist (same):")
+                    logger.info(f"\n📁 Results unchanged, skipping write:")
                     logger.info(f"   - {base_filename}.json")
                     logger.info(f"   - {base_filename}.txt")
-                    logger.info(f"\n💡 Duplicate file not created")
                 return json_path, json_path.replace('.json', '.txt')
         except:
-            pass
+            pass  # File corrupted or different format, overwrite
 
     # Save JSON
     with open(json_path, 'w', encoding='utf-8') as f:
@@ -224,29 +226,9 @@ def save_backtest_results(
                 trade_id = str(trade.trade_id)[:5]
                 side = trade.side.value
 
-                # Handle both datetime and numeric timestamps - convert to local timezone
-                import pandas as pd
-
-                # Helper function to convert timestamp to local time
-                def to_local_time(ts):
-                    if hasattr(ts, 'strftime'):
-                        # Already datetime
-                        dt = ts
-                    else:
-                        # Convert to datetime
-                        try:
-                            dt = pd.to_datetime(ts, utc=True)
-                        except:
-                            try:
-                                dt = pd.Timestamp(ts, tz='UTC')
-                            except:
-                                return str(ts)
-
-                    # Use TimezoneUtils for formatting
-                    return TimezoneUtils.format(dt, fmt='%Y-%m-%d %H:%M')
-
-                entry_time = to_local_time(trade.entry_time)
-                exit_time = to_local_time(trade.exit_time)
+                # Format timestamps using TimezoneUtils (converts to local timezone from config)
+                entry_time = TimezoneUtils.format(trade.entry_time, fmt='%Y-%m-%d %H:%M')
+                exit_time = TimezoneUtils.format(trade.exit_time, fmt='%Y-%m-%d %H:%M')
 
                 entry_price = trade.entry_price
                 exit_price = trade.exit_price

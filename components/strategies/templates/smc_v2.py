@@ -82,9 +82,9 @@ class Strategy(BaseStrategy):
         # BACKTEST PARAMETERS (Realistic Binance Futures)
         # ====================================================================
         self.backtest_parameters = {
-            "min_spread": 0.0001,
-            "commission": 0.0002,
-            "max_slippage": 0.0005
+            "min_spread": 0.01,       # 0.01% spread
+            "commission": 0.02,       # 0.02% Maker fee (Binance Futures) - FIXED!
+            "max_slippage": 0.05      # 0.05% slippage
         }
 
         # ====================================================================

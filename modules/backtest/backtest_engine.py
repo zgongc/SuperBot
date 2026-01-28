@@ -2410,8 +2410,8 @@ async def run_backtest_cli(
     logger.info(f"   Max Drawdown: {result.metrics.max_drawdown_pct:.2f}%")
 
     logger.info(f"\n📈 DETAILS:")
-    logger.info(f"   Winner: {result.metrics.winners} (avg: ${result.metrics.avg_win_usd:,.2f}")
-    logger.info(f"   Losers: {result.metrics.losers} (avg: ${result.metrics.avg_loss_usd:,.2f}")
+    logger.info(f"   Winner: {result.metrics.winners} (avg: ${result.metrics.avg_win_usd:,.2f})")
+    logger.info(f"   Losers: {result.metrics.losers} (avg: ${result.metrics.avg_loss_usd:,.2f})")
 
     logger.info(f"\n💰 COSTS:")
     logger.info(f"   Commission: ${result.metrics.total_commission:,.2f}")

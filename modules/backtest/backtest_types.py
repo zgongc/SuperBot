@@ -193,9 +193,27 @@ class Trade:
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert trade to dict"""
-        # Handle both datetime and numeric timestamps
-        entry_time_str = self.entry_time.isoformat() if hasattr(self.entry_time, 'isoformat') else str(self.entry_time)
-        exit_time_str = self.exit_time.isoformat() if hasattr(self.exit_time, 'isoformat') else str(self.exit_time)
+        # Handle both datetime and numeric timestamps - convert to local timezone
+        from core.config_engine import get_config
+        from datetime import timedelta, timezone
+
+        config = get_config()
+        utc_offset = config.get('system', {}).get('utc_offset', 0)
+
+        if hasattr(self.entry_time, 'isoformat'):
+            # Convert to local timezone using config offset
+            local_tz = timezone(timedelta(hours=utc_offset))
+            entry_local = self.entry_time.astimezone(local_tz)
+            entry_time_str = entry_local.isoformat()
+        else:
+            entry_time_str = str(self.entry_time)
+
+        if hasattr(self.exit_time, 'isoformat'):
+            local_tz = timezone(timedelta(hours=utc_offset))
+            exit_local = self.exit_time.astimezone(local_tz)
+            exit_time_str = exit_local.isoformat()
+        else:
+            exit_time_str = str(self.exit_time)
 
         return {
             'trade_id': self.trade_id,
@@ -214,6 +232,8 @@ class Trade:
             'commission': self.commission,
             'slippage': self.slippage,
             'duration_minutes': self.duration_minutes,
+            'stop_loss_price': self.stop_loss_price,
+            'take_profit_price': self.take_profit_price,
             'break_even_activated': self.break_even_activated,
             'is_partial_exit': self.is_partial_exit,
             'partial_exit_level': self.partial_exit_level,
