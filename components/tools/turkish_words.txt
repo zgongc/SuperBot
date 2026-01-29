@@ -273,3 +273,9 @@ filtreler
 otomatik
 veri
 indirme
+yapar
+belirtilmedi
+sembollerini
+saniye
+kritik
+kendisini

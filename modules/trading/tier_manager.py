@@ -70,7 +70,7 @@ class TierLevel(IntEnum):
     def name_tr(self) -> str:
         return {
             TierLevel.POSITION: "POSITION",
-            TierLevel.DECISION: "KARAR",
+            TierLevel.DECISION: "DECISION",
             TierLevel.MONITORING: "MONITORING",
             TierLevel.ANALYSIS: "ANALYSIS"
         }.get(self, "?")

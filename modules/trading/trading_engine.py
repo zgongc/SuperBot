@@ -187,7 +187,7 @@ class TradingEngine:
         """
         Load strategy template
 
-        StrategyManager path normalization yapar:
+        StrategyManager performs path normalization:
         - "grok_scalp" → components/strategies/templates/grok_scalp.py
         - "grok_scalp.py" → components/strategies/templates/grok_scalp.py
         - Full path → as-is
@@ -202,7 +202,7 @@ class TradingEngine:
             ValueError: If the strategy path is not specified.
         """
         if not self.strategy_path:
-            raise ValueError("Strategy path belirtilmedi!")
+            raise ValueError("Strategy path was not specified!")
 
         # Load with StrategyManager (including path normalization)
         self.strategy_manager = StrategyManager(logger=self.logger)
@@ -221,7 +221,7 @@ class TradingEngine:
 
     async def _load_symbols(self) -> List[str]:
         """
-        Trading sembollerini SymbolsManager'dan al
+        Get trading symbols from SymbolsManager.
 
         Creates and initializes the SymbolsManager if it doesn't exist.
         Source information is retrieved from strategy.symbol_source.
@@ -692,7 +692,7 @@ class TradingEngine:
         if intervals_enabled:
             # Different interval based on tier (optimized for 100+ symbols)
             tier_intervals = {
-                TierLevel.POSITION: 1,    # Her saniye (SL/TP kritik)
+                TierLevel.POSITION: 1,    # Every second (SL/TP critical)
                 TierLevel.DECISION: 5,    # 5 saniyede bir
                 TierLevel.MONITORING: 15, # 15 saniyede bir
                 TierLevel.ANALYSIS: 60    # 60 saniyede bir
@@ -755,7 +755,7 @@ class TradingEngine:
         """
         return  # <-- CLOSED: Uncomment this line
 
-        # DEBUG: summary'nin kendisini logla
+        # DEBUG: Log the summary itself.
         self.logger.info(f"🔍 DEBUG: {symbol} summary keys: {list(summary.keys())}")
 
         details = summary.get('details', [])

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-components/strategies/templates/simple_rsidivergence.py
+components/strategies/templates/rsi_div.py
 SuperBot - RSI Divergence Reversal Strategy
 Author: SuperBot Team
 Date: 2026-01-29
@@ -64,7 +64,7 @@ class Strategy(BaseStrategy):
         # ====================================================================
         # STRATEGY METADATA
         # ====================================================================
-        self.strategy_name = "simple_rsidivergence"
+        self.strategy_name = "rsi_divergence"
         self.strategy_version = "1.0.0"
         self.description = "RSI Divergence reversal with price confirmation"
         self.author = "SuperBot Team"
@@ -112,7 +112,7 @@ class Strategy(BaseStrategy):
         self.symbol_source = "strategy"  # file, strategy, exchange
         self.symbols = [
             SymbolConfig(
-                symbol=['BTC', 'ETH', 'SOL', 'AVAX', 'LINK'],
+                symbol=['BTC', 'ETH', 'BCH', 'ZEC', 'LINK'],
                 quote="USDT",
                 enabled=True
             )

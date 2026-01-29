@@ -1,33 +1,33 @@
 # 🔍 Trading Engine V5 - TierManager Entegrasyon Analizi
 
-> **Tarih:** 2025-12-03
-> **Amaç:** Backtest Engine mimarisinden öğrenerek V5 için en iyi entegrasyon stratejisini belirlemek
+> **Date:** 2025-12-03
+> **Purpose:** To determine the best integration strategy for V5 by learning from the Backtest Engine architecture.
 
 ---
 
-## 📊 MEVCUT DURUM ANALİZİ
+## 📊 CURRENT STATUS ANALYSIS
 
-### Trading Engine V5 (639 satır)
+### Trading Engine V5 (639 lines)
 ```
 TradingEngine V5 - Ultra Lean Orchestrator
 ├── __init__(): 4 Core singleton + lazy components
 │   ├── get_logger() ✅
 │   ├── get_config() ✅
-│   ├── get_event_bus() ✅ (import var, aktif kullanım YOK)
-│   └── get_cache() ✅ (import var, aktif kullanım YOK)
-├── _load_strategy(): StrategyManager kullanır
-├── _load_symbols(): SymbolsManager kullanır
+│   ├── get_event_bus() ✅ (import variable, not actively used)
+│   └── get_cache() ✅ (import variable, not in active use)
+├── _load_strategy(): Uses StrategyManager.
+├── _load_symbols(): Uses SymbolsManager
 ├── _load_mode(): Dynamic import + BaseMode pattern
 ├── _start_data_feeds(): WebSocket + MTF setup (COMMENT-OUT)
 ├── _on_candle_closed(): Mode'a route eder
 ├── initialize(): Sequential 6-step init
-├── start(): Main loop (TODO - sadece sleep(1))
+├── start(): Main loop (TODO - only sleep(1))
 └── stop(): Clean shutdown
 ```
 
-### TierManager V5.1 (784 satır)
+### TierManager V5.1 (784 lines)
 ```
-TierManager V5.1 - Olgun Tier Sistemi
+TierManager V5.1 - Mature Tier System
 ├── TierLevel enum (POSITION=0, DECISION=1, MONITORING=2, ANALYSIS=3)
 ├── SymbolTierState dataclass (conditions tracking dahil)
 ├── Config entegrasyonu (trading.yaml'dan okur)
@@ -37,37 +37,37 @@ TierManager V5.1 - Olgun Tier Sistemi
 └── Status reporting (publish_status_report)
 ```
 
-### DisplayInfo (577 satır)
+### DisplayInfo (577 lines)
 ```
 DisplayInfo - Presentation Layer
-├── TierManager'dan veri alır
+├── Retrieves data from TierManager
 ├── format_status_line(): Uptime, time, balance
-├── format_tier_summary(): Tier özeti
-├── format_conditions_verbose(): Koşul detayları
-└── format_position_lines(): Pozisyon detayları
+├── format_tier_summary(): Tier summary
+├── format_conditions_verbose(): Condition details
+└── format_position_lines(): Position details
 ```
 
 ---
 
-## 🏗️ BACKTEST ENGINE'DEN ÖĞRENECEKLER
+## 🏗️ LESSONS LEARNED FROM THE BACKTEST ENGINE
 
 ### 1. Manager Composition Pattern
 ```python
-# Backtest Engine yaklaşımı
+# Backtest Engine approach
 class BacktestEngine:
     def __init__(self):
-        # Manager'lar lazy init, engine sadece koordine eder
+        # Managers use lazy initialization, the engine only coordinates.
         self.parquets_engine = ParquetsEngine()
         self.risk_manager = RiskManager(logger=self.logger)
         self.position_manager = PositionManager(logger=self.logger)
 
     async def run(self, strategy):
-        # Execution sırasında oluştur
+        # Created during execution
         strategy_executor = StrategyExecutor(strategy, logger=self.logger)
         exit_manager = ExitManager(strategy, logger=self.logger)
 ```
 
-**Trading Engine için:**
+**For the Trading Engine:**
 ```python
 class TradingEngine:
     def __init__(self):
@@ -76,7 +76,7 @@ class TradingEngine:
         self.display_info: Optional[DisplayInfo] = None
 
     async def initialize(self):
-        # Initialize sırasında oluştur (strategy yüklendikten sonra)
+        # Create during initialization (after the strategy is loaded)
         self.tier_manager = TierManager(
             logger=self.logger,
             config=self.config,
@@ -103,7 +103,7 @@ Backtest Flow:
 6. CALCULATE METRICS ← BacktestMetrics
 7. RETURN RESULT
 
-Trading Flow (Önerilen):
+Trading Flow (Recommended):
 1. LOAD STRATEGY ← StrategyManager
 2. LOAD SYMBOLS ← SymbolsManager
 3. INIT CONNECTOR ← BinanceAPI
@@ -115,43 +115,43 @@ Trading Flow (Önerilen):
 
 ### 3. Single-Pass Processing (Backtest)
 ```python
-# Backtest: Her candle için tek geçiş
+# Backtest: Single pass for each candle
 for i in range(warmup, len(data)):
     row = data.iloc[i]
     signal = signals[i]
 
-    # 1. Önce EXIT kontrol
+    # 1. First, check for EXIT
     for position in positions[:]:
         exit_result = strategy_executor.evaluate_exit(...)
         if exit_result['should_exit']:
             close_position(position)
 
-    # 2. Sonra ENTRY kontrol
+    # 2. Then check ENTRY
     if signal != 0:
         new_position = open_position(...)
         positions.append(new_position)
 ```
 
-**Trading Engine için (Tier-Based):**
+**For the Trading Engine (Tier-Based):**
 ```python
-# Trading: Tier'a göre farklı interval'larda işlem
+# Trading: Trading at different intervals depending on the tier.
 async def _tier_processing_loop(self):
     while self._running:
         symbols_to_check = self.tier_manager.get_symbols_to_check()
 
-        # TIER 0: Her saniye (SL/TP tick-based)
+        # TIER 0: Every second (SL/TP tick-based)
         if TierLevel.POSITION in symbols_to_check:
             await self._process_positions(symbols_to_check[TierLevel.POSITION])
 
-        # TIER 1: 5 saniye (Decision - candle close bekleniyor)
+        # TIER 1: 5 seconds (Decision - waiting for candle close)
         if TierLevel.DECISION in symbols_to_check:
             await self._process_decisions(symbols_to_check[TierLevel.DECISION])
 
-        # TIER 2: 15 saniye (Monitoring - koşullar izleniyor)
+        # TIER 2: 15 seconds (Monitoring - conditions are being monitored)
         if TierLevel.MONITORING in symbols_to_check:
             await self._process_monitoring(symbols_to_check[TierLevel.MONITORING])
 
-        # TIER 3: 60 saniye (Analysis - yeni adaylar taranıyor)
+        # TIER 3: 60 seconds (Analysis - new candidates are being scanned)
         if TierLevel.ANALYSIS in symbols_to_check:
             await self._process_analysis(symbols_to_check[TierLevel.ANALYSIS])
 
@@ -160,27 +160,27 @@ async def _tier_processing_loop(self):
 
 ### 4. Exit-First Logic
 ```python
-# Backtest'te kanıtlanmış: EXIT önce, ENTRY sonra
-# Bu sıra kritik - aynı mumda hem çıkış hem giriş olabilir
+# Proven in backtesting: EXIT first, ENTRY later
+# This sequence is critical - there might be both an output and an input on the same candle.
 
 async def _on_candle_closed(self, symbol: str, timeframe: str):
-    """Candle kapandığında çağrılır"""
+    """Called when a candle closes"""
 
-    # 1. ÖNCE: Pozisyon varsa exit kontrol
+    # 1. FIRST: Check if the position exists, then exit.
     tier = self.tier_manager.get_tier(symbol)
     if tier == TierLevel.POSITION:
         await self._check_exit(symbol, timeframe)
 
-    # 2. SONRA: Entry kontrol (DECISION tier'da ise)
+    # 2. LATER: Entry control (if in the DECISION tier)
     if tier == TierLevel.DECISION:
         await self._check_entry(symbol, timeframe)
 ```
 
 ---
 
-## 🎯 ÖNERİLEN MİMARİ: "LEAN COORDINATOR"
+## 🎯 RECOMMENDED ARCHITECTURE: "LEAN COORDINATOR"
 
-### Prensip: Engine İş YAPMAZ, Koordine EDER
+### Principle: The Engine does NOT do the work, it COORDINATES.
 
 ```
                     ┌─────────────────────────────────────┐
@@ -222,9 +222,9 @@ async def _on_candle_closed(self, symbol: str, timeframe: str):
     └─────────────┘
 ```
 
-### Sorumluluk Dağılımı
+### Responsibility Distribution
 
-| Component | Sorumluluk | EventBus Events |
+| Component | Responsibility | EventBus Events |
 |-----------|------------|-----------------|
 | **TradingEngine** | Lifecycle, routing, shutdown | - |
 | **TierManager** | Symbol→Tier mapping, intervals | `tier.change`, `tier.status.report` |
@@ -237,28 +237,28 @@ async def _on_candle_closed(self, symbol: str, timeframe: str):
 
 ## 📋 ENTEGRASYON ADIMLARI
 
-### Adım 1: TierManager Entegrasyonu (Öncelik: YÜKSEK)
+### Step 1: TierManager Integration (Priority: HIGH)
 
 ```python
-# trading_engine.py değişiklikleri
+# trading_engine.py changes
 
-# Import ekle
+# Add import
 from modules.trading.tier_manager import TierManager, TierLevel
 from modules.trading.display_info import DisplayInfo
 
 class TradingEngine:
     def __init__(self, ...):
-        # ... mevcut kod ...
+        # ... existing code ...
 
         # Tier system (lazy init)
         self.tier_manager: Optional[TierManager] = None
         self.display_info: Optional[DisplayInfo] = None
 
     async def initialize(self):
-        # ... mevcut initialization ...
+        # ... existing initialization ...
 
         # ════════════════════════════════════════════════════════════════
-        # TierManager init (symbols yüklendikten sonra)
+        # TierManager initialization (after symbols are loaded)
         # ════════════════════════════════════════════════════════════════
         self.tier_manager = TierManager(
             logger=self.logger,
@@ -269,7 +269,7 @@ class TradingEngine:
             verbose=self.verbose
         )
         self.tier_manager.initialize(self.symbols)
-        self.logger.info(f"📊 TierManager hazır: {len(self.symbols)} sembol")
+        self.logger.info(f"📊 TierManager ready: {len(self.symbols)} symbols")
 
         # ════════════════════════════════════════════════════════════════
         # DisplayInfo init
@@ -281,24 +281,24 @@ class TradingEngine:
             connector=self.connector,
             strategy=self.strategy
         )
-        self.logger.info("📺 DisplayInfo hazır")
+        self.logger.info("📺 DisplayInfo is ready")
 
     def _on_tier_change(self, symbol: str, old_tier: TierLevel, new_tier: TierLevel):
-        """Tier değişiklik callback'i"""
+        """Tier change callback"""
         # Engine'de ekstra logic gerekirse buraya
         pass
 ```
 
-### Adım 2: Tier-Based Processing Loop (Öncelik: YÜKSEK)
+### Step 2: Tier-Based Processing Loop (Priority: HIGH)
 
 ```python
 async def start(self):
-    """Trading başlat"""
+    """Start trading"""
     if not self._initialized:
         raise RuntimeError("TradingEngine initialize edilmedi!")
 
     self._running = True
-    self.logger.info("🚀 TradingEngine başlatıldı")
+    self.logger.info("🚀 TradingEngine started")
 
     # Background tasks
     tasks = [
@@ -309,13 +309,13 @@ async def start(self):
     try:
         await asyncio.gather(*tasks)
     except asyncio.CancelledError:
-        self.logger.info("🛑 Tasks iptal edildi")
+        self.logger.info("🛑 Tasks were cancelled")
 
 async def _tier_processing_loop(self):
-    """Tier-based ana işleme döngüsü"""
+    """Tier-based main processing loop"""
     while self._running:
         try:
-            # TierManager'dan kontrol edilecek sembolleri al
+            # Get the symbols to be checked from TierManager
             symbols_to_check = self.tier_manager.get_symbols_to_check()
 
             for tier, symbols in symbols_to_check.items():
@@ -329,12 +329,12 @@ async def _tier_processing_loop(self):
                     await self._process_tier_analysis(symbols)
 
         except Exception as e:
-            self.logger.error(f"❌ Tier loop hatası: {e}")
+            self.logger.error(f"❌ Tier loop error: {e}")
 
         await asyncio.sleep(1)  # Base interval
 
 async def _status_display_loop(self):
-    """Periyodik status gösterimi"""
+    """Periodic status display"""
     interval = self.config.get('status_display.status_interval', 15)
 
     while self._running:
@@ -348,7 +348,7 @@ async def _status_display_loop(self):
             for line in tier_lines:
                 self.logger.info(line)
 
-            # Verbose ise koşul detayları
+            # If verbose, details of the condition
             if self.verbose:
                 condition_lines = self.display_info.format_conditions_verbose()
                 for line in condition_lines:
@@ -358,20 +358,20 @@ async def _status_display_loop(self):
             self.tier_manager.publish_status_report()
 
         except Exception as e:
-            self.logger.error(f"❌ Status display hatası: {e}")
+            self.logger.error(f"❌ Error displaying status: {e}")
 
         await asyncio.sleep(interval)
 ```
 
-### Adım 3: Tier İşleme Metodları (Öncelik: ORTA)
+### Step 3: Tier Processing Methods (Priority: MEDIUM)
 
 ```python
 async def _process_tier_position(self, symbols: List[str]):
     """
-    TIER 0: Aktif pozisyonlar (1s interval)
+    TIER 0: Active positions (1s interval)
 
     - SL/TP tick-based kontrol
-    - Trailing stop güncelleme
+    - Update trailing stop.
     - Break-even kontrol
     """
     for symbol in symbols:
@@ -379,19 +379,19 @@ async def _process_tier_position(self, symbols: List[str]):
             break
 
         try:
-            # Mode'a delege et (PaperMode/LiveMode)
+            # Delegate to mode (PaperMode/LiveMode)
             if hasattr(self.current_mode, 'check_position_exit'):
                 await self.current_mode.check_position_exit(symbol)
         except Exception as e:
-            self.logger.error(f"❌ {symbol} TIER 0 hatası: {e}")
+            self.logger.error(f"❌ {symbol} TIER 0 error: {e}")
 
 async def _process_tier_decision(self, symbols: List[str]):
     """
-    TIER 1: Karar aşaması (5s interval)
+    TIER 1: Decision stage (5s interval)
 
-    - %100 koşul sağlandı
+    - 100% condition met
     - Candle close bekleniyor
-    - Entry hazırsa Mode'a sinyal gönder
+    - Send a signal to Mode if the entry is ready.
     """
     for symbol in symbols:
         if not self._running:
@@ -400,7 +400,7 @@ async def _process_tier_decision(self, symbols: List[str]):
         try:
             state = self.tier_manager.get_state(symbol)
             if state and state.ready_for_entry:
-                # Mode'a entry sinyali gönder
+                # Send an entry signal to the mode.
                 if hasattr(self.current_mode, 'execute_entry'):
                     await self.current_mode.execute_entry(
                         symbol=symbol,
@@ -408,48 +408,48 @@ async def _process_tier_decision(self, symbols: List[str]):
                         score=state.score
                     )
         except Exception as e:
-            self.logger.error(f"❌ {symbol} TIER 1 hatası: {e}")
+            self.logger.error(f"❌ {symbol} TIER 1 error: {e}")
 
 async def _process_tier_monitoring(self, symbols: List[str]):
     """
-    TIER 2: İzleme aşaması (15s interval)
+    TIER 2: Monitoring phase (15s interval)
 
-    - %50+ koşul sağlanmış
-    - Koşullar yeniden değerlendir
-    - DECISION'a yükselme kontrolü
+    - Condition met with 50% or more.
+    - Re-evaluate the conditions.
+    - Check for promotion to DECISION.
     """
     for symbol in symbols:
         if not self._running:
             break
 
         try:
-            # Koşulları yeniden değerlendir
+            # Re-evaluate the conditions
             await self._evaluate_conditions(symbol)
         except Exception as e:
-            self.logger.error(f"❌ {symbol} TIER 2 hatası: {e}")
+            self.logger.error(f"❌ {symbol} TIER 2 error: {e}")
 
 async def _process_tier_analysis(self, symbols: List[str]):
     """
-    TIER 3: Analiz aşaması (60s interval)
+    TIER 3: Analysis phase (60s interval)
 
-    - Yeni adayları tara
-    - MONITORING'e yükselme kontrolü
+    - Scan for new candidates
+    - Check for promotion to MONITORING
     """
     for symbol in symbols:
         if not self._running:
             break
 
         try:
-            # Koşulları değerlendir
+            # Evaluate conditions
             await self._evaluate_conditions(symbol)
         except Exception as e:
-            self.logger.error(f"❌ {symbol} TIER 3 hatası: {e}")
+            self.logger.error(f"❌ {symbol} TIER 3 error: {e}")
 
 async def _evaluate_conditions(self, symbol: str):
     """
-    Symbol için koşulları değerlendir ve tier güncelle
+    Evaluate conditions for the symbol and update the tier.
 
-    StrategyExecutor kullanır, sonucu TierManager'a bildirir
+    Uses StrategyExecutor, reports the result to TierManager.
     """
     if not self._strategy_executor:
         return
@@ -459,7 +459,7 @@ async def _evaluate_conditions(self, symbol: str):
     if not indicator_data:
         return
 
-    # Koşulları değerlendir
+    # Evaluate conditions
     result = self._strategy_executor.evaluate_entry(
         symbol=symbol,
         data=indicator_data,
@@ -472,7 +472,7 @@ async def _evaluate_conditions(self, symbol: str):
     conditions_long = result.get('conditions_long', [])
     conditions_short = result.get('conditions_short', [])
 
-    # Threshold'lara göre tier belirle
+    # Determine the tier based on thresholds
     thresholds = self.tier_manager.thresholds
 
     if score >= thresholds.get('decision', 1.0):
@@ -482,7 +482,7 @@ async def _evaluate_conditions(self, symbol: str):
     else:
         new_tier = TierLevel.ANALYSIS
 
-    # TierManager'ı güncelle
+    # Update the TierManager
     self.tier_manager.set_tier(
         symbol=symbol,
         tier=new_tier,
@@ -495,16 +495,16 @@ async def _evaluate_conditions(self, symbol: str):
     )
 ```
 
-### Adım 4: Candle Callback Entegrasyonu (Öncelik: YÜKSEK)
+### Step 4: Candle Callback Integration (Priority: HIGH)
 
 ```python
 async def _on_candle_closed(self, symbol: str, timeframe: str):
     """
-    Candle kapandığında çağrılır (MTF Engine → TradingEngine)
+    Called when a candle closes (MTF Engine -> TradingEngine)
 
     Exit-First Logic:
-    1. ÖNCE: Pozisyon varsa exit kontrol
-    2. SONRA: Entry kontrol
+    1. FIRST: Check if there is a position, then check the exit condition.
+    2. THEN: Check the entry condition.
     """
     if not self.current_mode or not self.tier_manager:
         return
@@ -512,20 +512,20 @@ async def _on_candle_closed(self, symbol: str, timeframe: str):
     try:
         tier = self.tier_manager.get_tier(symbol)
 
-        # 1. ÖNCE EXIT (POSITION tier)
+        # 1. FIRST EXIT (POSITION tier)
         if tier == TierLevel.POSITION:
             if hasattr(self.current_mode, 'on_candle_closed'):
                 await self.current_mode.on_candle_closed(symbol, timeframe)
 
-        # 2. Koşulları yeniden değerlendir
+        # 2. Re-evaluate the conditions
         await self._evaluate_conditions(symbol)
 
-        # 3. DECISION tier'da ise entry kontrolü
-        tier = self.tier_manager.get_tier(symbol)  # Güncel tier'ı al
+        # 3. In the DECISION tier, perform entry validation.
+        tier = self.tier_manager.get_tier(symbol)  # Get the current tier
         state = self.tier_manager.get_state(symbol)
 
         if tier == TierLevel.DECISION and state:
-            # Candle kapandı, entry hazır mı?
+            # Is the candle closed? Is the entry ready?
             state.candle_close_pending = False
             state.ready_for_entry = True
 
@@ -538,7 +538,7 @@ async def _on_candle_closed(self, symbol: str, timeframe: str):
                 )
 
                 if entry_result and entry_result.get('success'):
-                    # POSITION tier'a yükselt
+                    # Upgrade to the POSITION tier
                     self.tier_manager.set_tier(
                         symbol=symbol,
                         tier=TierLevel.POSITION,
@@ -547,14 +547,14 @@ async def _on_candle_closed(self, symbol: str, timeframe: str):
                     )
 
     except Exception as e:
-        self.logger.error(f"❌ {symbol}: Candle callback hatası: {e}")
+        self.logger.error(f"❌ {symbol}: Candle callback error: {e}")
 ```
 
 ---
 
-## 🔄 DATA FLOW DİYAGRAMI (YENİ - DÜZELTİLMİŞ)
+## 🔄 DATA FLOW DIAGRAM (NEW - UPDATED)
 
-### Kritik Anlayış: İki Farklı Veri Akışı Var
+### Critical Understanding: There are two different data streams.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -564,7 +564,7 @@ async def _on_candle_closed(self, symbol: str, timeframe: str):
 
 Binance WebSocket
        │
-       │ kline_1m (HER SANİYE güncelleme gelir)
+       │ kline_1m (Updates are received every second)
        ▼
 ┌──────────────────┐
 │ WebSocketEngine  │
@@ -592,23 +592,23 @@ Binance WebSocket
          ▼                                                │
 ┌──────────────────┐                                      │
 │IndicatorManager  │◄─────────────────────────────────────┘
-│                  │  Warmup: İlk N candle indicator
-│ - RSI            │  hesaplaması için gerekli
-│ - EMA            │  (örn: RSI_14 için min 14 candle)
+│                  │  Warmup: First N candle indicator
+│ - RSI            │ required for calculation
+│ - EMA            │ (e.g., minimum 14 candles for RSI_14)
 │ - Bollinger      │
 │ - ATR            │  ┌─────────────────────────────────┐
-│ - ...            │  │ WARMUP DURUMU                   │
+│ - ...            │  │ WARMUP STATUS                   │
 └────────┬─────────┘  │                                 │
          │            │ warmup_complete = False         │
          │            │ → Indicator hesaplanmaz         │
-         │            │ → Tier check yapılmaz           │
+         │            │ -> Tier check is not performed           │
          │            │                                 │
          │            │ warmup_complete = True          │
-         │            │ → Indicator hesaplanır          │
-         │            │ → Tier check başlar             │
+         │            │ -> Indicator is calculated          │
+         │            │ -> Tier check begins             │
          │            └─────────────────────────────────┘
          │
-         │ Hesaplanan değerler
+         │ Calculated values
          ▼
 ┌──────────────────┐
 │ CacheManager     │
@@ -625,12 +625,12 @@ Binance WebSocket
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                     2️⃣ TIER EVALUATION FLOW                                 │
-│              (Polling-based, candle_closed'dan BAĞIMSIZ!)                   │
+│              (Polling-based, independent of candle_closed!)                   │
 └─────────────────────────────────────────────────────────────────────────────┘
 
                               ┌─────────────────────────────┐
                               │   _tier_processing_loop()   │
-                              │      (ana döngü)            │
+                              │      (main loop)            │
                               │                             │
                               │   while running:            │
                               │     check_tiers()           │
@@ -644,9 +644,9 @@ Binance WebSocket
     │ TIER 3: ANALYSIS│           │TIER 2: MONITOR  │           │TIER 1: DECISION │
     │   (60s interval)│           │  (15s interval) │           │   (5s interval) │
     │                 │           │                 │           │                 │
-    │ Tüm semboller   │           │ %50+ koşul      │           │ %100 koşul      │
-    │ taranır         │           │ sağlanan        │           │ sağlanan        │
-    │                 │           │ semboller       │           │ semboller       │
+    │ All symbols | | %50+ condition | | %100 condition |
+    │ scanned         │           │ provided        │           │ provided        │
+    │                 │           │ symbols       │           │ symbols       │
     └────────┬────────┘           └────────┬────────┘           └────────┬────────┘
              │                             │                             │
              │                             │                             │
@@ -657,48 +657,48 @@ Binance WebSocket
     │  1. CacheManager'dan indicator verilerini al                            │
     │     indicators = cache.get(f"indicators:{symbol}:{timeframe}")          │
     │                                                                          │
-    │  2. StrategyExecutor ile koşulları değerlendir                          │
+    │  2. Evaluate conditions with StrategyExecutor.
     │     result = strategy_executor.evaluate_entry(symbol, indicators)        │
     │                                                                          │
-    │  3. Score'a göre yeni tier belirle                                      │
+    │  3. Determine a new tier based on the score.
     │     score >= 1.0  → DECISION                                            │
     │     score >= 0.5  → MONITORING                                          │
     │     score < 0.5   → ANALYSIS                                            │
     │                                                                          │
-    │  4. TierManager'ı güncelle                                              │
+    │  4. Update the TierManager
     │     tier_manager.set_tier(symbol, new_tier, score, direction, ...)      │
     └─────────────────────────────────────────────────────────────────────────┘
 
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                     3️⃣ TRADE EXECUTION FLOW                                 │
-│                  (candle_closed SADECE BURADA ÖNEMLİ!)                      │
+│                  (candle_closed ONLY IMPORTANT HERE!)                      │
 └─────────────────────────────────────────────────────────────────────────────┘
 
 MTF Engine
     │
-    │ candle_closed event (5m mum kapandı!)
-    │ (Sadece primary_timeframe için)
+    │ candle_closed event (5m candle closed!)
+    │ (Only for the primary_timeframe)
     ▼
 ┌──────────────────────────────────────────────────────────────────┐
 │              _on_candle_closed(symbol, timeframe)                │
 │                                                                  │
 │  ┌────────────────────────────────────────────────────────────┐  │
-│  │ SADECE TIER 0 (POSITION) ve TIER 1 (DECISION) için!        │  │
+│  │ ONLY for TIER 0 (POSITION) and TIER 1 (DECISION)!        │  │
 │  │                                                             │  │
-│  │ TIER 0 → Exit kontrolü (mum kapanış fiyatında SL/TP?)      │  │
-│  │ TIER 1 → Entry execute (koşullar hala %100 mi? → TRADE!)   │  │
+│  │ TIER 0 -> Exit check (SL/TP at candle closing price?)      │  │
+│  │ TIER 1 -> Entry execute (are the conditions still 100%? -> TRADE!)   │  │
 │  │                                                             │  │
-│  │ TIER 2/3 → YAPILACAK BİR ŞEY YOK                           │  │
-│  │           (tier_processing_loop zaten kontrol ediyor)       │  │
+│  │ TIER 2/3 -> NOTHING TO DO                                  │  │
+│  │           (tier_processing_loop already checks this)       │  │
 │  └────────────────────────────────────────────────────────────┘  │
 │                                                                  │
 │  if tier == POSITION:                                            │
 │      mode.check_exit_on_candle_close(symbol)                     │
-│      # SL/TP tetiklendi mi? Sinyal çıkışı var mı?               │
+│      # Was the stop-loss/take-profit triggered? Is there a signal output?               │
 │                                                                  │
 │  elif tier == DECISION:                                          │
-│      # Mum kapandı, entry zamanı!                                │
+│      # The candle closed, entry time!
 │      mode.execute_entry(symbol, direction, score)                │
 │      if success:                                                 │
 │          tier_manager.set_tier(symbol, POSITION)                 │
@@ -715,7 +715,7 @@ MTF Engine
                               │   _tier_processing_loop()   │
                               │                             │
                               │   TIER 0: 1s interval       │
-                              │   (EN YÜKSEK ÖNCELİK)       │
+                              │   (HIGHEST PRIORITY)       │
                               └──────────────┬──────────────┘
                                              │
                                              ▼
@@ -737,58 +737,58 @@ MTF Engine
                             ▼                                 ▼
                    mode.close_position()              mode.update_sl()
                    tier → get_return_tier()
-                   (config'den: ANALYSIS veya MONITORING)
+                   (from config: ANALYSIS or MONITORING)
 ```
 
 ---
 
-## 🎯 1D STRATEJİ SENARYOSU
+## 🎯 1D STRATEGY SCENARIO
 
-**Soru:** 1D stratejide candle_closed 24 saat sonra mı tier check yapılacak?
+**Question:** In the 1D strategy, is the tier check performed 24 hours after the candle_closed event?
 
-**Cevap:** HAYIR! Tier check **candle_closed'dan BAĞIMSIZ** çalışır.
+**Answer:** NO! The tier check operates **independently** of 'candle_closed'.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                         1D STRATEJİ ÖRNEK AKIŞI                             │
+│                         1D STRATEGY EXAMPLE FLOW                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 
-Saat 00:00 - Gün başı
+Time 00:00 - Start of the day
 │
-├── WebSocket: 1m kline verileri geliyor (sürekli)
+├── WebSocket: 1m kline data is coming (continuously)
 │
-├── MTF Engine: 1m → 1D aggregation (1440 adet 1m = 1 adet 1D)
-│   └── 1D candle henüz KAPANMADI ama OHLC sürekli güncelleniyor!
+├── MTF Engine: 1m -> 1D aggregation (1440 adet 1m = 1 adet 1D)
+│   └── The 1D candle has not yet CLOSED, but the OHLC is constantly updated!
 │
-├── IndicatorManager: 1D indikatörleri HER 1M UPDATE'de yeniden hesaplanır
+├── IndicatorManager: 1D indicators are recalculated every 1M UPDATE.
 │   └── RSI_14_1d, EMA_20_1d, BB_1d, ATR_1d...
-│   └── (Açık mumun O,H,L,C değerleri ile hesaplanır)
+│   └── (Calculated with the O, H, L, C values of the open candle)
 │
-├── CacheManager: Güncel indicator değerleri cache'te
+├── CacheManager: Current indicator values are in the cache.
 │
 └── _tier_processing_loop():
     │
     ├── TIER 3 check (her 60s):
-    │   └── BTCUSDT koşulları %60 → MONITORING'e yükselt
+    │   └── BTCUSDT conditions increased to 60% -> MONITORING
     │
     ├── TIER 2 check (her 15s):
-    │   └── BTCUSDT koşulları %85 → hala MONITORING
+    │   └── BTCUSDT conditions 85% -> still MONITORING
     │
     ├── TIER 2 check (her 15s):
-    │   └── BTCUSDT koşulları %100 → DECISION'a yükselt!
+    │   └── BTCUSDT conditions increased to 100% -> upgrade to DECISION!
     │
     └── TIER 1 check (her 5s):
-        └── BTCUSDT %100 koşul SAĞLANDI ama...
-            ├── candle_close_pending = True (mum henüz kapanmadı)
+        └── BTCUSDT 100% condition MET but...
+            ├── candle_close_pending = True (candle has not yet closed)
             └── Entry YAPILMAZ, bekle!
 
-Saat 23:59:59 - Gün sonu (1D candle kapanıyor!)
+23:59:59 - End of day (1D candle is closing!)
 │
 └── MTF Engine: candle_closed event ("BTCUSDT", "1d")
     │
     └── _on_candle_closed("BTCUSDT", "1d"):
         │
-        └── tier == DECISION ve candle_close_pending == True
+        └── tier == DECISION and candle_close_pending == True
             │
             └── candle_close_pending = False
             └── ready_for_entry = True
@@ -796,37 +796,37 @@ Saat 23:59:59 - Gün sonu (1D candle kapanıyor!)
             └── tier → POSITION
 ```
 
-### Özet:
+### Summary:
 
-| İşlem | Ne Zaman Olur? | Candle Close Gerekli mi? |
+| Operation | When does it happen? | Is Candle Close required? |
 |-------|----------------|--------------------------|
-| Indicator hesaplama | Her 1m update | ❌ Hayır |
-| Tier 3→2 geçişi | Her 60s polling | ❌ Hayır |
-| Tier 2→1 geçişi | Her 15s polling | ❌ Hayır |
-| **Entry execute** | **Candle close anında** | **✅ EVET** |
-| SL/TP kontrolü | Her 1s polling | ❌ Hayır |
-| **Exit execute** | Tick-based veya candle close | **Duruma göre** |
+| Indicator calculation | Every 1m update | ❌ No |
+| Tier 3 to 2 transition | Every 60 seconds polling | ❌ No |
+| Tier 2 to 1 transition | Every 15 seconds polling | ❌ No |
+| **Entry execute** | **Candle close immediately** | **✅ YES** |
+| SL/TP control | Every 1s polling | ❌ No |
+| **Exit execute** | Tick-based or candle close | **Depending on the situation** |
 
 ---
 
-## 📊 WARMUP VE INDICATOR AKIŞI
+## 📊 WARMUP AND INDICATOR FLOW
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           WARMUP SÜRECİ                                      │
+│                           WARMUP PROCESS                                       │
 └─────────────────────────────────────────────────────────────────────────────┘
 
-Engine başlatıldı
+Engine started
        │
        ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│ 1. WARMUP PERİYODU HESAPLA                                       │
+│ 1. CALCULATE WARMUP PERIOD                                       │
 │                                                                  │
 │ warmup_period = max(                                             │
 │     indicator.required_periods for indicator in strategy         │
 │ ) + buffer                                                       │
 │                                                                  │
-│ Örnek:                                                           │
+│ Example:                                                           │
 │   RSI_14      → 14 candle                                        │
 │   EMA_50      → 50 candle                                        │
 │   BB_20       → 20 candle                                        │
@@ -837,18 +837,18 @@ Engine başlatıldı
        │
        ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│ 2. TARİHSEL VERİ YÜKLE (warmup için)                             │
+│ 2. LOAD HISTORICAL DATA (for warmup) │
 │                                                                  │
 │ for symbol in symbols:                                           │
 │     for timeframe in mtf_timeframes:                             │
-│         # Parquet'ten veya API'den                               │
+│         # From Parquet or from API
 │         historical = connector.get_klines(                       │
 │             symbol=symbol,                                       │
 │             timeframe=timeframe,                                 │
 │             limit=warmup_period                                  │
 │         )                                                        │
 │                                                                  │
-│         # MTF Engine'e yükle                                     │
+│         # Load into the MTF Engine                                     │
 │         mtf_engine.load_historical(historical)                   │
 └──────────────────────────────────────────────────────────────────┘
        │
@@ -858,8 +858,8 @@ Engine başlatıldı
 │                                                                  │
 │ indicator_manager.warmup(historical_data)                        │
 │                                                                  │
-│ # Her indicator kendi warmup'ını yapar                           │
-│ # İlk N değer NaN olabilir, bu normal                            │
+│ # Each indicator performs its own warmup.
+│ # The first N values may be NaN, this is normal
 │                                                                  │
 │ RSI_14:   [NaN, NaN, ..., NaN, 45.2, 48.1, 52.3, ...]            │
 │            ▲─── 14 candle ───▲                                   │
@@ -869,28 +869,28 @@ Engine başlatıldı
        │
        ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│ 4. WEBSOCKET BAŞLAT                                              │
+│ 4. START WEBSOCKET                                              │
 │                                                                  │
-│ # Artık canlı veri alabilir                                      │
+│ # Now you can receive live data
 │ websocket_engine.subscribe(symbols, channels)                    │
 │                                                                  │
-│ # Her yeni 1m kline geldiğinde:                                  │
-│ # - MTF buffer güncelle                                          │
+│ # Every time a new 1m Kline arrives:                                  │
+│ # - Update MTF buffer
 │ # - Indicator incremental hesapla                                │
-│ # - Cache güncelle                                               │
+│ # - Update cache
 └──────────────────────────────────────────────────────────────────┘
        │
        ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│ 5. TIER PROCESSING BAŞLAT                                        │
+│ 5. START TIER PROCESSING                                        │
 │                                                                  │
-│ # Warmup complete olduktan sonra tier check başlar               │
+│ # After the warmup is complete, the tier check begins.
 │ _tier_processing_loop()                                          │
 │                                                                  │
-│ # Warmup complete DEĞİLSE:                                       │
-│ # - Tier check yapılmaz                                          │
-│ # - Entry/Exit yapılmaz                                          │
-│ # - Sadece veri toplanır                                         │
+│ # If warmup is NOT complete:                                       │
+│ # - Tier check is not performed
+│ # - No entry or exit operations are allowed.
+│ # - Only data is collected
 └──────────────────────────────────────────────────────────────────┘
 
 
@@ -898,21 +898,21 @@ Engine başlatıldı
 │                    INDICATOR INCREMENTAL UPDATE                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 
-WebSocket: Yeni 1m kline geldi
+WebSocket: A new 1m kline has arrived.
        │
        ▼
-MTF Engine: 1m buffer güncelle
+MTF Engine: Update 1m buffer
        │
-       ├── is_candle_update? (mum hala açık)
+       ├── is_candle_update? (Is the candle still open?)
        │   │
-       │   └── Sadece current candle OHLC güncelle
-       │       └── Indicator'lar AÇIK MUM değerleriyle yeniden hesaplanır
+       │   └── Only update the current candle's OHLC.
+       │       └── Indicators are recalculated with OPEN candle values.
        │
-       └── is_candle_close? (mum kapandı)
+       └── is_candle_close? (is candle closed?)
            │
-           └── Buffer'a yeni candle ekle
-               └── Eski candle'ı "closed" olarak işaretle
-               └── candle_closed event emit et
+           └── Add a new candle to the buffer
+               └── Mark the old candle as "closed".
+               └── emit the candle_closed event
 
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -937,7 +937,7 @@ CacheManager
 │         "open": 42100.00,
 │         "volume": 15234.56,
 │         "timestamp": 1701619200000,
-│         "is_closed": false  # Açık mum mu?
+│         "is_closed": false  # Is it an open candle?
 │       }
 │
 ├── tier:summary
@@ -963,44 +963,44 @@ CacheManager
 
 ---
 
-## ⚠️ DİKKAT EDİLECEK NOKTALAR
+## ⚠️ IMPORTANT POINTS
 
 ### 1. Thread Safety
 ```python
-# TierManager._states dict'i thread-safe değil
-# Eğer multi-thread kullanılacaksa:
+# The TierManager._states dictionary is not thread-safe.
+# If multi-threading is to be used:
 import threading
 self._lock = threading.Lock()
 
 def set_tier(self, ...):
     with self._lock:
-        # ... tier güncelleme ...
+        # ... tier update ...
 ```
 
 ### 2. Async/Await Consistency
 ```python
-# Tüm I/O operasyonları async olmalı
-# Blocking calls asyncio.to_thread() ile wrap edilmeli
+# All I/O operations should be asynchronous.
+# Blocking calls should be wrapped with asyncio.to_thread()
 
-# ❌ Yanlış
+# ❌ Wrong
 result = self.connector.get_balance()  # Blocking!
 
-# ✅ Doğru
-result = await self.connector.get_balance()  # veya
+# ✅ Correct
+result = await self.connector.get_balance()  # or
 result = await asyncio.to_thread(self.connector.get_balance)
 ```
 
 ### 3. Error Isolation
 ```python
-# Her symbol işlemi try/except içinde olmalı
-# Bir symbol hatası diğerlerini etkilememeli
+# Every symbol operation should be within a try/except block.
+# A symbol error should not affect the others.
 
 for symbol in symbols:
     try:
         await self._process_symbol(symbol)
     except Exception as e:
-        self.logger.error(f"❌ {symbol} hatası: {e}")
-        # Devam et, durma
+        self.logger.error(f"❌ {symbol} error: {e}")
+        # Continue, don't stop
 ```
 
 ### 4. Graceful Shutdown
@@ -1009,18 +1009,18 @@ async def stop(self):
     """Clean shutdown"""
     self._running = False
 
-    # 1. Yeni işlemleri durdur
-    # 2. Açık pozisyonları kaydet (crash recovery için)
-    # 3. WebSocket kapat
+    # 1. Stop new operations
+    # 2. Save open positions (for crash recovery)
+    # 3. Close WebSocket
     # 4. Mode shutdown
     # 5. Cache flush
 ```
 
 ---
 
-## 📊 KARŞILAŞTIRMA: ÖNCE vs SONRA
+## 📊 COMPARISON: BEFORE vs AFTER
 
-### ÖNCE (V5 mevcut)
+### BEFORE (V5 exists)
 ```
 TradingEngine V5
 ├── 4 Core singleton ✅
@@ -1029,65 +1029,66 @@ TradingEngine V5
 ├── Mode loading ✅
 ├── Data feeds (COMMENT-OUT) ⚠️
 ├── Tier system ❌
-├── Processing loop ❌ (sadece sleep)
+├── Processing loop ❌ (only sleep)
 ├── Display ❌
-└── EventBus/Cache aktif kullanım ❌
+└── EventBus/Cache is actively used ❌
 ```
 
-### SONRA (V5 + Entegrasyon)
+### LATER (V5 + Integration)
 ```
 TradingEngine V5 + TierManager
 ├── 4 Core singleton ✅
 ├── Strategy loading ✅
 ├── Symbol loading ✅
 ├── Mode loading ✅
-├── Data feeds ✅ (aktif)
+├── Data feeds ✅ (active)
 ├── TierManager ✅ (entegre)
 ├── DisplayInfo ✅ (entegre)
 ├── Tier-based processing loop ✅
-├── EventBus aktif kullanım ✅
-├── Cache aktif kullanım ✅
+├── EventBus is actively used ✅
+├── Cache is actively being used ✅
 └── Exit-First logic ✅
 ```
 
 ---
 
-## 🚀 UYGULAMA ÖNCELİKLERİ
+## 🚀 APPLICATION PRIORITIES
 
-| Öncelik | Adım | Tahmini Satır | Bağımlılık |
+| Priority | Step | Estimated Lines | Dependency |
 |---------|------|---------------|------------|
 | 1 | TierManager import & init | +30 | - |
 | 2 | DisplayInfo import & init | +20 | TierManager |
 | 3 | _tier_processing_loop | +60 | TierManager |
 | 4 | _status_display_loop | +40 | DisplayInfo |
-| 5 | Tier işleme metodları | +80 | Mode |
-| 6 | _on_candle_closed güncelleme | +40 | StrategyExecutor |
-| 7 | Data feeds aktif etme | +10 | WebSocket, MTF |
-| 8 | stop() güncelleme | +20 | - |
+| 5 | Tier processing methods | +80 | Mode |
+| 6 | update _on_candle_closed | +40 | StrategyExecutor |
+| 7 | Enable data feeds | +10 | WebSocket, MTF |
+| 8 | stop() update | +20 | - |
 
-**Toplam:** ~300 satır ekleme → V5 939 satır olacak (hala V4'ten az!)
-
----
-
-## 🎯 SONUÇ
-
-### Önerilen Yaklaşım: "Incremental Integration"
-
-1. **Önce TierManager + DisplayInfo** entegre et (temel görünürlük)
-2. **Sonra Tier Loop** ekle (işleme mantığı)
-3. **Son olarak Data Feeds** aktif et (tam çalışır sistem)
-
-Bu yaklaşım:
-- Her adımda test edilebilir
-- Geriye dönük uyumlu
-- Backtest Engine'in kanıtlanmış pattern'lerini kullanır
-- Engine "lean coordinator" rolünü korur
+**Total:** ~300 lines added -> V5 will have 939 lines (still less than V4!)
 
 ---
 
-## 🔬 V1 ANALİZİ: Real-Time Evaluation
+## 🎯 RESULT
+
+### Recommended Approach: "Incremental Integration"
+
+1. **First, integrate TierManager + DisplayInfo** (basic visibility).
+2. Add the "Next Tier Loop" (processing logic).
+3. **Finally, activate Data Feeds** (for a fully functional system).
+
+This approach:
+- Can be tested at each step.
+- Backward compatible
+- Uses Backtest Engine's proven patterns.
+- Engine maintains the "lean coordinator" role.
+
+---
+
+## 🔬 V1 ANALYSIS: Real-Time Evaluation
 
 V1'de işleme şu şekilde:
+In V1, the processing is as follows:
 
 ```python
 # V1 _main_loop() - trading_engine_v1.py:1644-1676
@@ -1097,7 +1098,7 @@ async def _main_loop(self):
 
         # Real-time evaluation (10 saniyede bir)
         if loop_count % 10 == 0:
-            await self._realtime_evaluation()  # TÜM semboller için
+            await self._realtime_evaluation()  # For ALL symbols
 
         # Status log (60 saniyede bir)
         if loop_count % 60 == 0:
@@ -1110,11 +1111,11 @@ async def _main_loop(self):
         await asyncio.sleep(1)
 ```
 
-### V1'in SL/TP Kontrolü
+### V1's Stop Loss/Take Profit Control
 ```python
 # V1 _evaluate_exits_for_symbol() - trading_engine_v1.py:1281-1343
 async def _evaluate_exits_for_symbol(self, symbol, indicator_data):
-    # Get current price from DataFrame (SON MUM değeri)
+    # Get current price from DataFrame (LAST CANDLE value)
     current_price = indicator_data[primary_tf]['close'].iloc[-1]
 
     for position in positions:
@@ -1127,22 +1128,22 @@ async def _evaluate_exits_for_symbol(self, symbol, indicator_data):
             await self._close_position(position, current_price, reason)
 ```
 
-### V1 Problemi: Tick-Based DEĞİL!
+### V1 Problem: Not Tick-Based!
 ```
-❌ V1: Her 10 saniyede DataFrame'den son close fiyatı al
-       → SL $100'da, fiyat $99'a düştü ama 10 saniye sonra $101'e çıktı
-       → SL MISS! Çünkü check yapıldığında fiyat $101'di
+❌ V1: Get the latest close price from the DataFrame every 10 seconds.
+       -> In SL $100, the price dropped to $99, but 10 seconds later it rose to $101.
+       -> SL MISS! Because when checked, the price was $101.
 
-✅ OLMASI GEREKEN: Her tick'te (her fiyat güncellemesinde) kontrol
-       → SL $100'da, fiyat $99'a düştü
-       → ANINDA çıkış (tick geldiği an)
+✅ WHAT SHOULD HAPPEN: Check at every tick (every price update).
+       -> In SL $100, the price dropped to $99.
+       -> IMMEDIATE output (at the moment the tick arrives)
 ```
 
 ---
 
-## 🎯 YENİ ÖNERİ: Hybrid Model
+## 🎯 NEW PROPOSAL: Hybrid Model
 
-### İki Farklı Fiyat Kaynağı
+### Two Different Price Sources
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -1150,17 +1151,17 @@ async def _evaluate_exits_for_symbol(self, symbol, indicator_data):
 └─────────────────────────────────────────────────────────────────────────────┘
 
 1. TICK DATA (WebSocket aggTrade/bookTicker)
-   └── Her fiyat değişikliğinde gelir
-   └── SL/TP kontrolü için kullanılır
+   └── Income on every price change
+   └── Used for stop-loss/take-profit control.
    └── Indicator hesaplamaz
 
 2. CANDLE DATA (WebSocket kline)
-   └── Her mum güncellemesinde gelir (1s)
-   └── Indicator hesaplama için kullanılır
-   └── Entry/Exit sinyali için kullanılır
+   └── Revenue for each mom update (1s)
+   └── Used for indicator calculation
+   └── Used for entry/exit signal.
 ```
 
-### Önerilen Akış (Hybrid)
+### Recommended Flow (Hybrid)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -1177,8 +1178,8 @@ WebSocket
     │                                                                     │
     └── bookTicker/aggTrade (tick updates) ──────────────────────────────┤
                                                                           │
-        └── PriceStream (yeni component)                                 │
-            └── Her tick'te SADECE pozisyon kontrolü                     │
+        └── PriceStream (new component)
+            └── Only position check is performed at each tick.
             └── SL/TP hit check                                          │
             └── Cache'e current_price yaz                                │
                                                                           │
@@ -1198,81 +1199,81 @@ WebSocket
 
 ---
 
-## 📊 KARAR TABLOSU: Ne Zaman Ne Kullanılır?
+## 📊 DECISION TABLE: When to Use What?
 
-| İşlem | Veri Kaynağı | Kontrol Zamanı | Bekleme |
+| Operation | Data Source | Check Time | Timeout |
 |-------|--------------|----------------|---------|
-| **Indicator hesaplama** | kline (candle) | Her candle update | ❌ |
-| **Tier evaluation** | Cache (indicators) | Polling (interval veya sürekli) | ❌ |
+| **Indicator calculation** | kline (candle) | Every candle update | ❌ |
+| **Tier evaluation** | Cache (indicators) | Polling (interval or continuous) | ❌ |
 | **Entry signal** | Cache (indicators) | Candle close event | ✅ Candle close |
 | **SL/TP check** | bookTicker (tick) | Her tick | ❌ |
 | **Trailing update** | bookTicker (tick) | Her tick | ❌ |
 | **Signal exit** | kline (candle) | Candle close event | ✅ Candle close |
 
-### Entry vs Exit Farkı
+### Difference between Entry and Exit
 
 ```
 ENTRY:
-└── Candle CLOSE gerekli (sinyal doğrulama)
-└── Açık mum verileriyle trade açmak riskli
-└── "Close > EMA" koşulu mum kapanınca kesinleşir
+└── Candle CLOSE is required (for signal validation)
+└── Trading with open candle data is risky.
+└── "Close > EMA" condition is finalized when the candle closes.
 
 EXIT (SL/TP):
 └── Candle close BEKLEMEZ!
-└── Fiyat SL'e değdiği AN çıkış
-└── Her millisaniye önemli (kayıp büyüyebilir)
+└── Exit when the price reaches the stop loss (SL) level.
+└── Every millisecond is important (the loss can increase)
 
 EXIT (Signal-based):
-└── Candle close gerekli
-└── "RSI > 70 iken çıkış" → mum kapanınca kontrol
+└── Candle close is required.
+└── "Exit when RSI is greater than 70" -> check when the candle closes
 ```
 
 ---
 
-## 🔧 UYGULAMA ÖNERİSİ
+## 🔧 APPLICATION SUGGESTION
 
-### Seçenek 1: Basit (Mevcut V1 gibi, interval-based)
+### Option 1: Simple (Like the current V1, interval-based)
 ```python
 # Pros: Kolay implement, az complexity
-# Cons: SL/TP gecikebilir (1-10 saniye)
+# Cons: Stop loss/take profit may be delayed (1-10 seconds)
 
 async def _tier_processing_loop(self):
     while self._running:
-        # TIER 0: Her saniye (SL/TP interval-based)
+        # TIER 0: Every second (SL/TP interval-based)
         await self._check_positions()
 
-        # TIER 1-3: Interval'a göre
+        # TIER 1-3: According to the interval
         symbols_to_check = self.tier_manager.get_symbols_to_check()
         ...
         await asyncio.sleep(1)
 ```
 
-### Seçenek 2: Hybrid (Tick + Candle)
+### Option 2: Hybrid (Tick + Candle)
 ```python
-# Pros: Gerçek zamanlı SL/TP
-# Cons: Daha fazla WebSocket subscription, complexity
+# Pros: Real-time stop loss/take profit.
+# Cons: More WebSocket subscriptions, complexity
 
-# Ayrı tick stream
+# Separate tick stream
 async def _on_tick(self, symbol: str, price: float):
-    """Her fiyat güncellemesinde çağrılır"""
+    """Called on each price update"""
     for position in self._get_positions(symbol):
         if self._check_sl_tp(position, price):
             await self._immediate_exit(position, price)
 
-# Ayrı candle stream
+# Separate candle stream
 async def _on_candle_closed(self, symbol: str, timeframe: str):
-    """Mum kapandığında çağrılır - entry ve signal exit"""
+    """Called when the candle closes - entry and signal exit"""
     ...
 ```
 
-### Seçenek 3: Order-Based (Exchange'e bırak)
+### Option 3: Order-Based (Leave it to the exchange)
 ```python
-# Pros: En güvenilir, exchange garantili
-# Cons: Paper mode'da çalışmaz, daha az kontrol
+# Pros: Most reliable, exchange guaranteed
+# Cons: Does not work in paper mode, less control
 
-# Entry ile birlikte SL/TP order'ları da gönder
+# Send SL/TP orders along with the entry.
 async def execute_entry(self, symbol, direction):
-    # Ana order
+    # Main order
     entry_order = await self.connector.create_order(...)
 
     # SL order (stop-market)
@@ -1292,34 +1293,34 @@ async def execute_entry(self, symbol, direction):
 
 ---
 
-## 🎯 ÖNERİLEN YAKLAŞIM
+## 🎯 RECOMMENDED APPROACH
 
-### Paper Mode: Seçenek 1 (Interval-based)
-- Her saniye fiyat kontrolü yeterli
-- Simülasyon için milisaniye hassasiyeti gereksiz
+### Paper Mode: Option 1 (Interval-based)
+- Checking the price every second is sufficient.
+- Millisecond precision is unnecessary for the simulation.
 - Implement edilmesi kolay
 
-### Live Mode: Seçenek 3 (Order-based) + Seçenek 2 backup
-- Exchange'e SL/TP order gönder (OCO veya ayrı)
-- Backup olarak tick-based kontrol (bağlantı kopması için)
-- En güvenli yaklaşım
+### Live Mode: Option 3 (Order-based) + Option 2 backup
+- Send a SL/TP order to the exchange (OCO or separately).
+- Backup as a tick-based check (for connection loss)
+- The safest approach
 
 ```python
 class TradingEngine:
     async def _handle_entry_success(self, symbol, position):
-        """Entry başarılı olduğunda"""
+        """When the entry is successful"""
 
         if self.mode_name == 'live':
-            # Exchange'e SL/TP order gönder
+            # Send SL/TP order to the exchange
             await self._place_sl_tp_orders(symbol, position)
         else:
-            # Paper mode: TierManager'a ekle, polling ile kontrol edilecek
+            # Paper mode: Add to TierManager, will be checked with polling
             self.tier_manager.set_tier(symbol, TierLevel.POSITION, ...)
 ```
 
 ---
 
-## 📝 ÖZET: Neyin Ne Zaman Olacağı
+## 📝 SUMMARY: What Will Happen When
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -1380,22 +1381,22 @@ class TradingEngine:
                       └───────────────┘
 ```
 
-### Interval Durumu (`intervals.enabled`)
+### Interval Status (`intervals.enabled`)
 
 ```yaml
 # trading.yaml
 tiers:
   intervals:
-    enabled: false   # Küçük sembol listesi için
-    # enabled: true  # 100+ sembol için kaynak optimizasyonu
+    enabled: false   # For the small symbol list
+    # enabled: true  # Source code optimization for 100+ symbols
 ```
 
-**enabled: false** → Tüm tierlar her döngüde kontrol edilir (20 sembol için ideal)
-**enabled: true** → Tier'a göre farklı interval (100+ sembol için)
+**enabled: false** -> All tiers are checked in each iteration (ideal for 20 symbols)
+**enabled: true** -> Different interval based on tier (for 100+ symbols)
 
 ---
 
 **Analiz Tarihi:** 2025-12-03
-**Güncelleme:** V1 analizi, Hybrid model önerisi, SL/TP tick-based açıklama
+**Update:** V1 analysis, Hybrid model suggestion, SL/TP tick-based explanation.
 **Analiz Eden:** Claude AI Assistant
-**Referans:** TRADING_ENGINE_ANALYSIS.md (V1-V4 karşılaştırma)
+**Reference:** TRADING_ENGINE_ANALYSIS.md (Comparison of V1-V4)
