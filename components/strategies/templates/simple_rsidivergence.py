@@ -97,7 +97,7 @@ class Strategy(BaseStrategy):
         self.leverage = 1  # 1x leverage (conservative for reversal trades)
 
         # Timeframe
-        self.primary_timeframe = "15m"
+        self.primary_timeframe = "1m"
         self.mtf_timeframes = ['15m']  # Primary timeframe MUST be in list
 
         # Exchange config
@@ -225,10 +225,10 @@ class Strategy(BaseStrategy):
                 ['rsidivergence_rsi', '<', 40],
 
                 # Price confirms reversal (breaks above EMA50)
-                ['close', 'crossover', 'ema_50'],
+                #['close', 'crossover', 'ema_50'],
 
                 # Major trend is up (safer context)
-                ['ema_50', '>', 'ema_200'],
+                #['ema_50', '>', 'ema_200'],
 
                 # Trend strength (not ranging)
                 ['adx_14_adx', '>', 25],
@@ -241,10 +241,10 @@ class Strategy(BaseStrategy):
                 ['rsidivergence_rsi', '>', 60],
 
                 # Price confirms reversal (breaks below EMA50)
-                ['close', 'crossunder', 'ema_50'],
+                #['close', 'crossunder', 'ema_50'],
 
                 # Major trend is down (safer context)
-                ['ema_50', '<', 'ema_200'],
+                #['ema_50', '<', 'ema_200'],
 
                 # Trend strength (not ranging)
                 ['adx_14_adx', '>', 25],
