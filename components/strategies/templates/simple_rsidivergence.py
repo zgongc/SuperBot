@@ -218,8 +218,12 @@ class Strategy(BaseStrategy):
         # ====================================================================
         self.entry_conditions = {
             'long': [
-                # Divergence detected 
+                # Divergence detected
                 ['rsidivergence_bullish_divergence', '==', True],
+
+                # Strong divergence (filter weak signals)
+                # Options: ≥20 (258 signals), ≥30 (241), ≥40 (161), ≥50 (104)
+                ['rsidivergence_divergence_strength', '>=', 30],
 
                 # RSI still in oversold area (confirming weakness before reversal)
                 #['rsidivergence_rsi', '<', 40],
@@ -236,6 +240,10 @@ class Strategy(BaseStrategy):
             'short': [
                 # Divergence detected
                 ['rsidivergence_bearish_divergence', '==', True],
+
+                # Strong divergence (filter weak signals)
+                # Options: ≥20 (258 signals), ≥30 (241), ≥40 (161), ≥50 (104)
+                ['rsidivergence_divergence_strength', '>=', 30],
 
                 # RSI still in overbought area
                 #['rsidivergence_rsi', '>', 60],
