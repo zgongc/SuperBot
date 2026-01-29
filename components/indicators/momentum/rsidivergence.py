@@ -195,13 +195,22 @@ class RSIDivergence(BaseIndicator):
                     # Regular Bullish divergence: Price LL, RSI HL (reversal signal)
                     if price_val2 < price_val1 and rsi_low2[1] > rsi_low1[1]:
                         result['bullish'] = True
-                        result['strength'] = min(100, abs(price_val1 - price_val2) * 10)
+                        # Better strength: combine price % change and RSI change
+                        price_change_pct = abs(price_val2 - price_val1) / price_val1 * 100
+                        rsi_change = abs(rsi_low2[1] - rsi_low1[1])
+                        price_strength = min(100, price_change_pct * 100)
+                        rsi_strength = min(100, rsi_change * 10)
+                        result['strength'] = price_strength * 0.6 + rsi_strength * 0.4
 
                     # Hidden Bullish divergence: Price HL, RSI LL (continuation signal)
                     elif price_val2 > price_val1 and rsi_low2[1] < rsi_low1[1]:
                         result['hidden_bullish'] = True
                         if result['strength'] == 0:  # Only set if no regular divergence
-                            result['strength'] = min(100, abs(price_val2 - price_val1) * 10)
+                            price_change_pct = abs(price_val2 - price_val1) / price_val1 * 100
+                            rsi_change = abs(rsi_low2[1] - rsi_low1[1])
+                            price_strength = min(100, price_change_pct * 100)
+                            rsi_strength = min(100, rsi_change * 10)
+                            result['strength'] = price_strength * 0.6 + rsi_strength * 0.4
 
         # Bearish Divergence: Price increases, RSI decreases
         if len(price_pivots['highs']) >= 2 and len(rsi_pivots['highs']) >= 2:
@@ -225,13 +234,22 @@ class RSIDivergence(BaseIndicator):
                     # Regular Bearish divergence: Price HH, RSI LH (reversal signal)
                     if price_val2 > price_val1 and rsi_high2[1] < rsi_high1[1]:
                         result['bearish'] = True
-                        result['strength'] = min(100, abs(price_val2 - price_val1) * 10)
+                        # Better strength: combine price % change and RSI change
+                        price_change_pct = abs(price_val2 - price_val1) / price_val1 * 100
+                        rsi_change = abs(rsi_high2[1] - rsi_high1[1])
+                        price_strength = min(100, price_change_pct * 100)
+                        rsi_strength = min(100, rsi_change * 10)
+                        result['strength'] = price_strength * 0.6 + rsi_strength * 0.4
 
                     # Hidden Bearish divergence: Price LH, RSI HH (continuation signal)
                     elif price_val2 < price_val1 and rsi_high2[1] > rsi_high1[1]:
                         result['hidden_bearish'] = True
                         if result['strength'] == 0:  # Only set if no regular divergence
-                            result['strength'] = min(100, abs(price_val1 - price_val2) * 10)
+                            price_change_pct = abs(price_val1 - price_val2) / price_val1 * 100
+                            rsi_change = abs(rsi_high2[1] - rsi_high1[1])
+                            price_strength = min(100, price_change_pct * 100)
+                            rsi_strength = min(100, rsi_change * 10)
+                            result['strength'] = price_strength * 0.6 + rsi_strength * 0.4
 
         return result
 
@@ -357,13 +375,25 @@ class RSIDivergence(BaseIndicator):
                         # Regular Bullish: Price LL, RSI HL (reversal)
                         if price_low2_val < price_low1_val and rsi_low2[1] > rsi_low1[1]:
                             bullish_div[i] = True
-                            div_strength[i] = min(100, abs(price_low1_val - price_low2_val) * 10)
+                            # Better strength calculation: combine price % change and RSI change
+                            price_change_pct = abs(price_low2_val - price_low1_val) / price_low1_val * 100
+                            rsi_change = abs(rsi_low2[1] - rsi_low1[1])
+                            # Normalize: 0.5% price change = 50 strength, 10 RSI change = 100 strength
+                            price_strength = min(100, price_change_pct * 100)
+                            rsi_strength = min(100, rsi_change * 10)
+                            # Combined strength (60% price, 40% RSI)
+                            div_strength[i] = price_strength * 0.6 + rsi_strength * 0.4
 
                         # Hidden Bullish: Price HL, RSI LL (continuation)
                         elif price_low2_val > price_low1_val and rsi_low2[1] < rsi_low1[1]:
                             hidden_bullish_div[i] = True
                             if div_strength[i] == 0:
-                                div_strength[i] = min(100, abs(price_low2_val - price_low1_val) * 10)
+                                # Same strength calculation for hidden divergence
+                                price_change_pct = abs(price_low2_val - price_low1_val) / price_low1_val * 100
+                                rsi_change = abs(rsi_low2[1] - rsi_low1[1])
+                                price_strength = min(100, price_change_pct * 100)
+                                rsi_strength = min(100, rsi_change * 10)
+                                div_strength[i] = price_strength * 0.6 + rsi_strength * 0.4
 
             # Check bearish divergence (using pivot highs)
             # Find the two most recent price highs before current index
@@ -387,13 +417,25 @@ class RSIDivergence(BaseIndicator):
                         # Regular Bearish: Price HH, RSI LH (reversal)
                         if price_high2_val > price_high1_val and rsi_high2[1] < rsi_high1[1]:
                             bearish_div[i] = True
-                            div_strength[i] = min(100, abs(price_high2_val - price_high1_val) * 10)
+                            # Better strength calculation: combine price % change and RSI change
+                            price_change_pct = abs(price_high2_val - price_high1_val) / price_high1_val * 100
+                            rsi_change = abs(rsi_high2[1] - rsi_high1[1])
+                            # Normalize: 5% price change = 100, 50 RSI change = 100
+                            price_strength = min(100, price_change_pct * 100)
+                            rsi_strength = min(100, rsi_change * 10)
+                            # Combined strength (60% price, 40% RSI)
+                            div_strength[i] = price_strength * 0.6 + rsi_strength * 0.4
 
                         # Hidden Bearish: Price LH, RSI HH (continuation)
                         elif price_high2_val < price_high1_val and rsi_high2[1] > rsi_high1[1]:
                             hidden_bearish_div[i] = True
                             if div_strength[i] == 0:
-                                div_strength[i] = min(100, abs(price_high1_val - price_high2_val) * 10)
+                                # Same strength calculation for hidden divergence
+                                price_change_pct = abs(price_high1_val - price_high2_val) / price_high1_val * 100
+                                rsi_change = abs(rsi_high2[1] - rsi_high1[1])
+                                price_strength = min(100, price_change_pct * 100)
+                                rsi_strength = min(100, rsi_change * 10)
+                                div_strength[i] = price_strength * 0.6 + rsi_strength * 0.4
 
         # Create result DataFrame
         result = pd.DataFrame({
