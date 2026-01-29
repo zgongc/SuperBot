@@ -61,7 +61,7 @@ async def test_rsidivergence_signals():
         symbol="BTCUSDT",
         timeframe="15m",
         start_date="2026-01-15T00:00:00",
-        end_date="2026-01-25T23:59:59",
+        end_date="2026-01-28T23:59:59",  # Extended to include Jan 27
         warmup_candles=200,
         utc_offset=3
     )

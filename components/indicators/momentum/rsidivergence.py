@@ -168,10 +168,16 @@ class RSIDivergence(BaseIndicator):
                     rsi_low2 = (idx, val)
 
             if rsi_low1 and rsi_low2:
-                # Bullish divergence: Price decreases, RSI increases
+                # Regular Bullish divergence: Price LL, RSI HL (reversal signal)
                 if price_val2 < price_val1 and rsi_low2[1] > rsi_low1[1]:
                     result['bullish'] = True
                     result['strength'] = min(100, abs(price_val1 - price_val2) * 10)
+
+                # Hidden Bullish divergence: Price HL, RSI LL (continuation signal)
+                elif price_val2 > price_val1 and rsi_low2[1] < rsi_low1[1]:
+                    result['hidden_bullish'] = True
+                    if result['strength'] == 0:  # Only set if no regular divergence
+                        result['strength'] = min(100, abs(price_val2 - price_val1) * 10)
 
         # Bearish Divergence: Price increases, RSI decreases
         if len(price_pivots['highs']) >= 2 and len(rsi_pivots['highs']) >= 2:
@@ -188,10 +194,16 @@ class RSIDivergence(BaseIndicator):
                     rsi_high2 = (idx, val)
 
             if rsi_high1 and rsi_high2:
-                # Bearish divergence: Price increases, RSI decreases
+                # Regular Bearish divergence: Price HH, RSI LH (reversal signal)
                 if price_val2 > price_val1 and rsi_high2[1] < rsi_high1[1]:
                     result['bearish'] = True
                     result['strength'] = min(100, abs(price_val2 - price_val1) * 10)
+
+                # Hidden Bearish divergence: Price LH, RSI HH (continuation signal)
+                elif price_val2 < price_val1 and rsi_high2[1] > rsi_high1[1]:
+                    result['hidden_bearish'] = True
+                    if result['strength'] == 0:  # Only set if no regular divergence
+                        result['strength'] = min(100, abs(price_val1 - price_val2) * 10)
 
         return result
 
@@ -222,6 +234,8 @@ class RSIDivergence(BaseIndicator):
             'rsi': round(rsi_values[-1], 2) if not np.isnan(rsi_values[-1]) else 50.0,
             'bullish_divergence': divergence['bullish'],
             'bearish_divergence': divergence['bearish'],
+            'hidden_bullish_divergence': divergence['hidden_bullish'],
+            'hidden_bearish_divergence': divergence['hidden_bearish'],
             'divergence_strength': round(divergence['strength'], 2)
         }
 
@@ -275,6 +289,8 @@ class RSIDivergence(BaseIndicator):
         # We'll mark potential divergence zones based on RSI-price relationship
         bullish_div = np.zeros(len(close), dtype=bool)
         bearish_div = np.zeros(len(close), dtype=bool)
+        hidden_bullish_div = np.zeros(len(close), dtype=bool)
+        hidden_bearish_div = np.zeros(len(close), dtype=bool)
         div_strength = np.zeros(len(close))
 
         # Simple divergence logic: compare recent price/RSI movements
@@ -291,13 +307,18 @@ class RSIDivergence(BaseIndicator):
             if price_min_idx > len(price_window) // 2:  # Recent low in price
                 prev_price_low = np.min(price_window[:len(price_window)//2])
                 recent_price_low = price_window[price_min_idx]
+                prev_rsi_low = np.min(rsi_window[:len(rsi_window)//2])
+                recent_rsi_low = rsi_window[price_min_idx] if price_min_idx < len(rsi_window) else rsi[-1]
 
-                if recent_price_low < prev_price_low:  # Lower low in price
-                    prev_rsi_low = np.min(rsi_window[:len(rsi_window)//2])
-                    recent_rsi_low = rsi_window[price_min_idx] if price_min_idx < len(rsi_window) else rsi[-1]
+                # Regular Bullish: Price LL, RSI HL (reversal)
+                if recent_price_low < prev_price_low and recent_rsi_low > prev_rsi_low:
+                    bullish_div[i] = True
+                    div_strength[i] = min(100, abs(recent_rsi_low - prev_rsi_low) * 2)
 
-                    if recent_rsi_low > prev_rsi_low:  # Higher low in RSI = bullish divergence
-                        bullish_div[i] = True
+                # Hidden Bullish: Price HL, RSI LL (continuation)
+                elif recent_price_low > prev_price_low and recent_rsi_low < prev_rsi_low:
+                    hidden_bullish_div[i] = True
+                    if div_strength[i] == 0:
                         div_strength[i] = min(100, abs(recent_rsi_low - prev_rsi_low) * 2)
 
             # Bearish: Price making higher high, RSI making lower high
@@ -306,13 +327,18 @@ class RSIDivergence(BaseIndicator):
             if price_max_idx > len(price_window) // 2:  # Recent high in price
                 prev_price_high = np.max(price_window[:len(price_window)//2])
                 recent_price_high = price_window[price_max_idx]
+                prev_rsi_high = np.max(rsi_window[:len(rsi_window)//2])
+                recent_rsi_high = rsi_window[price_max_idx] if price_max_idx < len(rsi_window) else rsi[-1]
 
-                if recent_price_high > prev_price_high:  # Higher high in price
-                    prev_rsi_high = np.max(rsi_window[:len(rsi_window)//2])
-                    recent_rsi_high = rsi_window[price_max_idx] if price_max_idx < len(rsi_window) else rsi[-1]
+                # Regular Bearish: Price HH, RSI LH (reversal)
+                if recent_price_high > prev_price_high and recent_rsi_high < prev_rsi_high:
+                    bearish_div[i] = True
+                    div_strength[i] = min(100, abs(recent_rsi_high - prev_rsi_high) * 2)
 
-                    if recent_rsi_high < prev_rsi_high:  # Lower high in RSI = bearish divergence
-                        bearish_div[i] = True
+                # Hidden Bearish: Price LH, RSI HH (continuation)
+                elif recent_price_high < prev_price_high and recent_rsi_high > prev_rsi_high:
+                    hidden_bearish_div[i] = True
+                    if div_strength[i] == 0:
                         div_strength[i] = min(100, abs(recent_rsi_high - prev_rsi_high) * 2)
 
         # Create result DataFrame
@@ -320,6 +346,8 @@ class RSIDivergence(BaseIndicator):
             'rsi': rsi,
             'bullish_divergence': bullish_div,
             'bearish_divergence': bearish_div,
+            'hidden_bullish_divergence': hidden_bullish_div,
+            'hidden_bearish_divergence': hidden_bearish_div,
             'divergence_strength': div_strength
         }, index=data.index)
 
