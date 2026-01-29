@@ -90,6 +90,8 @@ async def test_rsidivergence_signals():
     data['rsidiv_rsi'] = rsidiv_result['rsi']
     data['rsidiv_bullish'] = rsidiv_result['bullish_divergence']
     data['rsidiv_bearish'] = rsidiv_result['bearish_divergence']
+    data['rsidiv_hidden_bullish'] = rsidiv_result['hidden_bullish_divergence']
+    data['rsidiv_hidden_bearish'] = rsidiv_result['hidden_bearish_divergence']
     data['rsidiv_strength'] = rsidiv_result['divergence_strength']
 
     print(f"   ✓ RSI Period: {rsi_period}")
@@ -160,10 +162,10 @@ async def test_rsidivergence_signals():
     print("="*80)
     print()
 
-    # Bullish divergences
+    # Regular Bullish divergences
     bullish_signals = data[data['rsidiv_bullish'] == True].copy()
     if len(bullish_signals) > 0:
-        print(f"🟢 BULLISH DIVERGENCES: {len(bullish_signals)} found")
+        print(f"🟢 BULLISH DIVERGENCES (Regular): {len(bullish_signals)} found")
         print()
         for idx, row in bullish_signals.iterrows():
             print(f"   Date: {row['date_str']}")
@@ -177,13 +179,29 @@ async def test_rsidivergence_signals():
                 print(f"   >>> STRATEGY LONG SIGNAL <<<")
             print()
     else:
-        print(f"🟢 BULLISH DIVERGENCES: None found")
+        print(f"🟢 BULLISH DIVERGENCES (Regular): None found")
         print()
 
-    # Bearish divergences
+    # Hidden Bullish divergences
+    hidden_bullish_signals = data[data['rsidiv_hidden_bullish'] == True].copy()
+    if len(hidden_bullish_signals) > 0:
+        print(f"🟢 HIDDEN BULLISH DIVERGENCES: {len(hidden_bullish_signals)} found")
+        print()
+        for idx, row in hidden_bullish_signals.iterrows():
+            print(f"   Date: {row['date_str']}")
+            print(f"   Price: {row['close']:.2f}")
+            print(f"   RSI: {row['rsidiv_rsi']:.2f}")
+            print(f"   Strength: {row['rsidiv_strength']:.2f}")
+            print(f"   ADX: {row['adx_14_adx']:.2f}")
+            print()
+    else:
+        print(f"🟢 HIDDEN BULLISH DIVERGENCES: None found")
+        print()
+
+    # Regular Bearish divergences
     bearish_signals = data[data['rsidiv_bearish'] == True].copy()
     if len(bearish_signals) > 0:
-        print(f"🔴 BEARISH DIVERGENCES: {len(bearish_signals)} found")
+        print(f"🔴 BEARISH DIVERGENCES (Regular): {len(bearish_signals)} found")
         print()
         for idx, row in bearish_signals.iterrows():
             print(f"   Date: {row['date_str']}")
@@ -197,7 +215,23 @@ async def test_rsidivergence_signals():
                 print(f"   >>> STRATEGY SHORT SIGNAL <<<")
             print()
     else:
-        print(f"🔴 BEARISH DIVERGENCES: None found")
+        print(f"🔴 BEARISH DIVERGENCES (Regular): None found")
+        print()
+
+    # Hidden Bearish divergences
+    hidden_bearish_signals = data[data['rsidiv_hidden_bearish'] == True].copy()
+    if len(hidden_bearish_signals) > 0:
+        print(f"🔴 HIDDEN BEARISH DIVERGENCES: {len(hidden_bearish_signals)} found")
+        print()
+        for idx, row in hidden_bearish_signals.iterrows():
+            print(f"   Date: {row['date_str']}")
+            print(f"   Price: {row['close']:.2f}")
+            print(f"   RSI: {row['rsidiv_rsi']:.2f}")
+            print(f"   Strength: {row['rsidiv_strength']:.2f}")
+            print(f"   ADX: {row['adx_14_adx']:.2f}")
+            print()
+    else:
+        print(f"🔴 HIDDEN BEARISH DIVERGENCES: None found")
         print()
 
     # ========================================================================
@@ -239,7 +273,8 @@ async def test_rsidivergence_signals():
     # Create export dataframe
     export_cols = [
         'date_str', 'timestamp', 'open', 'high', 'low', 'close', 'volume',
-        'rsidiv_rsi', 'rsidiv_bullish', 'rsidiv_bearish', 'rsidiv_strength',
+        'rsidiv_rsi', 'rsidiv_bullish', 'rsidiv_bearish',
+        'rsidiv_hidden_bullish', 'rsidiv_hidden_bearish', 'rsidiv_strength',
         'rsi_14', 'ema_50', 'ema_200', 'adx_14_adx',
         'signal_long', 'signal_short'
     ]
@@ -279,23 +314,21 @@ async def test_rsidivergence_signals():
     print("Our Implementation (Python) Parameters:")
     print("   • RSI Period: 14")
     print("   • Lookback: 5 (symmetric)")
-    print("   • Range check: NOT IMPLEMENTED ⚠️")
-    print("   • Price comparison: Uses close prices")
-    print("   • Signal types: Regular divergences only")
+    print("   • Range check: IMPLEMENTED ✅ (5-60 bars)")
+    print("   • Price comparison: Uses HIGH/LOW ✅")
+    print("   • Signal types: Regular + Hidden divergences ✅")
     print()
 
-    print("Key Differences:")
-    print("   1. ⚠️  Range check (5-60 bars) not implemented")
-    print("      → May detect divergences that are too close/far apart")
+    print("Current Status:")
+    print("   ✅ HIGH/LOW price pivots implemented (TradingView compatible)")
+    print("   ✅ Range check (5-60 bars) implemented")
+    print("   ✅ Hidden divergences implemented (both bullish & bearish)")
+    print("   ✅ Proper pivot detection using swing_points utility")
     print()
-    print("   2. ⚠️  Using close instead of low/high for price pivots")
-    print("      → May miss some divergences TradingView detects")
-    print()
-    print("   3. ⚠️  Hidden divergences not implemented")
-    print("      → Only regular divergences detected")
-    print()
-    print("   4. ℹ️  Simplified pivot detection in calculate_batch()")
-    print("      → May have timing differences vs TradingView")
+    print("   ℹ️  Note: Minor timing differences may still exist due to:")
+    print("      - Different programming language implementations")
+    print("      - Floating-point precision differences")
+    print("      - Edge cases in pivot detection logic")
     print()
 
     print("="*80)

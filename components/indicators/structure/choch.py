@@ -25,7 +25,7 @@ Formula:
 Dependencies:
     - pandas>=2.0.0
     - numpy>=1.24.0
-    - SwingPoints (../support_resistance/swing_points.py)
+    - SwingPoints (../support_resistance/swingpoints.py)
 """
 
 import numpy as np
@@ -125,7 +125,7 @@ class CHoCH(BaseIndicator):
             if components_path not in sys.path:
                 sys.path.insert(0, components_path)
 
-            from indicators.support_resistance.swing_points import SwingPoints
+            from indicators.support_resistance.swingpoints import SwingPoints
             self._swing_points = SwingPoints(
                 left_bars=self.left_bars,
                 right_bars=self.right_bars,

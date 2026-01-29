@@ -783,7 +783,7 @@ INDICATOR_PRESETS: Dict[str, Dict[str, Any]] = {
         },
     },
 
-    "swing_points": {
+    "swingpoints": {
         "display_info": True,
         "lookback": 5,
 

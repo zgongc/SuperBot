@@ -331,7 +331,7 @@ def _extract_base_indicator_name(indicator_name: str) -> str:
 
     if base_name == 'swing' and len(parts) > 1:
         if parts[1] == 'points':
-            return 'swing_points'
+            return 'swingpoints'
 
     if base_name == 'fair' and len(parts) > 1:
         if parts[1] == 'value':

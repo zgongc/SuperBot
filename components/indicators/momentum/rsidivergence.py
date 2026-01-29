@@ -37,6 +37,11 @@ from components.indicators.indicator_types import (
     InvalidParameterError
 )
 from components.indicators.momentum.rsi import calculate_rsi_values
+from components.indicators.support_resistance.swingpoints import (
+    find_pivot_highs,
+    find_pivot_lows,
+    check_pivot_range
+)
 
 
 class RSIDivergence(BaseIndicator):
@@ -100,47 +105,62 @@ class RSIDivergence(BaseIndicator):
             )
         return True
 
-    def _find_pivots(self, data: np.ndarray, lookback: int) -> dict:
+    def _find_price_pivots(self, high: np.ndarray, low: np.ndarray, lookback: int) -> dict:
         """
-        Find pivot points (local highs and lows)
+        Find price pivot points using HIGH/LOW (TradingView compatible)
+
+        Uses actual high/low prices instead of close for more accurate pivot detection.
+        Compatible with TradingView's ta.pivothigh() and ta.pivotlow().
 
         Args:
-            data: Data array
+            high: High prices array
+            low: Low prices array
+            lookback: The lookback period (left_bars = right_bars = lookback)
+
+        Returns:
+            dict: {'highs': [(index, value)], 'lows': [(index, value)]}
+        """
+        # Use TradingView-compatible pivot detection from swing_points
+        pivot_highs = find_pivot_highs(high, left_bars=lookback, right_bars=lookback)
+        pivot_lows = find_pivot_lows(low, left_bars=lookback, right_bars=lookback)
+
+        return {
+            'highs': pivot_highs,  # Already list of (index, value) tuples
+            'lows': pivot_lows     # Already list of (index, value) tuples
+        }
+
+    def _find_oscillator_pivots(self, data: np.ndarray, lookback: int) -> dict:
+        """
+        Find oscillator (RSI) pivot points
+
+        For oscillators, we still use the same value for highs/lows.
+
+        Args:
+            data: Oscillator values (e.g., RSI)
             lookback: The lookback period
 
         Returns:
             dict: {'highs': [(index, value)], 'lows': [(index, value)]}
         """
-        pivots = {'highs': [], 'lows': []}
+        # For oscillator, use the same array for both highs and lows detection
+        pivot_highs = find_pivot_highs(data, left_bars=lookback, right_bars=lookback)
+        pivot_lows = find_pivot_lows(data, left_bars=lookback, right_bars=lookback)
 
-        for i in range(lookback, len(data) - lookback):
-            # Local high: Higher than the right and left sides
-            is_high = True
-            for j in range(1, lookback + 1):
-                if data[i] <= data[i-j] or data[i] <= data[i+j]:
-                    is_high = False
-                    break
-            if is_high:
-                pivots['highs'].append((i, data[i]))
+        return {
+            'highs': pivot_highs,
+            'lows': pivot_lows
+        }
 
-            # Local minimum: Lower than the left and right sides
-            is_low = True
-            for j in range(1, lookback + 1):
-                if data[i] >= data[i-j] or data[i] >= data[i+j]:
-                    is_low = False
-                    break
-            if is_low:
-                pivots['lows'].append((i, data[i]))
-
-        return pivots
-
-    def _detect_divergence(self, price_pivots: dict, rsi_pivots: dict) -> dict:
+    def _detect_divergence(self, price_pivots: dict, rsi_pivots: dict,
+                          range_min: int = 5, range_max: int = 60) -> dict:
         """
-        Detect divergence
+        Detect divergence with range check (TradingView compatible)
 
         Args:
             price_pivots: Price pivot points
             rsi_pivots: RSI pivot points
+            range_min: Minimum bars between pivots (default: 5)
+            range_max: Maximum bars between pivots (default: 60)
 
         Returns:
             dict: Divergence information
@@ -158,58 +178,68 @@ class RSIDivergence(BaseIndicator):
             price_low1, price_val1 = price_pivots['lows'][-2]
             price_low2, price_val2 = price_pivots['lows'][-1]
 
-            # Find RSI pivots that are close to price pivots
-            rsi_low1 = None
-            rsi_low2 = None
-            for idx, val in rsi_pivots['lows']:
-                if abs(idx - price_low1) <= self.lookback:
-                    rsi_low1 = (idx, val)
-                if abs(idx - price_low2) <= self.lookback:
-                    rsi_low2 = (idx, val)
+            # Range check: pivots must be 5-60 bars apart (TradingView default)
+            if not check_pivot_range(price_low1, price_low2, range_min, range_max):
+                pass  # Skip if pivots too close or too far
+            else:
+                # Find RSI pivots that are close to price pivots
+                rsi_low1 = None
+                rsi_low2 = None
+                for idx, val in rsi_pivots['lows']:
+                    if abs(idx - price_low1) <= self.lookback:
+                        rsi_low1 = (idx, val)
+                    if abs(idx - price_low2) <= self.lookback:
+                        rsi_low2 = (idx, val)
 
-            if rsi_low1 and rsi_low2:
-                # Regular Bullish divergence: Price LL, RSI HL (reversal signal)
-                if price_val2 < price_val1 and rsi_low2[1] > rsi_low1[1]:
-                    result['bullish'] = True
-                    result['strength'] = min(100, abs(price_val1 - price_val2) * 10)
+                if rsi_low1 and rsi_low2:
+                    # Regular Bullish divergence: Price LL, RSI HL (reversal signal)
+                    if price_val2 < price_val1 and rsi_low2[1] > rsi_low1[1]:
+                        result['bullish'] = True
+                        result['strength'] = min(100, abs(price_val1 - price_val2) * 10)
 
-                # Hidden Bullish divergence: Price HL, RSI LL (continuation signal)
-                elif price_val2 > price_val1 and rsi_low2[1] < rsi_low1[1]:
-                    result['hidden_bullish'] = True
-                    if result['strength'] == 0:  # Only set if no regular divergence
-                        result['strength'] = min(100, abs(price_val2 - price_val1) * 10)
+                    # Hidden Bullish divergence: Price HL, RSI LL (continuation signal)
+                    elif price_val2 > price_val1 and rsi_low2[1] < rsi_low1[1]:
+                        result['hidden_bullish'] = True
+                        if result['strength'] == 0:  # Only set if no regular divergence
+                            result['strength'] = min(100, abs(price_val2 - price_val1) * 10)
 
         # Bearish Divergence: Price increases, RSI decreases
         if len(price_pivots['highs']) >= 2 and len(rsi_pivots['highs']) >= 2:
             price_high1, price_val1 = price_pivots['highs'][-2]
             price_high2, price_val2 = price_pivots['highs'][-1]
 
-            # Find RSI pivots that are close to price pivots
-            rsi_high1 = None
-            rsi_high2 = None
-            for idx, val in rsi_pivots['highs']:
-                if abs(idx - price_high1) <= self.lookback:
-                    rsi_high1 = (idx, val)
-                if abs(idx - price_high2) <= self.lookback:
-                    rsi_high2 = (idx, val)
+            # Range check: pivots must be 5-60 bars apart (TradingView default)
+            if not check_pivot_range(price_high1, price_high2, range_min, range_max):
+                pass  # Skip if pivots too close or too far
+            else:
+                # Find RSI pivots that are close to price pivots
+                rsi_high1 = None
+                rsi_high2 = None
+                for idx, val in rsi_pivots['highs']:
+                    if abs(idx - price_high1) <= self.lookback:
+                        rsi_high1 = (idx, val)
+                    if abs(idx - price_high2) <= self.lookback:
+                        rsi_high2 = (idx, val)
 
-            if rsi_high1 and rsi_high2:
-                # Regular Bearish divergence: Price HH, RSI LH (reversal signal)
-                if price_val2 > price_val1 and rsi_high2[1] < rsi_high1[1]:
-                    result['bearish'] = True
-                    result['strength'] = min(100, abs(price_val2 - price_val1) * 10)
+                if rsi_high1 and rsi_high2:
+                    # Regular Bearish divergence: Price HH, RSI LH (reversal signal)
+                    if price_val2 > price_val1 and rsi_high2[1] < rsi_high1[1]:
+                        result['bearish'] = True
+                        result['strength'] = min(100, abs(price_val2 - price_val1) * 10)
 
-                # Hidden Bearish divergence: Price LH, RSI HH (continuation signal)
-                elif price_val2 < price_val1 and rsi_high2[1] > rsi_high1[1]:
-                    result['hidden_bearish'] = True
-                    if result['strength'] == 0:  # Only set if no regular divergence
-                        result['strength'] = min(100, abs(price_val1 - price_val2) * 10)
+                    # Hidden Bearish divergence: Price LH, RSI HH (continuation signal)
+                    elif price_val2 < price_val1 and rsi_high2[1] > rsi_high1[1]:
+                        result['hidden_bearish'] = True
+                        if result['strength'] == 0:  # Only set if no regular divergence
+                            result['strength'] = min(100, abs(price_val1 - price_val2) * 10)
 
         return result
 
     def calculate(self, data: pd.DataFrame) -> IndicatorResult:
         """
         Calculate RSI Divergence
+
+        Uses HIGH/LOW for price pivots (TradingView compatible).
 
         Args:
             data: OHLCV DataFrame
@@ -218,13 +248,15 @@ class RSIDivergence(BaseIndicator):
             IndicatorResult: Divergence information
         """
         close = data['close'].values
+        high = data['high'].values
+        low = data['low'].values
 
         # Calculate RSI using existing RSI indicator
         rsi_values = calculate_rsi_values(close, self.rsi_period)
 
-        # Find pivot points
-        price_pivots = self._find_pivots(close, self.lookback)
-        rsi_pivots = self._find_pivots(rsi_values, self.lookback)
+        # Find pivot points using HIGH/LOW for price, RSI for oscillator
+        price_pivots = self._find_price_pivots(high, low, self.lookback)
+        rsi_pivots = self._find_oscillator_pivots(rsi_values, self.lookback)
 
         # Detect divergence
         divergence = self._detect_divergence(price_pivots, rsi_pivots)
@@ -272,74 +304,96 @@ class RSIDivergence(BaseIndicator):
         """
         ⚡ VECTORIZED batch RSI Divergence calculation - for BACKTEST
 
-        Uses existing RSI calculation for consistency.
-        Simplified divergence detection for batch processing.
+        Uses HIGH/LOW for price pivots (TradingView compatible).
+        Proper pivot detection with range checking for batch processing.
 
         Returns:
-            pd.DataFrame: 4 columns (rsi, bullish_divergence, bearish_divergence, divergence_strength)
+            pd.DataFrame: 6 columns (rsi, bullish_divergence, bearish_divergence,
+                         hidden_bullish_divergence, hidden_bearish_divergence, divergence_strength)
         """
         self._validate_data(data)
 
         close = data['close'].values
+        high = data['high'].values
+        low = data['low'].values
 
         # Calculate RSI using existing RSI indicator
         rsi = calculate_rsi_values(close, self.rsi_period)
 
-        # Simplified divergence detection (for batch - not full pivot analysis)
-        # We'll mark potential divergence zones based on RSI-price relationship
+        # Initialize result arrays
         bullish_div = np.zeros(len(close), dtype=bool)
         bearish_div = np.zeros(len(close), dtype=bool)
         hidden_bullish_div = np.zeros(len(close), dtype=bool)
         hidden_bearish_div = np.zeros(len(close), dtype=bool)
         div_strength = np.zeros(len(close))
 
-        # Simple divergence logic: compare recent price/RSI movements
-        window = self.lookback * 2
-        for i in range(window, len(close)):
-            # Bullish: Price making lower low, RSI making higher low
-            price_window = close[i-window:i+1]
-            rsi_window = rsi[i-window:i+1]
+        # Find all pivot points once (TradingView compatible)
+        price_pivot_highs = find_pivot_highs(high, left_bars=self.lookback, right_bars=self.lookback)
+        price_pivot_lows = find_pivot_lows(low, left_bars=self.lookback, right_bars=self.lookback)
+        rsi_pivot_highs = find_pivot_highs(rsi, left_bars=self.lookback, right_bars=self.lookback)
+        rsi_pivot_lows = find_pivot_lows(rsi, left_bars=self.lookback, right_bars=self.lookback)
 
-            price_min_idx = np.argmin(price_window)
-            rsi_min_idx = np.argmin(rsi_window)
+        # Process each candle to check for divergences
+        for i in range(self.lookback * 2, len(close)):
+            # Check bullish divergence (using pivot lows)
+            # Find the two most recent price lows before current index
+            relevant_price_lows = [(idx, val) for idx, val in price_pivot_lows if idx < i]
+            if len(relevant_price_lows) >= 2:
+                price_low1_idx, price_low1_val = relevant_price_lows[-2]
+                price_low2_idx, price_low2_val = relevant_price_lows[-1]
 
-            # Check if there's divergence pattern
-            if price_min_idx > len(price_window) // 2:  # Recent low in price
-                prev_price_low = np.min(price_window[:len(price_window)//2])
-                recent_price_low = price_window[price_min_idx]
-                prev_rsi_low = np.min(rsi_window[:len(rsi_window)//2])
-                recent_rsi_low = rsi_window[price_min_idx] if price_min_idx < len(rsi_window) else rsi[-1]
+                # Range check: 5-60 bars apart (TradingView default)
+                if check_pivot_range(price_low1_idx, price_low2_idx, range_min=5, range_max=60):
+                    # Find corresponding RSI lows
+                    rsi_low1 = None
+                    rsi_low2 = None
+                    for rsi_idx, rsi_val in rsi_pivot_lows:
+                        if abs(rsi_idx - price_low1_idx) <= self.lookback:
+                            rsi_low1 = (rsi_idx, rsi_val)
+                        if abs(rsi_idx - price_low2_idx) <= self.lookback:
+                            rsi_low2 = (rsi_idx, rsi_val)
 
-                # Regular Bullish: Price LL, RSI HL (reversal)
-                if recent_price_low < prev_price_low and recent_rsi_low > prev_rsi_low:
-                    bullish_div[i] = True
-                    div_strength[i] = min(100, abs(recent_rsi_low - prev_rsi_low) * 2)
+                    if rsi_low1 and rsi_low2:
+                        # Regular Bullish: Price LL, RSI HL (reversal)
+                        if price_low2_val < price_low1_val and rsi_low2[1] > rsi_low1[1]:
+                            bullish_div[i] = True
+                            div_strength[i] = min(100, abs(price_low1_val - price_low2_val) * 10)
 
-                # Hidden Bullish: Price HL, RSI LL (continuation)
-                elif recent_price_low > prev_price_low and recent_rsi_low < prev_rsi_low:
-                    hidden_bullish_div[i] = True
-                    if div_strength[i] == 0:
-                        div_strength[i] = min(100, abs(recent_rsi_low - prev_rsi_low) * 2)
+                        # Hidden Bullish: Price HL, RSI LL (continuation)
+                        elif price_low2_val > price_low1_val and rsi_low2[1] < rsi_low1[1]:
+                            hidden_bullish_div[i] = True
+                            if div_strength[i] == 0:
+                                div_strength[i] = min(100, abs(price_low2_val - price_low1_val) * 10)
 
-            # Bearish: Price making higher high, RSI making lower high
-            price_max_idx = np.argmax(price_window)
+            # Check bearish divergence (using pivot highs)
+            # Find the two most recent price highs before current index
+            relevant_price_highs = [(idx, val) for idx, val in price_pivot_highs if idx < i]
+            if len(relevant_price_highs) >= 2:
+                price_high1_idx, price_high1_val = relevant_price_highs[-2]
+                price_high2_idx, price_high2_val = relevant_price_highs[-1]
 
-            if price_max_idx > len(price_window) // 2:  # Recent high in price
-                prev_price_high = np.max(price_window[:len(price_window)//2])
-                recent_price_high = price_window[price_max_idx]
-                prev_rsi_high = np.max(rsi_window[:len(rsi_window)//2])
-                recent_rsi_high = rsi_window[price_max_idx] if price_max_idx < len(rsi_window) else rsi[-1]
+                # Range check: 5-60 bars apart (TradingView default)
+                if check_pivot_range(price_high1_idx, price_high2_idx, range_min=5, range_max=60):
+                    # Find corresponding RSI highs
+                    rsi_high1 = None
+                    rsi_high2 = None
+                    for rsi_idx, rsi_val in rsi_pivot_highs:
+                        if abs(rsi_idx - price_high1_idx) <= self.lookback:
+                            rsi_high1 = (rsi_idx, rsi_val)
+                        if abs(rsi_idx - price_high2_idx) <= self.lookback:
+                            rsi_high2 = (rsi_idx, rsi_val)
 
-                # Regular Bearish: Price HH, RSI LH (reversal)
-                if recent_price_high > prev_price_high and recent_rsi_high < prev_rsi_high:
-                    bearish_div[i] = True
-                    div_strength[i] = min(100, abs(recent_rsi_high - prev_rsi_high) * 2)
+                    if rsi_high1 and rsi_high2:
+                        # Regular Bearish: Price HH, RSI LH (reversal)
+                        if price_high2_val > price_high1_val and rsi_high2[1] < rsi_high1[1]:
+                            bearish_div[i] = True
+                            div_strength[i] = min(100, abs(price_high2_val - price_high1_val) * 10)
 
-                # Hidden Bearish: Price LH, RSI HH (continuation)
-                elif recent_price_high < prev_price_high and recent_rsi_high > prev_rsi_high:
-                    hidden_bearish_div[i] = True
-                    if div_strength[i] == 0:
-                        div_strength[i] = min(100, abs(recent_rsi_high - prev_rsi_high) * 2)
+                        # Hidden Bearish: Price LH, RSI HH (continuation)
+                        elif price_high2_val < price_high1_val and rsi_high2[1] > rsi_high1[1]:
+                            hidden_bearish_div[i] = True
+                            if div_strength[i] == 0:
+                                div_strength[i] = min(100, abs(price_high1_val - price_high2_val) * 10)
 
         # Create result DataFrame
         result = pd.DataFrame({
@@ -352,7 +406,7 @@ class RSIDivergence(BaseIndicator):
         }, index=data.index)
 
         # Set warmup period to NaN/False
-        warmup = self.rsi_period + window
+        warmup = self.rsi_period + self.lookback * 2
         result.iloc[:warmup, result.columns.get_loc('rsi')] = np.nan
         result.iloc[:warmup, result.columns.get_loc('divergence_strength')] = 0
 

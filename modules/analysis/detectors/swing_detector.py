@@ -3,7 +3,7 @@ modules/analysis/detectors/swing_detector.py
 
 Swing High/Low detection - TradingView ZigZag Compatible
 
-Tek kaynak: SwingPoints (components/indicators/support_resistance/swing_points.py)
+Tek kaynak: SwingPoints (components/indicators/support_resistance/swingpoints.py)
 TradingView uyumlu pivot algoritmasi kullanir.
 """
 
@@ -69,7 +69,7 @@ class SwingDetector(BaseDetector):
             if str(components_path) not in sys.path:
                 sys.path.insert(0, str(components_path))
 
-            from components.indicators.support_resistance.swing_points import SwingPoints
+            from components.indicators.support_resistance.swingpoints import SwingPoints
             self._swing_points = SwingPoints(
                 left_bars=self.left_bars,
                 right_bars=self.right_bars,

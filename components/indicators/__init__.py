@@ -48,7 +48,7 @@ INDICATOR_REGISTRY: Dict[str, Dict[str, Any]] = {
         'class': 'PMax',
         'category': 'community',
         'type': IndicatorType.SINGLE_VALUE,
-        'description': 'PMax Indicator',
+        'description': 'components/indicators/community/pmax.py',
         'default_params': {'atr_period': 10, 'atr_multiplier': 3.0, 'ma_period': 10},
         'requires_volume': False,
         'has_calculate_batch': True,
@@ -693,8 +693,8 @@ INDICATOR_REGISTRY: Dict[str, Dict[str, Any]] = {
         'output_keys': []
     },
 
-    'swing_points': {
-        'module': 'support_resistance.swing_points',
+    'swingpoints': {
+        'module': 'support_resistance.swingpoints',
         'class': 'SwingPoints',
         'category': IndicatorCategory.SUPPORT_RESISTANCE,
         'type': IndicatorType.SINGLE_VALUE,

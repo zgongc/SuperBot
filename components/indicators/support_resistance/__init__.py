@@ -53,7 +53,7 @@ from indicators.support_resistance.woodie import Woodie
 from indicators.support_resistance.zigzag import ZigZag
 from indicators.support_resistance.sr import SupportResistance
 from indicators.support_resistance.fib_retracement import FibonacciRetracement
-from indicators.support_resistance.swing_points import SwingPoints
+from indicators.support_resistance.swingpoints import SwingPoints
 
 # Paket versiyonu
 __version__ = '2.0.0'

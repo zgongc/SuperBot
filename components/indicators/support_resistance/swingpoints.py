@@ -1,5 +1,5 @@
 """
-indicators/support_resistance/swing_points.py - Swing Points
+indicators/support_resistance/swingpoints.py - Swing Points
 
 Version: 2.0.0
 Date: 2025-10-14
@@ -22,6 +22,7 @@ Dependencies:
 
 import numpy as np
 import pandas as pd
+from typing import List, Tuple, Optional
 from indicators.base_indicator import BaseIndicator
 from indicators.indicator_types import (
     IndicatorCategory,
@@ -31,6 +32,110 @@ from indicators.indicator_types import (
     TrendDirection,
     InvalidParameterError
 )
+
+
+# ============================================================================
+# STANDALONE UTILITY FUNCTIONS (TradingView Compatible)
+# ============================================================================
+
+def find_pivot_highs(data: np.ndarray, left_bars: int = 5, right_bars: int = 5) -> List[Tuple[int, float]]:
+    """
+    Find pivot high points (TradingView ta.pivothigh equivalent)
+
+    Returns pivot highs as (index, value) tuples.
+    Compatible with TradingView's ta.pivothigh(data, left_bars, right_bars).
+
+    Args:
+        data: High prices array
+        left_bars: Number of bars to check on the left (default: 5)
+        right_bars: Number of bars to check on the right (default: 5)
+
+    Returns:
+        List of (index, value) tuples for pivot highs
+
+    Example:
+        >>> highs = np.array([100, 102, 104, 103, 101, 99, 98])
+        >>> pivots = find_pivot_highs(highs, left_bars=2, right_bars=2)
+        >>> pivots
+        [(2, 104.0)]  # Index 2 has value 104, higher than 2 bars left/right
+    """
+    pivots = []
+
+    for i in range(left_bars, len(data) - right_bars):
+        # Check if current bar is higher than left_bars to the left
+        is_highest_left = all(data[i] > data[i - j] for j in range(1, left_bars + 1))
+
+        # Check if current bar is higher or equal to right_bars to the right
+        is_highest_right = all(data[i] >= data[i + j] for j in range(1, right_bars + 1))
+
+        if is_highest_left and is_highest_right:
+            pivots.append((i, float(data[i])))
+
+    return pivots
+
+
+def find_pivot_lows(data: np.ndarray, left_bars: int = 5, right_bars: int = 5) -> List[Tuple[int, float]]:
+    """
+    Find pivot low points (TradingView ta.pivotlow equivalent)
+
+    Returns pivot lows as (index, value) tuples.
+    Compatible with TradingView's ta.pivotlow(data, left_bars, right_bars).
+
+    Args:
+        data: Low prices array
+        left_bars: Number of bars to check on the left (default: 5)
+        right_bars: Number of bars to check on the right (default: 5)
+
+    Returns:
+        List of (index, value) tuples for pivot lows
+
+    Example:
+        >>> lows = np.array([100, 98, 96, 97, 99, 101, 102])
+        >>> pivots = find_pivot_lows(lows, left_bars=2, right_bars=2)
+        >>> pivots
+        [(2, 96.0)]  # Index 2 has value 96, lower than 2 bars left/right
+    """
+    pivots = []
+
+    for i in range(left_bars, len(data) - right_bars):
+        # Check if current bar is lower than left_bars to the left
+        is_lowest_left = all(data[i] < data[i - j] for j in range(1, left_bars + 1))
+
+        # Check if current bar is lower or equal to right_bars to the right
+        is_lowest_right = all(data[i] <= data[i + j] for j in range(1, right_bars + 1))
+
+        if is_lowest_left and is_lowest_right:
+            pivots.append((i, float(data[i])))
+
+    return pivots
+
+
+def check_pivot_range(pivot1_idx: int, pivot2_idx: int,
+                      range_min: int = 5, range_max: int = 60) -> bool:
+    """
+    Check if two pivots are within acceptable distance range
+
+    TradingView equivalent:
+        bars = ta.barssince(cond == true)
+        rangeLower <= bars and bars <= rangeUpper
+
+    Args:
+        pivot1_idx: Index of first pivot
+        pivot2_idx: Index of second pivot
+        range_min: Minimum bars between pivots (default: 5)
+        range_max: Maximum bars between pivots (default: 60)
+
+    Returns:
+        True if pivots are within range, False otherwise
+
+    Example:
+        >>> check_pivot_range(10, 25, range_min=5, range_max=60)
+        True  # 15 bars apart, within 5-60 range
+        >>> check_pivot_range(10, 12, range_min=5, range_max=60)
+        False  # Only 2 bars apart, less than minimum 5
+    """
+    distance = abs(pivot2_idx - pivot1_idx)
+    return range_min <= distance <= range_max
 
 
 class SwingPoints(BaseIndicator):
@@ -448,7 +553,12 @@ class SwingPoints(BaseIndicator):
 # MODULE EXPORTS
 # ============================================================================
 
-__all__ = ['SwingPoints']
+__all__ = [
+    'SwingPoints',
+    'find_pivot_highs',
+    'find_pivot_lows',
+    'check_pivot_range'
+]
 
 
 # ============================================================================
