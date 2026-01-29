@@ -105,6 +105,35 @@ class RSIDivergence(BaseIndicator):
             )
         return True
 
+    def warmup_buffer(self, data: pd.DataFrame, symbol: str = None) -> None:
+        """
+        Initialize warmup buffer for incremental updates.
+
+        Ensures update() has enough historical data for divergence detection.
+
+        Note: symbol parameter is ignored - each indicator instance is already symbol-specific
+        """
+        from collections import deque
+
+        # Initialize buffers dict if needed
+        if not hasattr(self, '_buffers'):
+            self._buffers = {}
+
+        buffer_key = 'default'
+
+        # Create buffer with correct size (matching update() expectations)
+        max_len = self.get_required_periods() + 50  # 24 + 50 = 74 candles
+        self._buffers[buffer_key] = deque(maxlen=max_len)
+
+        # Fill buffer with historical data
+        for _, row in data.tail(max_len).iterrows():
+            self._buffers[buffer_key].append(row.to_dict())
+
+        # Calculate initial state if we have enough data
+        if len(data) >= self.get_required_periods():
+            # Call calculate to initialize internal state
+            self.calculate(data)
+
     def _find_price_pivots(self, high: np.ndarray, low: np.ndarray, lookback: int) -> dict:
         """
         Find price pivot points using HIGH/LOW (TradingView compatible)
@@ -456,25 +485,28 @@ class RSIDivergence(BaseIndicator):
 
     def update(self, candle: dict, symbol: str = None) -> IndicatorResult:
         """
-        Incremental update (Real-time) - Symbol-aware
+        Incremental update (Real-time)
 
         Args:
             candle: New candle data
-            symbol: Symbol identifier (for multi-symbol support)
+            symbol: Symbol identifier (IGNORED - each instance is already symbol-specific)
 
         Returns:
             IndicatorResult: Current indicator value
+
+        Note: symbol parameter is ignored. Each indicator instance is created per-symbol
+              by RealtimeCalculator, so multi-symbol support is handled at calculator level.
         """
         from collections import deque
 
-        # Initialize symbol-aware buffers if needed
+        # Initialize buffer if needed (always use 'default' key)
         if not hasattr(self, '_buffers'):
             self._buffers = {}
 
-        # Use symbol as key, or 'default' for backward compatibility
-        buffer_key = symbol if symbol else 'default'
+        # Always use 'default' - each indicator instance is symbol-specific
+        buffer_key = 'default'
 
-        # Initialize buffer for this symbol if needed
+        # Initialize buffer if needed
         if buffer_key not in self._buffers:
             max_len = self.get_required_periods() + 50
             self._buffers[buffer_key] = deque(maxlen=max_len)
@@ -490,9 +522,16 @@ class RSIDivergence(BaseIndicator):
 
         # Need minimum data for calculation
         if len(self._buffers[buffer_key]) < self.get_required_periods():
-            # Not enough data - return neutral
+            # Not enough data - return neutral with proper structure
             return IndicatorResult(
-                value=0.0,
+                value={
+                    'rsi': 50.0,
+                    'bullish_divergence': False,
+                    'bearish_divergence': False,
+                    'hidden_bullish_divergence': False,
+                    'hidden_bearish_divergence': False,
+                    'divergence_strength': 0.0
+                },
                 timestamp=timestamp_val,
                 signal=SignalType.HOLD,
                 trend=TrendDirection.NEUTRAL,
@@ -503,8 +542,34 @@ class RSIDivergence(BaseIndicator):
         # Convert buffer to DataFrame
         buffer_data = pd.DataFrame(list(self._buffers[buffer_key]))
 
-        # Calculate using existing logic
-        return self.calculate(buffer_data)
+        # Use calculate_batch to get accurate per-candle divergence states
+        # This ensures we return the LAST candle's state, not just last pivot's state
+        batch_result = self.calculate_batch(buffer_data)
+
+        # Extract last candle's values
+        last_idx = len(batch_result) - 1
+        value = {
+            'rsi': round(float(batch_result['rsi'].iloc[last_idx]), 2),
+            'bullish_divergence': bool(batch_result['bullish_divergence'].iloc[last_idx]),
+            'bearish_divergence': bool(batch_result['bearish_divergence'].iloc[last_idx]),
+            'hidden_bullish_divergence': bool(batch_result['hidden_bullish_divergence'].iloc[last_idx]),
+            'hidden_bearish_divergence': bool(batch_result['hidden_bearish_divergence'].iloc[last_idx]),
+            'divergence_strength': round(float(batch_result['divergence_strength'].iloc[last_idx]), 2)
+        }
+
+        # Determine signal and trend
+        signal = self.get_signal(value)
+        trend = self.get_trend(value)
+        strength = value['divergence_strength']
+
+        return IndicatorResult(
+            value=value,
+            timestamp=timestamp_val,
+            signal=signal,
+            trend=trend,
+            strength=strength,
+            metadata={}
+        )
 
     def get_signal(self, value: dict) -> SignalType:
         """
