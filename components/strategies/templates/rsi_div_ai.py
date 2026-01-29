@@ -40,7 +40,8 @@ from components.strategies.base_strategy import (
     TradingSide,
     PositionSizeMethod,
     ExitMethod,
-    StopLossMethod
+    StopLossMethod,
+    AIConfig
 )
 
 
@@ -64,7 +65,7 @@ class Strategy(BaseStrategy):
         # ====================================================================
         # STRATEGY METADATA
         # ====================================================================
-        self.strategy_name = "rsi_divergence"
+        self.strategy_name = "rsi_div_ai"
         self.strategy_version = "1.0.0"
         self.description = "RSI Divergence reversal with price confirmation"
         self.author = "SuperBot Team"
@@ -117,6 +118,48 @@ class Strategy(BaseStrategy):
                 enabled=True
             )
         ]
+        # ====================================================================
+        # AI MODEL CONFIGURATION
+        # ====================================================================
+        self.ai_config = AIConfig(
+            # ═══════════════════════════════════════════════════════════
+            # GENERAL
+            # ═══════════════════════════════════════════════════════════
+            ai_enabled=True,        # ✅ AI aktif
+            model_path="models/model.pkl",     # XGBoost model dosyası
+            model_type="simple_train",      # RL model (PPO)
+
+            # ═══════════════════════════════════════════════════════════
+            # ENTRY DECISION (Sinyal Filtreleme)
+            # RL model strateji sinyalini onaylıyor mu?
+            # Strateji: "LONG aç" → RL: "LONG %70" → Onay ✓
+            # Strateji: "LONG aç" → RL: "SHORT %80" → Red ✗
+            # ═══════════════════════════════════════════════════════════
+            entry_decision=True,                          # AI sinyal filtrelemede kullanılsın
+            confidence_threshold=0.55,                     # %50+ güven eşiği (RL için daha düşük)
+
+            # ═══════════════════════════════════════════════════════════
+            # TP/SL OPTIMIZATION (Opsiyonel - RL desteklemiyor)
+            # ═══════════════════════════════════════════════════════════
+            tp_optimization=False,                        # RL model TP önermiyor
+            sl_optimization=False,                        # RL model SL önermiyor
+
+            # ═══════════════════════════════════════════════════════════
+            # POSITION SIZING (Opsiyonel)
+            # ═══════════════════════════════════════════════════════════
+            position_sizing=False,                        # AI pozisyon boyutu ayarlamasın
+            
+            # ════════════════════════════════════════════════════════════
+            # EXIT MODEL (Dynamic Exit Optimization) - TEST
+            # ═══════════════════════════════════════════════════════════
+            exit_model_enabled=False,                      # ✅ Exit Model aktif (TEST)
+            exit_model_path="models/exit_model.pkl",
+            use_exit_model_tp=True,                       # TP'yi Exit Model optimize etsin
+            use_exit_model_sl=True,                       # SL'yi Exit Model optimize etsin
+            use_exit_model_trailing=True,                 # Trailing kararını Exit Model alsın
+            use_exit_model_break_even=True,               # BE kararını Exit Model alsın
+            exit_model_blend_ratio=0.8,                   # %80 Exit Model, %20 Strategy
+        )
 
         # ====================================================================
         # RISK MANAGEMENT (Conservative for reversal trades)

@@ -1,0 +1,53 @@
+# config/trading.yaml
+# Trading Engine Configuration
+
+# ============================================================================
+# TIER SYSTEM CONFIGURATION
+# ============================================================================
+# 4-Tier sembol yönetim sistemi:
+# - TIER 0 (POSITION): Aktif pozisyon var
+# - TIER 1 (DECISION): Sinyal %100, mum kapanışı bekleniyor
+# - TIER 2 (MONITORING): Potansiyel aday (%50+ koşul)
+# - TIER 3 (ANALYSIS): Başlangıç havuzu (tüm semboller)
+
+tiers:
+  # Tier geçiş eşikleri (koşul skor oranı)
+  thresholds:
+    monitoring: 0.50    # TIER 3 → TIER 2: %50+ koşul karşılanmalı
+    decision: 1.0       # TIER 2 → TIER 1: %100 koşul karşılanmalı
+
+  # Tier bazlı kontrol aralıkları (saniye)
+  # Düşük tier = daha sık kontrol
+  intervals:
+    enabled: false      # Tier bazlı kontrol aralıkları etkin
+    position: 1         # TIER 0: Her saniye (aktif pozisyon)
+    decision: 5         # TIER 1: 5 saniye (entry bekleniyor)
+    monitoring: 15      # TIER 2: 15 saniye (potansiyel aday)
+    analysis: 30        # TIER 3: 60 saniye (başlangıç havuzu)
+
+  # Pozisyon sonrası davranış
+  post_position:
+    cooldown_enabled: false     # Pozisyon sonrası bekleme süresi
+    cooldown_seconds: 0         # Bekleme süresi (saniye)
+    return_to_tier: 3           # Kapanışta dönülecek tier (3 = ANALYSIS)
+
+# ============================================================================
+# STATUS DISPLAY SETTINGS
+# ============================================================================
+status_display:
+  # Which tiers to show entry conditions for
+  # 0 = POSITION, 1 = DECISION, 2 = MONITORING, 3 = ANALYSIS
+  # Default: [0, 1, 2] (hide ANALYSIS tier)
+  # For 400-500 symbols, you may want to use [0, 1] only
+  show_sembols_for_tiers: [0,1,2,3] # Show symbols in these tiers
+  display_verbose_conditions: [0,1,2,3] # Show detailed condition scores for these tiers
+  # Maximum symbols to display in status
+  max_symbols_display: 20 # Show up to 20 symbols per there tier
+
+  # Verbose mode: Her zaman koşul detaylarını göster (CLI --verbose olmasa bile)
+  always_show_conditions: true  # true = her zaman göster, false = sadece --verbose ile
+
+  # Status report interval (seconds)
+  status_interval: 15
+  show_tier_changes: false  # Show tier changes in status report
+

@@ -52,20 +52,20 @@ class RSIDivergence(BaseIndicator):
     Used to capture trend reversal points.
 
     Args:
-        rsi_period: RSI period (default: 14)
+        period: RSI period (default: 14)
         lookback: Lookback period (for pivot points) (default: 5)
         min_strength: Minimum divergence strength (0-100) (default: 30)
     """
 
     def __init__(
         self,
-        rsi_period: int = 14,
+        period: int = 14,
         lookback: int = 5,
         min_strength: float = 30,
         logger=None,
         error_handler=None
     ):
-        self.rsi_period = rsi_period
+        self.period = period
         self.lookback = lookback
         self.min_strength = min_strength
 
@@ -74,7 +74,7 @@ class RSIDivergence(BaseIndicator):
             category=IndicatorCategory.MOMENTUM,
             indicator_type=IndicatorType.MULTIPLE_VALUES,
             params={
-                'rsi_period': rsi_period,
+                'period': period,
                 'lookback': lookback,
                 'min_strength': min_strength
             },
@@ -84,13 +84,13 @@ class RSIDivergence(BaseIndicator):
 
     def get_required_periods(self) -> int:
         """Minimum required number of periods"""
-        return self.rsi_period + self.lookback * 2
+        return self.period + self.lookback * 2
 
     def validate_params(self) -> bool:
         """Validate parameters"""
-        if self.rsi_period < 1:
+        if self.period < 1:
             raise InvalidParameterError(
-                self.name, 'rsi_period', self.rsi_period,
+                self.name, 'period', self.period,
                 "RSI period must be positive"
             )
         if self.lookback < 2:
@@ -299,7 +299,7 @@ class RSIDivergence(BaseIndicator):
         low = data['low'].values
 
         # Calculate RSI using existing RSI indicator
-        rsi_values = calculate_rsi_values(close, self.rsi_period)
+        rsi_values = calculate_rsi_values(close, self.period)
 
         # Find pivot points using HIGH/LOW for price, RSI for oscillator
         price_pivots = self._find_price_pivots(high, low, self.lookback)
@@ -338,7 +338,7 @@ class RSIDivergence(BaseIndicator):
             trend=trend,
             strength=divergence['strength'],
             metadata={
-                'rsi_period': self.rsi_period,
+                'period': self.period,
                 'lookback': self.lookback,
                 'price_pivots_highs': len(price_pivots['highs']),
                 'price_pivots_lows': len(price_pivots['lows']),
@@ -365,7 +365,7 @@ class RSIDivergence(BaseIndicator):
         low = data['low'].values
 
         # Calculate RSI using existing RSI indicator
-        rsi = calculate_rsi_values(close, self.rsi_period)
+        rsi = calculate_rsi_values(close, self.period)
 
         # Initialize result arrays
         bullish_div = np.zeros(len(close), dtype=bool)
@@ -477,7 +477,7 @@ class RSIDivergence(BaseIndicator):
         }, index=data.index)
 
         # Set warmup period to NaN/False
-        warmup = self.rsi_period + self.lookback * 2
+        warmup = self.period + self.lookback * 2
         result.iloc[:warmup, result.columns.get_loc('rsi')] = np.nan
         result.iloc[:warmup, result.columns.get_loc('divergence_strength')] = 0
 
@@ -608,7 +608,7 @@ class RSIDivergence(BaseIndicator):
     def _get_default_params(self) -> dict:
         """Default parameters"""
         return {
-            'rsi_period': 14,
+            'period': 14,
             'lookback': 5,
             'min_strength': 30
         }
@@ -668,7 +668,7 @@ if __name__ == "__main__":
 
     # Test 1: Basic calculation
     print("\n2. Basic calculation test...")
-    rsi_div = RSIDivergence(rsi_period=14, lookback=5, min_strength=30)
+    rsi_div = RSIDivergence(period=14, lookback=5, min_strength=30)
     print(f"   [OK] Created: {rsi_div}")
     print(f"   [OK] Category: {rsi_div.category.value}")
     print(f"   [OK] Required period: {rsi_div.get_required_periods()}")
@@ -689,7 +689,7 @@ if __name__ == "__main__":
         (14, 7, 40)
     ]
     for rsi_p, look, strength in configs:
-        div_test = RSIDivergence(rsi_period=rsi_p, lookback=look, min_strength=strength)
+        div_test = RSIDivergence(period=rsi_p, lookback=look, min_strength=strength)
         result = div_test.calculate(data)
         print(f"   [OK] Params({rsi_p},{look},{strength}): Bullish={result.value['bullish_divergence']}, Bearish={result.value['bearish_divergence']}")
 

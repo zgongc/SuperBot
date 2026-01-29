@@ -307,7 +307,7 @@ INDICATOR_REGISTRY: Dict[str, Dict[str, Any]] = {
         'category': IndicatorCategory.MOMENTUM,
         'type': IndicatorType.SINGLE_VALUE,
         'description': 'RSI Divergence',
-        'default_params': {'rsi_period': 14, 'lookback': 5, 'min_strength': 30},
+        'default_params': {'period': 14, 'lookback': 5, 'min_strength': 30},
         'requires_volume': False,
         'has_calculate_batch': True,
         'output_keys': ['bearish_divergence', 'bullish_divergence', 'divergence_strength', 'hidden_bearish_divergence', 'hidden_bullish_divergence', 'rsi']

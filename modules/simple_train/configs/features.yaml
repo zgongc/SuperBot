@@ -1,0 +1,236 @@
+# =============================================================================
+# modules/simple_train/configs/features.yaml
+# Feature Configuration for AI Training
+# =============================================================================
+#
+# Features come from 3 sources:
+# 1. Strategy indicators (required) - strategy_indicators: auto
+# 2. Bu dosyadaki ekstra feature'lar - enabled: true/false
+# 3. External context (optional) - from the regime module API.
+#
+# A normalization method can be defined for each feature.
+# =============================================================================
+
+version: "1.0"
+
+# =============================================================================
+# STRATEGY INDICATORS (Required)
+# =============================================================================
+# Automatically read from the strategy file (technical_parameters.indicators)
+# Example: simple_rsi_ai -> ema_50, rsi_14
+strategy_indicators: auto
+
+# =============================================================================
+# ADDITIONAL FEATURES
+# =============================================================================
+features:
+  # ─────────────────────────────────────────────────────────────────────────
+  # PRICE-BASED
+  # ─────────────────────────────────────────────────────────────────────────
+  price:
+    # Distance to EMA (normalized)
+    ema_distance:
+      enabled: true
+      description: "(close - ema_50) / ema_50"
+      # Automatically calculated, indicator is not required
+
+    # Price momentum (last N bar changes)
+    price_momentum:
+      enabled: true
+      window: 10
+      description: "(close - close[N]) / close[N]"
+
+    # Price volatility (standard deviation of the last N bars)
+    price_volatility:
+      enabled: false
+      window: 20
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # MOMENTUM
+  # ─────────────────────────────────────────────────────────────────────────
+  momentum:
+    # RSI change
+    rsi_change:
+      enabled: true
+      window: 3
+      description: "rsi[0] - rsi[N]"
+
+    # RSI slope (trend)
+    rsi_slope:
+      enabled: true
+      window: 5
+
+    # Stochastic RSI (ek momentum)
+    stochrsi_14:
+      enabled: true
+      indicator: "stochrsi"
+      params:
+        period: 14
+        k_period: 3
+        d_period: 3
+
+    # CCI
+    cci_20:
+      enabled: true
+      indicator: "cci"
+      params:
+        period: 20
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # VOLUME
+  # ─────────────────────────────────────────────────────────────────────────
+  volume:
+    # Volume change
+    volume_change:
+      enabled: true
+      window: 5
+      description: "volume / sma(volume, N)"
+
+    # Volume spike (anormal volume)
+    volume_spike:
+      enabled: true
+      threshold: 2.0
+      description: "volume > N * sma(volume, 20)"
+
+    # OBV change
+    obv_change:
+      enabled: true
+      window: 10
+      indicator: "obv"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # VOLATILITY
+  # ─────────────────────────────────────────────────────────────────────────
+  volatility:
+    # ATR (Average True Range)
+    atr_14:
+      enabled: true
+      indicator: "atr"
+      params:
+        period: 14
+
+    # ATR change (is volatility increasing?)
+    atr_change:
+      enabled: true
+      window: 5
+
+    # Bollinger Band width
+    bb_width:
+      enabled: true
+      indicator: "bollinger"
+      params:
+        period: 20
+        std_dev: 2.0
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # TREND
+  # ─────────────────────────────────────────────────────────────────────────
+  trend:
+    # ADX (trend strength)
+    adx_14:
+      enabled: true
+      indicator: "adx"
+      params:
+        period: 14
+
+    # EMA trend direction
+    ema_trend:
+      enabled: false
+      description: "1 if ema_50 > ema_50[5] else -1"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # TIME-BASED
+  # ─────────────────────────────────────────────────────────────────────────
+  time:
+    # Hour (cyclical encoding)
+    hour_sin:
+      enabled: false
+      description: "sin(2 * pi * hour / 24)"
+
+    hour_cos:
+      enabled: false
+      description: "cos(2 * pi * hour / 24)"
+
+    # Day (cyclical encoding)
+    day_sin:
+      enabled: false
+      description: "sin(2 * pi * day_of_week / 7)"
+
+    day_cos:
+      enabled: false
+      description: "cos(2 * pi * day_of_week / 7)"
+
+    # Session flags
+    is_london:
+      enabled: false
+      description: "London session active"
+
+    is_newyork:
+      enabled: false
+      description: "New York session active"
+
+# =============================================================================
+# EXTERNAL CONTEXT (Optional)
+# =============================================================================
+# Additional information received from the Regime module API.
+external_context:
+  enabled: false
+  api_endpoint: "http://localhost:8000/regime/score"
+
+  parameters:
+    regime_score:
+      enabled: false
+      description: "Market regime based on USDT.D, BTC.D"
+
+    sentiment_score:
+      enabled: false
+      description: "Sentiment based on news/events"
+
+    volatility_regime:
+      enabled: false
+      description: "VIX benzeri volatilite skoru"
+
+    correlation_score:
+      enabled: false
+      description: "Correlation with BTC"
+
+# =============================================================================
+# NORMALIZATION
+# =============================================================================
+# Normalization method for each feature
+# Desteklenen metodlar: minmax, zscore, rolling_zscore, rolling_percentile, log_zscore
+normalizers:
+  # RSI is already between 0-100.
+  rsi_14:
+    method: "minmax"
+    min: 0
+    max: 100
+
+  # EMA distance with z-score
+  ema_distance:
+    method: "rolling_zscore"
+    window: 100
+
+  # With price momentum z-score
+  price_momentum:
+    method: "rolling_zscore"
+    window: 50
+
+  # RSI change with z-score
+  rsi_change:
+    method: "rolling_zscore"
+    window: 50
+
+  # Volume change log transform + z-score
+  volume_change:
+    method: "log_zscore"
+
+  # ATR percentile rank (0-1)
+  atr_14:
+    method: "rolling_percentile"
+    window: 200
+
+  # Default for other features
+  default:
+    method: "rolling_zscore"
+    window: 100

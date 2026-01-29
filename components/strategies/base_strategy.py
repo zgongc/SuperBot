@@ -336,7 +336,7 @@ class AIConfig:
     # GENERAL
     # ═══════════════════════════════════════════════════════════════
     ai_enabled: bool = False
-    model_path: str = "data/checkpoints/ai/global_best.pt"
+    model_path: str = "models/global_best.pt"
     model_type: str = "rl_model"  # rl_model (PPO), signal_model (legacy), lstm, transformer
 
     # ═══════════════════════════════════════════════════════════════
@@ -382,7 +382,7 @@ class AIConfig:
     # EXIT MODEL (Dynamic Exit Optimization)
     # ═══════════════════════════════════════════════════════════════
     exit_model_enabled: bool = False      # Is the Exit Model active?
-    exit_model_path: str = "data/ai/checkpoints/simple_train/simple_rsi/exit_model.pkl"
+    exit_model_path: str = "data/ai/checkpoints/exit_model.pkl"
     use_exit_model_tp: bool = False       # Should this override the Exit Model TP?
     use_exit_model_sl: bool = False       # Should this override the Exit Model SL?
     use_exit_model_trailing: bool = False # Should it make the Exit Model trailing decision?
