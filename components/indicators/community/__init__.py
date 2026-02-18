@@ -15,12 +15,15 @@ Description:
 Available Indicators:
     - MavilimW: A trend indicator based on WMA by Kivanc Ozbilgic.
     - PMax: ATR-based trend indicator by Kivanc Ozbilgic.
+    - ALMAStdDevBands: ALMA SD Bands by RakoQuant.
 """
 
+from .alma_sd_bands import ALMAStdDevBands
 from .mavilimw import MavilimW
 from .pmax import PMax
 
 __all__ = [
+    'ALMAStdDevBands',
     'MavilimW',
     'PMax',
 ]

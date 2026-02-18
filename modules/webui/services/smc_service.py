@@ -199,7 +199,19 @@ class SMCService:
                 open_time = df['open_time']
                 # Timestamp/datetime tipini int64 millisecond'a cevir
                 if pd.api.types.is_datetime64_any_dtype(open_time):
-                    df['timestamp'] = open_time.astype('int64') // 10**6
+                    # Resolution-aware conversion: ns→ms needs //10**6, ms stays as-is
+                    resolution = open_time.dt.as_unit('ns').values.dtype  # normalize to check
+                    int_values = open_time.astype('int64')
+                    first_val = int_values.iloc[0]
+                    if first_val > 1e15:
+                        # Nanoseconds (datetime64[ns]) → divide to get ms
+                        df['timestamp'] = int_values // 10**6
+                    elif first_val > 1e12:
+                        # Already milliseconds (datetime64[ms])
+                        df['timestamp'] = int_values
+                    else:
+                        # Seconds → multiply to get ms
+                        df['timestamp'] = int_values * 1000
                 elif open_time.dtype == 'object':
                     df['timestamp'] = pd.to_datetime(open_time).astype('int64') // 10**6
                 else:

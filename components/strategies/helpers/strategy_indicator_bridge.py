@@ -371,6 +371,26 @@ def _extract_base_indicator_name(indicator_name: str) -> str:
         if parts[1] == 'bands':
             return 'vwap_bands'
 
+    if base_name == 'alma' and len(parts) > 1:
+        if parts[1] == 'sd' and len(parts) > 2 and parts[2] == 'bands':
+            return 'alma_sd_bands'
+
+    if base_name == 'standard' and len(parts) > 1:
+        if parts[1] == 'dev':
+            return 'standard_dev'
+
+    if base_name == 'percentile' and len(parts) > 1:
+        if parts[1] == 'rank':
+            return 'percentile_rank'
+
+    if base_name == 'true' and len(parts) > 1:
+        if parts[1] == 'range':
+            return 'true_range'
+
+    if base_name == 'force' and len(parts) > 1:
+        if parts[1] == 'index':
+            return 'force_index'
+
     # Single word indicator
     return base_name
 

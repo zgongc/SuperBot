@@ -175,7 +175,14 @@ class ParquetsEngine:
 
             # Add timestamp column (int64 ms)
             # Remove timezone info before converting to int64
-            df['timestamp'] = df['open_time'].dt.tz_localize(None).astype('int64') // 10**6
+            int_values = df['open_time'].dt.tz_localize(None).astype('int64')
+            first_val = int_values.iloc[0]
+            if first_val > 1e15:
+                df['timestamp'] = int_values // 10**6  # nanoseconds → ms
+            elif first_val > 1e12:
+                df['timestamp'] = int_values  # already milliseconds
+            else:
+                df['timestamp'] = int_values * 1000  # seconds → ms
 
         if self.logger:
             self.logger.info(f"   ✅ Total {len(df)} rows loaded (merged)")

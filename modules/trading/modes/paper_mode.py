@@ -83,8 +83,12 @@ class PaperMode(BaseMode):
         
         if strategy:
             backtest_params = getattr(strategy, 'backtest_parameters', {})
-            self.fee_rate = backtest_params.get("commission", 0.0004)
-            self.slippage_rate = backtest_params.get("max_slippage", 0.0005)
+            # backtest_parameters uses percentage format (0.02 = 0.02%)
+            # paper_mode uses decimal format (0.0002 = 0.02%)
+            raw_commission = backtest_params.get("commission", 0.04)
+            raw_slippage = backtest_params.get("max_slippage", 0.05)
+            self.fee_rate = raw_commission / 100 if raw_commission > 0.01 else raw_commission
+            self.slippage_rate = raw_slippage / 100 if raw_slippage > 0.01 else raw_slippage
             self.leverage = getattr(strategy, 'leverage', 1)
             self._initial_balance = getattr(strategy, 'initial_balance', 10000.0)
         else:

@@ -183,7 +183,7 @@ class AnalysisEngine:
         self.reset()
 
         n = len(data)
-        times = data['timestamp'].values if 'timestamp' in data.columns else list(range(n))
+        times = data['timestamp'].values if 'timestamp' in data.columns else data['open_time'].values if 'open_time' in data.columns else list(range(n))
         opens = data['open'].values
         highs = data['high'].values
         lows = data['low'].values
@@ -475,7 +475,7 @@ class AnalysisEngine:
         highs = data['high'].values
         lows = data['low'].values
         closes = data['close'].values
-        times = data['timestamp'].values if 'timestamp' in data.columns else [0] * len(data)
+        times = data['timestamp'].values if 'timestamp' in data.columns else data['open_time'].values if 'open_time' in data.columns else [0] * len(data)
 
         # Get the swings - to determine the OB search range.
         swings = self._swing_detector.get_history()

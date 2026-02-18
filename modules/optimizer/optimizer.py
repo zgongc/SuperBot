@@ -267,8 +267,12 @@ class Optimizer:
         """
         Parametre range'lerini expand et (tuple → list)
 
+        Nested dict support for indicators stage:
+            {'donchian_20': {'period': (10, 30, 5)}}
+            → {'donchian_20.period': [10, 15, 20, 25, 30]}
+
         Args:
-            stage_params: Parameter dictionary (may contain tuples or lists)
+            stage_params: Parameter dictionary (may contain tuples, lists, or nested dicts)
 
         Returns:
             Expanded parameter dictionary (only a list).
@@ -277,7 +281,21 @@ class Optimizer:
 
         expanded = {}
         for key, value in stage_params.items():
-            if isinstance(value, tuple) and len(value) == 3:
+            if isinstance(value, dict):
+                # Nested dict (e.g., indicator params): flatten with dot notation
+                for sub_key, sub_value in value.items():
+                    flat_key = f"{key}.{sub_key}"
+                    if isinstance(sub_value, tuple) and len(sub_value) == 3:
+                        min_val, max_val, step = sub_value
+                        if isinstance(min_val, (int, float)):
+                            expanded[flat_key] = list(np.arange(min_val, max_val + step, step))
+                        else:
+                            expanded[flat_key] = list(sub_value)
+                    elif isinstance(sub_value, list):
+                        expanded[flat_key] = sub_value
+                    else:
+                        expanded[flat_key] = [sub_value]
+            elif isinstance(value, tuple) and len(value) == 3:
                 # (min, max, step) → [min, min+step, ..., max]
                 min_val, max_val, step = value
                 if isinstance(min_val, (int, float)):
@@ -776,11 +794,17 @@ class Optimizer:
                 setattr(self.strategy.position_management, key, value)
 
         elif stage_name == 'indicators':
-            # Apply indicator parameters to the strategy config.
+            # Apply indicator parameters to technical_parameters.indicators
+            # Supports dot notation from _expand_param_ranges: 'donchian_20.period' → indicators['donchian_20']['period']
             for key, value in params.items():
-                # Update the indicator_config dictionary
-                if hasattr(self.strategy, 'indicator_config'):
-                    self.strategy.indicator_config[key] = value
+                if '.' in key:
+                    indicator_name, param_name = key.split('.', 1)
+                    if indicator_name in self.strategy.technical_parameters.indicators:
+                        self.strategy.technical_parameters.indicators[indicator_name][param_name] = value
+                else:
+                    # Flat key: try indicator_config fallback
+                    if hasattr(self.strategy, 'indicator_config'):
+                        self.strategy.indicator_config[key] = value
 
         elif stage_name == 'entry_conditions':
             # Entry condition parameters

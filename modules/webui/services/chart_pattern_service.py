@@ -138,7 +138,15 @@ class ChartPatternService:
             if 'open_time' in df.columns and 'timestamp' not in df.columns:
                 open_time = df['open_time']
                 if pd.api.types.is_datetime64_any_dtype(open_time):
-                    df['timestamp'] = open_time.astype('int64') // 10**6
+                    # Resolution-aware: datetime64[ns] vs datetime64[ms]
+                    int_values = open_time.astype('int64')
+                    first_val = int_values.iloc[0]
+                    if first_val > 1e15:
+                        df['timestamp'] = int_values // 10**6  # nanoseconds → ms
+                    elif first_val > 1e12:
+                        df['timestamp'] = int_values  # already milliseconds
+                    else:
+                        df['timestamp'] = int_values * 1000  # seconds → ms
                 elif open_time.dtype == 'object':
                     df['timestamp'] = pd.to_datetime(open_time).astype('int64') // 10**6
                 else:

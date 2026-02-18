@@ -976,10 +976,14 @@ class BacktestEngine:
                 if quantity > 0:
 
                     # Open new position
+                    # Count same-side positions for pyramiding label
+                    same_side_count = sum(1 for p in positions if p.get('side') == new_side)
+
                     new_position = self._open_position(
                         signal, row, quantity, strategy, config, current_time,
                         data_so_far=data_to_pass,
-                        ai_prediction=ai_pred_for_position
+                        ai_prediction=ai_pred_for_position,
+                        pyramiding_entry=same_side_count if same_side_count > 0 else 0
                     )
                     positions.append(new_position)
 
@@ -1392,7 +1396,7 @@ class BacktestEngine:
             self.logger.warning(f"Batch AI prediction error: {e}")
             return {}
 
-    def _open_position(self, signal, row, quantity, strategy, config, entry_time, data_so_far=None, ai_prediction=None) -> Dict:
+    def _open_position(self, signal, row, quantity, strategy, config, entry_time, data_so_far=None, ai_prediction=None, pyramiding_entry=0) -> Dict:
         """
         Open position with optional AI TP/SL optimization.
 
@@ -1661,7 +1665,8 @@ class BacktestEngine:
             display_time = TimezoneUtils.format(entry_time, fmt='%Y-%m-%d %H:%M:%S')
 
             side_str = "LONG" if signal > 0 else "SHORT"
-            self.logger.info(f"\n🎯 {side_str} Entry signal detected!")
+            pyramid_label = f" - Pyramiding {pyramiding_entry + 1}" if pyramiding_entry > 0 else ""
+            self.logger.info(f"\n🎯 {side_str} Entry signal detected!{pyramid_label}")
             self.logger.info(f"   - Time: {display_time}")
             self.logger.info(f"   - Symbol: {config.symbols[0]}")
             self.logger.info(f"   - Position: {side_str}")
@@ -2173,7 +2178,7 @@ async def _prepare_backtest_data(strategy: 'Strategy', logger, debug: bool = Fal
                 timeframe=timeframe,
                 start_date=warmup_start_str,
                 end_date=end_date,
-                output_dir=str(symbol_dir)
+                output_dir=str(data_dir)
             )
 
             logger.info(f"   ✅ Download complete")
@@ -2187,7 +2192,7 @@ async def _prepare_backtest_data(strategy: 'Strategy', logger, debug: bool = Fal
             await downloader.update(
                 symbol=symbol,
                 timeframe=timeframe,
-                output_dir=str(symbol_dir)
+                output_dir=str(data_dir)
             )
 
             logger.info(f"   ✅ Update complete")

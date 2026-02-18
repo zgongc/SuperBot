@@ -147,10 +147,82 @@ class ExitManager:
                 return None
             return self._calculate_sl_dynamic_ai(entry_price, data, side, ai_level, atr_value)
 
+        # INDICATOR (dynamic indicator-based SL at entry time)
+        elif method == StopLossMethod.INDICATOR:
+            return self._calculate_sl_indicator(entry_price, side, data)
+
         # Default
         else:
             return None
-    
+
+    def _calculate_sl_indicator(
+        self,
+        entry_price: float,
+        side: str,
+        data: Optional[pd.DataFrame] = None
+    ) -> Optional[float]:
+        """
+        Calculate SL from indicator value at entry time.
+
+        Supports two formats:
+            - Direct: "alma_sd_bands_lower" → SL = indicator value (price level)
+            - Offset: "atr_14 * 2" → SL = entry ± (indicator × multiplier)
+
+        Args:
+            entry_price: Entry price
+            side: 'LONG' or 'SHORT'
+            data: Market data with indicator columns
+        """
+        if side.upper() == 'LONG':
+            source = self.exit_strategy.stop_loss_dynamic_source_long
+        else:
+            source = self.exit_strategy.stop_loss_dynamic_source_short
+
+        if not source:
+            if self.logger:
+                self.logger.warning(f"INDICATOR SL but no dynamic source for {side}")
+            return None
+
+        if data is None or data.empty:
+            if self.logger:
+                self.logger.warning("INDICATOR SL but no data")
+            return None
+
+        last_row = data.iloc[-1]
+
+        # Offset mode: "atr_14 * 2" → entry ± (indicator × multiplier)
+        if '*' in source:
+            parts = source.split('*')
+            indicator_name = parts[0].strip()
+            try:
+                multiplier = float(parts[1].strip())
+            except (ValueError, IndexError):
+                if self.logger:
+                    self.logger.warning(f"INDICATOR SL invalid format: {source}")
+                return None
+
+            if indicator_name not in last_row.index:
+                if self.logger:
+                    self.logger.warning(f"INDICATOR SL column not found: {indicator_name}")
+                return None
+
+            indicator_value = float(last_row[indicator_name])
+            offset = indicator_value * multiplier
+
+            if side.upper() == 'LONG':
+                return entry_price - offset
+            else:
+                return entry_price + offset
+
+        # Direct mode: "alma_sd_bands_lower" → SL = indicator value
+        else:
+            indicator_name = source.strip()
+            if indicator_name not in last_row.index:
+                if self.logger:
+                    self.logger.warning(f"INDICATOR SL column not found: {indicator_name}")
+                return None
+            return float(last_row[indicator_name])
+
     def _calculate_sl_fixed_percent(
         self,
         entry_price: float,

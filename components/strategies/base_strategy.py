@@ -69,6 +69,7 @@ class StopLossMethod(str, Enum):
     SWING_POINTS = "SWING_POINTS"            # Swing low/high
     FIBONACCI = "FIBONACCI"                  # Fibonacci retracement
     DYNAMIC_AI = "DYNAMIC_AI"                # AI-based adaptive SL
+    INDICATOR = "INDICATOR"                  # Dynamic indicator-based SL (entry anında indicator değeri)
 
 
 # ============================================================================
@@ -215,6 +216,8 @@ class ExitStrategy:
         stop_loss_swing_lookback: lookback period for SWING_POINTS
         stop_loss_fib_level: retracement level for FIBONACCI
         stop_loss_ai_level: level for DYNAMIC_AI
+        stop_loss_dynamic_source_long: INDICATOR source for LONG SL (e.g. "alma_sd_bands_lower" or "atr_14 * 2")
+        stop_loss_dynamic_source_short: INDICATOR source for SHORT SL (e.g. "alma_sd_bands_upper" or "atr_14 * 2")
 
         # Trailing Stop
         trailing_stop_enabled: Is the trailing stop active?
@@ -250,6 +253,8 @@ class ExitStrategy:
     stop_loss_swing_lookback: int = 0         # SWING_POINTS
     stop_loss_fib_level: float = 0.0          # FIBONACCI
     stop_loss_ai_level: int = 0               # DYNAMIC_AI
+    stop_loss_dynamic_source_long: str = ""   # INDICATOR: LONG SL source (e.g. "alma_sd_bands_lower" or "atr_14 * 2")
+    stop_loss_dynamic_source_short: str = ""  # INDICATOR: SHORT SL source (e.g. "alma_sd_bands_upper" or "atr_14 * 2")
 
     # Trailing Stop
     trailing_stop_enabled: bool = False

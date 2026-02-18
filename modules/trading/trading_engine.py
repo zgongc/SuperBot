@@ -1020,11 +1020,11 @@ class TradingEngine:
                 return
 
             # 2. Calculate Stop Loss/Take Profit with ExitManager
+            primary_tf = self.strategy.primary_timeframe
             if not self._exit_manager:
                 self._exit_manager = ExitManager(self.strategy, logger=self.logger)
 
-            # Primary timeframe DataFrame'i al
-            primary_tf = self.strategy.primary_timeframe
+            # Primary timeframe DataFrame
             primary_df = data.get(primary_tf) if data else None
 
             sl_price = self._exit_manager.calculate_stop_loss(

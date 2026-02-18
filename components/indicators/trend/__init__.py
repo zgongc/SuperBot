@@ -51,6 +51,7 @@ Dependencies:
 # ============================================================================
 
 # Moving Averages
+from indicators.trend.alma import ALMA
 from indicators.trend.sma import SMA
 from indicators.trend.ema import EMA
 from indicators.trend.wma import WMA
@@ -77,7 +78,8 @@ from indicators.trend.macd import MACD
 # ============================================================================
 
 __all__ = [
-    # Moving Averages (7)
+    # Moving Averages (8)
+    'ALMA',
     'SMA',
     'EMA',
     'WMA',
@@ -112,7 +114,7 @@ __category__ = 'trend'
 TOTAL_INDICATORS = len(__all__)
 
 # Category-based indicators
-MOVING_AVERAGES = ['SMA', 'EMA', 'WMA', 'HMA', 'TEMA', 'DEMA', 'VWMA']
+MOVING_AVERAGES = ['ALMA', 'SMA', 'EMA', 'WMA', 'HMA', 'TEMA', 'DEMA', 'VWMA']
 TREND_STRENGTH = ['SuperTrend', 'ADX', 'Aroon', 'ParabolicSAR']
 CHANNELS_COMPLEX = ['Ichimoku', 'KeltnerChannel', 'DonchianChannel', 'MACD']
 
@@ -197,7 +199,7 @@ def get_indicator_info():
 
 def _validate_imports():
     """Validate imported indicators"""
-    expected = 15
+    expected = 16
     actual = len(__all__)
 
     if actual != expected:

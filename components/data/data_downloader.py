@@ -1246,8 +1246,7 @@ class DataDownloader:
 
         if not filepath.exists():
             # Create new file (no duplicates possible)
-            table = pa.Table.from_pandas(df, preserve_index=False)
-            pq.write_table(table, filepath, compression='snappy')
+            df.to_parquet(filepath, index=False, compression='snappy')
         else:
             # Append to existing file with duplicate removal
             # Read existing data
@@ -1276,9 +1275,8 @@ class DataDownloader:
             # Sort by timestamp
             combined_df = combined_df.sort_values('open_time').reset_index(drop=True)
 
-            # Write back
-            table = pa.Table.from_pandas(combined_df, preserve_index=False)
-            pq.write_table(table, filepath, compression='snappy')
+            # Write back (pandas to_parquet for consistent datetime64[ns] format)
+            combined_df.to_parquet(filepath, index=False, compression='snappy')
 
             # Memory cleanup
             del existing_df

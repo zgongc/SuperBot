@@ -109,24 +109,7 @@ def save_backtest_results(
 
     json_path = os.path.join(output_dir, f"{base_filename}.json")
 
-    # Skip if results are identical (same trades, same PnL)
-    if os.path.exists(json_path):
-        try:
-            with open(json_path, 'r', encoding='utf-8') as f:
-                existing_data = json.load(f)
-
-            # Compare metrics
-            if (existing_data.get('metrics', {}).get('total_trades') == result.metrics.total_trades and
-                abs(existing_data.get('metrics', {}).get('total_return_usd', 0) - result.metrics.total_return_usd) < 0.01):
-                if logger:
-                    logger.info(f"\n📁 Results unchanged, skipping write:")
-                    logger.info(f"   - {base_filename}.json")
-                    logger.info(f"   - {base_filename}.txt")
-                return json_path, json_path.replace('.json', '.txt')
-        except:
-            pass  # File corrupted or different format, overwrite
-
-    # Save JSON
+    # Save JSON (always overwrite)
     with open(json_path, 'w', encoding='utf-8') as f:
         json.dump(json_data, f, indent=2, ensure_ascii=False, default=str)
 
